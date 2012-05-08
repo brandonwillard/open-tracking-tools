@@ -194,17 +194,14 @@ public class Standard2DTrackingFilter extends AbstractKalmanFilter {
 
   private static Matrix createStateCovarianceMatrix(double timeDiff,
     double aVariance, double a0Variance, Double angle) {
-    final Matrix A_half = MatrixFactory.getDefault().createIdentity(4, 2);
+    final Matrix A_half = MatrixFactory.getDefault().createMatrix(4, 2);
     A_half.setElement(0, 0, Math.pow(timeDiff, 2) / 2d);
-    A_half.setElement(0, 1, timeDiff);
-    A_half.setElement(1, 0, Math.pow(timeDiff, 2) / 2d);
-    A_half.setElement(1, 1, timeDiff);
-//    A_half.setElement(2, 2, Math.pow(timeDiff, 2) / 2d);
-//    A_half.setElement(3, 3, timeDiff);
+    A_half.setElement(1, 0, timeDiff);
+    A_half.setElement(2, 1, Math.pow(timeDiff, 2) / 2d);
+    A_half.setElement(3, 1, timeDiff);
     
     final Matrix Q = getVarianceConstraintMatrix(aVariance, a0Variance, angle);
     final Matrix A = A_half.times(Q).times(A_half.transpose());
-    A.scaleEquals(aVariance);
     return A;
   }
 

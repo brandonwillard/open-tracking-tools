@@ -83,8 +83,7 @@ public class VehicleTrackingFilter extends
         for (final InferredEdge edge : path) {
           filter.constrainMotion(edge.getAngle());
           filter.predict(belief);
-          localLogLik += state.getEdgeTransitionDist().logEvaluate(prevEdge,
-              edge);
+          localLogLik += state.getEdgeTransitionDist().predictiveLikelihood(prevEdge, edge);
 
           prevEdge = edge;
         }

@@ -265,4 +265,12 @@ public class VehicleState implements ComputableDistribution<EdgeLocation> {
     return observation;
   }
 
+  @Override
+  public String toString() {
+    return "VehicleState [movementFilter=" + movementFilter
+        + ", movementBelief=" + movementBelief + ", edgeTransitionDist="
+        + edgeTransitionDist + ", inferredPath=" + inferredPath
+        + ", observation=" + observation + "]";
+  }
+
 }

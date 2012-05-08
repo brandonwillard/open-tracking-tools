@@ -206,7 +206,6 @@ public class Observation {
        * We check for out-of-time-order records.
        */
       if (time.getTime() < prevObs.getTimestamp().getTime()) {
-        throw new TimeOrderException();
       }
     }
 
@@ -218,6 +217,14 @@ public class Observation {
     vehiclesToRecords.put(location.getVehicleId(), location);
 
     return location;
+  }
+
+  @Override
+  public String toString() {
+    return "Observation [vehicleId=" + vehicleId + ", timestamp=" + timestamp
+        + ", obsCoords=" + obsCoords + ", obsPoint=" + obsPoint
+        + ", projPoint=" + projPoint + ", velocity=" + velocity + ", heading="
+        + heading + ", accuracy=" + accuracy + ", prevObs=" + prevObs + "]";
   }
 
 }

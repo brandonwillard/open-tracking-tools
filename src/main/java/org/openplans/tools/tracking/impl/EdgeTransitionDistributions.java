@@ -8,6 +8,7 @@ import gov.sandia.cognition.math.matrix.VectorFactory;
 import gov.sandia.cognition.statistics.bayesian.conjugate.MultinomialBayesianEstimator;
 import gov.sandia.cognition.statistics.distribution.DirichletDistribution;
 import gov.sandia.cognition.statistics.distribution.MultinomialDistribution;
+import gov.sandia.cognition.statistics.distribution.MultivariatePolyaDistribution;
 import gov.sandia.cognition.util.AbstractCloneableSerializable;
 
 /**
@@ -53,6 +54,12 @@ public class EdgeTransitionDistributions extends AbstractCloneableSerializable {
   public void update(InferredEdge from, InferredEdge to) {
     Vector transType = getTransitionType(from, to);
     edgeTransEstimator.update(edgeTransProbPrior, transType);
+  }
+  
+  public double predictiveLikelihood(InferredEdge from, InferredEdge to) {
+    Vector state = getTransitionType(from, to);
+    MultivariatePolyaDistribution predDist = edgeTransEstimator.createPredictiveDistribution(edgeTransProbPrior);
+    return predDist.getProbabilityFunction().evaluate(state);
   }
   
   public double evaluate(InferredEdge from, InferredEdge to) {

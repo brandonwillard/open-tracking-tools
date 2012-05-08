@@ -201,6 +201,13 @@ public class InferredGraph {
        */
       velocityEstimator.update(velocityPrecisionDist, varianceDist);
     }
+
+    @Override
+    public String toString() {
+      return "InferredEdge [velocityPrecisionDist=" + velocityPrecisionDist
+          + ", velocityEstimator=" + velocityEstimator + ", edge=" + edge
+          + ", line=" + line + ", edgeId=" + edgeId + ", angle=" + angle + "]";
+    }
   
   }
 
