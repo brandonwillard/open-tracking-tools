@@ -226,8 +226,8 @@ public class Standard2DTrackingFilter extends AbstractKalmanFilter {
 
     final Matrix rotationMatrix = MatrixFactory.getDefault().createIdentity(2,
         2);
-    rotationMatrix.setElement(0, 0, -Math.cos(angle));
-    rotationMatrix.setElement(0, 1, Math.sin(angle));
+    rotationMatrix.setElement(0, 0, Math.cos(angle));
+    rotationMatrix.setElement(0, 1, -Math.sin(angle));
     rotationMatrix.setElement(1, 0, Math.sin(angle));
     rotationMatrix.setElement(1, 1, Math.cos(angle));
 

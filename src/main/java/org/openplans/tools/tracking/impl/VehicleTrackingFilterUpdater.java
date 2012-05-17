@@ -8,6 +8,8 @@ import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 import java.util.Random;
 import java.util.Set;
 
+import jj2000.j2k.NotImplementedError;
+
 import org.openplans.tools.tracking.impl.InferredGraph.InferredEdge;
 import org.opentripplanner.routing.graph.Edge;
 
@@ -56,7 +58,8 @@ public class VehicleTrackingFilterUpdater implements
   public double computeLogLikelihood(VehicleState particle,
     Observation observation) {
     return particle.getProbabilityFunction().logEvaluate(
-        new EdgeLocation(observation));
+        new VehicleStateConditionalParams(new PathEdge(particle.getEdge(), 0d), 
+            observation.getProjectedPoint(), 0d));
   }
 
   @Override
@@ -70,30 +73,24 @@ public class VehicleTrackingFilterUpdater implements
     final DataDistribution<VehicleState> initialDist = new DefaultDataDistribution<VehicleState>(
         numParticles);
 
-    /*
-     * TODO FIXME should sample precisions and whatnot
-     */
     if (initialEdges.getSnappedEdges().isEmpty()) {
       
-      final InferredEdge edge = InferredGraph.getEmptyEdge();
       final VehicleState state = new VehicleState(initialObservation,
-          Lists.newArrayList(edge));
+          InferredGraph.getEmptyEdge());
 
-      final EdgeLocation edgeLoc = new EdgeLocation(edge,
-          initialObservation.getObsPoint(),
-          initialObservation.getProjectedPoint(), Lists.newArrayList(edge));
-      final double lik = state.getProbabilityFunction().evaluate(edgeLoc);
+      final VehicleStateConditionalParams params = 
+          new VehicleStateConditionalParams(initialObservation.getProjectedPoint());
+      final double lik = state.getProbabilityFunction().evaluate(params);
       initialDist.set(state, lik);
       
     } else {
       for (final Edge nativeEdge : initialEdges.getSnappedEdges()) {
         final InferredEdge edge = inferredGraph.getEdge(nativeEdge);
-        final VehicleState state = new VehicleState(initialObservation,
-            Lists.newArrayList(edge));
+        final PathEdge pathEdge = new PathEdge(edge, 0d);
+        final VehicleState state = new VehicleState(initialObservation, pathEdge.getEdge());
   
-        final EdgeLocation edgeLoc = new EdgeLocation(edge,
-            initialObservation.getObsPoint(),
-            initialObservation.getProjectedPoint(), Lists.newArrayList(edge));
+        final VehicleStateConditionalParams edgeLoc = new VehicleStateConditionalParams(pathEdge,
+            initialObservation.getProjectedPoint());
         final double lik = state.getProbabilityFunction().evaluate(edgeLoc);
   
         initialDist.increment(state, lik);
@@ -103,9 +100,9 @@ public class VehicleTrackingFilterUpdater implements
     /*
      * Free-motion
      */
-    final VehicleState state = new VehicleState(initialObservation);
+    final VehicleState state = new VehicleState(initialObservation, InferredGraph.getEmptyEdge());
     final double lik = state.getProbabilityFunction().evaluate(
-        new EdgeLocation(initialObservation));
+        new VehicleStateConditionalParams(initialObservation.getProjectedPoint()));
     initialDist.increment(state, lik);
 
     final DataDistribution<VehicleState> retDist = new DefaultDataDistribution<VehicleState>(
@@ -118,40 +115,9 @@ public class VehicleTrackingFilterUpdater implements
     return initialObservation;
   }
 
-  @Deprecated
   @Override
   public VehicleState update(VehicleState previousParameter) {
-    /*
-     * This method is supposed to sample a proposal state. Start by getting
-     * a/the path between edges or free movement. TODO caching?
-     */
-    final ImmutableList<InferredEdge> path = inferredGraph.getPath(
-        previousParameter, previousParameter.getObservation().getObsCoords());
-
-    final Standard2DTrackingFilter filter = previousParameter
-        .getMovementFilter().clone();
-    final MultivariateGaussian belief = previousParameter.getMovementBelief()
-        .clone();
-    // InferredEdge prevEdge = null;
-    for (final InferredEdge edge : path) {
-
-      /*
-       * Do something special? Like sample
-       */
-      // if (edge == InferredGraph.getEmptyEdge()) {
-      //
-      // } else {
-      //
-      // }
-
-      filter.constrainMotion(edge.getAngle());
-      filter.predict(belief);
-
-      // prevEdge = edge;
-    }
-
-    return new VehicleState(previousParameter.getObservation(), filter, belief,
-        previousParameter.getEdgeTransitionDist(), path);
+    throw new NotImplementedError();
   }
 
   public static ThreadLocal<Random> getThreadRandom() {

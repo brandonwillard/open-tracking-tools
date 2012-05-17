@@ -102,27 +102,29 @@
                     <versionRange>[1.0,)</versionRange>
                     <goals>
                       <goal>java</goal>
+                      <goal>build</goal>
                     </goals>
                   </pluginExecutionFilter>
                   <action>
                     <execute/>
                   </action>
                 </pluginExecution>
-                <pluginExecution>
-                  <pluginExecutionFilter>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-dependency-plugin</artifactId>
-                    <versionRange>[1.0,)</versionRange>
-                    <goals>
-                      <goal>copy-dependencies</goal>
-                    </goals>
-                  </pluginExecutionFilter>
-                  <action>
-                    <execute/>
-<!--                     <ignore /> -->
-                  </action>
-                </pluginExecution>
-              </pluginExecutions>
+               <pluginExecution>
+                 <pluginExecutionFilter>
+                   <groupId>org.apache.maven.plugins</groupId>
+                   <artifactId>maven-jar-plugin</artifactId>
+                   <versionRange>[2.2,)</versionRange>
+                   <goals>
+                     <goal>jar</goal>
+                   </goals>
+                 </pluginExecutionFilter>
+                 <action>
+                   <execute >
+<!--                     <runOnIncremental>false</runOnIncremental> -->
+                   </execute >                
+                 </action>
+               </pluginExecution>
+             </pluginExecutions>
             </lifecycleMappingMetadata>
           </configuration>
         </plugin>
@@ -177,16 +179,6 @@
       <version>${geotools.version}</version>
     </dependency>
     <dependency>
-      <groupId>org.opentripplanner</groupId>
-      <artifactId>opentripplanner-routing</artifactId>
-      <version>${otp.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.opentripplanner</groupId>
-      <artifactId>opentripplanner-graph-builder</artifactId>
-      <version>${otp.version}</version>
-    </dependency>
-    <dependency>
     	<groupId>javax.ws.rs</groupId>
     	<artifactId>jsr311-api</artifactId>
       <version>1.1.1</version>
@@ -236,6 +228,16 @@
 			<artifactId>opencsv</artifactId>
 			<version>2.0</version>
 	  </dependency>
+    <dependency>
+      <groupId>org.opentripplanner</groupId>
+      <artifactId>opentripplanner-routing</artifactId>
+      <version>${otp.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.opentripplanner</groupId>
+      <artifactId>opentripplanner-graph-builder</artifactId>
+      <version>${otp.version}</version>
+    </dependency>
   </dependencies>
 
   <dependencyManagement>
@@ -283,9 +285,9 @@
   <properties>
     <geotools.version>8.0-M4</geotools.version>
     <spring.version>3.0.5.RELEASE</spring.version>
+    <otp.version>0.7.0</otp.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <distribution_id>opengeo</distribution_id>
-    <otp.version>0.7.0-SNAPSHOT</otp.version>
     <distribution_name>OpenGeo Maven Repository</distribution_name>
     <distribution_url>dav:http://repo.opengeo.org</distribution_url>
     <snapshot_distribution_id>opengeo</snapshot_distribution_id>

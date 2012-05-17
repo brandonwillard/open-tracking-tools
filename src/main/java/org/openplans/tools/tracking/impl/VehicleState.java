@@ -1,5 +1,6 @@
 package org.openplans.tools.tracking.impl;
 
+import gov.sandia.cognition.math.matrix.Matrix;
 import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.math.matrix.VectorFactory;
 import gov.sandia.cognition.statistics.ComputableDistribution;
@@ -9,12 +10,14 @@ import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map.Entry;
 import java.util.Random;
 
 import jj2000.j2k.NotImplementedError;
 
 import org.openplans.tools.tracking.impl.InferredGraph.InferredEdge;
 
+import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
@@ -28,10 +31,10 @@ import com.vividsolutions.jts.geom.Coordinate;
  * @author bwillard
  * 
  */
-public class VehicleState implements ComputableDistribution<EdgeLocation> {
+public class VehicleState implements ComputableDistribution<VehicleStateConditionalParams> {
 
   public static class PDF extends VehicleState implements
-      ProbabilityFunction<EdgeLocation> {
+      ProbabilityFunction<VehicleStateConditionalParams> {
 
     private static final long serialVersionUID = 879217079360170446L;
 
@@ -45,7 +48,7 @@ public class VehicleState implements ComputableDistribution<EdgeLocation> {
     }
 
     @Override
-    public Double evaluate(EdgeLocation input) {
+    public Double evaluate(VehicleStateConditionalParams input) {
       return Math.exp(logEvaluate(input));
     }
 
@@ -55,60 +58,56 @@ public class VehicleState implements ComputableDistribution<EdgeLocation> {
     }
 
     @Override
-    public double logEvaluate(EdgeLocation input) {
+    public double logEvaluate(VehicleStateConditionalParams input) {
       double logLikelihood = 0d;
-      final Vector location = input.getLocation();
+      
+      InferredEdge previousEdge = input.getPathEdge().getEdge(); 
+      /*
+       * Edge transitions
+       */
+      logLikelihood += this.edgeTransitionDist.logEvaluate(previousEdge,
+          this.getEdge());
 
       /*
-       * Evaluate the transition of edges leading up to the given location (if a
-       * path is given).
+       * Movement likelihood Note: should be predictive for PL
        */
-      InferredEdge prevEdgeInfo = null;
-      for (final InferredEdge currentEdgeInfo : input.getPath()) {
+      logLikelihood += this.getMovementFilter().logLikelihood(input.getLocation(), 
+          this.belief, new PathEdge(this.getEdge(), input.getDistanceToCurrentEdge()));
 
-        if (prevEdgeInfo == null) {
-          prevEdgeInfo = currentEdgeInfo;
-          continue;
-        }
-
-        /*
-         * Edge transitions
-         */
-        logLikelihood += this.edgeTransitionDist.logEvaluate(prevEdgeInfo,
-            currentEdgeInfo);
-
-        /*
-         * Movement likelihood Note: should be predictive for PL
-         */
-        logLikelihood += this.movementBelief.getProbabilityFunction()
-            .logEvaluate(location);
-
-      }
 
       return logLikelihood;
     }
 
     @Override
-    public EdgeLocation sample(Random random) {
+    public VehicleStateConditionalParams sample(Random random) {
       throw new NotImplementedError();
     }
 
     @Override
-    public ArrayList<EdgeLocation> sample(Random random, int numSamples) {
+    public ArrayList<VehicleStateConditionalParams> sample(Random random, int numSamples) {
       throw new NotImplementedError();
     }
 
   }
 
   private static final long serialVersionUID = 3229140254421801273L;
-  private static final double gVariance = 50d; // meters
+  private static final double gVariance = 50d*50d/2d; // meters
 
+  private static final double a0Variance = 0.005d; // m/s^2
+  // TODO FIXME pretty sure this constant is being used in multiple places
+  // for different things...
   private static final double aVariance = 0.5d; // m/s^2
+  
   /*
    * These members represent the state/parameter samples/sufficient statistics.
    */
-  private final Standard2DTrackingFilter movementFilter;
-  protected final MultivariateGaussian movementBelief;
+  private final StandardRoadTrackingFilter movementFilter;
+  
+  /**
+   * This could be the 4D ground-coordinates dist. for free motion,
+   * or the 2D road-coordinates, either way the tracking filter will check.
+   */
+  protected final MultivariateGaussian belief;
 
   /*-
    * Edge transition priors 
@@ -119,81 +118,65 @@ public class VehicleState implements ComputableDistribution<EdgeLocation> {
    */
   protected final EdgeTransitionDistributions edgeTransitionDist;
   
-
-  /*
-   * Current edge is the last element, naturally.
-   */
-  private final List<InferredEdge> inferredPath;
   private final Observation observation;
+  private final InferredEdge edge;
+  private VehicleState parentState = null;
+  private final double distanceFromPreviousState;
 
-  public VehicleState(Observation initialObservation) {
+  public VehicleState(Observation initialObservation, InferredEdge inferredEdge) {
     Preconditions.checkNotNull(initialObservation);
-    final Standard2DTrackingFilter freeMovementFilter = new Standard2DTrackingFilter(
-        gVariance, aVariance, 0d, null);
-    final MultivariateGaussian freeMovementBelief = freeMovementFilter
-        .createInitialLearnedObject();
-    final Vector xyPoint = initialObservation.getProjectedPoint();
-    freeMovementBelief.setMean(VectorFactory.getDefault().copyArray(
-        new double[] { xyPoint.getElement(0), 0d, xyPoint.getElement(1), 0d }));
+    Preconditions.checkNotNull(inferredEdge);
+    
+    this.movementFilter = new StandardRoadTrackingFilter(
+        gVariance, aVariance, a0Variance);
+    
+    if (inferredEdge == InferredGraph.getEmptyEdge()) {
+      this.belief = movementFilter.getGroundFilter().createInitialLearnedObject();
+      final Vector xyPoint = initialObservation.getProjectedPoint();
+      belief.setMean(VectorFactory.getDefault().copyArray(
+          new double[] { xyPoint.getElement(0), 0d, xyPoint.getElement(1), 0d }));
+    } else {
+      /*
+       * Find our starting position on this edge
+       */
+      this.belief = movementFilter.getRoadFilter().createInitialLearnedObject();
+      final Vector loc = inferredEdge.getPointOnEdge(initialObservation.getObsCoords());
+      belief.setMean(VectorFactory.getDefault().copyArray(
+          new double[] { inferredEdge.getStartPoint().euclideanDistance(loc), 0d}));
+    }
 
+    this.edge = inferredEdge;
     this.observation = initialObservation;
-    this.movementFilter = freeMovementFilter;
-    this.movementBelief = freeMovementBelief;
     this.edgeTransitionDist = new EdgeTransitionDistributions();
-    this.inferredPath = ImmutableList.of(InferredGraph.getEmptyEdge());
-  }
-
-  public VehicleState(Observation initialObservation, List<InferredEdge> path) {
-    Preconditions.checkNotNull(initialObservation);
-    Preconditions.checkNotNull(path);
-    Preconditions.checkArgument(!path.isEmpty());
-
-    final InferredEdge edge = Iterables.getLast(path);
-
-    /*
-     * Get y-axis angle of edge to use in constrained state covariance matrix.
-     */
-    final Double angle = edge.getAngle();
-
-    final Standard2DTrackingFilter edgeMovementFilter = new Standard2DTrackingFilter(
-        gVariance, aVariance, 0d, angle);
-    final MultivariateGaussian movementBelief = edgeMovementFilter
-        .createInitialLearnedObject();
-
-    /*
-     * Set the initial position on the motion model
-     */
-    final Coordinate xyPoint = edge == InferredGraph.getEmptyEdge()?
-        initialObservation.getObsPoint() : 
-          edge.getPointOnEdge(initialObservation.getObsPoint());
-        
-    movementBelief.setMean(VectorFactory.getDefault().copyArray(
-        new double[] { xyPoint.x, 0d, xyPoint.y, 0d }));
-
-    this.observation = initialObservation;
-    this.movementFilter = edgeMovementFilter;
-    this.movementBelief = movementBelief;
-    this.edgeTransitionDist = new EdgeTransitionDistributions();
-    this.inferredPath = ImmutableList.copyOf(path);
+    this.distanceFromPreviousState = 0; 
   }
 
   public VehicleState(VehicleState other) {
     this.movementFilter = other.movementFilter;
-    this.movementBelief = other.movementBelief;
+    this.belief = other.belief;
     this.edgeTransitionDist = other.edgeTransitionDist;
-    this.inferredPath = other.inferredPath;
+    this.edge = other.edge;
     this.observation = other.observation;
+    this.distanceFromPreviousState = other.distanceFromPreviousState; 
+    this.parentState = other.parentState;
   }
 
   public VehicleState(Observation observation,
-    Standard2DTrackingFilter filter, MultivariateGaussian belief,
+    StandardRoadTrackingFilter filter, MultivariateGaussian belief,
     EdgeTransitionDistributions edgeTransitionDist,
-    ImmutableList<InferredEdge> path) {
+    PathEdge edge, VehicleState state) {
     this.observation = observation;
     this.movementFilter = filter;
-    this.movementBelief = belief;
+    this.belief = belief;
+    /*
+     * This is the constructor used when creating transition states,
+     * so this is where we'll need to reset the distance measures
+     */
+    this.distanceFromPreviousState = edge.getDistToStartOfEdge(); 
+    belief.getMean().setElement(0, belief.getMean().getElement(0) - edge.getDistToStartOfEdge());
     this.edgeTransitionDist = edgeTransitionDist;
-    this.inferredPath = path;
+    this.edge = edge.getEdge();
+    this.parentState = state;
   }
 
   @Override
@@ -211,34 +194,43 @@ public class VehicleState implements ComputableDistribution<EdgeLocation> {
     return edgeTransitionDist;
   }
 
-  public List<InferredEdge> getInferredPath() {
-    return inferredPath;
+  /**
+   * Returns ground-coordinate mean location
+   * @return
+   */
+  public Vector getMeanLocation() {
+    Vector v;
+    if (belief.getInputDimensionality() == 2) {
+      Preconditions.checkArgument(this.edge != InferredGraph.getEmptyEdge());
+      Entry<Matrix, Vector> projPair = StandardRoadTrackingFilter.posVelProjectionPair(
+          new PathEdge(this.edge, 0d));
+      Vector truncatedMean; 
+      if (belief.getMean().getElement(0) > this.edge.getLength()) {
+        // TODO perhaps this is why we need truncated normals
+        truncatedMean = belief.getMean().clone();
+        truncatedMean.setElement(0, edge.getLength());
+      } else {
+        truncatedMean = belief.getMean();
+      }
+      v = projPair.getKey().times(belief.getMean()).plus(projPair.getValue());
+    } else {
+      v = belief.getMean();
+    }
+    return VectorFactory.getDefault().createVector2D(v.getElement(0), v.getElement(2));
   }
-
-  public Coordinate getMeanLocation() {
-    return getMeanLocation(this.movementBelief.getMean());
-  }
-
-  public MultivariateGaussian getMovementBelief() {
-    return movementBelief;
-  }
-
-  public Standard2DTrackingFilter getMovementFilter() {
-    return movementFilter;
-  }
-
+  
   @Override
   public VehicleState.PDF getProbabilityFunction() {
     return new VehicleState.PDF(this);
   }
 
   @Override
-  public EdgeLocation sample(Random random) {
+  public VehicleStateConditionalParams sample(Random random) {
     throw new NotImplementedError();
   }
 
   @Override
-  public ArrayList<EdgeLocation> sample(Random random, int numSamples) {
+  public ArrayList<VehicleStateConditionalParams> sample(Random random, int numSamples) {
     throw new NotImplementedError();
   }
 
@@ -250,13 +242,6 @@ public class VehicleState implements ComputableDistribution<EdgeLocation> {
     return gVariance;
   }
 
-  /**
-   * Pull coordinates from a vector of location & velocity.
-   */
-  public static Coordinate getMeanLocation(Vector vec) {
-    return new Coordinate(vec.getElement(0), vec.getElement(2));
-  }
-
   public static long getSerialversionuid() {
     return serialVersionUID;
   }
@@ -265,12 +250,42 @@ public class VehicleState implements ComputableDistribution<EdgeLocation> {
     return observation;
   }
 
+  public static double getA0variance() {
+    return a0Variance;
+  }
+
+  public StandardRoadTrackingFilter getMovementFilter() {
+    return movementFilter;
+  }
+
+  public MultivariateGaussian getBelief() {
+    return belief;
+  }
+
   @Override
   public String toString() {
-    return "VehicleState [movementFilter=" + movementFilter
-        + ", movementBelief=" + movementBelief + ", edgeTransitionDist="
-        + edgeTransitionDist + ", inferredPath=" + inferredPath
-        + ", observation=" + observation + "]";
+    return "VehicleState [movementFilter=" + movementFilter + ", belief="
+        + belief + ", edgeTransitionDist=" + edgeTransitionDist
+        + ", observation=" + observation + ", edge=" + edge + ", parentState="
+        + parentState + ", distanceFromPreviousState="
+        + distanceFromPreviousState + "]";
   }
+
+  public InferredEdge getEdge() {
+    return this.edge;
+  }
+
+  public VehicleState getParentState() {
+    return parentState;
+  }
+
+  public void setParentState(VehicleState parentState) {
+    this.parentState = parentState;
+  }
+
+  public double getDistanceFromPreviousState() {
+    return distanceFromPreviousState;
+  }
+
 
 }
