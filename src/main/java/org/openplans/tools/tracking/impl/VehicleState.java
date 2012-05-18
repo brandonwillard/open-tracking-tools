@@ -61,7 +61,7 @@ public class VehicleState implements ComputableDistribution<VehicleStateConditio
     public double logEvaluate(VehicleStateConditionalParams input) {
       double logLikelihood = 0d;
       
-      InferredEdge previousEdge = input.getPathEdge().getEdge(); 
+      InferredEdge previousEdge = input.getPathEdge().getInferredEdge(); 
       /*
        * Edge transitions
        */
@@ -71,8 +71,14 @@ public class VehicleState implements ComputableDistribution<VehicleStateConditio
       /*
        * Movement likelihood Note: should be predictive for PL
        */
+      PathEdge edge;
+      if (this.getEdge() == InferredGraph.getEmptyEdge()) {
+        edge = PathEdge.getEmptyPathEdge(); 
+      } else {
+        edge = PathEdge.getEdge(this.getEdge(), input.getDistanceToCurrentEdge());
+      }
       logLikelihood += this.getMovementFilter().logLikelihood(input.getLocation(), 
-          this.belief, new PathEdge(this.getEdge(), input.getDistanceToCurrentEdge()));
+          this.belief, edge);
 
 
       return logLikelihood;
@@ -93,10 +99,10 @@ public class VehicleState implements ComputableDistribution<VehicleStateConditio
   private static final long serialVersionUID = 3229140254421801273L;
   private static final double gVariance = 50d*50d/2d; // meters
 
-  private static final double a0Variance = 0.005d; // m/s^2
+  private static final double a0Variance = 0.5d; // m/s^2
   // TODO FIXME pretty sure this constant is being used in multiple places
   // for different things...
-  private static final double aVariance = 0.5d; // m/s^2
+  private static final double aVariance = 0.9d; // m/s^2
   
   /*
    * These members represent the state/parameter samples/sufficient statistics.
@@ -121,7 +127,8 @@ public class VehicleState implements ComputableDistribution<VehicleStateConditio
   private final Observation observation;
   private final InferredEdge edge;
   private VehicleState parentState = null;
-  private final double distanceFromPreviousState;
+  private final Double distanceFromPreviousState;
+  private final InferredPath path;
 
   public VehicleState(Observation initialObservation, InferredEdge inferredEdge) {
     Preconditions.checkNotNull(initialObservation);
@@ -135,6 +142,8 @@ public class VehicleState implements ComputableDistribution<VehicleStateConditio
       final Vector xyPoint = initialObservation.getProjectedPoint();
       belief.setMean(VectorFactory.getDefault().copyArray(
           new double[] { xyPoint.getElement(0), 0d, xyPoint.getElement(1), 0d }));
+      
+      this.path = InferredPath.getEmptyPath();
     } else {
       /*
        * Find our starting position on this edge
@@ -143,12 +152,14 @@ public class VehicleState implements ComputableDistribution<VehicleStateConditio
       final Vector loc = inferredEdge.getPointOnEdge(initialObservation.getObsCoords());
       belief.setMean(VectorFactory.getDefault().copyArray(
           new double[] { inferredEdge.getStartPoint().euclideanDistance(loc), 0d}));
+      
+      this.path = new InferredPath(inferredEdge);
     }
 
     this.edge = inferredEdge;
     this.observation = initialObservation;
     this.edgeTransitionDist = new EdgeTransitionDistributions();
-    this.distanceFromPreviousState = 0; 
+    this.distanceFromPreviousState = 0d; 
   }
 
   public VehicleState(VehicleState other) {
@@ -159,12 +170,13 @@ public class VehicleState implements ComputableDistribution<VehicleStateConditio
     this.observation = other.observation;
     this.distanceFromPreviousState = other.distanceFromPreviousState; 
     this.parentState = other.parentState;
+    this.path = other.path;
   }
 
   public VehicleState(Observation observation,
     StandardRoadTrackingFilter filter, MultivariateGaussian belief,
     EdgeTransitionDistributions edgeTransitionDist,
-    PathEdge edge, VehicleState state) {
+    PathEdge edge, InferredPath path, VehicleState state) {
     this.observation = observation;
     this.movementFilter = filter;
     this.belief = belief;
@@ -173,10 +185,12 @@ public class VehicleState implements ComputableDistribution<VehicleStateConditio
      * so this is where we'll need to reset the distance measures
      */
     this.distanceFromPreviousState = edge.getDistToStartOfEdge(); 
-    belief.getMean().setElement(0, belief.getMean().getElement(0) - edge.getDistToStartOfEdge());
+    if (belief.getInputDimensionality() == 2)
+      belief.getMean().setElement(0, belief.getMean().getElement(0) - edge.getDistToStartOfEdge());
     this.edgeTransitionDist = edgeTransitionDist;
-    this.edge = edge.getEdge();
+    this.edge = edge.getInferredEdge();
     this.parentState = state;
+    this.path = path;
   }
 
   @Override
@@ -203,7 +217,7 @@ public class VehicleState implements ComputableDistribution<VehicleStateConditio
     if (belief.getInputDimensionality() == 2) {
       Preconditions.checkArgument(this.edge != InferredGraph.getEmptyEdge());
       Entry<Matrix, Vector> projPair = StandardRoadTrackingFilter.posVelProjectionPair(
-          new PathEdge(this.edge, 0d));
+          PathEdge.getEdge(this.edge, 0d));
       Vector truncatedMean; 
       if (belief.getMean().getElement(0) > this.edge.getLength()) {
         // TODO perhaps this is why we need truncated normals
@@ -283,8 +297,41 @@ public class VehicleState implements ComputableDistribution<VehicleStateConditio
     this.parentState = parentState;
   }
 
-  public double getDistanceFromPreviousState() {
+  public Double getDistanceFromPreviousState() {
     return distanceFromPreviousState;
+  }
+
+  /**
+   * Gets the belief in ground coordinates (even if it's really tracking
+   * road coordinates).
+   * @return
+   */
+  public MultivariateGaussian getGroundOnlyBelief() {
+    if (belief.getInputDimensionality() == 2) {
+      Preconditions.checkArgument(this.edge != InferredGraph.getEmptyEdge());
+      Entry<Matrix, Vector> projPair = StandardRoadTrackingFilter.posVelProjectionPair(
+          PathEdge.getEdge(this.edge, 0d));
+      Vector truncatedMean; 
+      if (belief.getMean().getElement(0) > this.edge.getLength()) {
+        // TODO perhaps this is why we need truncated normals
+        truncatedMean = belief.getMean().clone();
+        truncatedMean.setElement(0, edge.getLength());
+      } else {
+        truncatedMean = belief.getMean();
+      }
+      
+      Matrix C = belief.getCovariance();
+      MultivariateGaussian beliefProj = new MultivariateGaussian();
+      beliefProj.setMean(projPair.getKey().transpose().times(truncatedMean.minus(projPair.getValue())));
+      beliefProj.setCovariance(projPair.getKey().transpose().times(C).times(projPair.getKey()));
+      return beliefProj;
+    } else {
+      return belief;
+    }
+  }
+
+  public InferredPath getPath() {
+    return path;
   }
 
 

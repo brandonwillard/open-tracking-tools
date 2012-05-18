@@ -73,7 +73,7 @@ public class InferredGraph {
     final Vertex snappedVertex = this.narratedGraph.getIndexService().getClosestVertex(toCoord,
         null, this.narratedGraph.getOptions());
     
-    Set<InferredPath> paths = Sets.newHashSet();
+    Set<InferredPath> paths = Sets.newHashSet(InferredPath.getEmptyPath());
     if (snappedVertex != null && (snappedVertex instanceof StreetLocation)) {
       Builder<PathEdge> path = ImmutableList.builder();
       final StreetLocation snappedStreetLocation = (StreetLocation) snappedVertex;
@@ -99,7 +99,7 @@ public class InferredGraph {
         } else {
           pathDist = 0d;
           for (Edge pathEdge : minimumConnectingEdges) {
-            path.add(new PathEdge(this.getEdge(pathEdge), pathDist));
+            path.add(PathEdge.getEdge(this.getEdge(pathEdge), pathDist));
             pathDist += pathEdge.getDistance();
           }
         }
@@ -154,6 +154,8 @@ public class InferredGraph {
     private final Vector endPoint;
     private final Vector startPoint;
     private final double length;
+    private final NormalInverseGammaDistribution velocityPrecisionDist;
+    private final UnivariateGaussianMeanVarianceBayesianEstimator velocityEstimator;
   
   
     private InferredEdge() {
@@ -164,6 +166,8 @@ public class InferredGraph {
       this.endPoint = null;
       this.startPoint = null;
       this.length = 0;
+      this.velocityEstimator = null;
+      this.velocityPrecisionDist = null;
     }
   
     private InferredEdge(Edge edge, int edgeId) {
@@ -186,13 +190,13 @@ public class InferredGraph {
       
       this.angle = Angle.angle(startPoint, endPoint);
       
-//      this.velocityPrecisionDist =
-//      // ~4.4 m/s, std. dev ~ 30 m/s, Gamma with exp. value = 30 m/s
-//      // TODO perhaps variance of velocity should be in m/s^2. yeah...
-//      new NormalInverseGammaDistribution(266d, 1 / Math.sqrt(1800d),
-//          1 / Math.sqrt(1800) + 1, Math.sqrt(1800));
-//      this.velocityEstimator = new UnivariateGaussianMeanVarianceBayesianEstimator(
-//          velocityPrecisionDist);
+      this.velocityPrecisionDist =
+        // ~4.4 m/s, std. dev ~ 30 m/s, Gamma with exp. value = 30 m/s
+        // TODO perhaps variance of velocity should be in m/s^2. yeah...
+        new NormalInverseGammaDistribution(266d, 1 / Math.sqrt(1800d),
+            1 / Math.sqrt(1800) + 1, Math.sqrt(1800));
+      this.velocityEstimator = new UnivariateGaussianMeanVarianceBayesianEstimator(
+          velocityPrecisionDist);
     }
   
     public Double getAngle() {
@@ -233,6 +237,8 @@ public class InferredGraph {
 
     @Override
     public String toString() {
+      if (this == emptyEdge)
+        return "InferredEdge [empty edge]";
       return "InferredEdge [edge=" + edge + ", line=" + line + ", edgeId="
           + edgeId + ", angle=" + angle + ", endPoint=" + endPoint
           + ", startPoint=" + startPoint + ", length=" + length + "]";
@@ -244,6 +250,14 @@ public class InferredGraph {
 
     public double getLength() {
       return length;
+    }
+
+    public NormalInverseGammaDistribution getVelocityPrecisionDist() {
+      return velocityPrecisionDist;
+    }
+
+    public UnivariateGaussianMeanVarianceBayesianEstimator getVelocityEstimator() {
+      return velocityEstimator;
     }
   
   }

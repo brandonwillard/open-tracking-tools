@@ -58,7 +58,7 @@ public class VehicleTrackingFilterUpdater implements
   public double computeLogLikelihood(VehicleState particle,
     Observation observation) {
     return particle.getProbabilityFunction().logEvaluate(
-        new VehicleStateConditionalParams(new PathEdge(particle.getEdge(), 0d), 
+        new VehicleStateConditionalParams(PathEdge.getEdge(particle.getEdge(), 0d), 
             observation.getProjectedPoint(), 0d));
   }
 
@@ -86,8 +86,8 @@ public class VehicleTrackingFilterUpdater implements
     } else {
       for (final Edge nativeEdge : initialEdges.getSnappedEdges()) {
         final InferredEdge edge = inferredGraph.getEdge(nativeEdge);
-        final PathEdge pathEdge = new PathEdge(edge, 0d);
-        final VehicleState state = new VehicleState(initialObservation, pathEdge.getEdge());
+        final PathEdge pathEdge = PathEdge.getEdge(edge, 0d);
+        final VehicleState state = new VehicleState(initialObservation, pathEdge.getInferredEdge());
   
         final VehicleStateConditionalParams edgeLoc = new VehicleStateConditionalParams(pathEdge,
             initialObservation.getProjectedPoint());

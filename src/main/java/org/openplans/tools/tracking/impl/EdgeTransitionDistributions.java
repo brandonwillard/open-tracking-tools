@@ -56,10 +56,10 @@ public class EdgeTransitionDistributions extends AbstractCloneableSerializable {
     edgeTransEstimator.update(edgeTransProbPrior, transType);
   }
   
-  public double predictiveLikelihood(InferredEdge from, InferredEdge to) {
+  public double predictiveLogLikelihood(InferredEdge from, InferredEdge to) {
     Vector state = getTransitionType(from, to);
     MultivariatePolyaDistribution predDist = edgeTransEstimator.createPredictiveDistribution(edgeTransProbPrior);
-    return predDist.getProbabilityFunction().evaluate(state);
+    return predDist.getProbabilityFunction().logEvaluate(state);
   }
   
   public double evaluate(InferredEdge from, InferredEdge to) {
@@ -97,6 +97,12 @@ public class EdgeTransitionDistributions extends AbstractCloneableSerializable {
   @Override
   public EdgeTransitionDistributions clone() {
     return (EdgeTransitionDistributions) super.clone();
+  }
+
+  @Override
+  public String toString() {
+    return "EdgeTransitionDistributions [edgeTransProbPrior="
+        + edgeTransProbPrior + ", edgeTransPrior=" + edgeTransPrior + "]";
   }
   
 }

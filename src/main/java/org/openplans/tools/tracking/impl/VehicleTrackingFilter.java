@@ -76,12 +76,15 @@ public class VehicleTrackingFilter extends
           obs.getObsCoords());
       
       final MultivariateGaussian belief = state.getBelief().clone();
+      
+      state.getMovementFilter().setCurrentTimeDiff(timeDiff);
       final StandardRoadTrackingFilter filter = state.getMovementFilter().clone();
+      
       /*-
        * Produce the distance prediction.
        * Note: here the road beliefs start at 0
        */
-      filter.predict(belief, new PathEdge(state.getEdge(), 0d));
+      filter.predict(belief, PathEdge.getEdge(state.getEdge(), 0d));
       
       double totalLogLik = 0d;
       for (final InferredPath path : instStateTransitions) {
@@ -98,10 +101,12 @@ public class VehicleTrackingFilter extends
           
           filter.predict(edgeBelief, edge);
           // TODO should we use cummulative transition?
-          double localLogLik = state.getEdgeTransitionDist().predictiveLikelihood(prevEdge.getEdge(), 
-              edge.getEdge());
-          localLogLik += Math.log(filter.logLikelihood(obs.getProjectedPoint(), edgeBelief, edge));
+          double localLogLik = state.getEdgeTransitionDist().predictiveLogLikelihood(prevEdge.getInferredEdge(), 
+              edge.getInferredEdge());
+          localLogLik += filter.logLikelihood(obs.getProjectedPoint(), edgeBelief, edge);
   
+          Preconditions.checkArgument(!Double.isNaN(localLogLik));
+          
           edgeToPredictiveBeliefAndLogLikelihood.put(edge, 
               new DefaultWeightedValue<MultivariateGaussian>(edgeBelief.clone(), localLogLik) );
           
@@ -165,17 +170,22 @@ public class VehicleTrackingFilter extends
       /*
        * Sample the edge we're on.
        */
-      final DataDistribution<PathEdge> pathEdgeDist = new DefaultDataDistribution<PathEdge>();
-      for (PathEdge edge : pathEntry.getPath().getEdges()) {
-        pathEdgeDist.set(edge, pathEntry.getEdgeToPredictiveBelief().get(edge).getWeight());
+      final PathEdge sampledEdge;
+      if (pathEntry.getPath().getEdges().size() > 1) {
+        final DataDistribution<PathEdge> pathEdgeDist = new DefaultDataDistribution<PathEdge>();
+        for (PathEdge edge : pathEntry.getPath().getEdges()) {
+          pathEdgeDist.set(edge, Math.exp(pathEntry.getEdgeToPredictiveBelief().get(edge).getWeight()));
+        }
+            
+        sampledEdge = pathEdgeDist.sample(rng);
+      } else {
+        sampledEdge = pathEntry.getPath().getEdges().get(0);
       }
-          
-      final PathEdge sampledEdge = pathEdgeDist.sample(rng);
       final MultivariateGaussian sampledBelief = 
-          pathEntry.getEdgeToPredictiveBelief().get(sampledEdge).getValue();
+          pathEntry.getEdgeToPredictiveBelief().get(sampledEdge).getValue().clone();
       
       final VehicleState newState = new VehicleState(obs, filter, 
-          sampledBelief, edgeTransDist, sampledEdge, state);
+          sampledBelief, edgeTransDist, sampledEdge, pathEntry.getPath(), state);
       target.set(newState, 1d / getNumParticles());
 
       /*-
@@ -184,11 +194,11 @@ public class VehicleTrackingFilter extends
        * TODO FIXME must make sure the point is projected onto an edge
        */
       filter.measure(sampledBelief, obs.getProjectedPoint(), sampledEdge);
-      InferredEdge prevEdge = pathEntry.getPath().getEdges().get(0).getEdge();
+      InferredEdge prevEdge = pathEntry.getPath().getEdges().get(0).getInferredEdge();
       for (final PathEdge edge : pathEntry.getPath().getEdges()) {
         if (prevEdge != null)
-          edgeTransDist.update(prevEdge, edge.getEdge());
-        prevEdge = edge.getEdge();
+          edgeTransDist.update(prevEdge, edge.getInferredEdge());
+        prevEdge = edge.getInferredEdge();
       }
 
     }

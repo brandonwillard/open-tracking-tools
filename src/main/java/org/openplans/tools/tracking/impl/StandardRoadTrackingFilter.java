@@ -111,7 +111,7 @@ public class StandardRoadTrackingFilter implements CloneableSerializable {
     U.setElement(2, 1, 1);
     U.setElement(3, 3, 1);
     
-    Or = MatrixFactory.getDefault().createMatrix(1, 1);
+    Or = MatrixFactory.getDefault().createMatrix(1, 2);
     Or.setElement(0, 0, 1);
   }
 
@@ -175,7 +175,7 @@ public class StandardRoadTrackingFilter implements CloneableSerializable {
       belief.setMean(projPair.getKey().transpose().times(m.minus(projPair.getValue())));
       belief.setCovariance(projPair.getKey().transpose().times(C).times(projPair.getKey()));
     } else {
-      Preconditions.checkElementIndex(belief.getInputDimensionality(), 4);
+      Preconditions.checkArgument(belief.getInputDimensionality() == 4);
       this.groundFilter.measure(belief, observation);
     }
 
@@ -222,7 +222,7 @@ public class StandardRoadTrackingFilter implements CloneableSerializable {
         belief.getInputDimensionality() == 4);
 
     if (edge == PathEdge.getEmptyPathEdge()) {
-      Preconditions.checkElementIndex(belief.getInputDimensionality(), 4); 
+      Preconditions.checkArgument(belief.getInputDimensionality() == 4); 
       /*
        * Predict free-movement
        */
@@ -251,10 +251,10 @@ public class StandardRoadTrackingFilter implements CloneableSerializable {
            * Predict movement along a path
            */
           final double S = Or.times(belief.getCovariance()).times(Or.transpose()).getElement(0, 0) 
-              + Math.pow(edge.getEdge().getLength()/Math.sqrt(12), 2);
+              + Math.pow(edge.getInferredEdge().getLength()/Math.sqrt(12), 2);
           final Matrix W = belief.getCovariance().times(Or.transpose()).scale(1/S);
           final Matrix R = belief.getCovariance().minus(W.times(W.transpose()).scale(S));
-          final double e = edge.getDistToStartOfEdge() + edge.getEdge().getLength()/2d 
+          final double e = edge.getDistToStartOfEdge() + edge.getInferredEdge().getLength()/2d 
               - Or.times(belief.getMean()).getElement(0);
           final Vector a = belief.getMean().plus(W.getColumn(0).scale(e));
           belief.setMean(a);
@@ -410,10 +410,10 @@ public class StandardRoadTrackingFilter implements CloneableSerializable {
    * @return
    */
   static public Entry<Matrix, Vector> posVelProjectionPair(PathEdge edge) {
-    final Vector start = edge.getEdge().getStartPoint();
-    final Vector end = edge.getEdge().getEndPoint();
+    final Vector start = edge.getInferredEdge().getStartPoint();
+    final Vector end = edge.getInferredEdge().getEndPoint();
     
-    final double length = edge.getEdge().getLength();
+    final double length = edge.getInferredEdge().getLength();
     
     final Vector P1 = start.minus(end).scale(1/length);
     final Vector s1 = start.minus(P1.scale(edge.getDistToStartOfEdge()));

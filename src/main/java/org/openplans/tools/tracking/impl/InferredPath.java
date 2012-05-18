@@ -1,5 +1,7 @@
 package org.openplans.tools.tracking.impl;
 
+import org.openplans.tools.tracking.impl.InferredGraph.InferredEdge;
+
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 
@@ -9,13 +11,21 @@ public class InferredPath {
   private final Double totalPathDistance;
   
   public InferredPath(ImmutableList<PathEdge> edges, double totalPathDistance) {
+    Preconditions.checkArgument(edges.size() > 1 ||
+        !edges.contains(InferredGraph.getEmptyEdge()));
     this.edges = edges;
     this.totalPathDistance = totalPathDistance;
   }
 
-  public InferredPath(ImmutableList<PathEdge> path) {
+  private InferredPath(ImmutableList<PathEdge> path) {
     this.edges = path;
     this.totalPathDistance = null;
+  }
+
+  public InferredPath(InferredEdge inferredEdge) {
+    Preconditions.checkArgument(inferredEdge == InferredGraph.getEmptyEdge());
+    this.edges = ImmutableList.of(PathEdge.getEdge(inferredEdge, 0d));
+    this.totalPathDistance = inferredEdge.getLength();
   }
 
   public ImmutableList<PathEdge> getEdges() {
@@ -34,7 +44,7 @@ public class InferredPath {
 
   private static InferredPath emptyPath = new InferredPath(ImmutableList.of(PathEdge.getEmptyPathEdge()));
   
-  public static InferredPath emptyPath() {
+  public static InferredPath getEmptyPath() {
     return emptyPath;
   }
   
@@ -50,7 +60,7 @@ public class InferredPath {
     // TODO pre-compute/improve this
     for (PathEdge edge : this.edges) {
       if (edge.getDistToStartOfEdge() <= distance
-          && distance < edge.getDistToStartOfEdge() + edge.getEdge().getLength()) {
+          && distance < edge.getDistToStartOfEdge() + edge.getInferredEdge().getLength()) {
         return edge;
       }
     }
