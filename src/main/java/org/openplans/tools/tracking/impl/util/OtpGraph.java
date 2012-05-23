@@ -9,7 +9,7 @@ import org.openplans.tools.tracking.impl.SnappedEdges;
 import org.opentripplanner.graph_builder.impl.map.StreetMatcher;
 import org.opentripplanner.model.GraphBundle;
 import org.opentripplanner.routing.core.TraverseMode;
-import org.opentripplanner.routing.core.TraverseOptions;
+import org.opentripplanner.routing.core.RoutingRequest;
 import org.opentripplanner.routing.graph.Edge;
 import org.opentripplanner.routing.graph.Graph;
 import org.opentripplanner.routing.graph.Vertex;
@@ -18,6 +18,8 @@ import org.opentripplanner.routing.impl.StreetVertexIndexServiceImpl;
 import org.opentripplanner.routing.location.StreetLocation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.support.GenericApplicationContext;
 
 import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
@@ -35,13 +37,12 @@ public class OtpGraph {
       .getLogger(OtpGraph.class);
 
   private final GraphServiceImpl gs;
-  private final GraphBundle bundle;
 
   private final Graph graph;
 
   private final StreetVertexIndexServiceImpl indexService;
 
-  private final static TraverseOptions defaultOptions = new TraverseOptions(
+  private final static RoutingRequest defaultOptions = new RoutingRequest(
       TraverseMode.CAR);
 
   private final StreetMatcher streetMatcher;
@@ -51,11 +52,12 @@ public class OtpGraph {
 
     gs = new GraphServiceImpl();
 
-    bundle = new GraphBundle(new File(
-        "../src/main/resources/org/openplans/cebutaxi/"));
+    ApplicationContext appContext = new GenericApplicationContext();
 
-    gs.setBundle(bundle);
-    gs.refreshGraph();
+    gs.setResourceLoader(appContext);
+
+    gs.setPath("/home/novalis/cebu/cebu-taxi/src/main/resources/org/openplans/cebutaxi/");
+    gs.refreshGraphs();
 
     graph = gs.getGraph();
 
@@ -64,10 +66,6 @@ public class OtpGraph {
     indexService.setup();
 
     log.info("Graph loaded..");
-  }
-
-  public GraphBundle getBundle() {
-    return bundle;
   }
 
   public Graph getGraph() {
@@ -82,7 +80,7 @@ public class OtpGraph {
     return indexService;
   }
 
-  public TraverseOptions getOptions() {
+  public RoutingRequest getOptions() {
     return defaultOptions;
   }
 
@@ -105,7 +103,7 @@ public class OtpGraph {
 
     Preconditions.checkNotNull(toCoords);
 
-    final TraverseOptions options = OtpGraph.defaultOptions;
+    final RoutingRequest options = OtpGraph.defaultOptions;
     final Vertex snappedVertex = indexService.getClosestVertex(toCoords, null,
         options);
     final Builder<Edge> pathTraversed = ImmutableList.builder();
