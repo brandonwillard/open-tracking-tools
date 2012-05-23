@@ -285,7 +285,7 @@
   <properties>
     <geotools.version>8.0-M4</geotools.version>
     <spring.version>3.0.5.RELEASE</spring.version>
-    <otp.version>0.7.0</otp.version>
+    <otp.version>0.8.0-SNAPSHOT</otp.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <distribution_id>opengeo</distribution_id>
     <distribution_name>OpenGeo Maven Repository</distribution_name>
