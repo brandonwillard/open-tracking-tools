@@ -18,6 +18,8 @@ import org.opentripplanner.routing.impl.StreetVertexIndexServiceImpl;
 import org.opentripplanner.routing.location.StreetLocation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.support.GenericApplicationContext;
 
 import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
@@ -49,6 +51,10 @@ public class OtpGraph {
     log.info("Loading OTP graph...");
 
     gs = new GraphServiceImpl();
+
+    ApplicationContext appContext = new GenericApplicationContext();
+
+    gs.setResourceLoader(appContext);
 
     gs.setPath("/home/novalis/cebu/cebu-taxi/src/main/resources/org/openplans/cebutaxi/");
     gs.refreshGraphs();
