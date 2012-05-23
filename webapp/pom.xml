@@ -1,0 +1,212 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <prerequisites>
+    <maven>>=3.0.3</maven>
+  </prerequisites>
+  <repositories>
+    <repository>
+      <id>typesafe</id>
+      <url>http://repo.typesafe.com/typesafe/releases/</url>
+    </repository>
+    <repository>
+      <id>osgeo</id>
+      <name>Open Source Geospatial Foundation Repository</name>
+      <url>http://download.osgeo.org/webdav/geotools/</url>
+    </repository>
+    <repository>
+      <id>java.net</id>
+      <name>java.net</name>
+      <url>http://download.java.net/</url>
+    </repository>
+    <repository>
+      <id>opengeo</id>
+      <name>OpenGeo Maven Repository</name>
+      <snapshots>
+        <enabled>true</enabled>
+      </snapshots>
+      <url>http://repo.opengeo.org/</url>
+    </repository>
+  </repositories>
+
+  <dependencies>
+    <!-- Add your dependencies here (modules, libraries...). Dependencies 
+      in the compile scope will be embedded within the application. -->
+
+
+    <!-- Play Framework Dependencies -->
+    <dependency>
+      <groupId>play</groupId>
+      <artifactId>play_2.9.1</artifactId>
+      <version>2.0</version>
+      <scope>provided</scope>
+      <exclusions>
+        <exclusion>
+          <artifactId>slf4j-api</artifactId>
+          <groupId>org.slf4j</groupId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+
+    <dependency>
+      <groupId>org.opentripplanner</groupId>
+      <artifactId>opentripplanner-routing</artifactId>
+      <exclusions>
+        <exclusion>
+          <artifactId>slf4j-log4j12</artifactId>
+          <groupId>org.slf4j</groupId>
+        </exclusion>
+        <exclusion>
+          <artifactId>slf4j-api</artifactId>
+          <groupId>org.slf4j</groupId>
+        </exclusion>
+      </exclusions>
+      <version>0.7.0</version>
+    </dependency>
+    <dependency>
+      <groupId>org.opentripplanner</groupId>
+      <artifactId>opentripplanner-graph-builder</artifactId>
+      <exclusions>
+        <exclusion>
+          <artifactId>slf4j-log4j12</artifactId>
+          <groupId>org.slf4j</groupId>
+        </exclusion>
+      </exclusions>
+      <version>0.7.0</version>
+    </dependency>
+    <dependency>
+      <groupId>com.googlecode.matrix-toolkits-java</groupId>
+      <artifactId>mtj</artifactId>
+      <version>0.9.14</version>
+    </dependency>
+    <dependency>
+      <groupId>com.vividsolutions</groupId>
+      <artifactId>jts</artifactId>
+      <version>1.12</version>
+      <type>jar</type>
+      <scope>compile</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.geotools</groupId>
+      <artifactId>gt-geojson</artifactId>
+      <version>${geotools.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.geotools</groupId>
+      <artifactId>gt-main</artifactId>
+      <version>${geotools.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>gov.sandia.foundry</groupId>
+      <artifactId>gov-sandia-cognition-common-core</artifactId>
+      <version>3.3.2</version>
+    </dependency>
+    <dependency>
+      <groupId>gov.sandia.foundry</groupId>
+      <artifactId>gov-sandia-cognition-learning-core</artifactId>
+      <version>3.3.2</version>
+    </dependency>
+    <dependency>
+      <groupId>net.sf.opencsv</groupId>
+      <artifactId>opencsv</artifactId>
+      <version>2.0</version>
+    </dependency>
+    <dependency>
+      <groupId>com.typesafe</groupId>
+      <artifactId>play-plugins-guice</artifactId>
+      <version>2.0.1</version>
+    </dependency>
+  </dependencies>
+
+  <artifactId>tracking-webapp</artifactId>
+  <packaging>play2</packaging>
+  <build>
+    <!-- Play source directory -->
+    <sourceDirectory>app</sourceDirectory>
+    <!-- <testSourceDirectory>test</testSourceDirectory> -->
+
+    <plugins>
+
+      <plugin>
+        <groupId>de.akquinet.innovation.play2</groupId>
+        <artifactId>play2-maven-plugin</artifactId>
+        <version>1.1.0</version>
+        <extensions>true</extensions>
+        <configuration>
+          <play2Home>${play2HomeDir}</play2Home>
+        </configuration>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>2.3.1</version>
+        <configuration>
+          <source>1.6</source>
+          <target>1.6</target>
+        </configuration>
+      </plugin>
+      <!-- <plugin> -->
+      <!-- <groupId>org.codehaus.mojo</groupId> -->
+      <!-- <artifactId>build-helper-maven-plugin</artifactId> -->
+      <!-- <version>1.7</version> -->
+      <!-- <executions> -->
+      <!-- <execution> -->
+      <!-- <id>play2-add-managed-sources</id> -->
+      <!-- <goals> -->
+      <!-- <goal>add-source</goal> -->
+      <!-- </goals> -->
+      <!-- <configuration> -->
+      <!-- <sources> -->
+      <!-- <source> -->
+      <!-- ${project.build.directory}/scala-2.9.1/src_managed/main -->
+      <!-- </source> -->
+      <!-- </sources> -->
+      <!-- </configuration> -->
+      <!-- </execution> -->
+      <!-- </executions> -->
+      <!-- </plugin> -->
+    </plugins>
+
+    <pluginManagement>
+      <plugins>
+        <!--This plugin's configuration is used to store Eclipse m2e settings only. It has no influence on the Maven build itself.-->
+        <plugin>
+          <groupId>org.eclipse.m2e</groupId>
+          <artifactId>lifecycle-mapping</artifactId>
+          <version>1.0.0</version>
+          <configuration>
+            <lifecycleMappingMetadata>
+              <pluginExecutions>
+                <pluginExecution>
+                  <pluginExecutionFilter>
+                    <groupId>de.akquinet.innovation.play2</groupId>
+                    <artifactId>play2-maven-plugin</artifactId>
+                    <versionRange>[1.1.0,)</versionRange>
+                    <goals>
+                      <goal>copy-dependencies</goal>
+                      <goal>compile</goal>
+                    </goals>
+                  </pluginExecutionFilter>
+                  <action>
+                    <execute >
+                      <runOnIncremental>false</runOnIncremental>
+                    </execute > 
+                  </action>
+                </pluginExecution>
+              </pluginExecutions>
+            </lifecycleMappingMetadata>
+          </configuration>
+        </plugin>
+      </plugins>
+    </pluginManagement>
+  </build>
+  <properties>
+    <play2HomeDir>/opt/play-2.0</play2HomeDir>
+    <geotools.version>8.0-M4</geotools.version>
+    <otp.version>0.6.0-SNAPSHOT</otp.version>
+  </properties>
+  <groupId>openplans.org</groupId>
+  <version>0.0.1-SNAPSHOT</version>
+</project>

@@ -28,6 +28,7 @@ public class Observation {
   private final Double heading;
   private final Double accuracy;
   private Observation prevObs;
+  private final int recordNumber;
 
   /*
    * This map is how we keep track of the previous records for each vehicle.
@@ -40,8 +41,8 @@ public class Observation {
 
   private Observation(String vehicleId, Date timestamp,
     Coordinate obsCoords, Coordinate obsPoint, Double velocity, Double heading,
-    Double accuracy, Observation prevObs) {
-    super();
+    Double accuracy, Observation prevObs, int recordNumber) {
+    this.recordNumber = recordNumber;
     this.vehicleId = vehicleId;
     this.timestamp = timestamp;
     this.obsCoords = obsCoords;
@@ -184,22 +185,18 @@ public class Observation {
     vehiclesToRecords.clear();
   }
 
-  public static synchronized Observation createObservation(
-    String vehicleId, String timestamp, String latStr, String lonStr,
-    String velocity, String heading, String accuracy)
-      throws NumberFormatException, ParseException, TransformException, TimeOrderException {
-    final double lat = Double.parseDouble(latStr);
-    final double lon = Double.parseDouble(lonStr);
-    final Coordinate obsCoords = new Coordinate(lon, lat);
+  public static synchronized Observation createObservation(String vehicleId, Date time,
+    Coordinate obsCoords, Double velocity, Double heading, Double accuracy) {
     final Coordinate obsPoint = GeoUtils.convertToEuclidean(obsCoords);
 
-    final Date time = sdf.parse(timestamp);
     final Observation prevObs = vehiclesToRecords.get(vehicleId);
 
     /*
      * do this so we don't potentially hold on to every record in memory
      */
+    final int recordNumber;
     if (prevObs != null) {
+      recordNumber = prevObs.getRecordNumber() + 1;
       prevObs.reset();
 
       /*
@@ -207,16 +204,32 @@ public class Observation {
        */
       if (time.getTime() < prevObs.getTimestamp().getTime()) {
       }
+    } else {
+      recordNumber = 1;
     }
 
-    final Observation location = new Observation(vehicleId, time,
-        obsCoords, obsPoint, velocity != null ? Double.parseDouble(velocity)
-            : null, heading != null ? Double.parseDouble(heading) : null,
-        accuracy != null ? Double.parseDouble(accuracy) : null, prevObs);
+    final Observation obs = new Observation(vehicleId, time,
+        obsCoords, obsPoint, velocity, heading, accuracy, prevObs, recordNumber);
 
-    vehiclesToRecords.put(location.getVehicleId(), location);
+    vehiclesToRecords.put(vehicleId, obs);
+    
+    return obs;
+  }
+  
+  public static synchronized Observation createObservation(
+    String vehicleId, String timestamp, String latStr, String lonStr,
+    String velocity, String heading, String accuracy)
+      throws NumberFormatException, ParseException, TransformException, TimeOrderException {
+    
+    final double lat = Double.parseDouble(latStr);
+    final double lon = Double.parseDouble(lonStr);
+    final Coordinate obsCoords = new Coordinate(lon, lat);
+    final Double velocityd = velocity != null ? Double.parseDouble(velocity) : null;
+    final Double headingd = heading != null ? Double.parseDouble(heading) : null;
+    final Double accuracyd = accuracy != null ? Double.parseDouble(accuracy) : null;
+    final Date time = sdf.parse(timestamp);
 
-    return location;
+    return createObservation(vehicleId, time, obsCoords, velocityd, headingd, accuracyd);
   }
 
   @Override
@@ -226,5 +239,26 @@ public class Observation {
         + ", projPoint=" + projPoint + ", velocity=" + velocity + ", heading="
         + heading + ", accuracy=" + accuracy + ", prevObs=" + prevObs + "]";
   }
+
+  public Vector getProjPoint() {
+    return projPoint;
+  }
+
+  public Observation getPrevObs() {
+    return prevObs;
+  }
+
+  public int getRecordNumber() {
+    return recordNumber;
+  }
+
+  public static Map<String, Observation> getVehiclesToRecords() {
+    return vehiclesToRecords;
+  }
+
+  public static SimpleDateFormat getSdf() {
+    return sdf;
+  }
+
 
 }

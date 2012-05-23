@@ -3,17 +3,22 @@ package org.openplans.tools.tracking.impl;
 import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.math.matrix.VectorFactory;
 import gov.sandia.cognition.math.matrix.VectorUtil;
+import gov.sandia.cognition.math.matrix.mtj.DenseVector;
 import gov.sandia.cognition.statistics.bayesian.conjugate.UnivariateGaussianMeanVarianceBayesianEstimator;
 import gov.sandia.cognition.statistics.distribution.NormalInverseGammaDistribution;
 
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ExecutionException;
 
 import org.geotools.geometry.jts.JTSFactoryFinder;
 import org.openplans.tools.tracking.impl.InferredGraph.InferredEdge;
 import org.openplans.tools.tracking.impl.util.GeoUtils;
 import org.openplans.tools.tracking.impl.util.OtpGraph;
+import org.opentripplanner.routing.edgetype.StreetEdge;
 import org.opentripplanner.routing.graph.Edge;
 import org.opentripplanner.routing.graph.Graph;
 import org.opentripplanner.routing.graph.Vertex;
@@ -21,9 +26,13 @@ import org.opentripplanner.routing.location.StreetLocation;
 
 import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableList.Builder;
 import com.google.common.collect.Iterables;
+import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.vividsolutions.jts.algorithm.Angle;
@@ -32,6 +41,7 @@ import com.vividsolutions.jts.geom.CoordinateSequence;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.linearref.LinearLocation;
 import com.vividsolutions.jts.linearref.LocationIndexedLine;
+import com.vividsolutions.jts.math.Vector2D;
 
 public class InferredGraph {
 
@@ -42,15 +52,79 @@ public class InferredGraph {
   private final OtpGraph narratedGraph;
   
   public InferredGraph(OtpGraph graph) {
-   // TODO FIXME need to make interfaces and get rid of two graphs.
    this.graph = graph.getGraph(); 
    this.narratedGraph = graph;
   }
     
-  /*
-   * This is the empty edge, which stands for free movement
-   */
-  private final static InferredEdge emptyEdge = new InferredEdge();
+  private static class PathKey {
+    
+    private final Coordinate startCoord;
+    private final Coordinate endCoord;
+    
+    public PathKey(Coordinate startCoord, Coordinate endCoord) {
+      this.startCoord = startCoord;
+      this.endCoord = endCoord;
+    }
+
+    public Coordinate getStartCoord() {
+      return startCoord;
+    }
+
+    public Coordinate getEndCoord() {
+      return endCoord;
+    }
+
+    @Override
+    public int hashCode() {
+      final int prime = 31;
+      int result = 1;
+      result = prime * result + ((endCoord == null) ? 0 : endCoord.hashCode());
+      result = prime * result
+          + ((startCoord == null) ? 0 : startCoord.hashCode());
+      return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+      if (this == obj) {
+        return true;
+      }
+      if (obj == null) {
+        return false;
+      }
+      if (getClass() != obj.getClass()) {
+        return false;
+      }
+      PathKey other = (PathKey) obj;
+      if (endCoord == null) {
+        if (other.endCoord != null) {
+          return false;
+        }
+      } else if (!endCoord.equals(other.endCoord)) {
+        return false;
+      }
+      if (startCoord == null) {
+        if (other.startCoord != null) {
+          return false;
+        }
+      } else if (!startCoord.equals(other.startCoord)) {
+        return false;
+      }
+      return true;
+    }
+    
+  }
+  
+  private final LoadingCache<PathKey, Set<InferredPath>> pathsCache = CacheBuilder.newBuilder()
+      .maximumSize(1000)
+      .build(
+          new CacheLoader<PathKey, Set<InferredPath>>() {
+            public Set<InferredPath> load(PathKey key) {
+              // FIXME disabled for testing
+              return Sets.newHashSet(InferredPath.getEmptyPath());
+//              return computePaths(key);
+            }
+          }); 
 
   /**
    * Compute a path of InferredEdge's between observations.  
@@ -65,57 +139,63 @@ public class InferredGraph {
   public Set<InferredPath> getPaths(VehicleState fromState, Coordinate toCoord) {
     Preconditions.checkNotNull(fromState);
     
+    final Coordinate fromCoord;
+    if (fromState.getInferredEdge() == InferredGraph.getEmptyEdge()) {
+      fromCoord = GeoUtils.convertToLatLon(fromState.getMeanLocation());
+    } else {
+      fromCoord = fromState.getInferredEdge().getCenterPointCoord();
+    }
     
-    // TODO use some kind of caching
-    Coordinate fromCoord = GeoUtils.convertToLatLon(
-        VectorFactory.getDefault().createVector2D(fromState.getMeanLocation().getElement(0),
-            fromState.getMeanLocation().getElement(1)));
-    final Vertex snappedVertex = this.narratedGraph.getIndexService().getClosestVertex(toCoord,
-        null, this.narratedGraph.getOptions());
+    PathKey key = new PathKey(fromCoord, toCoord);
+    
+    return pathsCache.getUnchecked(key);
+  }
+  
+  private Set<InferredPath> computePaths(PathKey key) {
+    
+    Coordinate fromCoord = key.getStartCoord();
+    Coordinate toCoord = key.getEndCoord();
     
     Set<InferredPath> paths = Sets.newHashSet(InferredPath.getEmptyPath());
-    if (snappedVertex != null && (snappedVertex instanceof StreetLocation)) {
-      Builder<PathEdge> path = ImmutableList.builder();
-      final StreetLocation snappedStreetLocation = (StreetLocation) snappedVertex;
-      
-      for (final Edge edge : Objects.firstNonNull(
-          snappedStreetLocation.getOutgoingStreetEdges(),
-          ImmutableList.<Edge> of())) {
-        Coordinate edgeCenter = edge.getGeometry().getCentroid().getCoordinate();
-        final CoordinateSequence movementSeq = JTSFactoryFinder
-            .getGeometryFactory().getCoordinateSequenceFactory()
-            .create(new Coordinate[] { fromCoord, edgeCenter});
-        
-        final Geometry movementGeometry = JTSFactoryFinder
-            .getGeometryFactory().createLineString(movementSeq);
-        
-        final List<Edge> minimumConnectingEdges = Objects.firstNonNull(narratedGraph.getStreetMatcher()
-            .match(movementGeometry), ImmutableList.<Edge> of());
-        
-        Double pathDist;
-        if (minimumConnectingEdges.isEmpty()) {
-          pathDist = null;
-          path.add(PathEdge.getEmptyPathEdge());
-        } else {
-          pathDist = 0d;
-          for (Edge pathEdge : minimumConnectingEdges) {
-            path.add(PathEdge.getEdge(this.getEdge(pathEdge), pathDist));
-            pathDist += pathEdge.getDistance();
-          }
-        }
-        paths.add(new InferredPath(path.build(), pathDist));
+    Builder<PathEdge> path = ImmutableList.builder();
+    final CoordinateSequence movementSeq = JTSFactoryFinder
+        .getGeometryFactory().getCoordinateSequenceFactory()
+        .create(new Coordinate[] { fromCoord, toCoord});
+    
+    final Geometry movementGeometry = JTSFactoryFinder
+        .getGeometryFactory().createLineString(movementSeq);
+    
+    final List<Edge> minimumConnectingEdges = Objects.firstNonNull(narratedGraph.getStreetMatcher()
+        .match(movementGeometry), ImmutableList.<Edge> of());
+    
+    if (!minimumConnectingEdges.isEmpty()) {
+      double pathDist = 0d;
+      for (Edge pathEdge : minimumConnectingEdges) {
+        path.add(PathEdge.getEdge(this.getInferredEdge(pathEdge), pathDist));
+        pathDist += pathEdge.getDistance();
       }
+      paths.add(new InferredPath(path.build(), pathDist));
     }
     return paths;
   }
   
-  public InferredEdge getEdge(Edge edge) {
+  public Set<InferredEdge> getNearbyEdges(Vector mean) {
+    Set<InferredEdge> results = Sets.newHashSet();
+    SnappedEdges snappedEdges = this.narratedGraph.snapToGraph(null,
+        new Coordinate(mean.getElement(0), mean.getElement(1)));
+    for (Edge edge : snappedEdges.getSnappedEdges()) {
+      results.add(getInferredEdge(edge));
+    }
+    return results;
+  }
+  
+  public InferredEdge getInferredEdge(Edge edge) {
 
     InferredEdge edgeInfo = edgeToInfo.get(edge);
     final int edgeId = graph.getIdForEdge(edge);
 
     if (edgeInfo == null) {
-      edgeInfo = new InferredEdge(edge, edgeId);
+      edgeInfo = new InferredEdge(edge, edgeId, this);
       edgeToInfo.put(edge, edgeInfo);
     }
 
@@ -128,7 +208,7 @@ public class InferredGraph {
     InferredEdge edgeInfo = edgeToInfo.get(edge);
 
     if (edgeInfo == null) {
-      edgeInfo = new InferredEdge(edge, id);
+      edgeInfo = new InferredEdge(edge, id, this);
       edgeToInfo.put(edge, edgeInfo);
     }
 
@@ -142,7 +222,6 @@ public class InferredGraph {
   
   public static class InferredEdge {
   
-    private final Edge edge;
     private final LocationIndexedLine line;
     private final int edgeId;
   
@@ -151,15 +230,22 @@ public class InferredGraph {
      */
     private final Double angle;
 
+    private final Vertex startVertex;
+    private final Vertex endVertex;
     private final Vector endPoint;
     private final Vector startPoint;
     private final double length;
     private final NormalInverseGammaDistribution velocityPrecisionDist;
     private final UnivariateGaussianMeanVarianceBayesianEstimator velocityEstimator;
+    private final Geometry geometry;
+    private final InferredGraph graph;
+    /*
+     * This is the empty edge, which stands for free movement
+     */
+    private final static InferredGraph.InferredEdge emptyEdge = new InferredGraph.InferredEdge();
   
   
     private InferredEdge() {
-      this.edge = null;
       this.edgeId = -1;
       this.angle = null;
       this.line = null;
@@ -168,12 +254,20 @@ public class InferredGraph {
       this.length = 0;
       this.velocityEstimator = null;
       this.velocityPrecisionDist = null;
+      this.startVertex = null;
+      this.endVertex = null;
+      this.geometry = null;
+      this.graph = null;
     }
   
-    private InferredEdge(Edge edge, int edgeId) {
-      this.edge = edge;
+    private InferredEdge(Edge edge, int edgeId, InferredGraph graph) {
+      this.graph = graph;
       this.edgeId = edgeId;
-      this.line = new LocationIndexedLine(this.edge.getGeometry());
+      this.line = new LocationIndexedLine(edge.getGeometry());
+      this.geometry = edge.getGeometry();
+      
+      this.startVertex = edge.getFromVertex();
+      this.endVertex = edge.getToVertex();
       
       final Coordinate startPoint = this.line.extractPoint(this.line
           .getStartIndex());
@@ -203,10 +297,6 @@ public class InferredGraph {
       return angle;
     }
   
-    public Edge getEdge() {
-      return edge;
-    }
-  
     public int getEdgeId() {
       return edgeId;
     }
@@ -222,7 +312,7 @@ public class InferredGraph {
      * @return
      */
     public Vector getPointOnEdge(Coordinate obsPoint) {
-      if (this == emptyEdge)
+      if (this == InferredEdge.emptyEdge)
         return null;
       final LinearLocation here = line.project(obsPoint);
       final Coordinate pointOnLine = line.extractPoint(here);
@@ -231,17 +321,39 @@ public class InferredGraph {
           projPointOnLine.y);
     }
   
+    /**
+     * This returns a list of edges that are incoming, wrt the direction of this edge,
+     * and that are reachable from this edge (e.g. not one way in the direction of this edge).
+     * @return
+     */
+    public List<InferredEdge> getIncomingTransferableEdges() {
+      
+      List<InferredEdge> result = Lists.newArrayList();
+      for (Edge incomingEdge : this.startVertex.getIncoming()) {
+        if (!incomingEdge.getGeometry().equals(geometry))
+          result.add(graph.getInferredEdge(incomingEdge));
+      }
+      
+      return result;
+    }
+    
+    /**
+     * This returns a list of edges that are outgoing, wrt the direction of this edge,
+     * and that are reachable from this edge (e.g. not one way against the direction of this edge).
+     * @return
+     */
+    public List<InferredEdge> getOutgoingTransferableEdges() {
+      List<InferredEdge> result = Lists.newArrayList();
+      for (Edge outgoingEdge : this.startVertex.getOutgoing()) {
+        if (!outgoingEdge.getGeometry().equals(geometry))
+          result.add(graph.getInferredEdge(outgoingEdge));
+      }
+      
+      return result;
+    }
+    
     public Vector getEndPoint() {
       return this.endPoint;
-    }
-
-    @Override
-    public String toString() {
-      if (this == emptyEdge)
-        return "InferredEdge [empty edge]";
-      return "InferredEdge [edge=" + edge + ", line=" + line + ", edgeId="
-          + edgeId + ", angle=" + angle + ", endPoint=" + endPoint
-          + ", startPoint=" + startPoint + ", length=" + length + "]";
     }
 
     public Vector getStartPoint() {
@@ -259,16 +371,70 @@ public class InferredGraph {
     public UnivariateGaussianMeanVarianceBayesianEstimator getVelocityEstimator() {
       return velocityEstimator;
     }
+
+    public Vertex getStartVertex() {
+      return startVertex;
+    }
+
+    public Vertex getEndVertex() {
+      return endVertex;
+    }
+
+    @Override
+    public String toString() {
+      return "InferredEdge [endPoint=" + endPoint + ", startPoint="
+          + startPoint + "]";
+    }
+
+    public Coordinate getCenterPointCoord() {
+      return this.geometry.getCentroid().getCoordinate();
+    }
+
+    public Geometry getGeometry() {
+      return geometry;
+    }
+
+    @Override
+    public int hashCode() {
+      final int prime = 31;
+      int result = 1;
+      result = prime * result + ((geometry == null) ? 0 : geometry.hashCode());
+      return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+      if (this == obj) {
+        return true;
+      }
+      if (obj == null) {
+        return false;
+      }
+      if (getClass() != obj.getClass()) {
+        return false;
+      }
+      InferredEdge other = (InferredEdge) obj;
+      if (geometry == null) {
+        if (other.geometry != null) {
+          return false;
+        }
+      } else if (!geometry.equals(other.geometry)) {
+        return false;
+      }
+      return true;
+    }
+
   
   }
 
   public static InferredEdge getEmptyEdge() {
-    return emptyEdge;
+    return InferredEdge.emptyEdge;
   }
 
   public OtpGraph getNarratedGraph() {
     return narratedGraph;
   }
+
 
 
 }

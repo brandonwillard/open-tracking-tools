@@ -4,21 +4,35 @@ import org.openplans.tools.tracking.impl.InferredGraph.InferredEdge;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Iterables;
 
+/**
+ * Inferred paths are collections of PathEdges that track the distance traveled and
+ * the direction (by sign) 
+ * @author bwillard
+ *
+ */
 public class InferredPath {
 
   private final ImmutableList<PathEdge> edges;
   private final Double totalPathDistance;
   
   public InferredPath(ImmutableList<PathEdge> edges, double totalPathDistance) {
-    Preconditions.checkArgument(edges.size() > 1 ||
-        !edges.contains(InferredGraph.getEmptyEdge()));
+    Preconditions.checkArgument(edges.size() > 1);
     this.edges = edges;
     this.totalPathDistance = totalPathDistance;
   }
+  
+  public InferredPath(ImmutableList<PathEdge> edges) {
+    Preconditions.checkArgument(edges.size() > 1);
+    this.edges = edges;
+    final PathEdge lastEdge = Iterables.getLast(edges);
+    final double direction = lastEdge.getDistToStartOfEdge() > 0 ? 1d : -1d;
+    this.totalPathDistance = lastEdge.getDistToStartOfEdge() + direction * lastEdge.getInferredEdge().getLength();
+  }
 
-  private InferredPath(ImmutableList<PathEdge> path) {
-    this.edges = path;
+  private InferredPath() {
+    this.edges = ImmutableList.of(PathEdge.getEmptyPathEdge());
     this.totalPathDistance = null;
   }
 
@@ -42,7 +56,7 @@ public class InferredPath {
         + totalPathDistance + "]";
   }
 
-  private static InferredPath emptyPath = new InferredPath(ImmutableList.of(PathEdge.getEmptyPathEdge()));
+  private static InferredPath emptyPath = new InferredPath();
   
   public static InferredPath getEmptyPath() {
     return emptyPath;
@@ -54,7 +68,7 @@ public class InferredPath {
    * @param distance
    * @return
    */
-  public PathEdge getEdge(double distance) {
+  public PathEdge getEdgeAtDistance(double distance) {
     Preconditions.checkArgument(this != emptyPath);
     Preconditions.checkArgument(distance >= 0d);
     // TODO pre-compute/improve this

@@ -1,0 +1,36 @@
+
+a {
+color: #fff;
+}
+
+body {
+    margin: 0px 0px;
+    font-family: sans-serif;
+}
+
+.jqlink:hover {
+    text-decoration:underline;
+    cursor: pointer;
+}
+
+#top_bar {
+    height: 16px;
+    background: black;
+    color: white;
+    font-size: 14px;
+    padding:5px;
+}
+
+#count_display {
+    position: absolute;
+    width: 400px;
+    right: 5px;
+    top: 5px;
+    color: white;
+    font-size: 14px;
+}
+
+#map {
+    width:100%;
+    height:100%;
+}

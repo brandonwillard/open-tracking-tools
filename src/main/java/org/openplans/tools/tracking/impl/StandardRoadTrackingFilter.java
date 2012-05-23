@@ -8,6 +8,7 @@ import org.openplans.tools.tracking.impl.InferredGraph.InferredEdge;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
+import com.vividsolutions.jts.geom.Coordinate;
 
 import gov.sandia.cognition.math.ComplexNumber;
 import gov.sandia.cognition.math.matrix.Matrix;
@@ -142,7 +143,7 @@ public class StandardRoadTrackingFilter implements CloneableSerializable {
     return currentTimeDiff;
   }
 
-  public double getgVariance() {
+  public double getGVariance() {
     return gVariance;
   }
   
@@ -156,24 +157,28 @@ public class StandardRoadTrackingFilter implements CloneableSerializable {
   public void measure(MultivariateGaussian belief, Vector observation, PathEdge edge) {
     
     if (belief.getInputDimensionality() == 2) {
-      Entry<Matrix, Vector> projPair = posVelProjectionPair(edge);
       /*
        * Convert road-coordinates prior predictive to ground-coordinates
        */
-  //    Vector a = projPair.getKey().times(belief.getMean()).plus(projPair.getValue());
-      Matrix R = projPair.getKey().times(belief.getCovariance()).times(projPair.getKey().transpose());
+      MultivariateGaussian projBelief = belief.clone();
+      invertProjection(projBelief, edge);
+      Vector a = projBelief.getMean();
+      Matrix R = projBelief.getCovariance();
       
       final Matrix Q = Og.times(R).times(Og.transpose())
           .plus(groundFilter.getMeasurementCovariance());
       // FIXME TODO use solve
       final Matrix A = R.times(Og.transpose()).times(Q.inverse());
-      final Vector e = observation.minus(Og.times(belief.getMean()));
+      final Vector e = observation.minus(Og.times(a));
       
-      final Matrix C = belief.getCovariance().minus(A.times(Q.transpose()).times(A.transpose()));
-      final Vector m = belief.getMean().plus(A.times(e));
+      final Matrix C = R.minus(A.times(Q.transpose()).times(A.transpose()));
+      final Vector m = a.plus(A.times(e));
       
-      belief.setMean(projPair.getKey().transpose().times(m.minus(projPair.getValue())));
-      belief.setCovariance(projPair.getKey().transpose().times(C).times(projPair.getKey()));
+      MultivariateGaussian roadPost = projBelief.clone();
+      invertProjection(roadPost, edge);
+      Preconditions.checkArgument(roadPost.getMean().getElement(0) >= 0);
+      belief.setMean(roadPost.getMean());
+      belief.setCovariance(roadPost.getCovariance());
     } else {
       Preconditions.checkArgument(belief.getInputDimensionality() == 4);
       this.groundFilter.measure(belief, observation);
@@ -201,7 +206,17 @@ public class StandardRoadTrackingFilter implements CloneableSerializable {
        * Convert to road-coordinates 
        */
       Vector m = projPair.getKey().transpose().times(dist.getMean().minus(projPair.getValue()));
+      
+      final double totalDist = edge.getDistToStartOfEdge() + edge.getInferredEdge().getLength();
+      double dist2 = m.getElement(0);
+      if (dist2 < edge.getDistToStartOfEdge()) {
+        dist2 = 0d;
+      } else if (dist2 > totalDist){
+        dist2 = totalDist;
+      }
+      m.setElement(0, dist2);
       Matrix C = projPair.getKey().transpose().times(dist.getCovariance()).times(projPair.getKey());
+      
       dist.setCovariance(C);
       dist.setMean(m);
       
@@ -217,16 +232,32 @@ public class StandardRoadTrackingFilter implements CloneableSerializable {
    * @param edge
    * @param startOfEdgeDist 
    */
-  public void predict(MultivariateGaussian belief, PathEdge edge) {
+  public void predict(MultivariateGaussian belief, PathEdge edge, PathEdge prevEdge) {
     Preconditions.checkArgument(belief.getInputDimensionality() == 2 ||
         belief.getInputDimensionality() == 4);
 
     if (edge == PathEdge.getEmptyPathEdge()) {
-      Preconditions.checkArgument(belief.getInputDimensionality() == 4); 
-      /*
-       * Predict free-movement
-       */
-      groundFilter.predict(belief);
+      if (belief.getInputDimensionality() == 4) {
+        /*-
+         * Predict free-movement
+         */
+        groundFilter.predict(belief);
+      } else {
+        /*-
+         * Going off-road
+         */
+        Preconditions.checkNotNull(prevEdge);
+        convertToGroundBelief(belief, prevEdge);
+        groundFilter.predict(belief);
+        if (belief.getMean().getElement(0) > prevEdge.getDistToStartOfEdge()
+            + prevEdge.getInferredEdge().getLength()) {
+          belief.getMean().setElement(0, prevEdge.getDistToStartOfEdge()
+              + prevEdge.getInferredEdge().getLength());
+        } else if (belief.getMean().getElement(0) < prevEdge.getDistToStartOfEdge()) {
+          belief.getMean().setElement(0, prevEdge.getDistToStartOfEdge());
+        }
+        Preconditions.checkArgument(belief.getMean().getElement(0) >= 0);
+      }
     } else {
       if (belief.getInputDimensionality() == 4) {
         /*-
@@ -234,10 +265,9 @@ public class StandardRoadTrackingFilter implements CloneableSerializable {
          * Currently, this just consists of projecting onto
          * the edge
          * 
-         * TODO FIXME this is a temporary hack.  check this.
          */
         invertProjection(belief, edge);
-        
+        roadFilter.predict(belief);
       } else {
         if (edge == null) {
           /*-
@@ -248,15 +278,17 @@ public class StandardRoadTrackingFilter implements CloneableSerializable {
           
         } else {
           /*
-           * Predict movement along a path
+           * Predict movement along an edge 
            */
           final double S = Or.times(belief.getCovariance()).times(Or.transpose()).getElement(0, 0) 
               + Math.pow(edge.getInferredEdge().getLength()/Math.sqrt(12), 2);
           final Matrix W = belief.getCovariance().times(Or.transpose()).scale(1/S);
           final Matrix R = belief.getCovariance().minus(W.times(W.transpose()).scale(S));
-          final double e = edge.getDistToStartOfEdge() + edge.getInferredEdge().getLength()/2d 
-              - Or.times(belief.getMean()).getElement(0);
+          final double mean = (edge.getDistToStartOfEdge() + edge.getInferredEdge().getLength())/2d;
+          final double e = mean - Or.times(belief.getMean()).getElement(0);
           final Vector a = belief.getMean().plus(W.getColumn(0).scale(e));
+          
+          Preconditions.checkArgument(a.getElement(0) >= 0);
           belief.setMean(a);
           belief.setCovariance(R);
         }
@@ -271,29 +303,18 @@ public class StandardRoadTrackingFilter implements CloneableSerializable {
    * @return
    */
   public double logLikelihood(Vector obs, MultivariateGaussian belief, PathEdge edge) {
-    Vector a;
-    Matrix R;
-    Matrix O;
-    Matrix V;
-    if (belief.getInputDimensionality() == 2) {
-      Entry<Matrix, Vector> projPair = posVelProjectionPair(edge);
-      a = projPair.getKey().times(belief.getMean()).plus(projPair.getValue());
-      R = projPair.getKey().times(belief.getCovariance()).times(projPair.getKey().transpose());
-      O = this.roadModel.getC();
-      V = this.roadFilter.getMeasurementCovariance();
-    } else {
-      a = belief.getMean();
-      R = belief.getCovariance();
-      O = this.groundModel.getC();
-      V = this.groundFilter.getMeasurementCovariance();
-    }
+    MultivariateGaussian projBelief = belief.clone();
+    if (projBelief.getInputDimensionality() == 2) {
+      invertProjection(projBelief, edge);
+    } 
     
-    Matrix Q = O.times(R).times( O.transpose() );
-    Q.plusEquals(V);
+    Matrix Q = Og.times(projBelief.getCovariance()).times( Og.transpose() );
+    Q.plusEquals(this.groundFilter.getMeasurementCovariance());
     
     MultivariateGaussian.PDF pdf = new MultivariateGaussian.PDF(
-        O.times(a), Q);
-    return pdf.logEvaluate(obs);
+        Og.times(projBelief.getMean()), Q);
+    final double result = pdf.logEvaluate(obs);
+    return result;
   }
 
   public void setCurrentTimeDiff(double currentTimeDiff) {
@@ -409,7 +430,7 @@ public class StandardRoadTrackingFilter implements CloneableSerializable {
    * @param distEnd
    * @return
    */
-  static public Entry<Matrix, Vector> posVelProjectionPair(PathEdge edge) {
+  static private Entry<Matrix, Vector> posVelProjectionPair(PathEdge edge) {
     final Vector start = edge.getInferredEdge().getStartPoint();
     final Vector end = edge.getInferredEdge().getEndPoint();
     
@@ -420,11 +441,39 @@ public class StandardRoadTrackingFilter implements CloneableSerializable {
     
     final Matrix P = MatrixFactory.getDefault().createMatrix(4, 2);
     P.setColumn(0, P1.stack(zeros2D));
-    P.setColumn(2, zeros2D.stack(P1));
+    P.setColumn(1, zeros2D.stack(P1));
     
     final Vector a = s1.stack(zeros2D);
     
     return Maps.immutableEntry(U.times(P), U.times(a));
+  }
+
+  public static void convertToGroundBelief(MultivariateGaussian belief, PathEdge edge) {
+    Preconditions.checkArgument(belief.getInputDimensionality() == 2 ||
+        belief.getInputDimensionality() == 4);
+    
+    if (belief.getInputDimensionality() == 4)
+      return;
+    
+    Preconditions.checkArgument(edge != PathEdge.getEmptyPathEdge());
+    
+    Entry<Matrix, Vector> projPair = StandardRoadTrackingFilter.posVelProjectionPair(edge);
+    Vector truncatedMean; 
+    if (belief.getMean().getElement(0) > edge.getDistToStartOfEdge()
+        + edge.getInferredEdge().getLength()) {
+      truncatedMean = belief.getMean().clone();
+      truncatedMean.setElement(0, edge.getDistToStartOfEdge() 
+          + edge.getInferredEdge().getLength());
+    } else if (belief.getMean().getElement(0) < edge.getDistToStartOfEdge()) {
+      truncatedMean = belief.getMean().clone();
+      truncatedMean.setElement(0, edge.getDistToStartOfEdge());
+    } else {
+      truncatedMean = belief.getMean();
+    }
+    
+    Matrix C = belief.getCovariance();
+    belief.setMean(projPair.getKey().times(truncatedMean).minus(projPair.getValue()));
+    belief.setCovariance(projPair.getKey().times(C).times(projPair.getKey().transpose()));
   }
 
   public static long getSerialversionuid() {
@@ -473,6 +522,19 @@ public class StandardRoadTrackingFilter implements CloneableSerializable {
 
   public static Vector getZeros2d() {
     return zeros2D;
+  }
+
+  public MultivariateGaussian getObservationBelief(MultivariateGaussian belief, PathEdge edge) {
+    MultivariateGaussian projBelief = belief.clone();
+    if (projBelief.getInputDimensionality() == 2) {
+      invertProjection(projBelief, edge);
+    } 
+    
+    Matrix Q = Og.times(projBelief.getCovariance()).times( Og.transpose() );
+    Q.plusEquals(this.groundFilter.getMeasurementCovariance());
+    
+    MultivariateGaussian res = new MultivariateGaussian(Og.times(projBelief.getMean()), Q);
+    return res;
   }
 }
 

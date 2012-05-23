@@ -90,7 +90,7 @@ public class GeoUtils {
       e.printStackTrace();
     }
 
-    return converted;
+    return new Coordinate(converted.y, converted.x);
   }
 
   public static Coordinate convertToLatLon(Vector vec) {

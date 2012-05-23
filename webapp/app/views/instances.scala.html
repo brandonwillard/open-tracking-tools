@@ -1,0 +1,40 @@
+@(instances: List[InferenceInstance], inferenceInstanceForm: Form[InferenceInstance])
+
+@import helper._
+
+<html>
+<body>
+<h1>@instances.size() instance(s)</h1>
+<div id="instances" style="padding: 2px; border: 1px solid black" >
+<ul>
+    @for(instance <- instances) {
+        <li>
+            vehicleId: @instance.vehicleId, recordsProcessed: @instance.recordsProcessed
+            
+            @form(routes.Application.removeInferenceInstance(instance.vehicleId)) {
+                <input type="submit" value="Delete">
+            }
+        </li>
+    }
+</ul>
+</div>
+<div id="upload" style="padding: 2px; border: 1px solid black">
+@helper.form(action = routes.Application.uploadHandler, 'enctype -> "multipart/form-data") {
+    
+    <input type="file" name="csv">
+    
+    <p>
+        <input type="submit">
+    </p>
+    
+}
+</div>
+<div id="simulate" style="padding: 2px; border: 1px solid black">
+@helper.form(action = routes.Application.simulation, 'enctype -> "text/plain") {
+    
+    <input type="submit" value="Simulate">
+    
+}
+</div>
+</body>
+</html>

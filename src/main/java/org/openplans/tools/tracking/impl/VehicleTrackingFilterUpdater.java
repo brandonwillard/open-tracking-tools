@@ -48,7 +48,7 @@ public class VehicleTrackingFilterUpdater implements
 
   @Override
   public VehicleTrackingFilterUpdater clone() {
-    return null;
+    throw new RuntimeException("not implemented");
   }
 
   /**
@@ -58,7 +58,7 @@ public class VehicleTrackingFilterUpdater implements
   public double computeLogLikelihood(VehicleState particle,
     Observation observation) {
     return particle.getProbabilityFunction().logEvaluate(
-        new VehicleStateConditionalParams(PathEdge.getEdge(particle.getEdge(), 0d), 
+        new VehicleStateConditionalParams(PathEdge.getEdge(particle.getInferredEdge(), 0d), 
             observation.getProjectedPoint(), 0d));
   }
 
@@ -75,7 +75,7 @@ public class VehicleTrackingFilterUpdater implements
 
     if (initialEdges.getSnappedEdges().isEmpty()) {
       
-      final VehicleState state = new VehicleState(initialObservation,
+      final VehicleState state = new VehicleState(this.inferredGraph, initialObservation,
           InferredGraph.getEmptyEdge());
 
       final VehicleStateConditionalParams params = 
@@ -85,9 +85,9 @@ public class VehicleTrackingFilterUpdater implements
       
     } else {
       for (final Edge nativeEdge : initialEdges.getSnappedEdges()) {
-        final InferredEdge edge = inferredGraph.getEdge(nativeEdge);
+        final InferredEdge edge = inferredGraph.getInferredEdge(nativeEdge);
         final PathEdge pathEdge = PathEdge.getEdge(edge, 0d);
-        final VehicleState state = new VehicleState(initialObservation, pathEdge.getInferredEdge());
+        final VehicleState state = new VehicleState(this.inferredGraph, initialObservation, pathEdge.getInferredEdge());
   
         final VehicleStateConditionalParams edgeLoc = new VehicleStateConditionalParams(pathEdge,
             initialObservation.getProjectedPoint());
@@ -100,7 +100,7 @@ public class VehicleTrackingFilterUpdater implements
     /*
      * Free-motion
      */
-    final VehicleState state = new VehicleState(initialObservation, InferredGraph.getEmptyEdge());
+    final VehicleState state = new VehicleState(this.inferredGraph, initialObservation, InferredGraph.getEmptyEdge());
     final double lik = state.getProbabilityFunction().evaluate(
         new VehicleStateConditionalParams(initialObservation.getProjectedPoint()));
     initialDist.increment(state, lik);

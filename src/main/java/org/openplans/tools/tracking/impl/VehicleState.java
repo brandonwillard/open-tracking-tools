@@ -66,16 +66,16 @@ public class VehicleState implements ComputableDistribution<VehicleStateConditio
        * Edge transitions
        */
       logLikelihood += this.edgeTransitionDist.logEvaluate(previousEdge,
-          this.getEdge());
+          this.getInferredEdge());
 
       /*
        * Movement likelihood Note: should be predictive for PL
        */
       PathEdge edge;
-      if (this.getEdge() == InferredGraph.getEmptyEdge()) {
+      if (this.getInferredEdge() == InferredGraph.getEmptyEdge()) {
         edge = PathEdge.getEmptyPathEdge(); 
       } else {
-        edge = PathEdge.getEdge(this.getEdge(), input.getDistanceToCurrentEdge());
+        edge = PathEdge.getEdge(this.getInferredEdge(), input.getDistanceToCurrentEdge());
       }
       logLikelihood += this.getMovementFilter().logLikelihood(input.getLocation(), 
           this.belief, edge);
@@ -97,12 +97,12 @@ public class VehicleState implements ComputableDistribution<VehicleStateConditio
   }
 
   private static final long serialVersionUID = 3229140254421801273L;
-  private static final double gVariance = 50d*50d/2d; // meters
+  private static final double gVariance = 50d*50d/4d; // meters
 
   private static final double a0Variance = 0.5d; // m/s^2
   // TODO FIXME pretty sure this constant is being used in multiple places
   // for different things...
-  private static final double aVariance = 0.9d; // m/s^2
+  private static final double aVariance = 1.50d; // m/s^2
   
   /*
    * These members represent the state/parameter samples/sufficient statistics.
@@ -129,13 +129,15 @@ public class VehicleState implements ComputableDistribution<VehicleStateConditio
   private VehicleState parentState = null;
   private final Double distanceFromPreviousState;
   private final InferredPath path;
+  private final InferredGraph graph;
 
-  public VehicleState(Observation initialObservation, InferredEdge inferredEdge) {
+  public VehicleState(InferredGraph graph, Observation initialObservation, InferredEdge inferredEdge) {
     Preconditions.checkNotNull(initialObservation);
     Preconditions.checkNotNull(inferredEdge);
     
     this.movementFilter = new StandardRoadTrackingFilter(
         gVariance, aVariance, a0Variance);
+    this.movementFilter.setCurrentTimeDiff(30);
     
     if (inferredEdge == InferredGraph.getEmptyEdge()) {
       this.belief = movementFilter.getGroundFilter().createInitialLearnedObject();
@@ -158,11 +160,13 @@ public class VehicleState implements ComputableDistribution<VehicleStateConditio
 
     this.edge = inferredEdge;
     this.observation = initialObservation;
-    this.edgeTransitionDist = new EdgeTransitionDistributions();
+    this.graph = graph;
+    this.edgeTransitionDist = new EdgeTransitionDistributions(this.graph);
     this.distanceFromPreviousState = 0d; 
   }
 
   public VehicleState(VehicleState other) {
+    this.graph = other.graph;
     this.movementFilter = other.movementFilter;
     this.belief = other.belief;
     this.edgeTransitionDist = other.edgeTransitionDist;
@@ -173,13 +177,14 @@ public class VehicleState implements ComputableDistribution<VehicleStateConditio
     this.path = other.path;
   }
 
-  public VehicleState(Observation observation,
+  public VehicleState(InferredGraph graph, Observation observation,
     StandardRoadTrackingFilter filter, MultivariateGaussian belief,
     EdgeTransitionDistributions edgeTransitionDist,
     PathEdge edge, InferredPath path, VehicleState state) {
     this.observation = observation;
     this.movementFilter = filter;
     this.belief = belief;
+    this.graph = graph;
     /*
      * This is the constructor used when creating transition states,
      * so this is where we'll need to reset the distance measures
@@ -216,17 +221,9 @@ public class VehicleState implements ComputableDistribution<VehicleStateConditio
     Vector v;
     if (belief.getInputDimensionality() == 2) {
       Preconditions.checkArgument(this.edge != InferredGraph.getEmptyEdge());
-      Entry<Matrix, Vector> projPair = StandardRoadTrackingFilter.posVelProjectionPair(
-          PathEdge.getEdge(this.edge, 0d));
-      Vector truncatedMean; 
-      if (belief.getMean().getElement(0) > this.edge.getLength()) {
-        // TODO perhaps this is why we need truncated normals
-        truncatedMean = belief.getMean().clone();
-        truncatedMean.setElement(0, edge.getLength());
-      } else {
-        truncatedMean = belief.getMean();
-      }
-      v = projPair.getKey().times(belief.getMean()).plus(projPair.getValue());
+      MultivariateGaussian projBelief = belief.clone();
+      StandardRoadTrackingFilter.invertProjection(projBelief, PathEdge.getEdge(this.edge, 0d));
+      v = projBelief.getMean();
     } else {
       v = belief.getMean();
     }
@@ -285,7 +282,7 @@ public class VehicleState implements ComputableDistribution<VehicleStateConditio
         + distanceFromPreviousState + "]";
   }
 
-  public InferredEdge getEdge() {
+  public InferredEdge getInferredEdge() {
     return this.edge;
   }
 
@@ -308,28 +305,14 @@ public class VehicleState implements ComputableDistribution<VehicleStateConditio
    */
   public MultivariateGaussian getGroundOnlyBelief() {
     if (belief.getInputDimensionality() == 2) {
-      Preconditions.checkArgument(this.edge != InferredGraph.getEmptyEdge());
-      Entry<Matrix, Vector> projPair = StandardRoadTrackingFilter.posVelProjectionPair(
-          PathEdge.getEdge(this.edge, 0d));
-      Vector truncatedMean; 
-      if (belief.getMean().getElement(0) > this.edge.getLength()) {
-        // TODO perhaps this is why we need truncated normals
-        truncatedMean = belief.getMean().clone();
-        truncatedMean.setElement(0, edge.getLength());
-      } else {
-        truncatedMean = belief.getMean();
-      }
-      
-      Matrix C = belief.getCovariance();
       MultivariateGaussian beliefProj = new MultivariateGaussian();
-      beliefProj.setMean(projPair.getKey().transpose().times(truncatedMean.minus(projPair.getValue())));
-      beliefProj.setCovariance(projPair.getKey().transpose().times(C).times(projPair.getKey()));
+      StandardRoadTrackingFilter.convertToGroundBelief(beliefProj, PathEdge.getEdge(this.edge, 0d));
       return beliefProj;
     } else {
       return belief;
     }
   }
-
+  
   public InferredPath getPath() {
     return path;
   }

@@ -1,0 +1,48 @@
+@(name: String)
+
+<html>
+
+<head>
+<title>Cebu Visualizer</title>
+
+<!-- leaflet -->
+<script src="@routes.Assets.at("javascripts/leaflet/dist/leaflet.js")"></script>
+<link rel="stylesheet" href="@routes.Assets.at("javascripts/leaflet/dist/leaflet.css")" />
+
+<!-- jquery -->
+<link type="text/css" href="@routes.Assets.at("javascripts/jquery/ui-lightness/jquery-ui-1.8.18.custom.css")" rel="stylesheet" />	
+<script type="text/javascript" src="@routes.Assets.at("javascripts/jquery/jquery-1.7.1.min.js")"></script>
+<script type="text/javascript" src="@routes.Assets.at("javascripts/jquery/jquery-ui-1.8.18.custom.min.js")"></script>
+
+
+<script src="@routes.Assets.at("javascripts/visualizer.js")"></script>
+<link rel="stylesheet" href="@routes.Assets.at("stylesheets/style.css")" />
+
+</head>	
+
+<body>
+
+<div id="top_bar">
+
+	<div id="loadData"> 
+    <input type="text" id="vehicle_id" value="@name" style="width: 400px; padding: 2px; border: 1px solid black"/>
+	  <span id="loadDataLink" class="jqlink" style="padding: 2px; border: 1px solid black">load data</span>
+  </div>
+	<div id="controls">
+		<div id="slider" style="width: 250px; float: left;"></div>
+		<div>
+			 &nbsp;&nbsp; <span id="prev" class="jqlink">&laquo;</span> | <span id="next" class="jqlink">&raquo;</span> | <span id="play" class="jqlink">play</span><span id="pause" class="jqlink">pause</span>
+		</div>
+	</div>
+	<div id="count_display"></div>
+</div>
+
+<div id="debug_bar" style="width: 500px; padding: 2px; border: 1px solid black">
+    <input type="text" id="coordinate_data" style="width: 400px; padding: 2px; border: 1px solid black"/>
+    <span id="addCoordinates" class="jqlink" style="padding: 2px; border: 1px solid black">add</span>
+</div>
+    
+<div id="map"></div>
+
+</body>
+</html>

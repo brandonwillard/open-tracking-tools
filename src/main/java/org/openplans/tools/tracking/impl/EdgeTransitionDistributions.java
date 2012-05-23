@@ -1,13 +1,21 @@
 package org.openplans.tools.tracking.impl;
 
 
+import java.util.List;
+import java.util.Random;
+import java.util.Set;
+
 import org.openplans.tools.tracking.impl.InferredGraph.InferredEdge;
+
+import com.google.common.base.Preconditions;
+import com.google.common.collect.Lists;
 
 import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.math.matrix.VectorFactory;
 import gov.sandia.cognition.statistics.bayesian.conjugate.MultinomialBayesianEstimator;
 import gov.sandia.cognition.statistics.distribution.DirichletDistribution;
 import gov.sandia.cognition.statistics.distribution.MultinomialDistribution;
+import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 import gov.sandia.cognition.statistics.distribution.MultivariatePolyaDistribution;
 import gov.sandia.cognition.util.AbstractCloneableSerializable;
 
@@ -25,73 +33,127 @@ public class EdgeTransitionDistributions extends AbstractCloneableSerializable {
   
   private static final long serialVersionUID = -8329433263373783485L;
   
-  DirichletDistribution edgeTransProbPrior = new DirichletDistribution(
-      VectorFactory.getDefault().copyValues(1d, 0.5, 1d));
-  MultinomialDistribution edgeTransPrior = new MultinomialDistribution(3, 1);
-  MultinomialBayesianEstimator edgeTransEstimator = 
-      new MultinomialBayesianEstimator(edgeTransPrior, edgeTransProbPrior);
+  /*
+   * Distribution corresponding to free-movement -> free-movement and
+   * free-movement -> edge-movement
+   */
+  DirichletDistribution freeMotionTransProbPrior = new DirichletDistribution(
+      VectorFactory.getDefault().copyValues(1d, 0.5d));
+  MultinomialDistribution freeMotionTransPrior = new MultinomialDistribution(2, 1);
+  MultinomialBayesianEstimator freeMotionTransEstimator = 
+      new MultinomialBayesianEstimator(freeMotionTransPrior, freeMotionTransProbPrior);
+
+  /*
+   * Distribution corresponding to edge-movement -> free-movement and
+   * edge-movement -> edge-movement
+   */
+  DirichletDistribution edgeMotionTransProbPrior = new DirichletDistribution(
+      VectorFactory.getDefault().copyValues(1d, 0.5d));
+  MultinomialDistribution edgeMotionTransPrior = new MultinomialDistribution(2, 1);
+  MultinomialBayesianEstimator edgeMotionTransEstimator = 
+      new MultinomialBayesianEstimator(freeMotionTransPrior, freeMotionTransProbPrior);
   
-  private static final Vector state1 = VectorFactory.getDefault().copyValues(1d, 0d, 0d);
-  private static final Vector state2 = VectorFactory.getDefault().copyValues(0d, 1d, 0d);
-  private static final Vector state3 = VectorFactory.getDefault().copyValues(0d, 0d, 1d);
+  private final InferredGraph graph;
   
+  private static final Vector stateOffToOff = VectorFactory.getDefault().copyValues(1d, 0d);
+  private static final Vector stateOffToOn = VectorFactory.getDefault().copyValues(0d, 1d);
+  
+  private static final Vector stateOnToOn = VectorFactory.getDefault().copyValues(1d, 0d);
+  private static final Vector stateOnToOff = VectorFactory.getDefault().copyValues(0d, 1d);
+  
+  public EdgeTransitionDistributions(InferredGraph graph) {
+   this.graph = graph; 
+  }
+   
   public static Vector getTransitionType(InferredEdge from, InferredEdge to) {
     if (from == InferredGraph.getEmptyEdge()) {
       if (to == InferredGraph.getEmptyEdge()) {
-        return state1;
+        return stateOffToOff;
       } else {
-        return state2;
+        return stateOffToOn;
       }
     } else {
       if (to != InferredGraph.getEmptyEdge()) {
-        return state1;
+        return stateOnToOn;
       } else {
-        return state3;
+        return stateOnToOff;
       }
     }
   }
   
+  public InferredEdge sample(Random rng, List<InferredEdge> transferEdges, 
+    InferredEdge currentEdge, MultivariateGaussian groundBelief) {
+    
+    Preconditions.checkArgument(groundBelief.getInputDimensionality() == 4);
+    Preconditions.checkArgument(!transferEdges.contains(InferredGraph.getEmptyEdge()));
+    Preconditions.checkNotNull(currentEdge);
+    Preconditions.checkNotNull(transferEdges);
+    
+    
+    if (currentEdge == InferredGraph.getEmptyEdge()) {
+      /*
+       * We're currently in free-motion.
+       * If there are transfer edges, then sample from those.
+       */
+      if (transferEdges.isEmpty()) {
+        return InferredGraph.getEmptyEdge();
+      } else {
+        final Vector sample = this.freeMotionTransPrior.sample(rng); 
+        
+        if (sample.equals(stateOffToOn)) {
+          return transferEdges.get(rng.nextInt(transferEdges.size()));
+        } else {
+          return InferredGraph.getEmptyEdge();
+        }
+      }
+    } else {
+      /*
+       * We're on an edge, so sample whether we go off-road, or
+       * transfer/stay on.
+       */
+      final Vector sample = this.edgeMotionTransPrior.sample(rng); 
+      
+      if (sample.equals(stateOnToOff)) {
+        return InferredGraph.getEmptyEdge();
+      } else {
+        List<InferredEdge> support = Lists.newArrayList(transferEdges);
+        support.add(currentEdge);
+        return support.get(rng.nextInt(transferEdges.size()));
+      }
+      
+    }
+    
+  }
+  
   public void update(InferredEdge from, InferredEdge to) {
     Vector transType = getTransitionType(from, to);
-    edgeTransEstimator.update(edgeTransProbPrior, transType);
+    freeMotionTransEstimator.update(freeMotionTransProbPrior, transType);
   }
   
   public double predictiveLogLikelihood(InferredEdge from, InferredEdge to) {
     Vector state = getTransitionType(from, to);
-    MultivariatePolyaDistribution predDist = edgeTransEstimator.createPredictiveDistribution(edgeTransProbPrior);
+    MultivariatePolyaDistribution predDist = freeMotionTransEstimator.createPredictiveDistribution(freeMotionTransProbPrior);
     return predDist.getProbabilityFunction().logEvaluate(state);
   }
   
   public double evaluate(InferredEdge from, InferredEdge to) {
-    return edgeTransPrior.getProbabilityFunction().evaluate(getTransitionType(from, to));
+    return freeMotionTransPrior.getProbabilityFunction().evaluate(getTransitionType(from, to));
   }
   
   public double logEvaluate(InferredEdge from, InferredEdge to) {
-    return edgeTransPrior.getProbabilityFunction().logEvaluate(getTransitionType(from, to));
+    return freeMotionTransPrior.getProbabilityFunction().logEvaluate(getTransitionType(from, to));
   }
 
   public DirichletDistribution getEdgeTransProbPrior() {
-    return edgeTransProbPrior;
+    return freeMotionTransProbPrior;
   }
 
   public MultinomialDistribution getEdgeTransPrior() {
-    return edgeTransPrior;
+    return freeMotionTransPrior;
   }
 
   public MultinomialBayesianEstimator getEdgeTransEstimator() {
-    return edgeTransEstimator;
-  }
-
-  public static Vector getState1() {
-    return state1;
-  }
-
-  public static Vector getState2() {
-    return state2;
-  }
-
-  public static Vector getState3() {
-    return state3;
+    return freeMotionTransEstimator;
   }
 
   @Override
@@ -102,7 +164,23 @@ public class EdgeTransitionDistributions extends AbstractCloneableSerializable {
   @Override
   public String toString() {
     return "EdgeTransitionDistributions [edgeTransProbPrior="
-        + edgeTransProbPrior + ", edgeTransPrior=" + edgeTransPrior + "]";
+        + freeMotionTransProbPrior + ", edgeTransPrior=" + freeMotionTransPrior + "]";
+  }
+
+  public static Vector getStateOffToOff() {
+    return stateOffToOff;
+  }
+
+  public static Vector getStateOffToOn() {
+    return stateOffToOn;
+  }
+
+  public static Vector getStateOnToOn() {
+    return stateOnToOn;
+  }
+
+  public static Vector getStateOnToOff() {
+    return stateOnToOff;
   }
   
 }
