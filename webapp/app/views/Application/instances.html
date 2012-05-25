@@ -11,6 +11,11 @@
             #{form @Application.removeInferenceInstance(instance.vehicleId), method:'GET', id:'deleteForm'}
                 <input type="submit" value="Delete">
             #{/form}
+            
+            #{form @Application.map(), method:'GET', id:'mapForm'}
+                <input type="hidden" name="name" value="${instance.vehicleId}"/>
+                <input type="submit" value="Map"/>
+            #{/form}
         </li>
     #{/list}
 </ul>

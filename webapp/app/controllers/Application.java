@@ -25,10 +25,7 @@ public class Application extends Controller {
   static ActorRef locationActor = system.actorOf(new Props(InferenceService.class), "locationActor");
   static ActorRef csvActor = system.actorOf(new Props(CsvUploadActor.class), "csvActor");
   
-  public static void map() {
-	  render();
-  }
-  
+
   public static void map(String name) {
 	  render(name);
   }
