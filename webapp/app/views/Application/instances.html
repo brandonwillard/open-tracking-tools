@@ -8,7 +8,8 @@
         <li>
             vehicleId: ${instance.vehicleId}, recordsProcessed: ${instance.recordsProcessed}
             
-            #{form @Application.removeInferenceInstance(instance.vehicleId), method:'GET', id:'deleteForm'}
+            #{form @Application.removeInferenceInstance(), method:'GET', id:'deleteForm'}
+	            <input type="hidden" name="name" value="${instance.vehicleId}"/>	
                 <input type="submit" value="Delete">
             #{/form}
             
