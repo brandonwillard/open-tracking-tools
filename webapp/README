@@ -1,0 +1,20 @@
+Assumes that you have play 1.2x in your path and have run mvn package/install for both otp 0.8.0-snapshot and openplans-tracking-tools-0.0.1-snapshot.
+
+To setup run:
+
+play eclipsify
+
+Copy ivysettings.xml to ~/.ivy2/
+
+Load dependencies:
+
+play dependencies
+
+Import existing project into Eclipse. Add all jars in lib/ to the Java Build Path libraries.
+
+Update graph path in conf/application.conf:
+
+application.otpGraphPath=/tmp/graph/
+
+Graph must be built using the same version/commit of otp as is linked above.
+
