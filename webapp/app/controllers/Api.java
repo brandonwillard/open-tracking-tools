@@ -37,7 +37,7 @@ public class Api extends Controller {
   public static final SimpleDateFormat sdf = new SimpleDateFormat(
       "yyyy-MM-dd hh:mm:ss");
 
-  public static OtpGraph graph = new OtpGraph("/tmp/graph/");
+  public static OtpGraph graph = new OtpGraph(Play.configuration.getProperty("application.otpGraphPath"));
 
   public static ObjectMapper jsonMapper = new ObjectMapper();
 
