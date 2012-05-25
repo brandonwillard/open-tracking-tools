@@ -7,4 +7,10 @@ tmp
 dist
 lib
 .cache
+/tmp
+/modules
+/lib
+/test-result
+/logs
+/eclipse
 

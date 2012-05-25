@@ -59,7 +59,7 @@
     <!-- Play Framework Dependencies -->
     <dependency>
       <groupId>play</groupId>
-      <artifactId>play_2.9.1</artifactId>
+      <artifactId>play_1.2.4</artifactId>
       <version>2.0</version>
       <scope>provided</scope>
       <exclusions>
@@ -254,7 +254,7 @@
     </pluginManagement>
   </build>
   <properties>
-    <play2HomeDir>/opt/play-2.0</play2HomeDir>
+    <play2HomeDir>/opt/play-1.2.4</play2HomeDir>
     <geotools.version>8.0-M4</geotools.version>
     <otp.version>0.8.0-SNAPSHOT</otp.version>
   </properties>
