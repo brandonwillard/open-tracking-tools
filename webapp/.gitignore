@@ -1,10 +1,4 @@
-logs
-project/project
-project/target
-target
+eclipse
+.project
 tmp
-.history
-dist
 lib
-.cache
-

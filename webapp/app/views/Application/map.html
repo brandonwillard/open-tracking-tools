@@ -1,22 +1,20 @@
-@(name: String)
-
 <html>
 
 <head>
 <title>Debug Visualizer</title>
 
 <!-- leaflet -->
-<script src="@routes.Assets.at("javascripts/leaflet/dist/leaflet.js")"></script>
-<link rel="stylesheet" href="@routes.Assets.at("javascripts/leaflet/dist/leaflet.css")" />
+<script src="@{'/public/javascripts/leaflet.js'}"></script>
+<link rel="stylesheet" href="@{'/public/javascripts/leaflet.css'}" />
 
 <!-- jquery -->
-<link type="text/css" href="@routes.Assets.at("javascripts/jquery/ui-lightness/jquery-ui-1.8.18.custom.css")" rel="stylesheet" />	
-<script type="text/javascript" src="@routes.Assets.at("javascripts/jquery/jquery-1.7.1.min.js")"></script>
-<script type="text/javascript" src="@routes.Assets.at("javascripts/jquery/jquery-ui-1.8.18.custom.min.js")"></script>
+<link type="text/css" href="@{'/public/javascripts/jquery/ui-lightness/jquery-ui-1.8.18.custom.css'})" rel="stylesheet" />	
+<script type="text/javascript" src="@{'/public/javascripts/jquery/jquery-1.7.1.min.js'}"></script>
+<script type="text/javascript" src="@{'/public/javascripts/jquery/jquery-ui-1.8.18.custom.min.js'}"></script>
 
 
-<script src="@routes.Assets.at("javascripts/visualizer.js")"></script>
-<link rel="stylesheet" href="@routes.Assets.at("stylesheets/style.css")" />
+<script src="@{'/public/javascripts/visualizer.js'}"></script>
+<link rel="stylesheet" href="@{'/public/stylesheets/style.css'}" />
 
 </head>	
 
@@ -25,7 +23,7 @@
 <div id="top_bar">
 
 	<div id="loadData"> 
-    <input type="text" id="vehicle_id" value="@name" style="width: 400px; padding: 2px; border: 1px solid black"/>
+    <input type="text" id="vehicle_id" value="${name}" style="width: 400px; padding: 2px; border: 1px solid black"/>
 	  <span id="loadDataLink" class="jqlink" style="padding: 2px; border: 1px solid black">load data</span>
   </div>
 	<div id="controls">

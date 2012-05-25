@@ -20,13 +20,15 @@ import org.opentripplanner.routing.graph.Edge;
 
 import com.vividsolutions.jts.geom.Coordinate;
 
-import play.Logger;
-import play.data.*;
-import play.libs.Akka;
-import play.mvc.Controller;
-import play.mvc.Result;
-import play.mvc.WebSocket;
+import play.*;
+import play.mvc.*;
+
+import java.util.*;
+
+import models.*;
+
 import akka.actor.ActorRef;
+import akka.actor.ActorSystem;
 import akka.actor.Props;
 import api.OsmSegment;
 
@@ -35,20 +37,19 @@ public class Api extends Controller {
   public static final SimpleDateFormat sdf = new SimpleDateFormat(
       "yyyy-MM-dd hh:mm:ss");
 
-  public static OtpGraph graph = new OtpGraph();
+  public static OtpGraph graph = new OtpGraph("/tmp/graph/");
 
   public static ObjectMapper jsonMapper = new ObjectMapper();
 
   public static OtpGraph getGraph() {
     return graph;
   }
+  
+  
 
-  public static Result location(String vehicleId, String timestamp,
+  public static void location(String vehicleId, String timestamp,
     String latStr, String lonStr, String velocity, String heading,
     String accuracy) {
-
-    final ActorRef locationActor = Akka.system().actorOf(
-        new Props(InferenceService.class));
 
     try {
 
@@ -56,25 +57,26 @@ public class Api extends Controller {
           vehicleId, timestamp, latStr, lonStr, velocity, heading, accuracy);
 
       if (location != null) {
-        locationActor.tell(location);
+        Application.locationActor.tell(location);
       }
 
-      return ok();
+      ok();
     } catch (final Exception e) {
-      return badRequest(e.getMessage());
+      Logger.error(e.getMessage());
+      badRequest();
     }
   }
 
-  public static Result convertEuclidToCoords(String x, String y)
+  public static void convertEuclidToCoords(String x, String y)
       throws JsonGenerationException, JsonMappingException, IOException {
 
     Coordinate coords = GeoUtils.convertToLatLon(new Coordinate(Double.parseDouble(x), 
         Double.parseDouble(y)));
 
-    return ok(jsonMapper.writeValueAsString(coords)).as("text/json");
+    renderJSON(jsonMapper.writeValueAsString(coords));
   }
 
-  public static Result segment(Integer segmentId)
+  public static void segment(Integer segmentId)
       throws JsonGenerationException, JsonMappingException, IOException {
     final Edge e = graph.getGraph().getEdgeById(segmentId);
 
@@ -82,24 +84,11 @@ public class Api extends Controller {
 
       final OsmSegment osmSegment = new OsmSegment(segmentId, e.getGeometry());
 
-      return ok(jsonMapper.writeValueAsString(osmSegment)).as("text/json");
+      renderJSON(jsonMapper.writeValueAsString(osmSegment));
     } else
-      return badRequest();
+      badRequest();
   }
 
-  public static WebSocket<String> streamTraces() {
-    return new WebSocket<String>() {
-
-      @Override
-      public void onReady(WebSocket.In<String> in, WebSocket.Out<String> out) {
-
-        out.write("Hello!");
-        out.close();
-
-      }
-    };
-  }
-  
 
   /**
    * Process records from a trace. Note: flags are set that cause the records to
@@ -119,32 +108,20 @@ public class Api extends Controller {
    * @throws ParseException 
    * @throws NumberFormatException 
    */
-  public static void traceLocation(String csvFileName, String vehicleId,
-    String timestamp, String latStr, String lonStr, String velocity,
-    String heading, String accuracy) throws NumberFormatException, ParseException, 
-    TransformException, TimeOrderException {
+  
 
-    final Observation location = Observation.createObservation(
-        vehicleId, timestamp, latStr, lonStr, velocity, heading, accuracy);
-    
-    // TODO set flags for result record handling
-    InferenceService.processRecord(location);
-    
-
-  }
-
-  public static Result traces(String vehicleId) throws JsonGenerationException,
+  public static void traces(String vehicleId) throws JsonGenerationException,
       JsonMappingException, IOException {
 
-    return ok(
-        jsonMapper.writeValueAsString(InferenceService
-            .getTraceResults(vehicleId))).as("text/json");
+    renderJSON(jsonMapper.writeValueAsString(InferenceService.getTraceResults(vehicleId)));
   }
   
-  public static Result vertex() {
+  public static void vertex() {
     Logger.info("vertices: " + graph.getVertexCount());
 
-    return ok();
+    // TODO noop
+    
+    ok();
   }
 
 }

@@ -3,29 +3,13 @@
 # ~~~~
 
 # Home page
+GET     /                                       Application.instances
 
-GET     /                           controllers.Application.instances()
+# Ignore favicon requests
+GET     /favicon.ico                            404
 
-GET     /map                        controllers.Application.map(name: String)
+# Map static resources from the /app/public folder to the /public path
+GET     /public/                                staticDir:public
 
-POST    /upload                     controllers.Application.uploadHandler()
-
-GET     /instances     controllers.Application.getInferenceInstances()
-
-POST    /instances/:name/delete       controllers.Application.removeInferenceInstance(name: String)
-
-GET     /simulation                 controllers.Application.simulation()
-
-# API
-
-
-GET     /api/location               controllers.Api.location(vehicleId: String, timestamp: String, lat: String, lon: String, velocity: String, heading: String, accuracy: String)
-
-GET     /api/segment 				controllers.Api.segment(segmentId: java.lang.Integer)
-
-GET     /api/convertEuclidToCoords  controllers.Api.convertEuclidToCoords(x: String, y: String)
-
-GET     /api/traces 				controllers.Api.traces(vehicleId: String)
-
-# Map static resources from the /public folder to the /assets URL path
-GET     /assets/*file               controllers.Assets.at(path="/public", file)
+# Catch all
+*       /{controller}/{action}                  {controller}.{action}

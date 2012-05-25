@@ -48,7 +48,7 @@ public class OtpGraph {
 
   private final StreetMatcher streetMatcher;
 
-  public OtpGraph() {
+  public OtpGraph(String path) {
     log.info("Loading OTP graph...");
 
     gs = new GraphServiceImpl();
@@ -58,7 +58,7 @@ public class OtpGraph {
 
     gs.setResourceLoader(appContext);
 
-    gs.setPath("/home/bwillard/openplans/openplans-tracking-tools/webapp");
+    gs.setPath(path);
     gs.refreshGraphs();
 
     graph = gs.getGraph();

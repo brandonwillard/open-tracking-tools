@@ -18,7 +18,6 @@ import com.google.common.collect.Lists;
 import com.vividsolutions.jts.geom.Coordinate;
 
 import controllers.Api;
-import play.data.validation.Constraints.*;
 
 /**
  * This class holds inference data for a particular vehicle
@@ -28,7 +27,6 @@ import play.data.validation.Constraints.*;
  */
 public class InferenceInstance {
 
-  @Required
   final public String vehicleId;
   
   public int recordsProcessed = 0;
