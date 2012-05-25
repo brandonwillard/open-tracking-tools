@@ -5,7 +5,9 @@ import inference.InferenceService;
 
 import java.io.File;
 import java.io.FileReader;
+import java.text.ParseException;
 
+import org.opengis.referencing.operation.TransformException;
 import org.openplans.tools.tracking.impl.Observation;
 import org.openplans.tools.tracking.impl.TimeOrderException;
 
@@ -18,6 +20,20 @@ import controllers.Api;
 public class CsvUploadActor extends UntypedActor {
   LoggingAdapter log = Logging.getLogger(getContext().system(), this);
 
+  public static void traceLocation(String csvFileName, String vehicleId,
+		    String timestamp, String latStr, String lonStr, String velocity,
+		    String heading, String accuracy) throws NumberFormatException, ParseException, 
+		    TransformException, TimeOrderException {
+
+		    final Observation location = Observation.createObservation(
+		        vehicleId, timestamp, latStr, lonStr, velocity, heading, accuracy);
+		    
+		    // TODO set flags for result record handling
+		    InferenceService.processRecord(location);
+		    
+
+		  }
+  
   @Override
   public void onReceive(Object csvFile) throws Exception {
     if (csvFile instanceof File) {
@@ -37,7 +53,7 @@ public class CsvUploadActor extends UntypedActor {
       while ((line = gps_reader.readNext()) != null) {
 
         try {
-          Api.traceLocation(((File) csvFile).getName(), line[3], line[1],
+          traceLocation(((File) csvFile).getName(), line[3], line[1],
               line[5], line[7], line[10], null, null);
           log.info("processed time: " + line[1]); 
         } catch (final TimeOrderException ex) {

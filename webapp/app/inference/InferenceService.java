@@ -8,7 +8,7 @@ import models.InferenceInstance;
 
 import org.openplans.tools.tracking.impl.Observation;
 
-import play.mvc.Result;
+import play.Logger;
 
 import akka.actor.UntypedActor;
 import akka.event.Logging;
@@ -33,9 +33,6 @@ public class InferenceService extends UntypedActor {
 
   private static final Multimap<String, InferenceResultRecord> vehicleToTraceResults = LinkedHashMultimap
       .create();
-
-  private final LoggingAdapter log = Logging.getLogger(getContext().system(),
-      this);
 
   public static void clearInferenceData() {
     vehicleToInstance.clear();
@@ -63,7 +60,7 @@ public class InferenceService extends UntypedActor {
         final Observation observation = (Observation) location;
         processRecord(observation);
         
-        log.info("Message received:  "
+        Logger.info("Message received:  "
             + observation.getTimestamp().toString());
       }
     }

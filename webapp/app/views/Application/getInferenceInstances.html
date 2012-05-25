@@ -1,0 +1,33 @@
+<html>
+<body>
+<h1>${instances.size()} instance(s)</h1>
+<div id="instances" style="padding: 2px; border: 1px solid black" >
+<ul>
+   	
+   	#{list items:instances, as:'instance'}
+        <li>
+            vehicleId: ${instance.vehicleId}, recordsProcessed: ${instance.recordsProcessed}
+            
+            #{form @Application.removeInferenceInstance(instance.vehicleId), method:'GET', id:'deleteForm'}
+                <input type="submit" value="Delete">
+            #{/form}
+        </li>
+    #{/list}
+</ul>
+</div>
+<div id="upload" style="padding: 2px; border: 1px solid black">
+
+	 #{form @Application.uploadHandler(instance.vehicleId), method:'GET', id:'deleteForm', enctype:'multipart/form-data'}
+	                <input type="submit">
+	 #{/form}
+
+
+</div>
+<div id="simulate" style="padding: 2px; border: 1px solid black">
+	#{form @Application.Application.simulation(), method:'GET'}
+	   <input type="submit" value="Simulate">
+	#{/form}
+
+</div>
+</body>
+</html>

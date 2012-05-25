@@ -4,70 +4,66 @@ import inference.InferenceService;
 import inference.Simulation;
 
 import java.io.File;
+import java.io.FileOutputStream;
+import java.util.List;
+
+import org.apache.commons.io.IOUtils;
 
 import models.InferenceInstance;
 
 import akka.actor.ActorRef;
+import akka.actor.ActorSystem;
 import akka.actor.Props;
 import async.CsvUploadActor;
 
 import play.*;
-import play.data.*;
-import play.libs.Akka;
 import play.mvc.*;
-import play.mvc.Http.MultipartFormData;
-import play.mvc.Http.MultipartFormData.FilePart;
-
-import views.html.*;
 
 public class Application extends Controller {
+	
+  static ActorSystem system = ActorSystem.create("MySystem");
+  static ActorRef locationActor = system.actorOf(new Props(InferenceService.class), "locationActor");
+  static ActorRef csvActor = system.actorOf(new Props(CsvUploadActor.class), "csvActor");
   
-  public static Result map() {
-    return ok(map.render(null));
+
+  public static void map(String name) {
+	  render(name);
   }
   
-  public static Result map(String name) {
-    return ok(map.render(name));
+
+  public static void getInferenceInstances() {
+	  List<InferenceInstance> instances = InferenceService.getInferenceInstances();
+	  render(instances);
   }
   
-  static Form<InferenceInstance> inferenceInstanceForm = form(InferenceInstance.class);
-  
-  public static Result getInferenceInstances() {
-	  return ok(instances.render(InferenceService.getInferenceInstances(), inferenceInstanceForm));
-  }
-  
-  public static Result removeInferenceInstance(String name) {
+  public static void removeInferenceInstance(String name) {
     InferenceService.remove(name);
-	  return redirect(routes.Application.instances());     
+	instances();     
   }
   
-  public static Result simulation() {
+  public static void simulation() {
     Simulation sim = new Simulation();
     Logger.info("starting simulation " + sim.getSimulationName());
 
     InferenceService.addSimulationRecords(sim.getSimulationName(), sim.runSimulation());
     
-	  return redirect(routes.Application.instances());     
+	instances();     
   }
   
-  public static Result instances() {
-	  return ok(instances.render(InferenceService.getInferenceInstances(), inferenceInstanceForm));
+  public static void instances() {
+	  List<InferenceInstance> instances = InferenceService.getInferenceInstances();
+	  render(instances);
   }
   
-  public static Result uploadHandler() {
-	  MultipartFormData body = request().body().asMultipartFormData();
-	  FilePart csv = body.getFile("csv");
+  public static void uploadHandler(File csv) {
 	  
 	  if (csv != null) {
-	 
-	    File csvFile = csv.getFile();
-	    
-	    ActorRef csvActor = Akka.system().actorOf(new Props(CsvUploadActor.class));
-	    
-	    csvActor.tell(csvFile);
+		File dest = new File("/tmp/upload.csv");
+		csv.renameTo(dest);
+	    csvActor.tell(dest);
 	  }
 	 
-	  return redirect(routes.Application.instances());     
+	  instances();     
   }  
   
 

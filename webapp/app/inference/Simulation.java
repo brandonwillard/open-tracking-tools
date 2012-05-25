@@ -94,7 +94,7 @@ public class Simulation {
           startCoordinates, null, null, null);
       
       final SnappedEdges initialEdges = Api.getGraph().snapToGraph(null, initialObs.getObsCoords());
-      
+     
       /*
        * Choose a random edge to start on
        */
@@ -137,7 +137,7 @@ public class Simulation {
         results.add(InferenceResultRecord.createInferenceResultRecord(thisObs, 
             currentLocBelief, currentPath.getEdges()));
         
-        Logger.of("simulator").info("processed simulation observation :" + thisObs);
+        Logger.info("processed simulation observation :" + thisObs);
         vehicleState = new VehicleState(this.inferredGraph, thisObs, 
             vehicleState.getMovementFilter(), 
             currentLocBelief, currentEdgeTrans,

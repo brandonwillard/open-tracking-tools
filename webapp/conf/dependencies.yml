@@ -1,0 +1,21 @@
+# Application dependencies
+
+require:
+    - play
+    - org.openplans -> openplans-tracking-tools 0.0.1-SNAPSHOT 
+    - gov.sandia.foundry -> gov-sandia-cognition-common-core 3.3.2
+    - gov.sandia.foundry -> gov-sandia-cognition-learning-core 3.3.2
+    - net.sf.opencsv -> opencsv 2.0
+    - com.google.guava -> guava 11.0.1
+    - org.codehaus.jackson -> jackson-core-asl 1.9.5
+    - org.codehaus.jackson -> jackson-mapper-asl 1.9.5
+    - com.typesafe.akka -> akka-actor 2.0.1
+
+
+
+repositories:
+    - typesafe:
+        type: iBiblio
+        root: "http://repo.typesafe.com/typesafe/releases/"
+        contains:
+            - com.typesafe.akka -> *

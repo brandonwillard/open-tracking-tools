@@ -1,10 +1,7 @@
-logs
-project/project
-project/target
-target
+.settings
+eclipse
+.project
 tmp
-.history
-dist
 lib
 .cache
 /tmp
@@ -13,4 +10,3 @@ lib
 /test-result
 /logs
 /eclipse
-
