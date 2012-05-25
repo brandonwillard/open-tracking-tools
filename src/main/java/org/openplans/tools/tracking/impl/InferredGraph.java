@@ -192,7 +192,7 @@ public class InferredGraph {
   public InferredEdge getInferredEdge(Edge edge) {
 
     InferredEdge edgeInfo = edgeToInfo.get(edge);
-    final int edgeId = graph.getIdForEdge(edge);
+    final Integer edgeId = graph.getIdForEdge(edge);
 
     if (edgeInfo == null) {
       edgeInfo = new InferredEdge(edge, edgeId, this);
@@ -223,7 +223,7 @@ public class InferredGraph {
   public static class InferredEdge {
   
     private final LocationIndexedLine line;
-    private final int edgeId;
+    private final Integer edgeId;
   
     /*
      * Angle between this line and the Y-axis
@@ -246,7 +246,7 @@ public class InferredGraph {
   
   
     private InferredEdge() {
-      this.edgeId = -1;
+      this.edgeId = null;
       this.angle = null;
       this.line = null;
       this.endPoint = null;
@@ -260,7 +260,7 @@ public class InferredGraph {
       this.graph = null;
     }
   
-    private InferredEdge(Edge edge, int edgeId, InferredGraph graph) {
+    private InferredEdge(Edge edge, Integer edgeId, InferredGraph graph) {
       this.graph = graph;
       this.edgeId = edgeId;
       this.line = new LocationIndexedLine(edge.getGeometry());
@@ -297,7 +297,7 @@ public class InferredGraph {
       return angle;
     }
   
-    public int getEdgeId() {
+    public Integer getEdgeId() {
       return edgeId;
     }
   

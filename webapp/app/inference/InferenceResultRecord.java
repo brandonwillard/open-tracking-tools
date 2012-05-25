@@ -140,7 +140,9 @@ public class InferenceResultRecord {
          * FIXME TODO we should probably be using the edge convolutions at each step.
          */
         double mean = edge.getInferredEdge().getVelocityPrecisionDist().getLocation();
-        idScaleList.add(new Double[] {(double) edge.getInferredEdge().getEdgeId(), mean});
+        double edgeId = edge.getInferredEdge().getEdgeId() != null ? 
+           (double) edge.getInferredEdge().getEdgeId() : -1d;
+        idScaleList.add(new Double[] {edgeId, mean});
       }
 
       return new InferenceResultRecord(observation.getTimestamp().getTime(),

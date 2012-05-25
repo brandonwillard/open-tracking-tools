@@ -13,6 +13,7 @@ import org.opentripplanner.routing.core.RoutingRequest;
 import org.opentripplanner.routing.graph.Edge;
 import org.opentripplanner.routing.graph.Graph;
 import org.opentripplanner.routing.graph.Vertex;
+import org.opentripplanner.routing.graph.Graph.LoadLevel;
 import org.opentripplanner.routing.impl.GraphServiceImpl;
 import org.opentripplanner.routing.impl.StreetVertexIndexServiceImpl;
 import org.opentripplanner.routing.location.StreetLocation;
@@ -51,12 +52,13 @@ public class OtpGraph {
     log.info("Loading OTP graph...");
 
     gs = new GraphServiceImpl();
+    gs.setLoadLevel(LoadLevel.DEBUG);
 
     ApplicationContext appContext = new GenericApplicationContext();
 
     gs.setResourceLoader(appContext);
 
-    gs.setPath("/home/novalis/cebu/cebu-taxi/src/main/resources/org/openplans/cebutaxi/");
+    gs.setPath("/home/bwillard/openplans/openplans-tracking-tools/webapp");
     gs.refreshGraphs();
 
     graph = gs.getGraph();
@@ -104,7 +106,10 @@ public class OtpGraph {
     Preconditions.checkNotNull(toCoords);
 
     final RoutingRequest options = OtpGraph.defaultOptions;
-    final Vertex snappedVertex = indexService.getClosestVertex(toCoords, null,
+    /*
+     * XXX: indexService uses lon/lat
+     */
+    final Vertex snappedVertex = indexService.getClosestVertex(new Coordinate(toCoords.y, toCoords.x), null,
         options);
     final Builder<Edge> pathTraversed = ImmutableList.builder();
     final com.google.common.collect.ImmutableSet.Builder<Edge> snappedEdges = ImmutableSet
@@ -121,19 +126,19 @@ public class OtpGraph {
       edges.addAll(Objects.firstNonNull(
           snappedStreetLocation.getOutgoingStreetEdges(),
           ImmutableList.<Edge> of()));
-      edges.addAll(Objects.firstNonNull(snappedStreetLocation.getIncoming(),
-          ImmutableList.<Edge> of()));
+//      edges.addAll(Objects.firstNonNull(snappedStreetLocation.getIncoming(),
+//          ImmutableList.<Edge> of()));
 
-      for (final Edge edge : Objects.firstNonNull(
-          snappedStreetLocation.getOutgoingStreetEdges(),
-          ImmutableList.<Edge> of())) {
-        snappedEdges.add(edge);
-      }
+      snappedEdges.addAll(edges);
 
       if (fromCoords != null && !fromCoords.equals2D(toCoords)) {
+        /*
+         * XXX: also lon/lat
+         */
         final CoordinateSequence movementSeq = JTSFactoryFinder
             .getGeometryFactory().getCoordinateSequenceFactory()
-            .create(new Coordinate[] { fromCoords, toCoords });
+            .create(new Coordinate[] { new Coordinate(fromCoords.y, fromCoords.x), 
+                new Coordinate(toCoords.y, toCoords.x) });
         final Geometry movementGeometry = JTSFactoryFinder.getGeometryFactory()
             .createLineString(movementSeq);
 

@@ -5,6 +5,11 @@
   <prerequisites>
     <maven>>=3.0.3</maven>
   </prerequisites>
+<!--   <parent> -->
+<!--       <groupId>com.google.code.maven-play-plugin</groupId> -->
+<!--       <artifactId>play-app-default-parent</artifactId> -->
+<!--       <version>1.0.0-beta1</version> -->
+<!--   </parent>   -->
   <repositories>
     <repository>
       <id>typesafe</id>
@@ -28,6 +33,22 @@
       </snapshots>
       <url>http://repo.opengeo.org/</url>
     </repository>
+<!--     <repository> -->
+<!--       <id>com.google.code.maven-play-plugin</id> -->
+<!--       <name>Maven Play Plugin - releases</name> -->
+<!--       <url>http://maven-play-plugin.googlecode.com/svn/mavenrepo/releases</url> -->
+<!--       <snapshots> -->
+<!--           <enabled>false</enabled> -->
+<!--       </snapshots> -->
+<!--     </repository> -->
+<!--     <repository> -->
+<!--       <id>com.google.code.maven-play-plugin-snapshots</id> -->
+<!--       <name>Maven Play Plugin - snapshots</name> -->
+<!--       <url>http://maven-play-plugin.googlecode.com/svn/mavenrepo/snapshots</url> -->
+<!--       <releases> -->
+<!--           <enabled>false</enabled> -->
+<!--       </releases> -->
+<!--     </repository> -->
   </repositories>
 
   <dependencies>
@@ -62,7 +83,7 @@
           <groupId>org.slf4j</groupId>
         </exclusion>
       </exclusions>
-      <version>0.7.0</version>
+      <version>0.8.0-SNAPSHOT</version>
     </dependency>
     <dependency>
       <groupId>org.opentripplanner</groupId>
@@ -73,7 +94,7 @@
           <groupId>org.slf4j</groupId>
         </exclusion>
       </exclusions>
-      <version>0.7.0</version>
+      <version>0.8.0-SNAPSHOT</version>
     </dependency>
     <dependency>
       <groupId>com.googlecode.matrix-toolkits-java</groupId>
@@ -117,17 +138,33 @@
       <artifactId>play-plugins-guice</artifactId>
       <version>2.0.1</version>
     </dependency>
+    <dependency>
+      <groupId>org.openplans</groupId>
+      <artifactId>openplans-tracking-tools</artifactId>
+      <version>0.0.1-SNAPSHOT</version>
+      <exclusions>
+        <exclusion>
+          <artifactId>slf4j-log4j12</artifactId>
+          <groupId>org.slf4j</groupId>
+        </exclusion>
+      </exclusions>
+    </dependency>
   </dependencies>
 
   <artifactId>tracking-webapp</artifactId>
   <packaging>play2</packaging>
+<!--   <packaging>play</packaging> -->
   <build>
     <!-- Play source directory -->
     <sourceDirectory>app</sourceDirectory>
     <!-- <testSourceDirectory>test</testSourceDirectory> -->
 
     <plugins>
-
+<!--       <plugin> -->
+<!--           <groupId>com.google.code.maven-play-plugin</groupId> -->
+<!--           <artifactId>play-maven-plugin</artifactId> -->
+<!--           <extensions>true</extensions> -->
+<!--       </plugin> -->
       <plugin>
         <groupId>de.akquinet.innovation.play2</groupId>
         <artifactId>play2-maven-plugin</artifactId>
@@ -195,6 +232,20 @@
                     </execute > 
                   </action>
                 </pluginExecution>
+<!--                 <pluginExecution> -->
+<!--                   <pluginExecutionFilter> -->
+<!--                     <groupId>com.google.code.maven-play-plugin</groupId> -->
+<!--                     <artifactId>play-maven-plugin</artifactId> -->
+<!--                     <versionRange>[1.0.0-beta1,)</versionRange> -->
+<!--                     <goals> -->
+<!--                       <goal>generate-selenium-junit4-sources</goal> -->
+<!--                       <goal>initialize</goal> -->
+<!--                     </goals> -->
+<!--                   </pluginExecutionFilter> -->
+<!--                   <action> -->
+<!--                     <ignore></ignore> -->
+<!--                   </action> -->
+<!--                 </pluginExecution> -->
               </pluginExecutions>
             </lifecycleMappingMetadata>
           </configuration>
@@ -205,8 +256,17 @@
   <properties>
     <play2HomeDir>/opt/play-2.0</play2HomeDir>
     <geotools.version>8.0-M4</geotools.version>
-    <otp.version>0.6.0-SNAPSHOT</otp.version>
+    <otp.version>0.8.0-SNAPSHOT</otp.version>
   </properties>
   <groupId>openplans.org</groupId>
   <version>0.0.1-SNAPSHOT</version>
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>com.google.guava</groupId>
+        <artifactId>guava</artifactId>
+        <version>11.0.1</version>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
 </project>

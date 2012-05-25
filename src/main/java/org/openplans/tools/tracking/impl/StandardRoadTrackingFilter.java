@@ -40,8 +40,12 @@ public class StandardRoadTrackingFilter implements CloneableSerializable {
   private final KalmanFilter roadFilter;
 
   private final double gVariance;
-  private final double aVariance;
-  private final double a0Variance;
+  private final double dRoadVariance;
+  private final double vRoadVariance;
+  private final double dGroundVariance;
+  private final double vGroundVariance;
+  private final Matrix Qr;
+  private final Matrix Qg;
 
   /*
    * Observation matrix
@@ -62,8 +66,9 @@ public class StandardRoadTrackingFilter implements CloneableSerializable {
    * @param a0Variance
    * @param angle
    */
-  public StandardRoadTrackingFilter(double gVariance, double aVariance,
-    double a0Variance) {
+  public StandardRoadTrackingFilter(double gVariance, 
+    double dRoadVariance, double vRoadVariance,
+    double dGroundVariance, double vGroundVariance) {
 
     /*
      * Create the road-coordinates filter
@@ -74,8 +79,12 @@ public class StandardRoadTrackingFilter implements CloneableSerializable {
     roadModel.setB(MatrixFactory.getDefault().createIdentity(2, 2));
     roadModel.setC(Or);
     this.roadModel = roadModel;
+    
+    this.Qr = MatrixFactory.getDefault().createDiagonal(
+        VectorFactory.getDefault().copyArray(
+            new double[] { dRoadVariance, vRoadVariance }));
     this.roadFilter = new KalmanFilter(roadModel,
-        createStateCovarianceMatrix(1d, aVariance, a0Variance, true),
+        createStateCovarianceMatrix(1d, Qr, true),
         MatrixFactory.getDefault().createIdentity(2, 2).scale(gVariance));
     
     /*
@@ -91,13 +100,18 @@ public class StandardRoadTrackingFilter implements CloneableSerializable {
 
     this.groundModel = groundModel;
     
+    this.Qg = MatrixFactory.getDefault().createDiagonal(
+        VectorFactory.getDefault().copyArray(
+            new double[] { dGroundVariance, vGroundVariance }));
     this.groundFilter = new KalmanFilter(groundModel,
-        createStateCovarianceMatrix(1d, aVariance, aVariance, false),
+        createStateCovarianceMatrix(1d, Qg, false),
         MatrixFactory.getDefault().createIdentity(2, 2).scale(gVariance));
 
-    this.aVariance = aVariance;
     this.gVariance = gVariance;
-    this.a0Variance = a0Variance;
+    this.dGroundVariance = dGroundVariance;
+    this.vGroundVariance = vGroundVariance;
+    this.dRoadVariance = dRoadVariance;
+    this.vRoadVariance = vRoadVariance;
 
   }
 
@@ -167,8 +181,8 @@ public class StandardRoadTrackingFilter implements CloneableSerializable {
       
       final Matrix Q = Og.times(R).times(Og.transpose())
           .plus(groundFilter.getMeasurementCovariance());
-      // FIXME TODO use solve
-      final Matrix A = R.times(Og.transpose()).times(Q.inverse());
+      final Matrix A = Q.transpose().solve(Og.times(R.transpose())).transpose();
+          //R.times(Og.transpose()).times(Q.inverse());
       final Vector e = observation.minus(Og.times(a));
       
       final Matrix C = R.minus(A.times(Q.transpose()).times(A.transpose()));
@@ -320,9 +334,9 @@ public class StandardRoadTrackingFilter implements CloneableSerializable {
   public void setCurrentTimeDiff(double currentTimeDiff) {
     if (currentTimeDiff != prevTimeDiff) {
       groundFilter.setModelCovariance(createStateCovarianceMatrix(
-          currentTimeDiff, aVariance, aVariance, false));
+          currentTimeDiff, Qg, false));
       roadFilter.setModelCovariance(createStateCovarianceMatrix(
-          currentTimeDiff, aVariance, a0Variance, true));
+          currentTimeDiff, Qr, true));
  
       groundModel.setA(createStateTransitionMatrix(currentTimeDiff, false));
       roadModel.setA(createStateTransitionMatrix(currentTimeDiff, true));
@@ -341,6 +355,29 @@ public class StandardRoadTrackingFilter implements CloneableSerializable {
     return true;
   }
 
+  public Matrix getCovarianceFactor(boolean isRoad) {
+    return getCovarianceFactor(this.currentTimeDiff, isRoad);
+  }
+  
+  public static Matrix getCovarianceFactor(double timeDiff, boolean isRoad) {
+    
+    final int dim;
+    if (!isRoad) {
+      dim = 2;
+    } else {
+      dim = 1;
+    }
+    final Matrix A_half = MatrixFactory.getDefault().createMatrix(dim*2, 2);
+    A_half.setElement(0, 0, Math.pow(timeDiff, 2) / 2d);
+    A_half.setElement(1, 0, timeDiff);
+    if (dim == 2) {
+      A_half.setElement(2, 1, Math.pow(timeDiff, 2) / 2d);
+      A_half.setElement(3, 1, timeDiff);
+    }
+    
+    return A_half;
+  }
+  
   /**
    * Creates either a diagonal matrix with diag = xa0Variance, yaVariance,
    * or the aforementioned matrix rotated by the x-axis angle angle, with
@@ -352,30 +389,11 @@ public class StandardRoadTrackingFilter implements CloneableSerializable {
    * @return
    */
   private static Matrix createStateCovarianceMatrix(double timeDiff,
-    double yaVariance, double xa0Variance, boolean isRoad) {
-    final int dim;
-    final Matrix Q;
-    if (!isRoad) {
-      dim = 2;
-      Q = MatrixFactory.getDefault().createDiagonal(
-        VectorFactory.getDefault().copyArray(
-            new double[] { xa0Variance, yaVariance }));
-    } else {
-//      Q = getRotatedCovarianceMatrix(yaVariance, xa0Variance, angle);
-      Q = MatrixFactory.getDefault().createDiagonal(
-        VectorFactory.getDefault().copyArray(
-            new double[] { xa0Variance, yaVariance }));
-      dim = 1;
-    }
-    final Matrix A_half = MatrixFactory.getDefault().createMatrix(dim*2, 2);
-    A_half.setElement(0, 0, Math.pow(timeDiff, 2) / 2d);
-    A_half.setElement(1, 0, timeDiff);
-    if (dim == 2) {
-      A_half.setElement(2, 1, Math.pow(timeDiff, 2) / 2d);
-      A_half.setElement(3, 1, timeDiff);
-    }
+    Matrix Q, boolean isRoad) {
     
+    final Matrix A_half = getCovarianceFactor(timeDiff, isRoad);
     final Matrix A = A_half.times(Q).times(A_half.transpose());
+    
     return A;
   }
 
@@ -496,14 +514,6 @@ public class StandardRoadTrackingFilter implements CloneableSerializable {
     return roadFilter;
   }
 
-  public double getaVariance() {
-    return aVariance;
-  }
-
-  public double getA0Variance() {
-    return a0Variance;
-  }
-
   public static Matrix getOg() {
     return Og;
   }
@@ -535,6 +545,30 @@ public class StandardRoadTrackingFilter implements CloneableSerializable {
     
     MultivariateGaussian res = new MultivariateGaussian(Og.times(projBelief.getMean()), Q);
     return res;
+  }
+
+  public double getdRoadVariance() {
+    return dRoadVariance;
+  }
+
+  public double getVRoadVariance() {
+    return vRoadVariance;
+  }
+
+  public double getDGroundVariance() {
+    return dGroundVariance;
+  }
+
+  public double getVGroundVariance() {
+    return vGroundVariance;
+  }
+
+  public Matrix getQr() {
+    return Qr;
+  }
+
+  public Matrix getQg() {
+    return Qg;
   }
 }
 

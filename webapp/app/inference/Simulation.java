@@ -1,6 +1,8 @@
 package inference;
 
+import gov.sandia.cognition.math.matrix.Matrix;
 import gov.sandia.cognition.math.matrix.Vector;
+import gov.sandia.cognition.math.matrix.VectorFactory;
 import gov.sandia.cognition.statistics.DataDistribution;
 import gov.sandia.cognition.statistics.distribution.DefaultDataDistribution;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
@@ -69,6 +71,21 @@ public class Simulation {
     this.simulationName = "sim-" + this.startTime.getTime(); 
   }
 
+  /**
+   * Use this sampling method to beat the inherent degeneracy of our 
+   * state covariance.
+   * @param vehicleState
+   * @return
+   */
+  public Vector sampleBelief(VehicleState vehicleState) {
+    final boolean isRoad = vehicleState.getBelief().getInputDimensionality() == 2;
+    final Matrix Q = isRoad ? vehicleState.getMovementFilter().getQr()
+        : vehicleState.getMovementFilter().getQg();
+    Vector thisStateSample = MultivariateGaussian.sample(VectorFactory.getDefault().createVector(2), Q, rng);
+    final Matrix Gamma = vehicleState.getMovementFilter().getCovarianceFactor(isRoad);
+    return Gamma.times(thisStateSample).plus(vehicleState.getBelief().getMean());
+  }
+  
   public List<InferenceResultRecord> runSimulation() {
     
     Observation initialObs;
@@ -92,11 +109,11 @@ public class Simulation {
       PathEdge currentPathEdge = Iterables.getOnlyElement(currentPath.getEdges());
       
       VehicleState vehicleState = new VehicleState(this.inferredGraph, initialObs, currentInferredEdge);
-      Vector thisStateSample = vehicleState.getBelief().sample(rng).clone();
+      Vector thisStateSample = sampleBelief(vehicleState);
       vehicleState.getBelief().setMean(thisStateSample);
       
       for (long time = startTime.getTime(); time < endTime.getTime(); time += frequency*1000) {
-        vehicleState.getMovementFilter().setCurrentTimeDiff(frequency);
+//        vehicleState.getMovementFilter().setCurrentTimeDiff(frequency);
         
         final MultivariateGaussian currentLocBelief = vehicleState.getBelief();
         final EdgeTransitionDistributions currentEdgeTrans = vehicleState.getEdgeTransitionDist();

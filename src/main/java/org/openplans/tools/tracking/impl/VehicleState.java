@@ -97,12 +97,12 @@ public class VehicleState implements ComputableDistribution<VehicleStateConditio
   }
 
   private static final long serialVersionUID = 3229140254421801273L;
-  private static final double gVariance = 50d*50d/4d; // meters
+  private static final double gVariance = 50d*50d; // meters
 
-  private static final double a0Variance = 0.5d; // m/s^2
+  private static final double dVariance = Math.pow(1.0, 2); // m/s^2
   // TODO FIXME pretty sure this constant is being used in multiple places
   // for different things...
-  private static final double aVariance = 1.50d; // m/s^2
+  private static final double vVariance = Math.pow(1.0, 2); // m/s^2
   
   /*
    * These members represent the state/parameter samples/sufficient statistics.
@@ -136,7 +136,7 @@ public class VehicleState implements ComputableDistribution<VehicleStateConditio
     Preconditions.checkNotNull(inferredEdge);
     
     this.movementFilter = new StandardRoadTrackingFilter(
-        gVariance, aVariance, a0Variance);
+        gVariance, dVariance, vVariance, dVariance, vVariance);
     this.movementFilter.setCurrentTimeDiff(30);
     
     if (inferredEdge == InferredGraph.getEmptyEdge()) {
@@ -245,10 +245,6 @@ public class VehicleState implements ComputableDistribution<VehicleStateConditio
     throw new NotImplementedError();
   }
 
-  public static double getAvariance() {
-    return aVariance;
-  }
-
   public static double getGvariance() {
     return gVariance;
   }
@@ -259,10 +255,6 @@ public class VehicleState implements ComputableDistribution<VehicleStateConditio
 
   public Observation getObservation() {
     return observation;
-  }
-
-  public static double getA0variance() {
-    return a0Variance;
   }
 
   public StandardRoadTrackingFilter getMovementFilter() {

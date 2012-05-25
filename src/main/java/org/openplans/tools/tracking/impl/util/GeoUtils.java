@@ -56,15 +56,15 @@ public class GeoUtils {
     }
 
   };
-
-  public static Coordinate convertToEuclidean(Coordinate lonlat) {
+  
+  public static Coordinate convertToEuclidean(Coordinate latlon) {
     final Coordinate converted = new Coordinate();
 
     try {
       /*
        * CRS is lon-lat order
        */
-      JTS.transform(lonlat, converted,
+      JTS.transform(new Coordinate(latlon.y, latlon.x), converted,
           getCRSTransform());
     } catch (final NoninvertibleTransformException e) {
       e.printStackTrace();
