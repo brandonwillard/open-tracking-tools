@@ -139,8 +139,8 @@ public class VehicleState implements ComputableDistribution<VehicleStateConditio
         gVariance, dVariance, vVariance, dVariance, vVariance);
     final double timeDiff;
     if (initialObservation.getPreviousObservation() != null) {
-      timeDiff = initialObservation.getTimestamp().getTime() 
-          - initialObservation.getPreviousObservation().getTimestamp().getTime();
+      timeDiff = (initialObservation.getTimestamp().getTime() 
+          - initialObservation.getPreviousObservation().getTimestamp().getTime())/1000d;
     } else {
       timeDiff = 30d;
     }
@@ -205,8 +205,8 @@ public class VehicleState implements ComputableDistribution<VehicleStateConditio
     this.path = path;
     final double timeDiff;
     if (observation.getPreviousObservation() != null) {
-      timeDiff = observation.getTimestamp().getTime() 
-          - observation.getPreviousObservation().getTimestamp().getTime();
+      timeDiff = (observation.getTimestamp().getTime() 
+          - observation.getPreviousObservation().getTimestamp().getTime())/1000d;
     } else {
       timeDiff = 30d;
     }

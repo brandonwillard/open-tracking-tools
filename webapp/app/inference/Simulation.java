@@ -140,6 +140,13 @@ public class Simulation {
         currentPath = traverseEdge(vehicleState.getEdgeTransitionDist(), 
             currentLocBelief, currentPathEdge, vehicleState.getMovementFilter());
         
+        /*
+         * Now that we've propagated the belief, sample it again, so that we
+         * include some transition noise.
+         */
+        Vector transStateSample = sampleBelief(vehicleState);
+        vehicleState.getBelief().setMean(transStateSample);
+        
         currentPathEdge = Iterables.getLast(currentPath.getEdges());
         
         /*
