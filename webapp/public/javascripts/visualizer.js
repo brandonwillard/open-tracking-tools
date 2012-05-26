@@ -13,7 +13,7 @@
  */
 
 var dataUrl = "/api/traces?vehicleId=";
-
+var coordUrl = "/api/convertEuclidToCoords?";
 var startLatLng = new L.LatLng(10.3181373, 123.8956844); // Portland OR
 
 var map;
@@ -69,23 +69,6 @@ $(document)
         });
 
 function addCoordinates() {
-
-//  $('#popupDialog').dialog(
-//      {
-//        modal : true,
-//        autoOpen : false,
-//        buttons : {
-//          'Cancel' : function() {
-//            $(this).dialog('close');
-//          },
-//          'Accept' : function() {
-//            $('#mainForm input#target').val(
-//                $(this).find('#widgetName').val());
-//            $(this).dialog('close');
-//          }
-//        }
-//      });
-//  $('#popupDialog').dialog('open');
   
   var coordString = jQuery('#coordinate_data').val();
   var coordSplit = coordString.split(",", 2);
@@ -93,9 +76,8 @@ function addCoordinates() {
   if (coordSplit.length == 2) {
     var coordGetString = "x=" + coordSplit[0] + "&y=" + coordSplit[1];
   
-    jQuery.ajax({
-      url: "api/convertEuclidToCoords?" + coordGetString,
-      success: function(data) { 
+    $.get(coordUrl + coordGetString,
+      function(data) { 
         
         lat = data['x'];
         lon = data['y'];
@@ -109,7 +91,6 @@ function addCoordinates() {
         group.addLayer(new_marker);
         new_marker.bindPopup("test");
         map.panTo(latlng);
-      }
     });
   
     map.invalidateSize();

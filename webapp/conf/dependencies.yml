@@ -2,6 +2,7 @@
 
 require:
     - play
+    - play -> ivy 1.0.1
     - org.openplans -> openplans-tracking-tools 0.0.1-SNAPSHOT 
     - gov.sandia.foundry -> gov-sandia-cognition-common-core 3.3.2
     - gov.sandia.foundry -> gov-sandia-cognition-learning-core 3.3.2

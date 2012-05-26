@@ -3,6 +3,9 @@ package inference;
 import gov.sandia.cognition.math.matrix.Matrix;
 import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.math.matrix.VectorFactory;
+import gov.sandia.cognition.math.matrix.mtj.DenseMatrix;
+import gov.sandia.cognition.math.matrix.mtj.DenseMatrixFactoryMTJ;
+import gov.sandia.cognition.math.matrix.mtj.decomposition.CholeskyDecompositionMTJ;
 import gov.sandia.cognition.statistics.DataDistribution;
 import gov.sandia.cognition.statistics.distribution.DefaultDataDistribution;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
@@ -81,9 +84,22 @@ public class Simulation {
     final boolean isRoad = vehicleState.getBelief().getInputDimensionality() == 2;
     final Matrix Q = isRoad ? vehicleState.getMovementFilter().getQr()
         : vehicleState.getMovementFilter().getQg();
-    Vector thisStateSample = MultivariateGaussian.sample(VectorFactory.getDefault().createVector(2), Q, rng);
+    
+    Matrix covSqrt = CholeskyDecompositionMTJ.create(
+        DenseMatrixFactoryMTJ.INSTANCE.copyMatrix( Q ) ).getR();
+    Vector thisStateSample = MultivariateGaussian.sample(VectorFactory.getDefault().createVector(2), 
+        covSqrt, rng);
     final Matrix Gamma = vehicleState.getMovementFilter().getCovarianceFactor(isRoad);
     return Gamma.times(thisStateSample).plus(vehicleState.getBelief().getMean());
+  }
+  
+  public Vector sampleObservation(VehicleState vehicleState) {
+    final Vector gMean = StandardRoadTrackingFilter.getOg().times(vehicleState.getGroundOnlyBelief().getMean());
+    final Matrix gCov = vehicleState.getMovementFilter().getGroundFilter().getMeasurementCovariance();
+    Matrix covSqrt = CholeskyDecompositionMTJ.create(
+        DenseMatrixFactoryMTJ.INSTANCE.copyMatrix( gCov ) ).getR();
+    Vector thisStateSample = MultivariateGaussian.sample(gMean, covSqrt, rng);
+    return thisStateSample;
   }
   
   public List<InferenceResultRecord> runSimulation() {
@@ -113,7 +129,7 @@ public class Simulation {
       vehicleState.getBelief().setMean(thisStateSample);
       
       for (long time = startTime.getTime(); time < endTime.getTime(); time += frequency*1000) {
-//        vehicleState.getMovementFilter().setCurrentTimeDiff(frequency);
+        vehicleState.getMovementFilter().setCurrentTimeDiff(frequency);
         
         final MultivariateGaussian currentLocBelief = vehicleState.getBelief();
         final EdgeTransitionDistributions currentEdgeTrans = vehicleState.getEdgeTransitionDist();
@@ -129,8 +145,7 @@ public class Simulation {
         /*
          * Sample from the state and observation noise
          */
-        Vector thisLoc = vehicleState.getMovementFilter()
-            .getObservationBelief(currentLocBelief, currentPathEdge).sample(rng);
+        Vector thisLoc = sampleObservation(vehicleState);
         Coordinate obsCoord = GeoUtils.convertToLatLon(thisLoc);
         final Observation thisObs = Observation.createObservation("sim", new Date(time), 
           obsCoord, null, null, null);
@@ -161,7 +176,7 @@ public class Simulation {
    * @return
    */
   private InferredPath traverseEdge(EdgeTransitionDistributions edgeTransDist, 
-    MultivariateGaussian belief, PathEdge startEdge, 
+    final MultivariateGaussian belief, PathEdge startEdge, 
     StandardRoadTrackingFilter movementFilter) {
     
     /*

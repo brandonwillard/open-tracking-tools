@@ -236,7 +236,7 @@ public class Observation {
   public String toString() {
     return "Observation [vehicleId=" + vehicleId + ", timestamp=" + timestamp
         + ", obsCoords=" + obsCoords + ", obsPoint=" + obsPoint
-        + ", projPoint=" + projPoint + ", velocity=" + velocity + ", heading="
+        + ", velocity=" + velocity + ", heading="
         + heading + ", accuracy=" + accuracy + ", prevObs=" + prevObs + "]";
   }
 

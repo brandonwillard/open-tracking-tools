@@ -164,7 +164,8 @@ public class EdgeTransitionDistributions extends AbstractCloneableSerializable {
   @Override
   public String toString() {
     return "EdgeTransitionDistributions [edgeTransProbPrior="
-        + freeMotionTransProbPrior + ", edgeTransPrior=" + freeMotionTransPrior + "]";
+        + freeMotionTransProbPrior.getParameters() 
+        + ", edgeTransPrior=" + freeMotionTransPrior.getParameters() + "]";
   }
 
   public static Vector getStateOffToOff() {

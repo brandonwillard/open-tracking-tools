@@ -534,7 +534,7 @@ public class StandardRoadTrackingFilter implements CloneableSerializable {
     return zeros2D;
   }
 
-  public MultivariateGaussian getObservationBelief(MultivariateGaussian belief, PathEdge edge) {
+  public MultivariateGaussian getObservationBelief(final MultivariateGaussian belief, PathEdge edge) {
     MultivariateGaussian projBelief = belief.clone();
     if (projBelief.getInputDimensionality() == 2) {
       invertProjection(projBelief, edge);
@@ -569,6 +569,16 @@ public class StandardRoadTrackingFilter implements CloneableSerializable {
 
   public Matrix getQg() {
     return Qg;
+  }
+
+  @Override
+  public String toString() {
+    return "StandardRoadTrackingFilter [groundModel=" + groundModel
+        + ", groundFilter=" + groundFilter + ", roadModel=" + roadModel
+        + ", roadFilter=" + roadFilter + ", dRoadVariance=" + dRoadVariance
+        + ", vRoadVariance=" + vRoadVariance + ", dGroundVariance="
+        + dGroundVariance + ", vGroundVariance=" + vGroundVariance
+        + ", currentTimeDiff=" + currentTimeDiff + "]";
   }
 }
 

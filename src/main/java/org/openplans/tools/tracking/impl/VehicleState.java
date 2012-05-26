@@ -97,12 +97,12 @@ public class VehicleState implements ComputableDistribution<VehicleStateConditio
   }
 
   private static final long serialVersionUID = 3229140254421801273L;
-  private static final double gVariance = 50d*50d; // meters
+  private static final double gVariance = 50d*50d/4d; // meters
 
-  private static final double dVariance = Math.pow(1.0, 2); // m/s^2
+  private static final double dVariance = Math.pow(0.05, 2)/4d; // m/s^2
   // TODO FIXME pretty sure this constant is being used in multiple places
   // for different things...
-  private static final double vVariance = Math.pow(1.0, 2); // m/s^2
+  private static final double vVariance = Math.pow(0.05, 2)/4d; // m/s^2
   
   /*
    * These members represent the state/parameter samples/sufficient statistics.
@@ -137,7 +137,14 @@ public class VehicleState implements ComputableDistribution<VehicleStateConditio
     
     this.movementFilter = new StandardRoadTrackingFilter(
         gVariance, dVariance, vVariance, dVariance, vVariance);
-    this.movementFilter.setCurrentTimeDiff(30);
+    final double timeDiff;
+    if (initialObservation.getPreviousObservation() != null) {
+      timeDiff = initialObservation.getTimestamp().getTime() 
+          - initialObservation.getPreviousObservation().getTimestamp().getTime();
+    } else {
+      timeDiff = 30d;
+    }
+    this.movementFilter.setCurrentTimeDiff(timeDiff);
     
     if (inferredEdge == InferredGraph.getEmptyEdge()) {
       this.belief = movementFilter.getGroundFilter().createInitialLearnedObject();
@@ -196,6 +203,16 @@ public class VehicleState implements ComputableDistribution<VehicleStateConditio
     this.edge = edge.getInferredEdge();
     this.parentState = state;
     this.path = path;
+    final double timeDiff;
+    if (observation.getPreviousObservation() != null) {
+      timeDiff = observation.getTimestamp().getTime() 
+          - observation.getPreviousObservation().getTimestamp().getTime();
+    } else {
+      timeDiff = 30d;
+    }
+    this.movementFilter.setCurrentTimeDiff(timeDiff);
+    
+    
   }
 
   @Override
