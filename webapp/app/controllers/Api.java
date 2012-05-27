@@ -82,7 +82,7 @@ public class Api extends Controller {
 
     if (e != null) {
 
-      final OsmSegment osmSegment = new OsmSegment(segmentId, e.getGeometry());
+      final OsmSegment osmSegment = new OsmSegment(segmentId, e.getGeometry(), e.toString());
 
       renderJSON(jsonMapper.writeValueAsString(osmSegment));
     } else

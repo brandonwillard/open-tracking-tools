@@ -38,7 +38,7 @@ public class EdgeTransitionDistributions extends AbstractCloneableSerializable {
    * free-movement -> edge-movement
    */
   DirichletDistribution freeMotionTransProbPrior = new DirichletDistribution(
-      VectorFactory.getDefault().copyValues(1d, 0.5d));
+      VectorFactory.getDefault().copyValues(0.05d, 1d));
   MultinomialDistribution freeMotionTransPrior = new MultinomialDistribution(2, 1);
   MultinomialBayesianEstimator freeMotionTransEstimator = 
       new MultinomialBayesianEstimator(freeMotionTransPrior, freeMotionTransProbPrior);
@@ -48,7 +48,7 @@ public class EdgeTransitionDistributions extends AbstractCloneableSerializable {
    * edge-movement -> edge-movement
    */
   DirichletDistribution edgeMotionTransProbPrior = new DirichletDistribution(
-      VectorFactory.getDefault().copyValues(1d, 0.5d));
+      VectorFactory.getDefault().copyValues(1d, 0.05d));
   MultinomialDistribution edgeMotionTransPrior = new MultinomialDistribution(2, 1);
   MultinomialBayesianEstimator edgeMotionTransEstimator = 
       new MultinomialBayesianEstimator(freeMotionTransPrior, freeMotionTransProbPrior);
@@ -164,13 +164,6 @@ public class EdgeTransitionDistributions extends AbstractCloneableSerializable {
     return (EdgeTransitionDistributions) super.clone();
   }
 
-  @Override
-  public String toString() {
-    return "EdgeTransitionDistributions [edgeTransProbPrior="
-        + freeMotionTransProbPrior.getParameters() 
-        + ", edgeTransPrior=" + freeMotionTransPrior.getParameters() + "]";
-  }
-
   public static Vector getStateOffToOff() {
     return stateOffToOff;
   }
@@ -185,6 +178,13 @@ public class EdgeTransitionDistributions extends AbstractCloneableSerializable {
 
   public static Vector getStateOnToOff() {
     return stateOnToOff;
+  }
+
+  @Override
+  public String toString() {
+    return "EdgeTransitionDistributions [freeMotionTransPrior="
+        + freeMotionTransPrior.getParameters() + ", edgeMotionTransPrior="
+        + edgeMotionTransPrior.getParameters() + "]";
   }
   
 }

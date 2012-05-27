@@ -83,7 +83,7 @@ public class Simulation {
    * @param vehicleState
    * @return
    */
-  public Vector sampleBelief(VehicleState vehicleState) {
+  public Vector sampleMovementBelief(VehicleState vehicleState) {
     final boolean isRoad = vehicleState.getBelief().getInputDimensionality() == 2;
     final Matrix Q = isRoad ? vehicleState.getMovementFilter().getQr()
         : vehicleState.getMovementFilter().getQg();
@@ -131,15 +131,8 @@ public class Simulation {
         return;
       }
       
-      final SnappedEdges initialEdges = Api.getGraph().snapToGraph(null, initialObs.getObsCoords());
-     
-      /*
-       * Choose a random edge to start on
-       */
+      inferredGraph.getNearbyEdges(initialObs.getProjectedPoint());
       List<InferredEdge> edges = Lists.newArrayList(InferredGraph.getEmptyEdge());
-      for (Edge edge : initialEdges.getSnappedEdges()) {
-        edges.add(inferredGraph.getInferredEdge(edge));
-      }
       final InferredEdge currentInferredEdge = edges.get(rng.nextInt(edges.size()));
       
           
@@ -149,7 +142,7 @@ public class Simulation {
       PathEdge currentPathEdge = Iterables.getOnlyElement(currentPath.getEdges());
       
       VehicleState vehicleState = new VehicleState(this.inferredGraph, initialObs, currentInferredEdge);
-      Vector thisStateSample = sampleBelief(vehicleState);
+      Vector thisStateSample = sampleMovementBelief(vehicleState);
       vehicleState.getBelief().setMean(thisStateSample);
       
       for (long time = startTime.getTime() + frequency*1000; 
@@ -169,7 +162,7 @@ public class Simulation {
          * Now that we've propagated the belief, sample it again, so that we
          * include some transition noise.
          */
-        Vector transStateSample = sampleBelief(vehicleState);
+        Vector transStateSample = sampleMovementBelief(vehicleState);
         vehicleState.getBelief().setMean(transStateSample);
         
         currentPathEdge = Iterables.getLast(currentPath.getEdges());
@@ -232,7 +225,8 @@ public class Simulation {
       
       List<InferredEdge> transferEdges = Lists.newArrayList();
       if (currentEdge.getInferredEdge() == InferredGraph.getEmptyEdge()) {
-        transferEdges.addAll(this.inferredGraph.getNearbyEdges(belief.getMean()));
+        Vector projLocation = StandardRoadTrackingFilter.getOg().times(belief.getMean());
+        transferEdges.addAll(this.inferredGraph.getNearbyEdges(projLocation));
       } else {
         if (belief.getMean().getElement(0) < 0d) {
           transferEdges.addAll(currentEdge.getInferredEdge().getIncomingTransferableEdges());
@@ -242,7 +236,6 @@ public class Simulation {
           transferEdges.addAll(currentEdge.getInferredEdge().getIncomingTransferableEdges());
           transferEdges.addAll(currentEdge.getInferredEdge().getOutgoingTransferableEdges());
         }
-        transferEdges.add(currentEdge.getInferredEdge());
       }
       
       InferredEdge sampledEdge = edgeTransDist.sample(rng, transferEdges, 
@@ -298,7 +291,7 @@ public class Simulation {
       /*
        * Continue along edges
        */
-      distTraveled += direction * currentEdge.getInferredEdge().getLength();
+      distTraveled += direction * sampledPathEdge.getInferredEdge().getLength();
       currentEdge = sampledPathEdge;
       currentPath.add(sampledPathEdge);
     

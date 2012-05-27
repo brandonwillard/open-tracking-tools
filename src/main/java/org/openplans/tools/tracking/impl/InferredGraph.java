@@ -181,10 +181,15 @@ public class InferredGraph {
     return paths;
   }
   
+  /**
+   * Get nearby street edges from a projected point.
+   * @param mean
+   * @return
+   */
   public Set<InferredEdge> getNearbyEdges(Vector mean) {
     Set<InferredEdge> results = Sets.newHashSet();
-    SnappedEdges snappedEdges = this.narratedGraph.snapToGraph(null,
-        new Coordinate(mean.getElement(0), mean.getElement(1)));
+    Coordinate latlon = GeoUtils.convertToLatLon(mean);
+    SnappedEdges snappedEdges = this.narratedGraph.snapToGraph(null, latlon);
     for (Edge edge : snappedEdges.getSnappedEdges()) {
       results.add(getInferredEdge(edge));
     }
@@ -370,7 +375,7 @@ public class InferredGraph {
      */
     public List<InferredEdge> getOutgoingTransferableEdges() {
       List<InferredEdge> result = Lists.newArrayList();
-      for (Edge edge : this.startVertex.getOutgoing()) {
+      for (Edge edge : this.endVertex.getOutgoing()) {
         
         Set<Edge> tmpResults = Sets.newHashSet();
         if (edge.getGeometry() == null) {
@@ -419,12 +424,6 @@ public class InferredGraph {
       return endVertex;
     }
 
-    @Override
-    public String toString() {
-      return "InferredEdge [endPoint=" + endPoint + ", startPoint="
-          + startPoint + "]";
-    }
-
     public Coordinate getCenterPointCoord() {
       return this.geometry.getCentroid().getCoordinate();
     }
@@ -461,6 +460,12 @@ public class InferredGraph {
         return false;
       }
       return true;
+    }
+
+    @Override
+    public String toString() {
+      return "InferredEdge [edgeId=" + edgeId + ", endPoint=" + endPoint
+          + ", startPoint=" + startPoint + ", length=" + length + "]";
     }
 
   

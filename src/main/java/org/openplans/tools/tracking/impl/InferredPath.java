@@ -19,6 +19,13 @@ public class InferredPath {
   
   public InferredPath(ImmutableList<PathEdge> edges, double totalPathDistance) {
     Preconditions.checkArgument(edges.size() > 1);
+    // TODO remove/revise these checks
+    PathEdge prevEdge = null;
+    for (PathEdge edge : edges) {
+      if (prevEdge != null)
+        Preconditions.checkArgument(!edge.equals(prevEdge));
+      prevEdge = edge;
+    }
     this.edges = edges;
     this.totalPathDistance = totalPathDistance;
   }

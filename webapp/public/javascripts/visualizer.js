@@ -62,12 +62,20 @@ $(document)
           $("#playData").click(playData);
 
           $("#addCoordinates").click(addCoordinates);
+          $("#addEdge").click(addEdge);
 
           map.addLayer(group);
           map.addLayer(overlay);
 
         });
 
+function addEdge() {
+  
+  var id = jQuery('#edge_id').val();
+  drawEdge(id);
+  map.invalidateSize();
+}
+  
 function addCoordinates() {
   
   var coordString = jQuery('#coordinate_data').val();
@@ -137,7 +145,7 @@ function playData() {
   $("#play").hide();
   $("#pause").show();
 
-  interval = setInterval(moveMarker, 5*50);
+  interval = setInterval(moveMarker, 1.5*1000);
 }
 
 function pauseData() {
@@ -253,6 +261,39 @@ function renderMarker() {
     clearInterval(interval);
     return true;
   }
+}
+
+function drawEdge(id) {
+  $.get('/api/segment', {
+    segmentId : id
+  }, function(data) {
+
+    var color = "red";
+    var geojson = new L.GeoJSON();
+
+    geojson.on('featureparse', function(e) {
+      e.layer.setStyle({
+        color : e.properties.color,
+        weight : 7,
+        opacity : 0.4
+      });
+      if (e.properties && e.properties.popupContent){
+        e.layer.bindPopup(e.properties.popupContent);
+      } 
+    });
+
+//    var escName = data.name.replace(/([\\<\\>'])/g, "\\$1").replace(/\0/g, "\\0");
+    var escName = data.name.replace(/([\\<\\>'])/g, "");
+    
+    data.geom.properties = {
+      popupContent: escName,
+      color : color
+    };
+
+    geojson.addGeoJSON(data.geom);
+    overlay.addLayer(geojson);
+
+  });
 }
 
 function renderGraph() {
