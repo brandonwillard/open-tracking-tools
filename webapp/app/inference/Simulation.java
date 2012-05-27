@@ -11,6 +11,7 @@ import gov.sandia.cognition.statistics.distribution.DefaultDataDistribution;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 
 import java.text.ParseException;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Random;
@@ -35,6 +36,8 @@ import org.opentripplanner.routing.graph.Edge;
 
 import play.*;
 
+
+import akka.actor.UntypedActor;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
@@ -89,12 +92,26 @@ public class Simulation {
         DenseMatrixFactoryMTJ.INSTANCE.copyMatrix( Q ) ).getR();
     Vector thisStateSample = MultivariateGaussian.sample(VectorFactory.getDefault().createVector(2), 
         covSqrt, rng);
+    if (isRoad) {
+      final double length = vehicleState.getInferredEdge().getLength();
+      /*
+       * Let's keep this sample on the road
+       */
+      if (thisStateSample.getElement(0) > length) {
+        thisStateSample.setElement(0, length);
+      } else if (thisStateSample.getElement(0) < 0) {
+        thisStateSample.setElement(0, 0d);
+      }
+    }
     final Matrix Gamma = vehicleState.getMovementFilter().getCovarianceFactor(isRoad);
     return Gamma.times(thisStateSample).plus(vehicleState.getBelief().getMean());
   }
   
-  public Vector sampleObservation(VehicleState vehicleState) {
-    final Vector gMean = StandardRoadTrackingFilter.getOg().times(vehicleState.getGroundOnlyBelief().getMean());
+  public Vector sampleObservation(VehicleState vehicleState, PathEdge edge) {
+    
+    final MultivariateGaussian gbelief =  vehicleState.getBelief().clone();
+    StandardRoadTrackingFilter.convertToGroundBelief(gbelief, edge);
+    final Vector gMean = StandardRoadTrackingFilter.getOg().times(gbelief.getMean());
     final Matrix gCov = vehicleState.getMovementFilter().getGroundFilter().getMeasurementCovariance();
     Matrix covSqrt = CholeskyDecompositionMTJ.create(
         DenseMatrixFactoryMTJ.INSTANCE.copyMatrix( gCov ) ).getR();
@@ -102,12 +119,17 @@ public class Simulation {
     return thisStateSample;
   }
   
-  public List<InferenceResultRecord> runSimulation() {
+  public void runSimulation() {
     
     Observation initialObs;
     try {
-      initialObs = Observation.createObservation(this.simulationName, startTime, 
-          startCoordinates, null, null, null);
+      try {
+        initialObs = Observation.createObservation(this.simulationName, startTime, 
+            startCoordinates, null, null, null);
+      } catch (TimeOrderException e) {
+        e.printStackTrace();
+        return;
+      }
       
       final SnappedEdges initialEdges = Api.getGraph().snapToGraph(null, initialObs.getObsCoords());
      
@@ -121,14 +143,17 @@ public class Simulation {
       final InferredEdge currentInferredEdge = edges.get(rng.nextInt(edges.size()));
       
           
-      InferredPath currentPath = new InferredPath(currentInferredEdge);
+      InferredPath currentPath = currentInferredEdge == InferredGraph.getEmptyEdge() ?
+          InferredPath.getEmptyPath() : new InferredPath(currentInferredEdge);
+          
       PathEdge currentPathEdge = Iterables.getOnlyElement(currentPath.getEdges());
       
       VehicleState vehicleState = new VehicleState(this.inferredGraph, initialObs, currentInferredEdge);
       Vector thisStateSample = sampleBelief(vehicleState);
       vehicleState.getBelief().setMean(thisStateSample);
       
-      for (long time = startTime.getTime(); time < endTime.getTime(); time += frequency*1000) {
+      for (long time = startTime.getTime() + frequency*1000; 
+          time < endTime.getTime(); time += frequency*1000) {
         vehicleState.getMovementFilter().setCurrentTimeDiff(frequency);
         
         final MultivariateGaussian currentLocBelief = vehicleState.getBelief();
@@ -152,12 +177,19 @@ public class Simulation {
         /*
          * Sample from the state and observation noise
          */
-        Vector thisLoc = sampleObservation(vehicleState);
+        Vector thisLoc = sampleObservation(vehicleState, currentPathEdge);
         Coordinate obsCoord = GeoUtils.convertToLatLon(thisLoc);
-        final Observation thisObs = Observation.createObservation("sim", new Date(time), 
-          obsCoord, null, null, null);
-        results.add(InferenceResultRecord.createInferenceResultRecord(thisObs, 
-            currentLocBelief, currentPath.getEdges()));
+        Observation thisObs;
+        try {
+          thisObs = Observation.createObservation(simulationName, new Date(time), 
+            obsCoord, null, null, null);
+        } catch (TimeOrderException e) {
+          e.printStackTrace();
+          continue;
+        }
+        InferenceResultRecord result = InferenceResultRecord.createInferenceResultRecord(thisObs, 
+            currentLocBelief, currentPath.getEdges());
+        InferenceService.addSimulationRecords(simulationName, result);
         
         Logger.info("processed simulation observation :" + thisObs);
         vehicleState = new VehicleState(this.inferredGraph, thisObs, 
@@ -169,8 +201,6 @@ public class Simulation {
     } catch (NumberFormatException e) {
       e.printStackTrace();
     }
-    
-    return results;
     
   }
 
@@ -194,8 +224,8 @@ public class Simulation {
     List<PathEdge> currentPath = Lists.newArrayList();
     
     double distTraveled = 0d;
-    double totalDistToTravel = 0d;
-    while (totalDistToTravel == 0d || 
+    Double totalDistToTravel = null;
+    while (totalDistToTravel == null || 
         // the following case is when we're truly on the edge
         totalDistToTravel >= currentEdge.getDistToStartOfEdge() + currentEdge.getInferredEdge().getLength()) {
       
@@ -204,16 +234,19 @@ public class Simulation {
       if (currentEdge.getInferredEdge() == InferredGraph.getEmptyEdge()) {
         transferEdges.addAll(this.inferredGraph.getNearbyEdges(belief.getMean()));
       } else {
-        final double direction = belief.getMean().getElement(0) >= 0d ? 1d : -1d;
-        
-        if (direction < 0d) {
+        if (belief.getMean().getElement(0) < 0d) {
           transferEdges.addAll(currentEdge.getInferredEdge().getIncomingTransferableEdges());
+        } else if (belief.getMean().getElement(0) > 0d){
+          transferEdges.addAll(currentEdge.getInferredEdge().getOutgoingTransferableEdges());
         } else {
+          transferEdges.addAll(currentEdge.getInferredEdge().getIncomingTransferableEdges());
           transferEdges.addAll(currentEdge.getInferredEdge().getOutgoingTransferableEdges());
         }
+        transferEdges.add(currentEdge.getInferredEdge());
       }
       
-      InferredEdge sampledEdge = edgeTransDist.sample(rng, transferEdges, currentEdge.getInferredEdge(), belief);
+      InferredEdge sampledEdge = edgeTransDist.sample(rng, transferEdges, 
+          currentEdge.getInferredEdge());
       
       if (sampledEdge == InferredGraph.getEmptyEdge()) {
         
@@ -233,7 +266,7 @@ public class Simulation {
       
       PathEdge sampledPathEdge = PathEdge.getEdge(sampledEdge, distTraveled);
       
-      if (totalDistToTravel == 0d) {
+      if (totalDistToTravel == null) {
         /*
          * Predict the movement, i.e. distance and direction to travel.
          * The mean of this belief should be set to the true value, so
@@ -244,8 +277,6 @@ public class Simulation {
         }
         
         movementFilter.predict(belief, null, null);
-        
-        belief.setMean(belief.sample(rng));
         
         totalDistToTravel = belief.getMean().getElement(0);
       }
@@ -284,6 +315,15 @@ public class Simulation {
 
   public String getSimulationName() {
     return simulationName;
+  }
+
+  public static class SimulationActor extends UntypedActor {
+    @Override
+    public void onReceive(Object arg0) throws Exception {
+      // TODO this is a lame way to get concurrency.  fix this
+      Simulation sim = (Simulation) arg0;
+      sim.runSimulation();
+    }
   }
   
 }

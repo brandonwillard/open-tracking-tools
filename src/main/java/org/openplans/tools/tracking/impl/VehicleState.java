@@ -144,6 +144,7 @@ public class VehicleState implements ComputableDistribution<VehicleStateConditio
     } else {
       timeDiff = 30d;
     }
+    Preconditions.checkArgument(timeDiff > 0d);
     this.movementFilter.setCurrentTimeDiff(timeDiff);
     
     if (inferredEdge == InferredGraph.getEmptyEdge()) {
@@ -284,11 +285,13 @@ public class VehicleState implements ComputableDistribution<VehicleStateConditio
 
   @Override
   public String toString() {
-    return "VehicleState [movementFilter=" + movementFilter + ", belief="
-        + belief + ", edgeTransitionDist=" + edgeTransitionDist
-        + ", observation=" + observation + ", edge=" + edge + ", parentState="
-        + parentState + ", distanceFromPreviousState="
-        + distanceFromPreviousState + "]";
+    return Objects.toStringHelper(this)
+        .add("belief", belief)
+        .add("edge", edge)
+        .addValue(observation.getTimestamp())
+        .add("parent", parentState)
+        .add("filter", movementFilter)
+        .toString();
   }
 
   public InferredEdge getInferredEdge() {

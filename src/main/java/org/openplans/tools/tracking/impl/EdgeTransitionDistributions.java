@@ -63,6 +63,11 @@ public class EdgeTransitionDistributions extends AbstractCloneableSerializable {
   
   public EdgeTransitionDistributions(InferredGraph graph) {
    this.graph = graph; 
+   /*
+    * Start by setting the means.
+    */
+   freeMotionTransPrior.setParameters(freeMotionTransProbPrior.getMean());
+   edgeMotionTransPrior.setParameters(edgeMotionTransProbPrior.getMean());
   }
    
   public static Vector getTransitionType(InferredEdge from, InferredEdge to) {
@@ -82,9 +87,8 @@ public class EdgeTransitionDistributions extends AbstractCloneableSerializable {
   }
   
   public InferredEdge sample(Random rng, List<InferredEdge> transferEdges, 
-    InferredEdge currentEdge, MultivariateGaussian groundBelief) {
+    InferredEdge currentEdge) {
     
-    Preconditions.checkArgument(groundBelief.getInputDimensionality() == 4);
     Preconditions.checkArgument(!transferEdges.contains(InferredGraph.getEmptyEdge()));
     Preconditions.checkNotNull(currentEdge);
     Preconditions.checkNotNull(transferEdges);
@@ -113,11 +117,10 @@ public class EdgeTransitionDistributions extends AbstractCloneableSerializable {
        */
       final Vector sample = this.edgeMotionTransPrior.sample(rng); 
       
-      if (sample.equals(stateOnToOff)) {
+      if (sample.equals(stateOnToOff) || transferEdges.isEmpty()) {
         return InferredGraph.getEmptyEdge();
       } else {
         List<InferredEdge> support = Lists.newArrayList(transferEdges);
-        support.add(currentEdge);
         return support.get(rng.nextInt(transferEdges.size()));
       }
       

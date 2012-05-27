@@ -12,6 +12,7 @@ import org.opengis.referencing.operation.TransformException;
 import org.openplans.tools.tracking.impl.util.GeoUtils;
 
 
+import com.google.common.base.Preconditions;
 import com.google.common.collect.Maps;
 import com.vividsolutions.jts.geom.Coordinate;
 
@@ -186,7 +187,7 @@ public class Observation {
   }
 
   public static synchronized Observation createObservation(String vehicleId, Date time,
-    Coordinate obsCoords, Double velocity, Double heading, Double accuracy) {
+    Coordinate obsCoords, Double velocity, Double heading, Double accuracy) throws TimeOrderException {
     final Coordinate obsPoint = GeoUtils.convertToEuclidean(obsCoords);
 
     final Observation prevObs = vehiclesToRecords.get(vehicleId);
@@ -202,8 +203,9 @@ public class Observation {
       /*
        * We check for out-of-time-order records.
        */
-      if (time.getTime() < prevObs.getTimestamp().getTime()) {
-      }
+      if (time.getTime() <= prevObs.getTimestamp().getTime())
+        throw new TimeOrderException();
+      
     } else {
       recordNumber = 1;
     }
@@ -258,6 +260,10 @@ public class Observation {
 
   public static SimpleDateFormat getSdf() {
     return sdf;
+  }
+
+  public static void remove(String name) {
+    vehiclesToRecords.remove(name);
   }
 
 

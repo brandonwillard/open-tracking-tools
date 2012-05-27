@@ -84,11 +84,10 @@ public class InferenceService extends UntypedActor {
   }
 
   public static void addSimulationRecords(String simulationName,
-    List<InferenceResultRecord> results) {
-    vehicleToTraceResults.putAll(simulationName, results);
-    // TODO this is lame.
-    InferenceInstance instance = new InferenceInstance(simulationName);
-    instance.recordsProcessed = results.size();
+    InferenceResultRecord result) {
+    InferenceInstance instance = getInferenceInstance(simulationName);
+    vehicleToTraceResults.put(simulationName, result);
+    instance.recordsProcessed += 1;
     vehicleToInstance.put(simulationName, instance);
   }
 
@@ -100,6 +99,7 @@ public class InferenceService extends UntypedActor {
     
     vehicleToInstance.remove(name);
     vehicleToTraceResults.removeAll(name);
+    Observation.remove(name);
     
   }
 

@@ -124,12 +124,22 @@ public class OtpGraph {
        */
       final Set<Edge> edges = Sets.newHashSet();
       edges.addAll(Objects.firstNonNull(
-          snappedStreetLocation.getOutgoingStreetEdges(),
+          snappedStreetLocation.getOutgoing(),
           ImmutableList.<Edge> of()));
-//      edges.addAll(Objects.firstNonNull(snappedStreetLocation.getIncoming(),
-//          ImmutableList.<Edge> of()));
+      edges.addAll(Objects.firstNonNull(snappedStreetLocation.getIncoming(),
+          ImmutableList.<Edge> of()));
 
-      snappedEdges.addAll(edges);
+      for (Edge edge : edges) {
+        if (edge.getGeometry() == null) {
+          /*
+           * Only attempt one level of descent for finding street edges
+           */
+          snappedEdges.addAll(edge.getFromVertex().getOutgoingStreetEdges());
+          snappedEdges.addAll(edge.getToVertex().getOutgoingStreetEdges());
+        } else {
+          snappedEdges.add(edge);
+        }
+      }
 
       if (fromCoords != null && !fromCoords.equals2D(toCoords)) {
         /*

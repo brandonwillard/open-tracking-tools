@@ -211,10 +211,7 @@ public class StandardRoadTrackingFilter implements CloneableSerializable {
       /*
        * Convert to ground-coordinates 
        */
-      Vector a = projPair.getKey().times(dist.getMean()).plus(projPair.getValue());
-      Matrix R = projPair.getKey().times(dist.getCovariance()).times(projPair.getKey().transpose());
-      dist.setCovariance(R);
-      dist.setMean(a);
+      convertToGroundBelief(dist, edge);
     } else {
       /*
        * Convert to road-coordinates 
@@ -263,14 +260,6 @@ public class StandardRoadTrackingFilter implements CloneableSerializable {
         Preconditions.checkNotNull(prevEdge);
         convertToGroundBelief(belief, prevEdge);
         groundFilter.predict(belief);
-        if (belief.getMean().getElement(0) > prevEdge.getDistToStartOfEdge()
-            + prevEdge.getInferredEdge().getLength()) {
-          belief.getMean().setElement(0, prevEdge.getDistToStartOfEdge()
-              + prevEdge.getInferredEdge().getLength());
-        } else if (belief.getMean().getElement(0) < prevEdge.getDistToStartOfEdge()) {
-          belief.getMean().setElement(0, prevEdge.getDistToStartOfEdge());
-        }
-        Preconditions.checkArgument(belief.getMean().getElement(0) >= 0);
       }
     } else {
       if (belief.getInputDimensionality() == 4) {
@@ -477,21 +466,30 @@ public class StandardRoadTrackingFilter implements CloneableSerializable {
     
     Entry<Matrix, Vector> projPair = StandardRoadTrackingFilter.posVelProjectionPair(edge);
     Vector truncatedMean; 
-    if (belief.getMean().getElement(0) > edge.getDistToStartOfEdge()
-        + edge.getInferredEdge().getLength()) {
-      truncatedMean = belief.getMean().clone();
-      truncatedMean.setElement(0, edge.getDistToStartOfEdge() 
-          + edge.getInferredEdge().getLength());
-    } else if (belief.getMean().getElement(0) < edge.getDistToStartOfEdge()) {
-      truncatedMean = belief.getMean().clone();
-      truncatedMean.setElement(0, edge.getDistToStartOfEdge());
+    final double totalPathDistance = edge.getDistToStartOfEdge() 
+        + edge.getInferredEdge().getLength();
+    final double distance;
+    
+    truncatedMean = belief.getMean().clone();
+    if (belief.getMean().getElement(0) < 0d) {
+      distance = totalPathDistance + belief.getMean().getElement(0);
+      truncatedMean.setElement(0, distance);
     } else {
-      truncatedMean = belief.getMean();
+      distance = belief.getMean().getElement(0);
     }
     
-    Matrix C = belief.getCovariance();
-    belief.setMean(projPair.getKey().times(truncatedMean).minus(projPair.getValue()));
-    belief.setCovariance(projPair.getKey().times(C).times(projPair.getKey().transpose()));
+    if (distance > totalPathDistance) {
+      truncatedMean.setElement(0, totalPathDistance);
+    } else if (distance < edge.getDistToStartOfEdge()) {
+      truncatedMean.setElement(0, edge.getDistToStartOfEdge());
+    } 
+    
+    final Matrix C = belief.getCovariance();
+    final Vector projMean = projPair.getKey().times(truncatedMean).plus(projPair.getValue());
+    final Matrix projCov = projPair.getKey().times(C).times(projPair.getKey().transpose());
+    
+    belief.setMean(projMean);
+    belief.setCovariance(projCov);
   }
 
   public static long getSerialversionuid() {

@@ -24,7 +24,7 @@ public class InferredPath {
   }
   
   public InferredPath(ImmutableList<PathEdge> edges) {
-    Preconditions.checkArgument(edges.size() > 1);
+    Preconditions.checkArgument(edges.size() > 0);
     this.edges = edges;
     final PathEdge lastEdge = Iterables.getLast(edges);
     final double direction = lastEdge.getDistToStartOfEdge() > 0 ? 1d : -1d;
@@ -37,7 +37,7 @@ public class InferredPath {
   }
 
   public InferredPath(InferredEdge inferredEdge) {
-    Preconditions.checkArgument(inferredEdge == InferredGraph.getEmptyEdge());
+    Preconditions.checkArgument(inferredEdge != InferredGraph.getEmptyEdge());
     this.edges = ImmutableList.of(PathEdge.getEdge(inferredEdge, 0d));
     this.totalPathDistance = inferredEdge.getLength();
   }

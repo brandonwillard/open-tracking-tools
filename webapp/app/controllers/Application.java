@@ -2,6 +2,7 @@ package controllers;
 
 import inference.InferenceService;
 import inference.Simulation;
+import inference.Simulation.SimulationActor;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -22,6 +23,7 @@ import play.mvc.*;
 public class Application extends Controller {
 	
   static ActorSystem system = ActorSystem.create("MySystem");
+  static ActorRef simActor = system.actorOf(new Props(SimulationActor.class), "simActor");
   static ActorRef locationActor = system.actorOf(new Props(InferenceService.class), "locationActor");
   static ActorRef csvActor = system.actorOf(new Props(CsvUploadActor.class), "csvActor");
   
@@ -38,16 +40,21 @@ public class Application extends Controller {
   
   public static void removeInferenceInstance(String name) {
     InferenceService.remove(name);
-	instances();     
+  	instances();     
   }
   
   public static void simulation() {
     Simulation sim = new Simulation();
     Logger.info("starting simulation " + sim.getSimulationName());
 
-    InferenceService.addSimulationRecords(sim.getSimulationName(), sim.runSimulation());
+    if (InferenceService.getInferenceInstance(sim.getSimulationName()) != null) {
+      Logger.warn("removing existing inference instance = " + sim.getSimulationName());
+      InferenceService.remove(sim.getSimulationName());
+    }
     
-	instances();     
+    Application.simActor.tell(sim);
+    
+  	instances();     
   }
   
   public static void instances() {

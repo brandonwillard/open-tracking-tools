@@ -137,7 +137,7 @@ function playData() {
   $("#play").hide();
   $("#pause").show();
 
-  interval = setInterval(moveMarker, 50);
+  interval = setInterval(moveMarker, 5*50);
 }
 
 function pauseData() {
@@ -195,13 +195,14 @@ function moveMarker() {
   if (i != $("#slider").slider("option", "value"))
     $("#slider").slider("option", "value", i);
 
-  renderMarker();
+  var done = renderMarker();
 
-  i++;
+  if (!done)
+    i++;
 }
 
 function renderMarker() {
-  if (i > 0) {
+  if (i >= 0 && i < lines.length) {
     group.clearLayers();
     // overlay.clearLayers();
 
@@ -247,6 +248,10 @@ function renderMarker() {
     renderGraph();
 
     $("#count_display").html(lines[i].time + ' (' + i + ')');
+    return false;
+  } else {
+    clearInterval(interval);
+    return true;
   }
 }
 
@@ -254,7 +259,7 @@ function renderGraph() {
   for ( var j in lines[i].graphSegmentIds) {
     var segment = lines[i].graphSegmentIds[j];
 
-    if (segment.length == 2) {
+    if (segment.length == 2 && segment[0] > -1) {
 
       $.get('/api/segment', {
         segmentId : segment[0]
