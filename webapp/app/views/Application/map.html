@@ -6,7 +6,7 @@
 <!-- leaflet -->
 <script src="@{'/public/javascripts/leaflet.js'}"></script>
 <link rel="stylesheet" href="@{'/public/javascripts/leaflet.css'}" />
-
+<script src="@{'/public/javascripts/OpenLayers-2.11/OpenLayers.js'}"></script>
 <!-- jquery -->
 <link type="text/css" href="@{'/public/javascripts/jquery/ui-lightness/jquery-ui-1.8.18.custom.css'}" rel="stylesheet" />	
 <script type="text/javascript" src="@{'/public/javascripts/jquery/jquery-1.7.1.min.js'}"></script>
@@ -37,7 +37,10 @@
 
 <div id="debug_bar" style="width: 500px; padding: 2px; border: 1px solid black">
     <input type="text" id="coordinate_data" style="width: 400px; padding: 2px; border: 1px solid black"/>
-    <span id="addCoordinates" class="jqlink" style="padding: 2px; border: 1px solid black">add</span>
+    <span id="addCoordinates" class="jqlink" style="padding: 2px; border: 1px solid black">add point</span>
+<br>
+    <input type="text" id="edge_id" style="width: 400px; padding: 2px; border: 1px solid black"/>
+    <span id="addEdge" class="jqlink" style="padding: 2px; border: 1px solid black">add edge</span>
 </div>
     
 <div id="map"></div>

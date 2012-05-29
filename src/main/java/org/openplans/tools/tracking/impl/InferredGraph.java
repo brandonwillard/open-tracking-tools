@@ -14,10 +14,12 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 
+import org.geotools.geometry.GeometryBuilder;
 import org.geotools.geometry.jts.JTSFactoryFinder;
 import org.openplans.tools.tracking.impl.InferredGraph.InferredEdge;
 import org.openplans.tools.tracking.impl.util.GeoUtils;
 import org.openplans.tools.tracking.impl.util.OtpGraph;
+import org.opentripplanner.routing.core.TraverseMode;
 import org.opentripplanner.routing.edgetype.StreetEdge;
 import org.opentripplanner.routing.graph.Edge;
 import org.opentripplanner.routing.graph.Graph;
@@ -42,6 +44,8 @@ import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.linearref.LinearLocation;
 import com.vividsolutions.jts.linearref.LocationIndexedLine;
 import com.vividsolutions.jts.math.Vector2D;
+import com.vividsolutions.jts.shape.GeometricShapeBuilder;
+import com.vividsolutions.jts.util.GeometricShapeFactory;
 
 public class InferredGraph {
 
@@ -120,9 +124,8 @@ public class InferredGraph {
       .build(
           new CacheLoader<PathKey, Set<InferredPath>>() {
             public Set<InferredPath> load(PathKey key) {
-              // FIXME disabled for testing
-              return Sets.newHashSet(InferredPath.getEmptyPath());
-//              return computePaths(key);
+//              return Sets.newHashSet(InferredPath.getEmptyPath());
+              return computePaths(key);
             }
           }); 
 
@@ -179,11 +182,16 @@ public class InferredGraph {
     return paths;
   }
   
+  /**
+   * Get nearby street edges from a projected point.
+   * @param mean
+   * @return
+   */
   public Set<InferredEdge> getNearbyEdges(Vector mean) {
     Set<InferredEdge> results = Sets.newHashSet();
-    SnappedEdges snappedEdges = this.narratedGraph.snapToGraph(null,
-        new Coordinate(mean.getElement(0), mean.getElement(1)));
-    for (Edge edge : snappedEdges.getSnappedEdges()) {
+    Coordinate latlon = GeoUtils.convertToLatLon(mean);
+    List<StreetEdge> snappedEdges = this.narratedGraph.snapToGraph(null, latlon);
+    for (Edge edge : snappedEdges) {
       results.add(getInferredEdge(edge));
     }
     return results;
@@ -264,6 +272,10 @@ public class InferredGraph {
       this.graph = graph;
       this.edgeId = edgeId;
       this.line = new LocationIndexedLine(edge.getGeometry());
+      
+      /*
+       * Warning: this geometry is in lon/lat.
+       */
       this.geometry = edge.getGeometry();
       
       this.startVertex = edge.getFromVertex();
@@ -271,12 +283,17 @@ public class InferredGraph {
       
       final Coordinate startPoint = this.line.extractPoint(this.line
           .getStartIndex());
-      final Coordinate startPointCoord = GeoUtils.convertToEuclidean(startPoint);
+      /*
+       * We need to flip these coords around to get lat/lon.
+       */
+      final Coordinate startPointCoord = GeoUtils.convertToEuclidean(
+          new Coordinate(startPoint.y, startPoint.x));
       this.startPoint  = VectorFactory.getDefault().createVector2D(startPointCoord.x,
           startPointCoord.y);
       
       final Coordinate endPoint = this.line.extractPoint(this.line.getEndIndex());
-      final Coordinate endPointCoord = GeoUtils.convertToEuclidean(endPoint);
+      final Coordinate endPointCoord = GeoUtils.convertToEuclidean(
+          new Coordinate(endPoint.y, endPoint.x));
       this.endPoint  = VectorFactory.getDefault().createVector2D(endPointCoord.x,
           endPointCoord.y);
       
@@ -314,9 +331,11 @@ public class InferredGraph {
     public Vector getPointOnEdge(Coordinate obsPoint) {
       if (this == InferredEdge.emptyEdge)
         return null;
-      final LinearLocation here = line.project(obsPoint);
+      final Coordinate revObsPoint = new Coordinate(obsPoint.y, obsPoint.x);
+      final LinearLocation here = line.project(revObsPoint);
       final Coordinate pointOnLine = line.extractPoint(here);
-      final Coordinate projPointOnLine = GeoUtils.convertToEuclidean(pointOnLine);
+      final Coordinate revOnLine = new Coordinate(pointOnLine.y, pointOnLine.x);
+      final Coordinate projPointOnLine = GeoUtils.convertToEuclidean(revOnLine);
       return VectorFactory.getDefault().createVector2D(projPointOnLine.x,
           projPointOnLine.y);
     }
@@ -329,9 +348,23 @@ public class InferredGraph {
     public List<InferredEdge> getIncomingTransferableEdges() {
       
       List<InferredEdge> result = Lists.newArrayList();
-      for (Edge incomingEdge : this.startVertex.getIncoming()) {
-        if (!incomingEdge.getGeometry().equals(geometry))
-          result.add(graph.getInferredEdge(incomingEdge));
+      for (Edge edge : this.startVertex.getIncoming()) {
+        
+        Set<Edge> tmpResults = Sets.newHashSet();
+        if (edge.getGeometry() == null
+            || !edge.getMode().equals(TraverseMode.CAR)) {
+          /*
+           * Only attempt one level of descent for finding street edges
+           */
+          tmpResults.addAll(edge.getFromVertex().getOutgoingStreetEdges());
+//          tmpResults.addAll(edge.getToVertex().getOutgoingStreetEdges());
+        } else {
+          tmpResults.add(edge);
+        }
+        for (Edge edge2 : tmpResults) {
+          if (!edge2.getGeometry().equals(geometry))
+            result.add(graph.getInferredEdge(edge2));
+        }
       }
       
       return result;
@@ -344,9 +377,23 @@ public class InferredGraph {
      */
     public List<InferredEdge> getOutgoingTransferableEdges() {
       List<InferredEdge> result = Lists.newArrayList();
-      for (Edge outgoingEdge : this.startVertex.getOutgoing()) {
-        if (!outgoingEdge.getGeometry().equals(geometry))
-          result.add(graph.getInferredEdge(outgoingEdge));
+      for (Edge edge : this.endVertex.getOutgoingStreetEdges()) {
+        
+//        Set<Edge> tmpResults = Sets.newHashSet();
+//        if (edge.getGeometry() == null
+//            || !edge.getMode().equals(TraverseMode.CAR)) {
+//          /*
+//           * Only attempt one level of descent for finding street edges
+//           */
+//          tmpResults.addAll(edge.getFromVertex().getOutgoingStreetEdges());
+//          tmpResults.addAll(edge.getToVertex().getOutgoingStreetEdges());
+//        } else {
+//          tmpResults.add(edge);
+//        }
+//        for (Edge edge2 : tmpResults) {
+//          if (!edge2.getGeometry().equals(geometry))
+            result.add(graph.getInferredEdge(edge));
+//        }
       }
       
       return result;
@@ -378,12 +425,6 @@ public class InferredGraph {
 
     public Vertex getEndVertex() {
       return endVertex;
-    }
-
-    @Override
-    public String toString() {
-      return "InferredEdge [endPoint=" + endPoint + ", startPoint="
-          + startPoint + "]";
     }
 
     public Coordinate getCenterPointCoord() {
@@ -422,6 +463,12 @@ public class InferredGraph {
         return false;
       }
       return true;
+    }
+
+    @Override
+    public String toString() {
+      return "InferredEdge [edgeId=" + edgeId + ", endPoint=" + endPoint
+          + ", startPoint=" + startPoint + ", length=" + length + "]";
     }
 
   

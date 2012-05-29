@@ -118,16 +118,27 @@ public class InferenceResultRecord {
 
       final Vector infMean = O.times(gbelief.getMean().clone());
 
-      final EigenDecompositionRightMTJ decomp = EigenDecompositionRightMTJ
-          .create(DenseMatrixFactoryMTJ.INSTANCE.copyMatrix( gbelief.getCovariance()) );
-      
-      final Matrix Shalf = MatrixFactory.getDefault().createIdentity(2, 2);
-      Shalf.setElement(0, 0, Math.sqrt(decomp.getEigenValue(0).getRealPart()));
-      Shalf.setElement(1, 1, Math.sqrt(decomp.getEigenValue(1).getRealPart()));
-      final Vector majorAxis = infMean.plus(O.times(decomp.getEigenVectorsRealPart().getColumn(0))
-          .times(Shalf).scale(1.98));
-      final Vector minorAxis = infMean.plus(O.times(decomp.getEigenVectorsRealPart().getColumn(1))
-          .times(Shalf).scale(1.98));
+      final Vector minorAxis;
+      final Vector majorAxis;
+      if (currentEdge == PathEdge.getEmptyPathEdge()) {
+        /*-
+         * TODO only implemented for off-road
+         * FIXME results look fishy
+         */
+        final EigenDecompositionRightMTJ decomp = EigenDecompositionRightMTJ
+            .create(DenseMatrixFactoryMTJ.INSTANCE.copyMatrix( gbelief.getCovariance()) );
+        
+        final Matrix Shalf = MatrixFactory.getDefault().createIdentity(2, 2);
+        Shalf.setElement(0, 0, Math.sqrt(decomp.getEigenValue(0).getRealPart()));
+        Shalf.setElement(1, 1, Math.sqrt(decomp.getEigenValue(1).getRealPart()));
+        majorAxis = infMean.plus(O.times(decomp.getEigenVectorsRealPart().getColumn(0))
+            .times(Shalf).scale(1.98));
+        minorAxis = infMean.plus(O.times(decomp.getEigenVectorsRealPart().getColumn(1))
+            .times(Shalf).scale(1.98));
+      } else {
+        majorAxis = infMean;
+        minorAxis = infMean;
+      }
 
       final Coordinate kfMean = GeoUtils.convertToLatLon(infMean);
       final Coordinate kfMajor = GeoUtils.convertToLatLon(majorAxis);

@@ -39,13 +39,12 @@ public class StandardRoadTrackingFilter implements CloneableSerializable {
   private final LinearDynamicalSystem roadModel;
   private final KalmanFilter roadFilter;
 
-  private final double gVariance;
-  private final double dRoadVariance;
-  private final double vRoadVariance;
-  private final double dGroundVariance;
-  private final double vGroundVariance;
   private final Matrix Qr;
   private final Matrix Qg;
+
+  private Vector onRoadStateVariance;
+  private Vector offRoadStateVariance;
+  private Vector obsVariance;
 
   /*
    * Observation matrix
@@ -66,10 +65,13 @@ public class StandardRoadTrackingFilter implements CloneableSerializable {
    * @param a0Variance
    * @param angle
    */
-  public StandardRoadTrackingFilter(double gVariance, 
-    double dRoadVariance, double vRoadVariance,
-    double dGroundVariance, double vGroundVariance) {
-
+  public StandardRoadTrackingFilter(Vector obsVariance,
+    Vector offRoadStateVariance, Vector onRoadStateVariance) {
+    
+    this.obsVariance = obsVariance;
+    this.offRoadStateVariance = offRoadStateVariance;
+    this.onRoadStateVariance = onRoadStateVariance;
+    
     /*
      * Create the road-coordinates filter
      */
@@ -80,12 +82,10 @@ public class StandardRoadTrackingFilter implements CloneableSerializable {
     roadModel.setC(Or);
     this.roadModel = roadModel;
     
-    this.Qr = MatrixFactory.getDefault().createDiagonal(
-        VectorFactory.getDefault().copyArray(
-            new double[] { dRoadVariance, vRoadVariance }));
+    this.Qr = MatrixFactory.getDefault().createDiagonal(onRoadStateVariance);
     this.roadFilter = new KalmanFilter(roadModel,
         createStateCovarianceMatrix(1d, Qr, true),
-        MatrixFactory.getDefault().createIdentity(2, 2).scale(gVariance));
+        MatrixFactory.getDefault().createDiagonal(obsVariance));
     
     /*
      * Create the ground-coordinates filter
@@ -100,20 +100,15 @@ public class StandardRoadTrackingFilter implements CloneableSerializable {
 
     this.groundModel = groundModel;
     
-    this.Qg = MatrixFactory.getDefault().createDiagonal(
-        VectorFactory.getDefault().copyArray(
-            new double[] { dGroundVariance, vGroundVariance }));
+    this.Qg = MatrixFactory.getDefault().createDiagonal(offRoadStateVariance);
     this.groundFilter = new KalmanFilter(groundModel,
         createStateCovarianceMatrix(1d, Qg, false),
-        MatrixFactory.getDefault().createIdentity(2, 2).scale(gVariance));
+        MatrixFactory.getDefault().createDiagonal(obsVariance));
 
-    this.gVariance = gVariance;
-    this.dGroundVariance = dGroundVariance;
-    this.vGroundVariance = vGroundVariance;
-    this.dRoadVariance = dRoadVariance;
-    this.vRoadVariance = vRoadVariance;
 
   }
+
+
 
   static {
     Og = MatrixFactory.getDefault().createMatrix(2, 4);
@@ -155,10 +150,6 @@ public class StandardRoadTrackingFilter implements CloneableSerializable {
 
   public double getCurrentTimeDiff() {
     return currentTimeDiff;
-  }
-
-  public double getGVariance() {
-    return gVariance;
   }
   
   /**
@@ -206,33 +197,16 @@ public class StandardRoadTrackingFilter implements CloneableSerializable {
     Preconditions.checkArgument(dist.getInputDimensionality() == 2 ||
         dist.getInputDimensionality() == 4);
     
-    Entry<Matrix, Vector> projPair = posVelProjectionPair(edge);
     if (dist.getInputDimensionality() == 2) {
       /*
        * Convert to ground-coordinates 
        */
-      Vector a = projPair.getKey().times(dist.getMean()).plus(projPair.getValue());
-      Matrix R = projPair.getKey().times(dist.getCovariance()).times(projPair.getKey().transpose());
-      dist.setCovariance(R);
-      dist.setMean(a);
+      convertToGroundBelief(dist, edge);
     } else {
       /*
        * Convert to road-coordinates 
        */
-      Vector m = projPair.getKey().transpose().times(dist.getMean().minus(projPair.getValue()));
-      
-      final double totalDist = edge.getDistToStartOfEdge() + edge.getInferredEdge().getLength();
-      double dist2 = m.getElement(0);
-      if (dist2 < edge.getDistToStartOfEdge()) {
-        dist2 = 0d;
-      } else if (dist2 > totalDist){
-        dist2 = totalDist;
-      }
-      m.setElement(0, dist2);
-      Matrix C = projPair.getKey().transpose().times(dist.getCovariance()).times(projPair.getKey());
-      
-      dist.setCovariance(C);
-      dist.setMean(m);
+      convertToRoadBelief(dist, edge);
       
     }
   }
@@ -263,14 +237,6 @@ public class StandardRoadTrackingFilter implements CloneableSerializable {
         Preconditions.checkNotNull(prevEdge);
         convertToGroundBelief(belief, prevEdge);
         groundFilter.predict(belief);
-        if (belief.getMean().getElement(0) > prevEdge.getDistToStartOfEdge()
-            + prevEdge.getInferredEdge().getLength()) {
-          belief.getMean().setElement(0, prevEdge.getDistToStartOfEdge()
-              + prevEdge.getInferredEdge().getLength());
-        } else if (belief.getMean().getElement(0) < prevEdge.getDistToStartOfEdge()) {
-          belief.getMean().setElement(0, prevEdge.getDistToStartOfEdge());
-        }
-        Preconditions.checkArgument(belief.getMean().getElement(0) >= 0);
       }
     } else {
       if (belief.getInputDimensionality() == 4) {
@@ -442,20 +408,24 @@ public class StandardRoadTrackingFilter implements CloneableSerializable {
   /**
    * Returns the matrix and offset vector for projection onto the given edge.
    * distEnd is the distance from the start of the path to the end of the given edge.
-   * Note: there is no distance from start of edge, so you'll need to adjust the 
-   * returned vector.
+   * NOTE: These results are only in the positive direction.  Convert on your end.
    * @param edge
+   * @param isNegative 
    * @param distEnd
    * @return
    */
-  static private Entry<Matrix, Vector> posVelProjectionPair(PathEdge edge) {
-    final Vector start = edge.getInferredEdge().getStartPoint();
-    final Vector end = edge.getInferredEdge().getEndPoint();
+  static private Entry<Matrix, Vector> posVelProjectionPair(PathEdge edge, boolean isNegative) {
+    final Vector start = isNegative ? edge.getInferredEdge().getEndPoint()
+        : edge.getInferredEdge().getStartPoint();
+    final Vector end = isNegative ? edge.getInferredEdge().getStartPoint()
+        : edge.getInferredEdge().getEndPoint();
     
     final double length = edge.getInferredEdge().getLength();
     
-    final Vector P1 = start.minus(end).scale(1/length);
-    final Vector s1 = start.minus(P1.scale(edge.getDistToStartOfEdge()));
+    final double distToStart = Math.abs(edge.getDistToStartOfEdge());
+    
+    final Vector P1 = end.minus(start).scale(1/length);
+    final Vector s1 = start.minus(P1.scale(distToStart));
     
     final Matrix P = MatrixFactory.getDefault().createMatrix(4, 2);
     P.setColumn(0, P1.stack(zeros2D));
@@ -466,6 +436,24 @@ public class StandardRoadTrackingFilter implements CloneableSerializable {
     return Maps.immutableEntry(U.times(P), U.times(a));
   }
 
+  public static Vector getTruncatedEdgeLocation(Vector mean, PathEdge edge) {
+    Preconditions.checkArgument(mean.getDimensionality() == 2);
+    
+    Vector truncatedMean = mean.clone();
+    final double totalPathDistance = Math.abs(edge.getDistToStartOfEdge())
+        + edge.getInferredEdge().getLength();
+    
+    final double sign = Math.signum(mean.getElement(0));
+    final double distance = Math.abs(mean.getElement(0));
+    
+    if (distance > totalPathDistance) {
+      truncatedMean.setElement(0, sign*totalPathDistance);
+    } else if (distance < Math.abs(edge.getDistToStartOfEdge())) {
+      truncatedMean.setElement(0, sign*edge.getDistToStartOfEdge());
+    } 
+    return truncatedMean;
+  }
+  
   public static void convertToGroundBelief(MultivariateGaussian belief, PathEdge edge) {
     Preconditions.checkArgument(belief.getInputDimensionality() == 2 ||
         belief.getInputDimensionality() == 4);
@@ -475,23 +463,46 @@ public class StandardRoadTrackingFilter implements CloneableSerializable {
     
     Preconditions.checkArgument(edge != PathEdge.getEmptyPathEdge());
     
-    Entry<Matrix, Vector> projPair = StandardRoadTrackingFilter.posVelProjectionPair(edge);
-    Vector truncatedMean; 
-    if (belief.getMean().getElement(0) > edge.getDistToStartOfEdge()
-        + edge.getInferredEdge().getLength()) {
-      truncatedMean = belief.getMean().clone();
-      truncatedMean.setElement(0, edge.getDistToStartOfEdge() 
-          + edge.getInferredEdge().getLength());
-    } else if (belief.getMean().getElement(0) < edge.getDistToStartOfEdge()) {
-      truncatedMean = belief.getMean().clone();
-      truncatedMean.setElement(0, edge.getDistToStartOfEdge());
-    } else {
-      truncatedMean = belief.getMean();
+    final boolean isNegative = belief.getMean().getElement(0) < 0d;
+    Entry<Matrix, Vector> projPair = StandardRoadTrackingFilter.posVelProjectionPair(edge,
+        isNegative);
+    /*
+     * First, we convert to a positive distance traveled.
+     */
+    Vector truncatedMean = getTruncatedEdgeLocation(belief.getMean(), edge);
+    
+    if (isNegative) {
+      truncatedMean.setElement(0, Math.abs(truncatedMean.getElement(0)));
     }
     
-    Matrix C = belief.getCovariance();
-    belief.setMean(projPair.getKey().times(truncatedMean).minus(projPair.getValue()));
-    belief.setCovariance(projPair.getKey().times(C).times(projPair.getKey().transpose()));
+    final Matrix C = belief.getCovariance();
+    final Vector projMean = projPair.getKey().times(truncatedMean).plus(projPair.getValue());
+    final Matrix projCov = projPair.getKey().times(C).times(projPair.getKey().transpose());
+    
+    belief.setMean(projMean);
+    belief.setCovariance(projCov);
+  }
+  
+  public static void convertToRoadBelief(MultivariateGaussian belief, PathEdge edge) {
+    Preconditions.checkArgument(belief.getInputDimensionality() == 2 ||
+        belief.getInputDimensionality() == 4);
+    
+    if (belief.getInputDimensionality() == 2)
+      return;
+    
+    Preconditions.checkArgument(edge != PathEdge.getEmptyPathEdge());
+    
+    final Vector m = belief.getMean().clone();
+    final Matrix C = belief.getCovariance().clone();
+    
+    Entry<Matrix, Vector> projPair = StandardRoadTrackingFilter.posVelProjectionPair(edge,
+        false);
+    
+    final Vector projMean = projPair.getKey().transpose().times(m.minus(projPair.getValue()));
+    final Matrix projCov = projPair.getKey().transpose().times(C).times(projPair.getKey());
+  
+    belief.setMean(projMean);
+    belief.setCovariance(projCov);
   }
 
   public static long getSerialversionuid() {
@@ -547,22 +558,6 @@ public class StandardRoadTrackingFilter implements CloneableSerializable {
     return res;
   }
 
-  public double getdRoadVariance() {
-    return dRoadVariance;
-  }
-
-  public double getVRoadVariance() {
-    return vRoadVariance;
-  }
-
-  public double getDGroundVariance() {
-    return dGroundVariance;
-  }
-
-  public double getVGroundVariance() {
-    return vGroundVariance;
-  }
-
   public Matrix getQr() {
     return Qr;
   }
@@ -571,15 +566,30 @@ public class StandardRoadTrackingFilter implements CloneableSerializable {
     return Qg;
   }
 
+  public Vector getOnRoadStateVariance() {
+    return onRoadStateVariance;
+  }
+
+  public Vector getOffRoadStateVariance() {
+    return offRoadStateVariance;
+  }
+
+  public Vector getObsVariance() {
+    return obsVariance;
+  }
+
   @Override
   public String toString() {
     return "StandardRoadTrackingFilter [groundModel=" + groundModel
-        + ", groundFilter=" + groundFilter + ", roadModel=" + roadModel
-        + ", roadFilter=" + roadFilter + ", dRoadVariance=" + dRoadVariance
-        + ", vRoadVariance=" + vRoadVariance + ", dGroundVariance="
-        + dGroundVariance + ", vGroundVariance=" + vGroundVariance
+        + ", groundFilter=" + groundFilter.getModelCovariance() 
+        + ", roadModel=" + roadModel
+        + ", roadFilter=" + roadFilter.getModelCovariance()
+        + ", onRoadStateVariance=" + onRoadStateVariance 
+        + ", offRoadStateVariance=" + offRoadStateVariance 
+        + ", obsVariance=" + obsVariance
         + ", currentTimeDiff=" + currentTimeDiff + "]";
   }
+
 }
 
 

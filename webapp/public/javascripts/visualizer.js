@@ -44,7 +44,7 @@ $(document)
           var cloudmadeAttrib = 'Map data &copy; 2011 OpenStreetMap contributors, Imagery &copy; 2011 CloudMade'; 
           cloudmade = new L.TileLayer(
             cloudmadeUrl, {
-              maxZoom : 27,
+              maxZoom : 17,
               attribution : cloudmadeAttrib
           });
 
@@ -62,12 +62,20 @@ $(document)
           $("#playData").click(playData);
 
           $("#addCoordinates").click(addCoordinates);
+          $("#addEdge").click(addEdge);
 
           map.addLayer(group);
           map.addLayer(overlay);
 
         });
 
+function addEdge() {
+  
+  var id = jQuery('#edge_id').val();
+  drawEdge(id);
+  map.invalidateSize();
+}
+  
 function addCoordinates() {
   
   var coordString = jQuery('#coordinate_data').val();
@@ -137,7 +145,7 @@ function playData() {
   $("#play").hide();
   $("#pause").show();
 
-  interval = setInterval(moveMarker, 50);
+  interval = setInterval(moveMarker, 1.5*1000);
 }
 
 function pauseData() {
@@ -195,23 +203,25 @@ function moveMarker() {
   if (i != $("#slider").slider("option", "value"))
     $("#slider").slider("option", "value", i);
 
-  renderMarker();
+  var done = renderMarker();
 
-  i++;
+  if (!done)
+    i++;
 }
 
 function renderMarker() {
-  if (i > 0) {
+  if (i >= 0 && i < lines.length) {
     group.clearLayers();
-    // overlay.clearLayers();
+//    overlay.clearLayers();
 
-    var marker2 = new L.Circle(new L.LatLng(parseFloat(lines[i].kfMeanLat),
-        parseFloat(lines[i].kfMeanLon)), 10, {
-      fill : true,
-      color : '#0c0'
-    });
-    group.addLayer(marker2);
-
+    var isOnEdge = false;
+    
+    var color = 'green';
+    if (lines[i].graphSegmentIds.length > 0) {
+      isOnEdge = true;
+      color = 'red';
+    }
+    
     var majorAxis = new L.Polyline([
         new L.LatLng(parseFloat(lines[i].kfMeanLat),
             parseFloat(lines[i].kfMeanLon)),
@@ -233,28 +243,75 @@ function renderMarker() {
     });
 
     group.addLayer(minorAxis);
+    
+    var mean = new L.Circle(new L.LatLng(parseFloat(lines[i].kfMeanLat),
+        parseFloat(lines[i].kfMeanLon)), 10, {
+      fill : true,
+      color : color
+    });
+    
+    group.addLayer(mean);
 
-    var marker1 = new L.Circle(new L.LatLng(parseFloat(lines[i].originalLat),
+    var obs = new L.Circle(new L.LatLng(parseFloat(lines[i].originalLat),
         parseFloat(lines[i].originalLon)), 10, {
       fill : true,
       color : '#00c'
     });
-    group.addLayer(marker1);
+    group.addLayer(obs);
 
-    map.panTo(new L.LatLng(parseFloat(lines[i].originalLat),
-        parseFloat(lines[i].originalLon)));
+//    map.panTo(new L.LatLng(parseFloat(lines[i].originalLat),
+//        parseFloat(lines[i].originalLon)));
+    map.panTo(new L.LatLng(parseFloat(lines[i].kfMeanLat),
+        parseFloat(lines[i].kfMeanLon)));
 
     renderGraph();
 
     $("#count_display").html(lines[i].time + ' (' + i + ')');
+    return false;
+  } else {
+    clearInterval(interval);
+    return true;
   }
+}
+
+function drawEdge(id) {
+  $.get('/api/segment', {
+    segmentId : id
+  }, function(data) {
+
+    var color = "red";
+    var geojson = new L.GeoJSON();
+
+    geojson.on('featureparse', function(e) {
+      e.layer.setStyle({
+        color : e.properties.color,
+        weight : 7,
+        opacity : 0.4
+      });
+      if (e.properties && e.properties.popupContent){
+        e.layer.bindPopup(e.properties.popupContent);
+      } 
+    });
+
+//    var escName = data.name.replace(/([\\<\\>'])/g, "\\$1").replace(/\0/g, "\\0");
+    var escName = data.name.replace(/([\\<\\>'])/g, "");
+    
+    data.geom.properties = {
+      popupContent: escName,
+      color : color
+    };
+
+    geojson.addGeoJSON(data.geom);
+    overlay.addLayer(geojson);
+
+  });
 }
 
 function renderGraph() {
   for ( var j in lines[i].graphSegmentIds) {
     var segment = lines[i].graphSegmentIds[j];
 
-    if (segment.length == 2) {
+    if (segment.length == 2 && segment[0] > -1) {
 
       $.get('/api/segment', {
         segmentId : segment[0]

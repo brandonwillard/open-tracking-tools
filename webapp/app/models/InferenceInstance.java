@@ -5,11 +5,13 @@ import org.openplans.tools.tracking.impl.InferredGraph.InferredEdge;
 import org.openplans.tools.tracking.impl.Observation;
 import org.openplans.tools.tracking.impl.Standard2DTrackingFilter;
 import org.openplans.tools.tracking.impl.VehicleState;
+import org.openplans.tools.tracking.impl.VehicleState.InitialParameters;
 import org.openplans.tools.tracking.impl.VehicleTrackingFilter;
 
 import gov.sandia.cognition.math.UnivariateStatisticsUtil;
 import gov.sandia.cognition.math.matrix.Matrix;
 import gov.sandia.cognition.math.matrix.Vector;
+import gov.sandia.cognition.math.matrix.VectorFactory;
 import gov.sandia.cognition.statistics.DataDistribution;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 
@@ -31,16 +33,34 @@ public class InferenceInstance {
   
   public int recordsProcessed = 0;
   
+  public final boolean isSimulation;
+  
   private VehicleTrackingFilter filter;
 
   private final long prevTime = 0l;
 
   private DataDistribution<VehicleState> belief;
   private VehicleState bestState;
+
+  private final InitialParameters initialParameters;
   private static InferredGraph inferredGraph = new InferredGraph(Api.getGraph());
 
-  public InferenceInstance(String vehicleId) {
+  public InferenceInstance(String vehicleId, boolean isSimulation) {
+    this.initialParameters = new InitialParameters(
+        VectorFactory.getDefault().createVector2D(VehicleState.getGvariance(), VehicleState.getGvariance()),
+        VectorFactory.getDefault().createVector2D(VehicleState.getDvariance(), VehicleState.getVvariance()),
+        VectorFactory.getDefault().createVector2D(VehicleState.getDvariance(), VehicleState.getVvariance()),
+        VectorFactory.getDefault().createVector2D(0.05d, 1d),
+        VectorFactory.getDefault().createVector2D(1d, 0.05d)
+        );
     this.vehicleId = vehicleId;
+    this.isSimulation = isSimulation;
+  }
+  
+  public InferenceInstance(String vehicleId, boolean isSimulation, InitialParameters parameters) {
+    this.initialParameters = parameters;
+    this.vehicleId = vehicleId;
+    this.isSimulation = isSimulation;
   }
 
   public VehicleState getBestState() {
@@ -74,7 +94,7 @@ public class InferenceInstance {
   private void updateFilter(Observation obs) {
 
     if (filter == null || belief == null) {
-      filter = new VehicleTrackingFilter(obs, inferredGraph);
+      filter = new VehicleTrackingFilter(obs, inferredGraph, initialParameters);
       belief = filter.createInitialLearnedObject();
     } else {
       filter.update(belief, obs);
