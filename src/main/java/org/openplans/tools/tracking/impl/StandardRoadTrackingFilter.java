@@ -206,7 +206,6 @@ public class StandardRoadTrackingFilter implements CloneableSerializable {
     Preconditions.checkArgument(dist.getInputDimensionality() == 2 ||
         dist.getInputDimensionality() == 4);
     
-    Entry<Matrix, Vector> projPair = posVelProjectionPair(edge);
     if (dist.getInputDimensionality() == 2) {
       /*
        * Convert to ground-coordinates 
@@ -216,20 +215,7 @@ public class StandardRoadTrackingFilter implements CloneableSerializable {
       /*
        * Convert to road-coordinates 
        */
-      Vector m = projPair.getKey().transpose().times(dist.getMean().minus(projPair.getValue()));
-      
-      final double totalDist = edge.getDistToStartOfEdge() + edge.getInferredEdge().getLength();
-      double dist2 = m.getElement(0);
-      if (dist2 < edge.getDistToStartOfEdge()) {
-        dist2 = 0d;
-      } else if (dist2 > totalDist){
-        dist2 = totalDist;
-      }
-      m.setElement(0, dist2);
-      Matrix C = projPair.getKey().transpose().times(dist.getCovariance()).times(projPair.getKey());
-      
-      dist.setCovariance(C);
-      dist.setMean(m);
+      convertToRoadBelief(dist, edge);
       
     }
   }
@@ -431,8 +417,7 @@ public class StandardRoadTrackingFilter implements CloneableSerializable {
   /**
    * Returns the matrix and offset vector for projection onto the given edge.
    * distEnd is the distance from the start of the path to the end of the given edge.
-   * Note: there is no distance from start of edge, so you'll need to adjust the 
-   * returned vector.
+   * NOTE: These results are only in the positive direction.  Convert on your end.
    * @param edge
    * @param distEnd
    * @return
@@ -443,8 +428,10 @@ public class StandardRoadTrackingFilter implements CloneableSerializable {
     
     final double length = edge.getInferredEdge().getLength();
     
-    final Vector P1 = start.minus(end).scale(1/length);
-    final Vector s1 = start.minus(P1.scale(edge.getDistToStartOfEdge()));
+    final double distToStart = Math.abs(edge.getDistToStartOfEdge());
+    
+    final Vector P1 = end.minus(start).scale(1/length);
+    final Vector s1 = start.minus(P1.scale(distToStart));
     
     final Matrix P = MatrixFactory.getDefault().createMatrix(4, 2);
     P.setColumn(0, P1.stack(zeros2D));
@@ -455,6 +442,24 @@ public class StandardRoadTrackingFilter implements CloneableSerializable {
     return Maps.immutableEntry(U.times(P), U.times(a));
   }
 
+  public static Vector getTruncatedEdgeLocation(Vector mean, PathEdge edge) {
+    Preconditions.checkArgument(mean.getDimensionality() == 2);
+    
+    Vector truncatedMean = mean.clone();
+    final double totalPathDistance = Math.abs(edge.getDistToStartOfEdge())
+        + edge.getInferredEdge().getLength();
+    
+    final double sign = Math.signum(mean.getElement(0));
+    final double distance = Math.abs(mean.getElement(0));
+    
+    if (distance > totalPathDistance) {
+      truncatedMean.setElement(0, sign*totalPathDistance);
+    } else if (distance < Math.abs(edge.getDistToStartOfEdge())) {
+      truncatedMean.setElement(0, sign*edge.getDistToStartOfEdge());
+    } 
+    return truncatedMean;
+  }
+  
   public static void convertToGroundBelief(MultivariateGaussian belief, PathEdge edge) {
     Preconditions.checkArgument(belief.getInputDimensionality() == 2 ||
         belief.getInputDimensionality() == 4);
@@ -465,29 +470,52 @@ public class StandardRoadTrackingFilter implements CloneableSerializable {
     Preconditions.checkArgument(edge != PathEdge.getEmptyPathEdge());
     
     Entry<Matrix, Vector> projPair = StandardRoadTrackingFilter.posVelProjectionPair(edge);
-    Vector truncatedMean; 
-    final double totalPathDistance = edge.getDistToStartOfEdge() 
-        + edge.getInferredEdge().getLength();
-    final double distance;
+    /*
+     * First, we convert to a positive distance traveled.
+     */
+    Vector truncatedMean = getTruncatedEdgeLocation(belief.getMean(), edge);
     
-    truncatedMean = belief.getMean().clone();
-    if (belief.getMean().getElement(0) < 0d) {
-      distance = totalPathDistance + belief.getMean().getElement(0);
-      truncatedMean.setElement(0, distance);
-    } else {
-      distance = belief.getMean().getElement(0);
+    /*
+     * When the edge starts at zero and the distance moved is negative
+     * then assume it was starting from the other size
+     */
+    if (truncatedMean.getElement(0) < 0d) {
+      truncatedMean.setElement(0, truncatedMean.getElement(0) + 
+          Math.abs(edge.getDistToStartOfEdge()) + edge.getInferredEdge().getLength());
     }
-    
-    if (distance > totalPathDistance) {
-      truncatedMean.setElement(0, totalPathDistance);
-    } else if (distance < edge.getDistToStartOfEdge()) {
-      truncatedMean.setElement(0, edge.getDistToStartOfEdge());
-    } 
     
     final Matrix C = belief.getCovariance();
     final Vector projMean = projPair.getKey().times(truncatedMean).plus(projPair.getValue());
     final Matrix projCov = projPair.getKey().times(C).times(projPair.getKey().transpose());
     
+    belief.setMean(projMean);
+    belief.setCovariance(projCov);
+  }
+  
+  public static void convertToRoadBelief(MultivariateGaussian belief, PathEdge edge) {
+    Preconditions.checkArgument(belief.getInputDimensionality() == 2 ||
+        belief.getInputDimensionality() == 4);
+    
+    if (belief.getInputDimensionality() == 2)
+      return;
+    
+    Preconditions.checkArgument(edge != PathEdge.getEmptyPathEdge());
+    
+    final Vector m = belief.getMean();
+    final Matrix C = belief.getCovariance();
+    
+    Entry<Matrix, Vector> projPair = StandardRoadTrackingFilter.posVelProjectionPair(edge);
+    
+    final Vector projMean = projPair.getKey().transpose().times(m.minus(projPair.getValue()));
+    final Matrix projCov = projPair.getKey().transpose().times(C).times(projPair.getKey());
+    
+    // FIXME XXX TODO remove this test
+    Vector adjMean = projMean.clone();
+    //adjMean.setElement(0, Math.abs(adjMean.getElement(0)));
+    MultivariateGaussian testB = new MultivariateGaussian(adjMean, projCov);
+    convertToGroundBelief(testB, edge);
+    adjMean = Og.times(testB.getMean()); 
+  
     belief.setMean(projMean);
     belief.setCovariance(projCov);
   }

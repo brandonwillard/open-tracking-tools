@@ -5,12 +5,14 @@ import gov.sandia.cognition.statistics.bayesian.ParticleFilter;
 import gov.sandia.cognition.statistics.distribution.DefaultDataDistribution;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 
+import java.util.List;
 import java.util.Random;
 import java.util.Set;
 
 import jj2000.j2k.NotImplementedError;
 
 import org.openplans.tools.tracking.impl.InferredGraph.InferredEdge;
+import org.opentripplanner.routing.edgetype.StreetEdge;
 import org.opentripplanner.routing.graph.Edge;
 
 import com.google.common.base.Objects;
@@ -68,12 +70,12 @@ public class VehicleTrackingFilterUpdater implements
      * Create initial distributions for all snapped edges
      */
     
-    final SnappedEdges initialEdges = inferredGraph.getNarratedGraph()
+    final List<StreetEdge> initialEdges = inferredGraph.getNarratedGraph()
         .snapToGraph(null, initialObservation.getObsCoords());
     final DataDistribution<VehicleState> initialDist = new DefaultDataDistribution<VehicleState>(
         numParticles);
 
-    if (initialEdges.getSnappedEdges().isEmpty()) {
+    if (initialEdges.isEmpty()) {
       
       final VehicleState state = new VehicleState(this.inferredGraph, initialObservation,
           InferredGraph.getEmptyEdge());
@@ -84,7 +86,7 @@ public class VehicleTrackingFilterUpdater implements
       initialDist.set(state, lik);
       
     } else {
-      for (final Edge nativeEdge : initialEdges.getSnappedEdges()) {
+      for (final Edge nativeEdge : initialEdges) {
         final InferredEdge edge = inferredGraph.getInferredEdge(nativeEdge);
         final PathEdge pathEdge = PathEdge.getEdge(edge, 0d);
         final VehicleState state = new VehicleState(this.inferredGraph, initialObservation, pathEdge.getInferredEdge());

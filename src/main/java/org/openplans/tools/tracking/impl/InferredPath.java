@@ -1,5 +1,7 @@
 package org.openplans.tools.tracking.impl;
 
+import gov.sandia.cognition.math.matrix.Vector;
+
 import org.openplans.tools.tracking.impl.InferredGraph.InferredEdge;
 
 import com.google.common.base.Preconditions;
@@ -19,11 +21,22 @@ public class InferredPath {
   
   public InferredPath(ImmutableList<PathEdge> edges, double totalPathDistance) {
     Preconditions.checkArgument(edges.size() > 1);
-    // TODO remove/revise these checks
+    // TODO remove/revise these sanity checks
     PathEdge prevEdge = null;
     for (PathEdge edge : edges) {
-      if (prevEdge != null)
+      if (prevEdge != null) {
         Preconditions.checkArgument(!edge.equals(prevEdge));
+        if (prevEdge != PathEdge.getEmptyPathEdge()
+            && edge != PathEdge.getEmptyPathEdge()) {
+          final Vector start = edge.getDistToStartOfEdge() >= 0 ?
+              edge.getInferredEdge().getStartPoint() : edge.getInferredEdge().getEndPoint();
+          final Vector end = edge.getDistToStartOfEdge() >= 0 ?
+              edge.getInferredEdge().getEndPoint() : edge.getInferredEdge().getStartPoint();
+          final double dist = start.euclideanDistance(end);
+              
+          Preconditions.checkArgument(dist < 5d);
+        }
+      }
       prevEdge = edge;
     }
     this.edges = edges;

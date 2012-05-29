@@ -19,6 +19,7 @@ import org.geotools.geometry.jts.JTSFactoryFinder;
 import org.openplans.tools.tracking.impl.InferredGraph.InferredEdge;
 import org.openplans.tools.tracking.impl.util.GeoUtils;
 import org.openplans.tools.tracking.impl.util.OtpGraph;
+import org.opentripplanner.routing.core.TraverseMode;
 import org.opentripplanner.routing.edgetype.StreetEdge;
 import org.opentripplanner.routing.graph.Edge;
 import org.opentripplanner.routing.graph.Graph;
@@ -189,8 +190,8 @@ public class InferredGraph {
   public Set<InferredEdge> getNearbyEdges(Vector mean) {
     Set<InferredEdge> results = Sets.newHashSet();
     Coordinate latlon = GeoUtils.convertToLatLon(mean);
-    SnappedEdges snappedEdges = this.narratedGraph.snapToGraph(null, latlon);
-    for (Edge edge : snappedEdges.getSnappedEdges()) {
+    List<StreetEdge> snappedEdges = this.narratedGraph.snapToGraph(null, latlon);
+    for (Edge edge : snappedEdges) {
       results.add(getInferredEdge(edge));
     }
     return results;
@@ -350,12 +351,13 @@ public class InferredGraph {
       for (Edge edge : this.startVertex.getIncoming()) {
         
         Set<Edge> tmpResults = Sets.newHashSet();
-        if (edge.getGeometry() == null) {
+        if (edge.getGeometry() == null
+            || !edge.getMode().equals(TraverseMode.CAR)) {
           /*
            * Only attempt one level of descent for finding street edges
            */
           tmpResults.addAll(edge.getFromVertex().getOutgoingStreetEdges());
-          tmpResults.addAll(edge.getToVertex().getOutgoingStreetEdges());
+//          tmpResults.addAll(edge.getToVertex().getOutgoingStreetEdges());
         } else {
           tmpResults.add(edge);
         }
@@ -375,22 +377,23 @@ public class InferredGraph {
      */
     public List<InferredEdge> getOutgoingTransferableEdges() {
       List<InferredEdge> result = Lists.newArrayList();
-      for (Edge edge : this.endVertex.getOutgoing()) {
+      for (Edge edge : this.endVertex.getOutgoingStreetEdges()) {
         
-        Set<Edge> tmpResults = Sets.newHashSet();
-        if (edge.getGeometry() == null) {
-          /*
-           * Only attempt one level of descent for finding street edges
-           */
-          tmpResults.addAll(edge.getFromVertex().getOutgoingStreetEdges());
-          tmpResults.addAll(edge.getToVertex().getOutgoingStreetEdges());
-        } else {
-          tmpResults.add(edge);
-        }
-        for (Edge edge2 : tmpResults) {
-          if (!edge2.getGeometry().equals(geometry))
-            result.add(graph.getInferredEdge(edge2));
-        }
+//        Set<Edge> tmpResults = Sets.newHashSet();
+//        if (edge.getGeometry() == null
+//            || !edge.getMode().equals(TraverseMode.CAR)) {
+//          /*
+//           * Only attempt one level of descent for finding street edges
+//           */
+//          tmpResults.addAll(edge.getFromVertex().getOutgoingStreetEdges());
+//          tmpResults.addAll(edge.getToVertex().getOutgoingStreetEdges());
+//        } else {
+//          tmpResults.add(edge);
+//        }
+//        for (Edge edge2 : tmpResults) {
+//          if (!edge2.getGeometry().equals(geometry))
+            result.add(graph.getInferredEdge(edge));
+//        }
       }
       
       return result;

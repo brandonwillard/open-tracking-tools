@@ -44,7 +44,7 @@ $(document)
           var cloudmadeAttrib = 'Map data &copy; 2011 OpenStreetMap contributors, Imagery &copy; 2011 CloudMade'; 
           cloudmade = new L.TileLayer(
             cloudmadeUrl, {
-              maxZoom : 27,
+              maxZoom : 17,
               attribution : cloudmadeAttrib
           });
 
@@ -212,12 +212,20 @@ function moveMarker() {
 function renderMarker() {
   if (i >= 0 && i < lines.length) {
     group.clearLayers();
-    // overlay.clearLayers();
+//    overlay.clearLayers();
 
+    var isOnEdge = false;
+    
+    var color = 'green';
+    if (lines[i].graphSegmentIds.length > 0) {
+      isOnEdge = true;
+      color = 'red';
+    }
+    
     var marker2 = new L.Circle(new L.LatLng(parseFloat(lines[i].kfMeanLat),
         parseFloat(lines[i].kfMeanLon)), 10, {
       fill : true,
-      color : '#0c0'
+      color : color
     });
     group.addLayer(marker2);
 
@@ -250,8 +258,10 @@ function renderMarker() {
     });
     group.addLayer(marker1);
 
-    map.panTo(new L.LatLng(parseFloat(lines[i].originalLat),
-        parseFloat(lines[i].originalLon)));
+//    map.panTo(new L.LatLng(parseFloat(lines[i].originalLat),
+//        parseFloat(lines[i].originalLon)));
+    map.panTo(new L.LatLng(parseFloat(lines[i].kfMeanLat),
+        parseFloat(lines[i].kfMeanLon)));
 
     renderGraph();
 

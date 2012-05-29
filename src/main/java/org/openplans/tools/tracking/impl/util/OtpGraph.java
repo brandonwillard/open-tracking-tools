@@ -10,12 +10,14 @@ import org.opentripplanner.graph_builder.impl.map.StreetMatcher;
 import org.opentripplanner.model.GraphBundle;
 import org.opentripplanner.routing.core.TraverseMode;
 import org.opentripplanner.routing.core.RoutingRequest;
+import org.opentripplanner.routing.edgetype.StreetEdge;
 import org.opentripplanner.routing.graph.Edge;
 import org.opentripplanner.routing.graph.Graph;
 import org.opentripplanner.routing.graph.Vertex;
 import org.opentripplanner.routing.graph.Graph.LoadLevel;
 import org.opentripplanner.routing.impl.GraphServiceImpl;
 import org.opentripplanner.routing.impl.StreetVertexIndexServiceImpl;
+import org.opentripplanner.routing.impl.StreetVertexIndexServiceImpl.CandidateEdgeBundle;
 import org.opentripplanner.routing.location.StreetLocation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -101,7 +103,7 @@ public class OtpGraph {
    * @param loc
    * @return
    */
-  public SnappedEdges snapToGraph(Coordinate fromCoords, Coordinate toCoords) {
+  public List<StreetEdge> snapToGraph(Coordinate fromCoords, Coordinate toCoords) {
 
     Preconditions.checkNotNull(toCoords);
 
@@ -109,64 +111,9 @@ public class OtpGraph {
     /*
      * XXX: indexService uses lon/lat
      */
-    final Vertex snappedVertex = indexService.getClosestVertex(new Coordinate(toCoords.y, toCoords.x), null,
-        options);
-    final Builder<Edge> pathTraversed = ImmutableList.builder();
-    final com.google.common.collect.ImmutableSet.Builder<Edge> snappedEdges = ImmutableSet
-        .<Edge> builder();
-    if (snappedVertex != null && (snappedVertex instanceof StreetLocation)) {
-
-      final StreetLocation snappedStreetLocation = (StreetLocation) snappedVertex;
-      // final double dist = snappedVertex.distance(obsCoords);
-
-      /*
-       * Just find the edge for the isolate point
-       */
-      final Set<Edge> edges = Sets.newHashSet();
-      edges.addAll(Objects.firstNonNull(
-          snappedStreetLocation.getOutgoing(),
-          ImmutableList.<Edge> of()));
-      edges.addAll(Objects.firstNonNull(snappedStreetLocation.getIncoming(),
-          ImmutableList.<Edge> of()));
-
-      for (Edge edge : edges) {
-        if (edge.getGeometry() == null) {
-          /*
-           * Only attempt one level of descent for finding street edges
-           */
-          snappedEdges.addAll(edge.getFromVertex().getOutgoingStreetEdges());
-          snappedEdges.addAll(edge.getToVertex().getOutgoingStreetEdges());
-        } else {
-          snappedEdges.add(edge);
-        }
-      }
-
-      if (fromCoords != null && !fromCoords.equals2D(toCoords)) {
-        /*
-         * XXX: also lon/lat
-         */
-        final CoordinateSequence movementSeq = JTSFactoryFinder
-            .getGeometryFactory().getCoordinateSequenceFactory()
-            .create(new Coordinate[] { new Coordinate(fromCoords.y, fromCoords.x), 
-                new Coordinate(toCoords.y, toCoords.x) });
-        final Geometry movementGeometry = JTSFactoryFinder.getGeometryFactory()
-            .createLineString(movementSeq);
-
-        /*
-         * Find the edges between the two observed points.
-         */
-        final List<Edge> minimumConnectingEdges = Objects.firstNonNull(
-            streetMatcher.match(movementGeometry), ImmutableList.<Edge> of());
-
-        for (final Edge edge : minimumConnectingEdges) {
-          pathTraversed.add(edge);
-        }
-
-      } else {
-
-      }
-    }
-    return new SnappedEdges(snappedEdges.build(), pathTraversed.build());
+    final CandidateEdgeBundle edgeBundle = indexService.getClosestEdges(new Coordinate(toCoords.y, toCoords.x), 
+        options, null, null);
+    return edgeBundle.toEdgeList();
   }
 
 }
