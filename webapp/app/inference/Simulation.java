@@ -55,7 +55,7 @@ public class Simulation {
 
   private final int frequency;
 
-  private final Random rng = new Random(123456789);
+  private final Random rng = new Random(); //new Random(123456789);
 
   private final InferredGraph inferredGraph;
 
