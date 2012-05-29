@@ -172,31 +172,31 @@ function prevPoint() {
 function showData() {
   group.clearLayers();
 
-  for (line_id in lines) {
-    if (line_id > 0) {
-
-      var new_marker = new L.Circle(new L.LatLng(
-          parseFloat(lines[line_id].originalLat),
-          parseFloat(lines[line_id].originalLon)), 10, {
-        color : '#00c',
-        lat : parseFloat(lines[line_id].kfMeanLat),
-        lon : parseFloat(lines[line_id].kfMeanLon)
-      });
-      group.addLayer(new_marker);
-
-      new_marker.on('click', function(e) {
-
-        overlay.clearLayers();
-
-        var overlay_marker = new L.Circle(new L.LatLng(e.target.options.lat,
-            e.target.options.lon), 10, {
-          color : '#0c0'
-        });
-        overlay.addLayer(overlay_marker);
-
-      });
-    }
-  }
+//  for (line_id in lines) {
+//    if (line_id > 0) {
+//
+//      var new_marker = new L.Circle(new L.LatLng(
+//          parseFloat(lines[line_id].originalLat),
+//          parseFloat(lines[line_id].originalLon)), 10, {
+//        color : '#00c',
+//        lat : parseFloat(lines[line_id].kfMeanLat),
+//        lon : parseFloat(lines[line_id].kfMeanLon)
+//      });
+//      group.addLayer(new_marker);
+//
+//      new_marker.on('click', function(e) {
+//
+//        overlay.clearLayers();
+//
+//        var overlay_marker = new L.Circle(new L.LatLng(e.target.options.lat,
+//            e.target.options.lon), 10, {
+//          color : '#0c0'
+//        });
+//        overlay.addLayer(overlay_marker);
+//
+//      });
+//    }
+//  }
 }
 
 function moveMarker() {
@@ -209,60 +209,81 @@ function moveMarker() {
     i++;
 }
 
+function drawResults(mean, major, minor, isOnEdge, isInferred) {
+
+  var color = 'red';
+  if (isOnEdge) {
+    color = 'green'
+  }
+  
+  var meanCoords = new L.LatLng(parseFloat(mean.x),
+          parseFloat(mean.y));
+  
+  var majorAxis = new L.Polyline([
+      meanCoords,
+      new L.LatLng(parseFloat(major.x),
+          parseFloat(major.y)) ], {
+    fill : true,
+    color : '#c00'
+  })
+
+  group.addLayer(majorAxis);
+
+  var minorAxis = new L.Polyline([
+      meanCoords,
+      new L.LatLng(parseFloat(minor.x),
+          parseFloat(minor.y)) ], {
+    fill : true,
+    color : '#c0c'
+  });
+
+  group.addLayer(minorAxis);
+  
+  var mean = new L.Circle(meanCoords, 5, {
+    fill : !isInferred,
+    color : color
+  });
+  
+  group.addLayer(mean);
+
+}
+
 function renderMarker() {
   if (i >= 0 && i < lines.length) {
     group.clearLayers();
 //    overlay.clearLayers();
-
-    var isOnEdge = false;
     
-    var color = 'green';
-    if (lines[i].graphSegmentIds.length > 0) {
-      isOnEdge = true;
-      color = 'red';
+    if (lines[i].infResults) {
+      var isOnEdge = false;
+      
+      if (lines[i].infResults.pathSegmentIds.length > 0) {
+        isOnEdge = true;
+      }
+    
+      var results = lines[i].infResults;
+      drawResults(results.meanCoords, results.majorAxisCoords, results.minorAxisCoords, isOnEdge, true);
     }
+
+    if (lines[i].actualResults) {
+      var isOnEdge = false;
+      
+      if (lines[i].actualResults.pathSegmentIds.length > 0) {
+        isOnEdge = true;
+      }
     
-    var majorAxis = new L.Polyline([
-        new L.LatLng(parseFloat(lines[i].kfMeanLat),
-            parseFloat(lines[i].kfMeanLon)),
-        new L.LatLng(parseFloat(lines[i].kfMajorLat),
-            parseFloat(lines[i].kfMajorLon)) ], {
+      var results = lines[i].actualResults;
+      drawResults(results.meanCoords, results.majorAxisCoords, results.minorAxisCoords, isOnEdge, true);
+    }
+  
+    var obsCoords = new L.LatLng(parseFloat(lines[i].observedCoords.x),
+        parseFloat(lines[i].observedCoords.y));
+    var obs = new L.Circle(obsCoords, 10, {
       fill : true,
-      color : '#c00'
-    })
-
-    group.addLayer(majorAxis);
-
-    var minorAxis = new L.Polyline([
-        new L.LatLng(parseFloat(lines[i].kfMeanLat),
-            parseFloat(lines[i].kfMeanLon)),
-        new L.LatLng(parseFloat(lines[i].kfMinorLat),
-            parseFloat(lines[i].kfMinorLon)) ], {
-      fill : true,
-      color : '#c0c'
-    });
-
-    group.addLayer(minorAxis);
-    
-    var mean = new L.Circle(new L.LatLng(parseFloat(lines[i].kfMeanLat),
-        parseFloat(lines[i].kfMeanLon)), 10, {
-      fill : true,
-      color : color
-    });
-    
-    group.addLayer(mean);
-
-    var obs = new L.Circle(new L.LatLng(parseFloat(lines[i].originalLat),
-        parseFloat(lines[i].originalLon)), 10, {
-      fill : true,
-      color : '#00c'
+      color : 'black'
     });
     group.addLayer(obs);
-
-//    map.panTo(new L.LatLng(parseFloat(lines[i].originalLat),
-//        parseFloat(lines[i].originalLon)));
-    map.panTo(new L.LatLng(parseFloat(lines[i].kfMeanLat),
-        parseFloat(lines[i].kfMeanLon)));
+    
+    map.panTo(obsCoords);
 
     renderGraph();
 
@@ -274,26 +295,39 @@ function renderMarker() {
   }
 }
 
-function drawEdge(id) {
+function drawEdge(id, velocity, isInferred) {
   $.get('/api/segment', {
     segmentId : id
   }, function(data) {
 
-    var color = "red";
+    var color;
+
+    var avg_velocity = Math.abs(velocity);
+
+    if (avg_velocity < MAX_SPEED)
+      color = '#' + getColor(avg_velocity / MAX_SPEED);
+    else
+      color = 'purple';
+    
     var geojson = new L.GeoJSON();
 
+    var weight = 7;
+    
+    if (isInferred) {
+      weight = 3;
+    }
+    
     geojson.on('featureparse', function(e) {
       e.layer.setStyle({
         color : e.properties.color,
-        weight : 7,
-        opacity : 0.4
+        weight : weight,
+        opacity : 0.3
       });
       if (e.properties && e.properties.popupContent){
         e.layer.bindPopup(e.properties.popupContent);
       } 
     });
 
-//    var escName = data.name.replace(/([\\<\\>'])/g, "\\$1").replace(/\0/g, "\\0");
     var escName = data.name.replace(/([\\<\\>'])/g, "");
     
     data.geom.properties = {
@@ -307,46 +341,29 @@ function drawEdge(id) {
   });
 }
 
+function renderPath(segmentInfo, isInferred) {
+  var segment = segmentInfo;
+
+  if (segmentInfo.length == 2 && segmentInfo[0] > -1) {
+    $.get('/api/segment', {
+      segmentId : segmentInfo[0]
+    }, function(data) {
+      drawEdge(segmentInfo[0], segmentInfo[1], isInferred);
+    });
+  }
+}
+
 function renderGraph() {
-  for ( var j in lines[i].graphSegmentIds) {
-    var segment = lines[i].graphSegmentIds[j];
-
-    if (segment.length == 2 && segment[0] > -1) {
-
-      $.get('/api/segment', {
-        segmentId : segment[0]
-      }, function(data) {
-
-        var color;
-
-        var avg_velocity = Math.abs(segment[1]);
-
-        if (avg_velocity < MAX_SPEED)
-          color = '#' + getColor(avg_velocity / MAX_SPEED);
-        else
-          color = 'purple';
-
-        var geojson = new L.GeoJSON();
-
-        geojson.on('featureparse', function(e) {
-          e.layer.setStyle({
-            color : e.properties.color,
-            weight : 7,
-            opacity : 0.3
-          });
-        });
-
-        data.geom.properties = {
-          color : color
-        };
-
-        geojson.addGeoJSON(data.geom);
-        overlay.addLayer(geojson);
-
-      });
+  if (lines[i].actualResults) {
+    for ( var j in lines[i].actualResults.pathSegmentIds) {
+      renderPath(lines[i].actualResults.pathSegmentIds[j], false);
     }
   }
-
+  if (lines[i].infResults) {
+    for ( var j in lines[i].infResults.pathSegmentIds) {
+      renderPath(lines[i].infResults.pathSegmentIds[j], false);
+    }
+  }
 }
 
 function getColor(f) {

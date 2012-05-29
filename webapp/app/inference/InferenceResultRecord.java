@@ -16,11 +16,14 @@ import models.InferenceInstance;
 
 import org.openplans.tools.tracking.impl.InferredGraph.InferredEdge;
 import org.openplans.tools.tracking.impl.InferredGraph;
+import org.openplans.tools.tracking.impl.InferredPath;
 import org.openplans.tools.tracking.impl.Observation;
 import org.openplans.tools.tracking.impl.PathEdge;
 import org.openplans.tools.tracking.impl.StandardRoadTrackingFilter;
+import org.openplans.tools.tracking.impl.VehicleState;
 import org.openplans.tools.tracking.impl.util.GeoUtils;
 
+import com.google.common.base.Preconditions;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.vividsolutions.jts.geom.Coordinate;
@@ -30,148 +33,155 @@ import controllers.Api;
 public class InferenceResultRecord {
 
   private final String time;
-  private final double originalLat;
-  private final double originalLon;
-  private final Double kfMeanLat;
-  private final Double kfMeanLon;
-  private final Double kfMajorLat;
-  private final Double kfMajorLon;
-  private final Double kfMinorLat;
-  private final Double kfMinorLon;
-  private final List<Double[]> graphSegmentIds;
-
-  private InferenceResultRecord(long time, double originalLat,
-    double originalLon, Double kfMeanLat, Double kfMeanLon, Double kfMajorLat,
-    Double kfMajorLon, Double kfMinorLat, Double kfMinorLon,
-    List<Double[]> idScaleList) {
-    this.time = Api.sdf.format(new Date(time));
-    this.originalLat = originalLat;
-    this.originalLon = originalLon;
-    this.kfMeanLat = kfMeanLat;
-    this.kfMeanLon = kfMeanLon;
-    this.kfMajorLat = kfMajorLat;
-    this.kfMajorLon = kfMajorLon;
-    this.kfMinorLat = kfMinorLat;
-    this.kfMinorLon = kfMinorLon;
-    this.graphSegmentIds = idScaleList;
-  }
-
-  public List<Double[]> getGraphSegmentIds() {
-    return graphSegmentIds;
-  }
-
-  public Double getKfMajorLat() {
-    return kfMajorLat;
-  }
-
-  public Double getKfMajorLon() {
-    return kfMajorLon;
-  }
-
-  public Double getKfMeanLat() {
-    return kfMeanLat;
-  }
-
-  public Double getKfMeanLon() {
-    return kfMeanLon;
-  }
-
-  public Double getKfMinorLat() {
-    return kfMinorLat;
-  }
-
-  public Double getKfMinorLon() {
-    return kfMinorLon;
-  }
-
-  public double getOriginalLat() {
-    return originalLat;
-  }
-
-  public double getOriginalLon() {
-    return originalLon;
-  }
-
+  private final Coordinate observedCoords;
+  
+  private final ResultSet actualResults;
+  private final ResultSet infResults;
+  
   public String getTime() {
     return time;
   }
 
+  public InferenceResultRecord(long time, Coordinate obsCoords,
+    ResultSet actualResults, ResultSet infResults) {
+    this.actualResults = actualResults;
+    this.infResults = infResults;
+    this.observedCoords = obsCoords;
+    this.time = Api.sdf.format(new Date(time));
+  }
+
   public static InferenceResultRecord createInferenceResultRecord(
     Observation observation, InferenceInstance inferenceInstance) {
-    MultivariateGaussian belief = inferenceInstance.getBestState().getGroundOnlyBelief();
-    List<PathEdge> edges = inferenceInstance.getBestState().getPath().getEdges();
-    return createInferenceResultRecord(observation, belief, edges);
+    return createInferenceResultRecord(observation, null, inferenceInstance.getBestState());
   }
   
-  public static InferenceResultRecord createInferenceResultRecord(
-    Observation observation, final MultivariateGaussian belief, List<PathEdge> path) {
+  private static class ResultSet {
 
-    if (belief != null) {
-      /*
-       * The last edge of the path should correspond to the current edge,
-       * and the belief should be adjusted to the start of that edge.
-       */
-      final PathEdge currentEdge = PathEdge.getEdge(Iterables.getLast(path).getInferredEdge(), 0d);
-      final MultivariateGaussian gbelief = belief.clone();
-      StandardRoadTrackingFilter.convertToGroundBelief(gbelief, currentEdge);
-      final Matrix O = StandardRoadTrackingFilter.getGroundObservationMatrix();
+    private final Coordinate meanCoords;
+    private final Coordinate majorAxisCoords;
+    private final Coordinate minorAxisCoords;
+    private final List<Double[]> pathSegmentIds;
 
-      final Vector infMean = O.times(gbelief.getMean().clone());
+    public ResultSet(Coordinate meanCoords, Coordinate majorAxisCoords,
+      Coordinate minorAxisCoords, List<Double[]> pathSegmentIds) {
+      this.meanCoords = meanCoords;
+      this.majorAxisCoords = majorAxisCoords;
+      this.minorAxisCoords = minorAxisCoords;
+      this.pathSegmentIds = pathSegmentIds;
+    }
 
-      final Vector minorAxis;
-      final Vector majorAxis;
-      if (currentEdge == PathEdge.getEmptyPathEdge()) {
-        /*-
-         * TODO only implemented for off-road
-         * FIXME results look fishy
-         */
-        final EigenDecompositionRightMTJ decomp = EigenDecompositionRightMTJ
-            .create(DenseMatrixFactoryMTJ.INSTANCE.copyMatrix( gbelief.getCovariance()) );
-        
-        final Matrix Shalf = MatrixFactory.getDefault().createIdentity(2, 2);
-        Shalf.setElement(0, 0, Math.sqrt(decomp.getEigenValue(0).getRealPart()));
-        Shalf.setElement(1, 1, Math.sqrt(decomp.getEigenValue(1).getRealPart()));
-        majorAxis = infMean.plus(O.times(decomp.getEigenVectorsRealPart().getColumn(0))
-            .times(Shalf).scale(1.98));
-        minorAxis = infMean.plus(O.times(decomp.getEigenVectorsRealPart().getColumn(1))
-            .times(Shalf).scale(1.98));
-      } else {
-        majorAxis = infMean;
-        minorAxis = infMean;
-      }
+    public Coordinate getMeanCoords() {
+      return meanCoords;
+    }
 
-      final Coordinate kfMean = GeoUtils.convertToLatLon(infMean);
-      final Coordinate kfMajor = GeoUtils.convertToLatLon(majorAxis);
-      final Coordinate kfMinor = GeoUtils.convertToLatLon(minorAxis);
-      
-      List<Double[]> idScaleList = Lists.newArrayList();
-      
-      for (PathEdge edge : path) {
-        if (edge == PathEdge.getEmptyPathEdge())
-          continue;
-        /*
-         * FIXME TODO we should probably be using the edge convolutions at each step.
-         */
-        double mean = edge.getInferredEdge().getVelocityPrecisionDist().getLocation();
-        double edgeId = edge.getInferredEdge().getEdgeId() != null ? 
-           (double) edge.getInferredEdge().getEdgeId() : -1d;
-        idScaleList.add(new Double[] {edgeId, mean});
-      }
+    public Coordinate getMajorAxisCoords() {
+      return majorAxisCoords;
+    }
 
-      return new InferenceResultRecord(observation.getTimestamp().getTime(),
-          observation.getObsCoords().x, observation.getObsCoords().y,
-          kfMean.x, kfMean.y, 
-          kfMajor.x, kfMajor.y, 
-          kfMinor.x, kfMinor.y,
-          idScaleList);
+    public Coordinate getMinorAxisCoords() {
+      return minorAxisCoords;
+    }
+
+    public List<Double[]> getPathSegmentIds() {
+      return pathSegmentIds;
+    }
+    
+  }
+  
+  public static InferenceResultRecord createInferenceResultRecord(Observation observation, 
+    VehicleState actualState, VehicleState inferredState) {
+    
+    Preconditions.checkNotNull(observation);
+    
+    
+    ResultSet actualResults = null;
+    if (actualState != null) {
+      actualResults = processVehicleStateResults(actualState);
+    }
+    
+    ResultSet infResults = null;
+    if (inferredState != null) {
+      infResults = processVehicleStateResults(inferredState);
     }
 
     return new InferenceResultRecord(observation.getTimestamp().getTime(),
-        observation.getObsCoords().x, observation.getObsCoords().y,
-        null, null, 
-        null, null, 
-        null, null,
-        null);
+        observation.getObsCoords(),
+        actualResults,
+        infResults
+        );
+  }
+
+  private static ResultSet processVehicleStateResults(VehicleState state) {
+    
+     /*
+     * The last edge of the path should correspond to the current edge,
+     * and the belief should be adjusted to the start of that edge.
+     */
+    final MultivariateGaussian belief = state.getBelief();
+    final InferredPath path = state.getPath();
+    
+    final PathEdge currentEdge = PathEdge.getEdge(Iterables.getLast(path.getEdges()).getInferredEdge(), 0d);
+    final MultivariateGaussian gbelief = belief.clone();
+    final Matrix O = StandardRoadTrackingFilter.getGroundObservationMatrix();
+    final Vector mean;
+    final Vector minorAxis;
+    final Vector majorAxis;
+    
+    StandardRoadTrackingFilter.convertToGroundBelief(gbelief, currentEdge);
+    
+    mean = O.times(gbelief.getMean().clone());
+
+    if (currentEdge == PathEdge.getEmptyPathEdge()) {
+      /*-
+       * TODO only implemented for off-road
+       * FIXME results look fishy
+       */
+      final EigenDecompositionRightMTJ decomp = EigenDecompositionRightMTJ
+          .create(DenseMatrixFactoryMTJ.INSTANCE.copyMatrix( gbelief.getCovariance()) );
+      
+      final Matrix Shalf = MatrixFactory.getDefault().createIdentity(2, 2);
+      Shalf.setElement(0, 0, Math.sqrt(decomp.getEigenValue(0).getRealPart()));
+      Shalf.setElement(1, 1, Math.sqrt(decomp.getEigenValue(1).getRealPart()));
+      majorAxis = mean.plus(O.times(decomp.getEigenVectorsRealPart().getColumn(0))
+          .times(Shalf).scale(1.98));
+      minorAxis = mean.plus(O.times(decomp.getEigenVectorsRealPart().getColumn(1))
+          .times(Shalf).scale(1.98));
+    } else {
+      majorAxis = mean;
+      minorAxis = mean;
+    }
+
+    Coordinate meanCoords = GeoUtils.convertToLatLon(mean);
+    Coordinate majorAxisCoords = GeoUtils.convertToLatLon(majorAxis);
+    Coordinate minorAxisCoords = GeoUtils.convertToLatLon(minorAxis);
+    
+    List<Double[]> pathSegmentIds = Lists.newArrayList();
+    
+    for (PathEdge edge : path.getEdges()) {
+      if (edge == PathEdge.getEmptyPathEdge())
+        continue;
+      /*
+       * FIXME TODO we should probably be using the edge convolutions at each step.
+       */
+      double edgeMean = edge.getInferredEdge().getVelocityPrecisionDist().getLocation();
+      double edgeId = edge.getInferredEdge().getEdgeId() != null ? 
+         (double) edge.getInferredEdge().getEdgeId() : -1d;
+      pathSegmentIds.add(new Double[] {edgeId, edgeMean});
+    } 
+    
+    return new ResultSet(meanCoords, majorAxisCoords, minorAxisCoords, pathSegmentIds);
+  }
+
+  public Coordinate getObservedCoords() {
+    return observedCoords;
+  }
+
+  public ResultSet getActualResults() {
+    return actualResults;
+  }
+
+  public ResultSet getInfResults() {
+    return infResults;
   }
 
 }

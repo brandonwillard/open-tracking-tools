@@ -200,15 +200,15 @@ public class Simulation {
       e.printStackTrace();
       return null;
     }
-    final InferenceResultRecord result = InferenceResultRecord
-        .createInferenceResultRecord(thisObs, currentLocBelief,
-            newPath.getEdges());
-    InferenceService.addSimulationRecords(simulationName, result);
 
-    Logger.info("processed simulation observation :" + thisObs);
     final VehicleState newState = new VehicleState(this.inferredGraph, thisObs,
         vehicleState.getMovementFilter(), currentLocBelief, currentEdgeTrans,
         newPathEdge, newPath, vehicleState);
+    
+    final InferenceResultRecord result = InferenceResultRecord
+        .createInferenceResultRecord(thisObs, newState, null);
+    InferenceService.addSimulationRecords(simulationName, result);
+    Logger.info("processed simulation observation :" + thisObs);
 
     return newState;
   }
