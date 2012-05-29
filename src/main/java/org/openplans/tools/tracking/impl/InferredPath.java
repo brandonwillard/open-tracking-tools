@@ -29,9 +29,11 @@ public class InferredPath {
         if (prevEdge != PathEdge.getEmptyPathEdge()
             && edge != PathEdge.getEmptyPathEdge()) {
           final Vector start = edge.getDistToStartOfEdge() >= 0 ?
-              edge.getInferredEdge().getStartPoint() : edge.getInferredEdge().getEndPoint();
+              edge.getInferredEdge().getStartPoint() : 
+                edge.getInferredEdge().getEndPoint();
           final Vector end = edge.getDistToStartOfEdge() >= 0 ?
-              edge.getInferredEdge().getEndPoint() : edge.getInferredEdge().getStartPoint();
+              prevEdge.getInferredEdge().getEndPoint() : 
+                prevEdge.getInferredEdge().getStartPoint();
           final double dist = start.euclideanDistance(end);
               
           Preconditions.checkArgument(dist < 5d);

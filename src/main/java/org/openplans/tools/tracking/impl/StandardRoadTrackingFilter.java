@@ -419,12 +419,15 @@ public class StandardRoadTrackingFilter implements CloneableSerializable {
    * distEnd is the distance from the start of the path to the end of the given edge.
    * NOTE: These results are only in the positive direction.  Convert on your end.
    * @param edge
+   * @param isNegative 
    * @param distEnd
    * @return
    */
-  static private Entry<Matrix, Vector> posVelProjectionPair(PathEdge edge) {
-    final Vector start = edge.getInferredEdge().getStartPoint();
-    final Vector end = edge.getInferredEdge().getEndPoint();
+  static private Entry<Matrix, Vector> posVelProjectionPair(PathEdge edge, boolean isNegative) {
+    final Vector start = isNegative ? edge.getInferredEdge().getEndPoint()
+        : edge.getInferredEdge().getStartPoint();
+    final Vector end = isNegative ? edge.getInferredEdge().getStartPoint()
+        : edge.getInferredEdge().getEndPoint();
     
     final double length = edge.getInferredEdge().getLength();
     
@@ -469,19 +472,16 @@ public class StandardRoadTrackingFilter implements CloneableSerializable {
     
     Preconditions.checkArgument(edge != PathEdge.getEmptyPathEdge());
     
-    Entry<Matrix, Vector> projPair = StandardRoadTrackingFilter.posVelProjectionPair(edge);
+    final boolean isNegative = belief.getMean().getElement(0) < 0d;
+    Entry<Matrix, Vector> projPair = StandardRoadTrackingFilter.posVelProjectionPair(edge,
+        isNegative);
     /*
      * First, we convert to a positive distance traveled.
      */
     Vector truncatedMean = getTruncatedEdgeLocation(belief.getMean(), edge);
     
-    /*
-     * When the edge starts at zero and the distance moved is negative
-     * then assume it was starting from the other size
-     */
-    if (truncatedMean.getElement(0) < 0d) {
-      truncatedMean.setElement(0, truncatedMean.getElement(0) + 
-          Math.abs(edge.getDistToStartOfEdge()) + edge.getInferredEdge().getLength());
+    if (isNegative) {
+      truncatedMean.setElement(0, Math.abs(truncatedMean.getElement(0)));
     }
     
     final Matrix C = belief.getCovariance();
@@ -501,20 +501,14 @@ public class StandardRoadTrackingFilter implements CloneableSerializable {
     
     Preconditions.checkArgument(edge != PathEdge.getEmptyPathEdge());
     
-    final Vector m = belief.getMean();
-    final Matrix C = belief.getCovariance();
+    final Vector m = belief.getMean().clone();
+    final Matrix C = belief.getCovariance().clone();
     
-    Entry<Matrix, Vector> projPair = StandardRoadTrackingFilter.posVelProjectionPair(edge);
+    Entry<Matrix, Vector> projPair = StandardRoadTrackingFilter.posVelProjectionPair(edge,
+        false);
     
     final Vector projMean = projPair.getKey().transpose().times(m.minus(projPair.getValue()));
     final Matrix projCov = projPair.getKey().transpose().times(C).times(projPair.getKey());
-    
-    // FIXME XXX TODO remove this test
-    Vector adjMean = projMean.clone();
-    //adjMean.setElement(0, Math.abs(adjMean.getElement(0)));
-    MultivariateGaussian testB = new MultivariateGaussian(adjMean, projCov);
-    convertToGroundBelief(testB, edge);
-    adjMean = Og.times(testB.getMean()); 
   
     belief.setMean(projMean);
     belief.setCovariance(projCov);

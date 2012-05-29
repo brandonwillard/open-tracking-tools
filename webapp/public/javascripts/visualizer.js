@@ -222,13 +222,6 @@ function renderMarker() {
       color = 'red';
     }
     
-    var marker2 = new L.Circle(new L.LatLng(parseFloat(lines[i].kfMeanLat),
-        parseFloat(lines[i].kfMeanLon)), 10, {
-      fill : true,
-      color : color
-    });
-    group.addLayer(marker2);
-
     var majorAxis = new L.Polyline([
         new L.LatLng(parseFloat(lines[i].kfMeanLat),
             parseFloat(lines[i].kfMeanLon)),
@@ -250,13 +243,21 @@ function renderMarker() {
     });
 
     group.addLayer(minorAxis);
+    
+    var mean = new L.Circle(new L.LatLng(parseFloat(lines[i].kfMeanLat),
+        parseFloat(lines[i].kfMeanLon)), 10, {
+      fill : true,
+      color : color
+    });
+    
+    group.addLayer(mean);
 
-    var marker1 = new L.Circle(new L.LatLng(parseFloat(lines[i].originalLat),
+    var obs = new L.Circle(new L.LatLng(parseFloat(lines[i].originalLat),
         parseFloat(lines[i].originalLon)), 10, {
       fill : true,
       color : '#00c'
     });
-    group.addLayer(marker1);
+    group.addLayer(obs);
 
 //    map.panTo(new L.LatLng(parseFloat(lines[i].originalLat),
 //        parseFloat(lines[i].originalLon)));
