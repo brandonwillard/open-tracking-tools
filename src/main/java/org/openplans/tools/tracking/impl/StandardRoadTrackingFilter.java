@@ -39,13 +39,12 @@ public class StandardRoadTrackingFilter implements CloneableSerializable {
   private final LinearDynamicalSystem roadModel;
   private final KalmanFilter roadFilter;
 
-  private final double gVariance;
-  private final double dRoadVariance;
-  private final double vRoadVariance;
-  private final double dGroundVariance;
-  private final double vGroundVariance;
   private final Matrix Qr;
   private final Matrix Qg;
+
+  private Vector onRoadStateVariance;
+  private Vector offRoadStateVariance;
+  private Vector obsVariance;
 
   /*
    * Observation matrix
@@ -66,10 +65,13 @@ public class StandardRoadTrackingFilter implements CloneableSerializable {
    * @param a0Variance
    * @param angle
    */
-  public StandardRoadTrackingFilter(double gVariance, 
-    double dRoadVariance, double vRoadVariance,
-    double dGroundVariance, double vGroundVariance) {
-
+  public StandardRoadTrackingFilter(Vector obsVariance,
+    Vector offRoadStateVariance, Vector onRoadStateVariance) {
+    
+    this.obsVariance = obsVariance;
+    this.offRoadStateVariance = offRoadStateVariance;
+    this.onRoadStateVariance = onRoadStateVariance;
+    
     /*
      * Create the road-coordinates filter
      */
@@ -80,12 +82,10 @@ public class StandardRoadTrackingFilter implements CloneableSerializable {
     roadModel.setC(Or);
     this.roadModel = roadModel;
     
-    this.Qr = MatrixFactory.getDefault().createDiagonal(
-        VectorFactory.getDefault().copyArray(
-            new double[] { dRoadVariance, vRoadVariance }));
+    this.Qr = MatrixFactory.getDefault().createDiagonal(onRoadStateVariance);
     this.roadFilter = new KalmanFilter(roadModel,
         createStateCovarianceMatrix(1d, Qr, true),
-        MatrixFactory.getDefault().createIdentity(2, 2).scale(gVariance));
+        MatrixFactory.getDefault().createDiagonal(obsVariance));
     
     /*
      * Create the ground-coordinates filter
@@ -100,20 +100,15 @@ public class StandardRoadTrackingFilter implements CloneableSerializable {
 
     this.groundModel = groundModel;
     
-    this.Qg = MatrixFactory.getDefault().createDiagonal(
-        VectorFactory.getDefault().copyArray(
-            new double[] { dGroundVariance, vGroundVariance }));
+    this.Qg = MatrixFactory.getDefault().createDiagonal(offRoadStateVariance);
     this.groundFilter = new KalmanFilter(groundModel,
         createStateCovarianceMatrix(1d, Qg, false),
-        MatrixFactory.getDefault().createIdentity(2, 2).scale(gVariance));
+        MatrixFactory.getDefault().createDiagonal(obsVariance));
 
-    this.gVariance = gVariance;
-    this.dGroundVariance = dGroundVariance;
-    this.vGroundVariance = vGroundVariance;
-    this.dRoadVariance = dRoadVariance;
-    this.vRoadVariance = vRoadVariance;
 
   }
+
+
 
   static {
     Og = MatrixFactory.getDefault().createMatrix(2, 4);
@@ -155,10 +150,6 @@ public class StandardRoadTrackingFilter implements CloneableSerializable {
 
   public double getCurrentTimeDiff() {
     return currentTimeDiff;
-  }
-
-  public double getGVariance() {
-    return gVariance;
   }
   
   /**
@@ -567,22 +558,6 @@ public class StandardRoadTrackingFilter implements CloneableSerializable {
     return res;
   }
 
-  public double getdRoadVariance() {
-    return dRoadVariance;
-  }
-
-  public double getVRoadVariance() {
-    return vRoadVariance;
-  }
-
-  public double getDGroundVariance() {
-    return dGroundVariance;
-  }
-
-  public double getVGroundVariance() {
-    return vGroundVariance;
-  }
-
   public Matrix getQr() {
     return Qr;
   }
@@ -591,15 +566,30 @@ public class StandardRoadTrackingFilter implements CloneableSerializable {
     return Qg;
   }
 
+  public Vector getOnRoadStateVariance() {
+    return onRoadStateVariance;
+  }
+
+  public Vector getOffRoadStateVariance() {
+    return offRoadStateVariance;
+  }
+
+  public Vector getObsVariance() {
+    return obsVariance;
+  }
+
   @Override
   public String toString() {
     return "StandardRoadTrackingFilter [groundModel=" + groundModel
-        + ", groundFilter=" + groundFilter + ", roadModel=" + roadModel
-        + ", roadFilter=" + roadFilter + ", dRoadVariance=" + dRoadVariance
-        + ", vRoadVariance=" + vRoadVariance + ", dGroundVariance="
-        + dGroundVariance + ", vGroundVariance=" + vGroundVariance
+        + ", groundFilter=" + groundFilter.getModelCovariance() 
+        + ", roadModel=" + roadModel
+        + ", roadFilter=" + roadFilter.getModelCovariance()
+        + ", onRoadStateVariance=" + onRoadStateVariance 
+        + ", offRoadStateVariance=" + offRoadStateVariance 
+        + ", obsVariance=" + obsVariance
         + ", currentTimeDiff=" + currentTimeDiff + "]";
   }
+
 }
 
 

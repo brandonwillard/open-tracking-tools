@@ -20,6 +20,7 @@ import org.openplans.tools.tracking.impl.PathEdge;
 import org.openplans.tools.tracking.impl.StandardRoadTrackingFilter;
 import org.openplans.tools.tracking.impl.TimeOrderException;
 import org.openplans.tools.tracking.impl.VehicleState;
+import org.openplans.tools.tracking.impl.VehicleState.InitialParameters;
 import org.openplans.tools.tracking.impl.util.GeoUtils;
 
 import play.Logger;
@@ -48,21 +49,23 @@ public class Simulation {
 
   private final Coordinate startCoordinates;
   private final Date startTime;
+  private final long seed;
 
   private final Date endTime;
-  private final List<InferenceResultRecord> results = Lists.newArrayList();
   private final int duration;
 
   private final int frequency;
 
-  private final Random rng = new Random(); //new Random(123456789);
+  private final Random rng;
 
   private final InferredGraph inferredGraph;
 
   private final String simulationName;
+  private final InitialParameters parameters;
 
-  public Simulation() {
+  public Simulation(InitialParameters parameters) {
 
+    this.parameters = parameters;
     this.startCoordinates = new Coordinate(10.300252, 123.90609);
     this.startTime = new Date(1325570441000l);
     this.duration = 60 * 60;
@@ -70,6 +73,9 @@ public class Simulation {
     this.frequency = 30;
     this.inferredGraph = new InferredGraph(Api.getGraph());
     this.simulationName = "sim-" + this.startTime.getTime();
+    this.rng = new Random();
+    this.seed = rng.nextLong();
+    this.rng.setSeed(seed);
   }
 
   public String getSimulationName() {
@@ -95,7 +101,7 @@ public class Simulation {
           .size()));
 
       VehicleState vehicleState = new VehicleState(this.inferredGraph,
-          initialObs, currentInferredEdge);
+          initialObs, currentInferredEdge, parameters);
       final Vector thisStateSample = sampleMovementBelief(vehicleState
           .getBelief().getMean(), vehicleState.getMovementFilter(),
           PathEdge.getEdge(currentInferredEdge));
@@ -327,6 +333,42 @@ public class Simulation {
     }
 
     return new InferredPath(ImmutableList.copyOf(currentPath));
+  }
+
+  public Coordinate getStartCoordinates() {
+    return startCoordinates;
+  }
+
+  public Date getStartTime() {
+    return startTime;
+  }
+
+  public long getSeed() {
+    return seed;
+  }
+
+  public Date getEndTime() {
+    return endTime;
+  }
+
+  public int getDuration() {
+    return duration;
+  }
+
+  public int getFrequency() {
+    return frequency;
+  }
+
+  public Random getRng() {
+    return rng;
+  }
+
+  public InferredGraph getInferredGraph() {
+    return inferredGraph;
+  }
+
+  public InitialParameters getParameters() {
+    return parameters;
   }
 
 }

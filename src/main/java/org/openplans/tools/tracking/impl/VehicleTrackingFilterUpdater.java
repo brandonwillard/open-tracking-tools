@@ -12,6 +12,7 @@ import java.util.Set;
 import jj2000.j2k.NotImplementedError;
 
 import org.openplans.tools.tracking.impl.InferredGraph.InferredEdge;
+import org.openplans.tools.tracking.impl.VehicleState.InitialParameters;
 import org.opentripplanner.routing.edgetype.StreetEdge;
 import org.opentripplanner.routing.graph.Edge;
 
@@ -27,8 +28,12 @@ public class VehicleTrackingFilterUpdater implements
   private final Observation initialObservation;
   private final InferredGraph inferredGraph;
 
+  private final InitialParameters parameters;
+
   private static ThreadLocal<Random> threadRandom = new ThreadLocal<Random>() {
 
+    long seed;
+    
     @Override
     public Random get() {
       return super.get();
@@ -37,15 +42,24 @@ public class VehicleTrackingFilterUpdater implements
     @Override
     protected Random initialValue() {
       // TODO add an option for seeding?
-      return new Random();
+      Random rng = new Random();
+      this.seed = rng.nextLong();
+      rng.setSeed(seed);
+      
+      return rng;
+    }
+
+    public long getSeed() {
+      return seed;
     }
 
   };
 
   public VehicleTrackingFilterUpdater(Observation obs,
-    InferredGraph inferredGraph) {
+    InferredGraph inferredGraph, InitialParameters parameters) {
     this.initialObservation = obs;
     this.inferredGraph = inferredGraph;
+    this.parameters = parameters;
   }
 
   @Override
@@ -78,7 +92,7 @@ public class VehicleTrackingFilterUpdater implements
     if (initialEdges.isEmpty()) {
       
       final VehicleState state = new VehicleState(this.inferredGraph, initialObservation,
-          InferredGraph.getEmptyEdge());
+          InferredGraph.getEmptyEdge(), parameters);
 
       final VehicleStateConditionalParams params = 
           new VehicleStateConditionalParams(initialObservation.getProjectedPoint());
@@ -89,7 +103,8 @@ public class VehicleTrackingFilterUpdater implements
       for (final Edge nativeEdge : initialEdges) {
         final InferredEdge edge = inferredGraph.getInferredEdge(nativeEdge);
         final PathEdge pathEdge = PathEdge.getEdge(edge, 0d);
-        final VehicleState state = new VehicleState(this.inferredGraph, initialObservation, pathEdge.getInferredEdge());
+        final VehicleState state = new VehicleState(this.inferredGraph, initialObservation, 
+            pathEdge.getInferredEdge(), parameters);
   
         final VehicleStateConditionalParams edgeLoc = new VehicleStateConditionalParams(pathEdge,
             initialObservation.getProjectedPoint());
@@ -102,7 +117,8 @@ public class VehicleTrackingFilterUpdater implements
     /*
      * Free-motion
      */
-    final VehicleState state = new VehicleState(this.inferredGraph, initialObservation, InferredGraph.getEmptyEdge());
+    final VehicleState state = new VehicleState(this.inferredGraph, initialObservation, 
+        InferredGraph.getEmptyEdge(), parameters);
     final double lik = state.getProbabilityFunction().evaluate(
         new VehicleStateConditionalParams(initialObservation.getProjectedPoint()));
     initialDist.increment(state, lik);
