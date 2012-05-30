@@ -100,4 +100,8 @@ public class GeoUtils {
   public static MathTransform getCRSTransform() {
     return transform.get();
   }
+
+  public static Coordinate getLonLat(Coordinate startCoord) {
+    return new Coordinate(startCoord.y, startCoord.x);
+  }
 }

@@ -18,6 +18,7 @@ import com.google.common.collect.LinkedHashMultimap;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Multimap;
+import com.google.common.collect.Multimaps;
 
 /**
  * This class is an Actor that responds to LocationRecord messages and processes.
@@ -31,8 +32,8 @@ public class InferenceService extends UntypedActor {
   private static final Map<String, InferenceInstance> vehicleToInstance = Maps
       .newConcurrentMap();
 
-  private static final Multimap<String, InferenceResultRecord> vehicleToTraceResults = LinkedHashMultimap
-      .create();
+  private static final Multimap<String, InferenceResultRecord> vehicleToTraceResults = 
+      Multimaps.synchronizedSetMultimap(LinkedHashMultimap.<String, InferenceResultRecord>create());
 
   public static void clearInferenceData() {
     vehicleToInstance.clear();

@@ -211,9 +211,16 @@ function moveMarker() {
 
 function drawResults(mean, major, minor, isOnEdge, isInferred) {
 
-  var color = 'red';
-  if (isOnEdge) {
-    color = 'green'
+  if (isInferred) {
+    var color = 'red';
+    if (isOnEdge) {
+      color = 'green'
+    }
+  } else {
+    var color = 'yellow';
+    if (isOnEdge) {
+      color = 'blue'
+    }
   }
   
   var meanCoords = new L.LatLng(parseFloat(mean.x),
@@ -240,7 +247,7 @@ function drawResults(mean, major, minor, isOnEdge, isInferred) {
   group.addLayer(minorAxis);
   
   var mean = new L.Circle(meanCoords, 5, {
-    fill : !isInferred,
+    fill : true,
     color : color
   });
   
@@ -272,7 +279,7 @@ function renderMarker() {
       }
     
       var results = lines[i].actualResults;
-      drawResults(results.meanCoords, results.majorAxisCoords, results.minorAxisCoords, isOnEdge, true);
+      drawResults(results.meanCoords, results.majorAxisCoords, results.minorAxisCoords, isOnEdge, false);
     }
   
     var obsCoords = new L.LatLng(parseFloat(lines[i].observedCoords.x),
@@ -300,21 +307,26 @@ function drawEdge(id, velocity, isInferred) {
     segmentId : id
   }, function(data) {
 
-    var color;
-
     var avg_velocity = Math.abs(velocity);
 
-    if (avg_velocity < MAX_SPEED)
-      color = '#' + getColor(avg_velocity / MAX_SPEED);
-    else
-      color = 'purple';
+    var color;
+
+    if (isInferred) {
+      color = "yellow";
+    } else {
+      color = "green";
+    }
+//    if (avg_velocity < MAX_SPEED)
+//      color = '#' + getColor(avg_velocity / MAX_SPEED);
+//    else
+//      color = 'purple';
     
     var geojson = new L.GeoJSON();
 
-    var weight = 7;
+    var weight = 3;
     
     if (isInferred) {
-      weight = 3;
+      weight = 7;
     }
     
     geojson.on('featureparse', function(e) {
@@ -361,7 +373,7 @@ function renderGraph() {
   }
   if (lines[i].infResults) {
     for ( var j in lines[i].infResults.pathSegmentIds) {
-      renderPath(lines[i].infResults.pathSegmentIds[j], false);
+      renderPath(lines[i].infResults.pathSegmentIds[j], true);
     }
   }
 }

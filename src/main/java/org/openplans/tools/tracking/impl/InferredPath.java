@@ -20,7 +20,7 @@ public class InferredPath {
   private final Double totalPathDistance;
   
   public InferredPath(ImmutableList<PathEdge> edges, double totalPathDistance) {
-    Preconditions.checkArgument(edges.size() > 1);
+    Preconditions.checkArgument(edges.size() >= 1);
     // TODO remove/revise these sanity checks
     PathEdge prevEdge = null;
     for (PathEdge edge : edges) {

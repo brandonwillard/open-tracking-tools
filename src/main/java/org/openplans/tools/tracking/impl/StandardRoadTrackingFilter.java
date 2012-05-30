@@ -257,8 +257,10 @@ public class StandardRoadTrackingFilter implements CloneableSerializable {
           roadFilter.predict(belief);
           
         } else {
-          /*
+          /*-
            * Predict movement along an edge 
+           * TODO really, this should just be the truncated/conditional
+           * mean and covariance for the given interval/edge
            */
           final double S = Or.times(belief.getCovariance()).times(Or.transpose()).getElement(0, 0) 
               + Math.pow(edge.getInferredEdge().getLength()/Math.sqrt(12), 2);
@@ -268,7 +270,6 @@ public class StandardRoadTrackingFilter implements CloneableSerializable {
           final double e = mean - Or.times(belief.getMean()).getElement(0);
           final Vector a = belief.getMean().plus(W.getColumn(0).scale(e));
           
-          Preconditions.checkArgument(a.getElement(0) >= 0);
           belief.setMean(a);
           belief.setCovariance(R);
         }

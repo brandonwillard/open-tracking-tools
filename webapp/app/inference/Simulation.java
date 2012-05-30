@@ -11,6 +11,8 @@ import java.util.Date;
 import java.util.List;
 import java.util.Random;
 
+import models.InferenceInstance;
+
 import org.openplans.tools.tracking.impl.EdgeTransitionDistributions;
 import org.openplans.tools.tracking.impl.InferredGraph;
 import org.openplans.tools.tracking.impl.InferredGraph.InferredEdge;
@@ -62,9 +64,11 @@ public class Simulation {
 
   private final String simulationName;
   private final InitialParameters parameters;
+  private boolean performInference;
 
-  public Simulation(InitialParameters parameters) {
+  public Simulation(InitialParameters parameters, boolean performInference) {
 
+    this.performInference = performInference;
     this.parameters = parameters;
     this.startCoordinates = new Coordinate(10.300252, 123.90609);
     this.startTime = new Date(1325570441000l);
@@ -163,6 +167,7 @@ public class Simulation {
 
   private VehicleState sampleState(VehicleState vehicleState, long time) {
     
+    InferenceInstance instance = InferenceService.getInferenceInstance(simulationName, true);
     vehicleState.getMovementFilter().setCurrentTimeDiff(frequency);
     final MultivariateGaussian previousLocBelief = vehicleState.getBelief().clone();
     final MultivariateGaussian currentLocBelief = vehicleState.getBelief();
@@ -205,11 +210,21 @@ public class Simulation {
         vehicleState.getMovementFilter(), currentLocBelief, currentEdgeTrans,
         newPathEdge, newPath, vehicleState);
     
-    final InferenceResultRecord result = InferenceResultRecord
-        .createInferenceResultRecord(thisObs, newState, null);
-    InferenceService.addSimulationRecords(simulationName, result);
+    
     Logger.info("processed simulation observation :" + thisObs);
+    
+    if (performInference) {
+      instance.update(thisObs);
+      
+      Logger.info("processed simulation inference :" + thisObs);
+    }
+    
+    
+    final InferenceResultRecord result = InferenceResultRecord
+        .createInferenceResultRecord(thisObs, newState, instance.getBestState());
 
+    InferenceService.addSimulationRecords(simulationName, result);
+    
     return newState;
   }
 

@@ -156,8 +156,8 @@ public class InferredGraph {
   
   private Set<InferredPath> computePaths(PathKey key) {
     
-    Coordinate fromCoord = key.getStartCoord();
-    Coordinate toCoord = key.getEndCoord();
+    Coordinate fromCoord = GeoUtils.getLonLat(key.getStartCoord());
+    Coordinate toCoord = GeoUtils.getLonLat(key.getEndCoord());
     
     Set<InferredPath> paths = Sets.newHashSet(InferredPath.getEmptyPath());
     Builder<PathEdge> path = ImmutableList.builder();

@@ -47,7 +47,8 @@ public class Application extends Controller {
   }
   
   public static void simulation(String obs_variance_pair, String road_state_variance_pair,
-    String ground_state_variance_pair, String off_prob_pair, String on_prob_pair) {
+    String ground_state_variance_pair, String off_prob_pair, String on_prob_pair, 
+    String performInference) {
     
     final String[] obsPair = obs_variance_pair.split(",");
     final Vector obsVariance = VectorFactory.getDefault().createVector2D(
@@ -69,11 +70,12 @@ public class Application extends Controller {
     final Vector onProbs = VectorFactory.getDefault().createVector2D(
         Double.parseDouble(onPair[0]), Double.parseDouble(onPair[1]));
     
+    final boolean inference = Boolean.parseBoolean(performInference);
     
     InitialParameters parameters = new InitialParameters(obsVariance, roadStateVariance, 
         groundStateVariance, offProbs, onProbs);
     
-    Simulation sim = new Simulation(parameters);
+    Simulation sim = new Simulation(parameters, inference);
     Logger.info("starting simulation " + sim.getSimulationName());
 
     if (InferenceService.getInferenceInstance(sim.getSimulationName(), true) != null) {
