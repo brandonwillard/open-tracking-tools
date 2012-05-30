@@ -49,37 +49,73 @@ public class Simulation {
     }
   }
 
-  private final Coordinate startCoordinates;
-  private final Date startTime;
   private final long seed;
-
-  private final Date endTime;
-  private final int duration;
-
-  private final int frequency;
-
   private final Random rng;
-
   private final InferredGraph inferredGraph;
-
   private final String simulationName;
   private final InitialParameters parameters;
-  private boolean performInference;
+  private InferenceInstance instance;
 
-  public Simulation(InitialParameters parameters, boolean performInference) {
+  public static class SimulationParameters {
+    
+    private final Coordinate startCoordinate;
+    private final Date startTime;
+    private final Date endTime;
+    private final long duration;
+    private final long frequency;
+    private final boolean performInference;
+    
+    public SimulationParameters(Coordinate startCoordinate, Date startTime, long duration, 
+      long frequency, boolean performInference) {
+      this.performInference = performInference;
+      this.frequency = frequency;
+      this.startCoordinate = startCoordinate;
+      this.startTime = startTime;
+      this.endTime = new Date(startTime.getTime() + duration * 1000);
+      this.duration = duration;
+    }
 
-    this.performInference = performInference;
+    public Coordinate getStartCoordinate() {
+      return startCoordinate;
+    }
+
+    public Date getStartTime() {
+      return startTime;
+    }
+
+    public Date getEndTime() {
+      return endTime;
+    }
+
+    public long getDuration() {
+      return duration;
+    }
+
+    public long getFrequency() {
+      return frequency;
+    }
+
+    public boolean isPerformInference() {
+      return performInference;
+    }
+  }
+  
+  private final SimulationParameters simParameters;
+  
+  public Simulation(InitialParameters parameters, SimulationParameters simParameters) {
+
+    this.simParameters = simParameters;
     this.parameters = parameters;
-    this.startCoordinates = new Coordinate(10.300252, 123.90609);
-    this.startTime = new Date(1325570441000l);
-    this.duration = 60 * 60;
-    this.endTime = new Date(startTime.getTime() + duration * 1000);
-    this.frequency = 30;
+    
     this.inferredGraph = new InferredGraph(Api.getGraph());
-    this.simulationName = "sim-" + this.startTime.getTime();
+    this.simulationName = "sim-" + this.simParameters.getStartTime().getTime();
     this.rng = new Random();
     this.seed = rng.nextLong();
     this.rng.setSeed(seed);
+    this.instance = InferenceService.getInferenceInstance(simulationName, true);
+    this.instance.seed = seed;
+    this.instance.totalRecords = (int)((simParameters.getEndTime().getTime() 
+        - simParameters.getStartTime().getTime()) / (simParameters.getFrequency() * 1000d));
   }
 
   public String getSimulationName() {
@@ -92,7 +128,8 @@ public class Simulation {
     try {
       try {
         initialObs = Observation.createObservation(this.simulationName,
-            startTime, startCoordinates, null, null, null);
+            this.simParameters.getStartTime(), 
+            this.simParameters.getStartCoordinate(), null, null, null);
       } catch (final TimeOrderException e) {
         e.printStackTrace();
         return;
@@ -111,10 +148,10 @@ public class Simulation {
           PathEdge.getEdge(currentInferredEdge));
       vehicleState.getBelief().setMean(thisStateSample);
 
-      long time = startTime.getTime();
+      long time = this.simParameters.getStartTime().getTime();
       int i = 0;
-      while (time < endTime.getTime()) {
-        time += frequency * 1000;
+      while (time < this.simParameters.getEndTime().getTime()) {
+        time += this.simParameters.getFrequency() * 1000;
         vehicleState = sampleState(vehicleState, time);
         i++;
       }
@@ -167,8 +204,7 @@ public class Simulation {
 
   private VehicleState sampleState(VehicleState vehicleState, long time) {
     
-    InferenceInstance instance = InferenceService.getInferenceInstance(simulationName, true);
-    vehicleState.getMovementFilter().setCurrentTimeDiff(frequency);
+    vehicleState.getMovementFilter().setCurrentTimeDiff(this.simParameters.getFrequency());
     final MultivariateGaussian previousLocBelief = vehicleState.getBelief().clone();
     final MultivariateGaussian currentLocBelief = vehicleState.getBelief();
     final EdgeTransitionDistributions currentEdgeTrans = vehicleState
@@ -213,7 +249,7 @@ public class Simulation {
     
     Logger.info("processed simulation observation :" + thisObs);
     
-    if (performInference) {
+    if (this.simParameters.isPerformInference()) {
       instance.update(thisObs);
       
       Logger.info("processed simulation inference :" + thisObs);
@@ -350,28 +386,8 @@ public class Simulation {
     return new InferredPath(ImmutableList.copyOf(currentPath));
   }
 
-  public Coordinate getStartCoordinates() {
-    return startCoordinates;
-  }
-
-  public Date getStartTime() {
-    return startTime;
-  }
-
   public long getSeed() {
     return seed;
-  }
-
-  public Date getEndTime() {
-    return endTime;
-  }
-
-  public int getDuration() {
-    return duration;
-  }
-
-  public int getFrequency() {
-    return frequency;
   }
 
   public Random getRng() {
@@ -384,6 +400,14 @@ public class Simulation {
 
   public InitialParameters getParameters() {
     return parameters;
+  }
+
+  public InferenceInstance getInstance() {
+    return instance;
+  }
+
+  public SimulationParameters getSimParameters() {
+    return simParameters;
   }
 
 }

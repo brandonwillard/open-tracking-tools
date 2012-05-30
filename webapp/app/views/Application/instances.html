@@ -6,7 +6,9 @@
    	
    	#{list items:instances, as:'instance'}
         <li>
-            vehicleId: ${instance.vehicleId}, recordsProcessed: ${instance.recordsProcessed}
+            vehicleId: ${instance.vehicleId}<br>
+            recordsProcessed: ${instance.recordsProcessed}/${instance.totalRecords}<br>
+            seed: ${instance.seed}<br>
             
             #{form @Application.removeInferenceInstance(), method:'GET', id:'deleteForm'}
 	            <input type="hidden" name="name" value="${instance.vehicleId}"/>	
@@ -32,6 +34,14 @@
 </div>
 <div id="simulate" style="padding: 2px; border: 1px solid black">
 	#{form @Application.simulation(), method:'GET'}
+	 	<input name="start_coordinate_pair" type="text" value="10.300252, 123.90609"/> 
+	    Start coordinates (lat,lon)<br>
+	 	<input name="start_unix_time" type="text" value="1325570441000"/> 
+	    Start (unix) time<br>
+	 	<input name="duration_str" type="text" value="3600"/> 
+	    Duration (secs)<br>
+	 	<input name="frequency_str" type="text" value="30"/> 
+	    Observation Frequency (secs)<br>
 	 	<input name="obs_variance_pair" type="text" value="625, 625"/> 
 	    Observation Variance (x,y)<br>
 	 	<input name="road_state_variance_pair" type="text" value="0.000625, 0.000625"/> 

@@ -33,16 +33,19 @@ public class InferenceInstance {
   
   public int recordsProcessed = 0;
   
+  public long seed = 0l;
+  
   public final boolean isSimulation;
   
   private VehicleTrackingFilter filter;
-
-  private final long prevTime = 0l;
 
   private DataDistribution<VehicleState> belief;
   private VehicleState bestState;
 
   private final InitialParameters initialParameters;
+
+  public int totalRecords = 0;
+  
   private static InferredGraph inferredGraph = new InferredGraph(Api.getGraph());
 
   public InferenceInstance(String vehicleId, boolean isSimulation) {
@@ -65,10 +68,6 @@ public class InferenceInstance {
 
   public VehicleState getBestState() {
     return bestState;
-  }
-
-  public long getPrevTime() {
-    return prevTime;
   }
 
   public DataDistribution<VehicleState> getStateBelief() {

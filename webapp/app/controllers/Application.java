@@ -5,13 +5,17 @@ import gov.sandia.cognition.math.matrix.VectorFactory;
 import inference.InferenceService;
 import inference.Simulation;
 import inference.Simulation.SimulationActor;
+import inference.Simulation.SimulationParameters;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.util.Date;
 import java.util.List;
 
 import org.apache.commons.io.IOUtils;
 import org.openplans.tools.tracking.impl.VehicleState.InitialParameters;
+
+import com.vividsolutions.jts.geom.Coordinate;
 
 import models.InferenceInstance;
 
@@ -47,8 +51,19 @@ public class Application extends Controller {
   }
   
   public static void simulation(String obs_variance_pair, String road_state_variance_pair,
-    String ground_state_variance_pair, String off_prob_pair, String on_prob_pair, 
-    String performInference) {
+    String ground_state_variance_pair, String off_prob_pair, 
+    String on_prob_pair, String performInference, String start_coordinate_pair,
+    String start_unix_time, String duration_str, String frequency_str) {
+    
+    final String[] startCoordPair = start_coordinate_pair.split(",");
+    final Coordinate startCoord = new Coordinate(Double.parseDouble(startCoordPair[0]),
+        Double.parseDouble(startCoordPair[1]));
+    final Date startTime = new Date(Long.parseLong(start_unix_time));
+    final long duration = Long.parseLong(duration_str);
+    final long frequency = Long.parseLong(frequency_str);
+    final boolean inference = Boolean.parseBoolean(performInference);
+    SimulationParameters simParams = new SimulationParameters(startCoord, startTime,
+        duration, frequency, inference);
     
     final String[] obsPair = obs_variance_pair.split(",");
     final Vector obsVariance = VectorFactory.getDefault().createVector2D(
@@ -70,12 +85,11 @@ public class Application extends Controller {
     final Vector onProbs = VectorFactory.getDefault().createVector2D(
         Double.parseDouble(onPair[0]), Double.parseDouble(onPair[1]));
     
-    final boolean inference = Boolean.parseBoolean(performInference);
     
     InitialParameters parameters = new InitialParameters(obsVariance, roadStateVariance, 
         groundStateVariance, offProbs, onProbs);
     
-    Simulation sim = new Simulation(parameters, inference);
+    Simulation sim = new Simulation(parameters, simParams);
     Logger.info("starting simulation " + sim.getSimulationName());
 
     if (InferenceService.getInferenceInstance(sim.getSimulationName(), true) != null) {
