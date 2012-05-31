@@ -1,4 +1,4 @@
-package org.openplans.tracking.tools.graph_builder;
+package org.openplans.tools.tracking.graph_builder;
 
 import org.opentripplanner.routing.edgetype.PlainStreetEdge;
 import org.opentripplanner.routing.edgetype.StreetTraversalPermission;

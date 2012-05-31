@@ -1,4 +1,4 @@
-package org.openplans.tracking.tools.graph_builder;
+package org.openplans.tools.tracking.graph_builder;
 
 import java.util.Set;
 

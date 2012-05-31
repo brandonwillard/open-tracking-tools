@@ -1,4 +1,4 @@
-package org.openplans.tracking.tools.graph_builder;
+package org.openplans.tools.tracking.graph_builder;
 
 import org.opentripplanner.graph_builder.impl.osm.OSMPlainStreetEdgeFactory;
 import org.opentripplanner.openstreetmap.model.OSMNode;
