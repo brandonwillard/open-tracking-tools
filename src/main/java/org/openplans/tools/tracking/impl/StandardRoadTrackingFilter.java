@@ -3,12 +3,19 @@ package org.openplans.tools.tracking.impl;
 import java.util.List;
 import java.util.Map.Entry;
 
+import org.geotools.geometry.jts.JTS;
+import org.geotools.referencing.GeodeticCalculator;
+import org.opengis.referencing.operation.TransformException;
 import org.openplans.tools.tracking.impl.InferredGraph.InferredEdge;
+import org.openplans.tools.tracking.impl.util.GeoUtils;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
 import com.vividsolutions.jts.geom.Coordinate;
+import com.vividsolutions.jts.geom.Geometry;
+import com.vividsolutions.jts.geom.LineSegment;
+import com.vividsolutions.jts.linearref.LinearLocation;
 
 import gov.sandia.cognition.math.ComplexNumber;
 import gov.sandia.cognition.math.matrix.Matrix;
@@ -410,20 +417,17 @@ public class StandardRoadTrackingFilter implements CloneableSerializable {
    * Returns the matrix and offset vector for projection onto the given edge.
    * distEnd is the distance from the start of the path to the end of the given edge.
    * NOTE: These results are only in the positive direction.  Convert on your end.
-   * @param edge
-   * @param isNegative 
-   * @param distEnd
-   * @return
    */
-  static private Entry<Matrix, Vector> posVelProjectionPair(PathEdge edge, boolean isNegative) {
-    final Vector start = isNegative ? edge.getInferredEdge().getEndPoint()
-        : edge.getInferredEdge().getStartPoint();
-    final Vector end = isNegative ? edge.getInferredEdge().getStartPoint()
-        : edge.getInferredEdge().getEndPoint();
+  static private Entry<Matrix, Vector> posVelProjectionPair(LineSegment lineSegment, double distToStartOfLine) {
     
-    final double length = edge.getInferredEdge().getLength();
+    final Vector start = GeoUtils.getEuclideanVector(
+        GeoUtils.reverseCoordinates(lineSegment.p0));
+    final Vector end = GeoUtils.getEuclideanVector(
+        GeoUtils.reverseCoordinates(lineSegment.p1));
     
-    final double distToStart = Math.abs(edge.getDistToStartOfEdge());
+    final double length = GeoUtils.getAngleDegreesInMeters(lineSegment.getLength());
+    
+    final double distToStart = Math.abs(distToStartOfLine);
     
     final Vector P1 = end.minus(start).scale(1/length);
     final Vector s1 = start.minus(P1.scale(distToStart));
@@ -464,9 +468,17 @@ public class StandardRoadTrackingFilter implements CloneableSerializable {
     
     Preconditions.checkArgument(edge != PathEdge.getEmptyPathEdge());
     
-    final boolean isNegative = belief.getMean().getElement(0) < 0d;
-    Entry<Matrix, Vector> projPair = StandardRoadTrackingFilter.posVelProjectionPair(edge,
-        isNegative);
+    final double distanceAlong = belief.getMean().getElement(0);
+    final boolean isNegative = distanceAlong < 0d;
+    LinearLocation lineLocation = edge.getInferredEdge().getLengthLocationMap().getLocation(
+        GeoUtils.getMetersInAngleDegrees(distanceAlong));
+    LineSegment lineSegment = lineLocation.getSegment(edge.getInferredEdge().getGeometry());
+    final double distanceToStartOfSegment = GeoUtils.getAngleDegreesInMeters(
+        edge.getInferredEdge().getLengthIndexedLine().indexOf(lineSegment.p0));
+    if (isNegative)
+      lineSegment.reverse();
+    Entry<Matrix, Vector> projPair = StandardRoadTrackingFilter.posVelProjectionPair(lineSegment,
+        distanceToStartOfSegment);
     /*
      * First, we convert to a positive distance traveled.
      */
@@ -496,8 +508,16 @@ public class StandardRoadTrackingFilter implements CloneableSerializable {
     final Vector m = belief.getMean().clone();
     final Matrix C = belief.getCovariance().clone();
     
-    Entry<Matrix, Vector> projPair = StandardRoadTrackingFilter.posVelProjectionPair(edge,
-        false);
+    /*
+     * We snap to the line and find the segment of interest.
+     */
+    final Coordinate latlonCurrentPos = GeoUtils.convertToLatLon(Og.times(m));
+    LinearLocation lineLocation = edge.getInferredEdge().getLocationIndexedLine().project(
+        GeoUtils.reverseCoordinates(latlonCurrentPos));
+    LineSegment lineSegment = lineLocation.getSegment(edge.getInferredEdge().getGeometry());
+    final double distanceToStartOfSegment = GeoUtils.getAngleDegreesInMeters(
+        edge.getInferredEdge().getLengthIndexedLine().indexOf(lineSegment.p0));
+    Entry<Matrix, Vector> projPair = StandardRoadTrackingFilter.posVelProjectionPair(lineSegment, distanceToStartOfSegment);
     
     final Vector projMean = projPair.getKey().transpose().times(m.minus(projPair.getValue()));
     final Matrix projCov = projPair.getKey().transpose().times(C).times(projPair.getKey());

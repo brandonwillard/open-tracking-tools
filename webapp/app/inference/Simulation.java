@@ -26,6 +26,9 @@ import org.openplans.tools.tracking.impl.VehicleState.InitialParameters;
 import org.openplans.tools.tracking.impl.util.GeoUtils;
 
 import play.Logger;
+//import org.slf4j.Logger;
+//import org.slf4j.LoggerFactory;
+
 import akka.actor.UntypedActor;
 
 import com.google.common.collect.ImmutableList;
@@ -37,14 +40,14 @@ import controllers.Api;
 
 public class Simulation {
 
-  // private static final Logger _log =
-  // LoggerFactory.getLogger(Simulation.class);
+//  private static final Logger _log = LoggerFactory.getLogger(Simulation.class);
 
   public static class SimulationActor extends UntypedActor {
     @Override
     public void onReceive(Object arg0) throws Exception {
       // TODO this is a lame way to get concurrency. fix this
       final Simulation sim = (Simulation) arg0;
+      
       sim.runSimulation();
     }
   }
@@ -110,7 +113,8 @@ public class Simulation {
     this.inferredGraph = new InferredGraph(Api.getGraph());
     this.simulationName = "sim-" + this.simParameters.getStartTime().getTime();
     this.rng = new Random();
-    this.seed = rng.nextLong();
+//    this.seed = rng.nextLong();
+    this.seed = 1059842027645227566l;
     this.rng.setSeed(seed);
     this.instance = InferenceService.getInferenceInstance(simulationName, true);
     this.instance.seed = seed;
@@ -124,6 +128,7 @@ public class Simulation {
 
   public void runSimulation() {
 
+    Logger.info("starting simulation with seed = " + seed);
     Observation initialObs;
     try {
       try {
@@ -143,10 +148,6 @@ public class Simulation {
 
       VehicleState vehicleState = new VehicleState(this.inferredGraph,
           initialObs, currentInferredEdge, parameters);
-      final Vector thisStateSample = sampleMovementBelief(vehicleState
-          .getBelief().getMean(), vehicleState.getMovementFilter(),
-          PathEdge.getEdge(currentInferredEdge));
-      vehicleState.getBelief().setMean(thisStateSample);
 
       long time = this.simParameters.getStartTime().getTime();
       int i = 0;
@@ -170,7 +171,7 @@ public class Simulation {
    * @return
    */
   public Vector sampleMovementBelief(Vector mean,
-    StandardRoadTrackingFilter filter, PathEdge edge) {
+    StandardRoadTrackingFilter filter) {
     final boolean isRoad = mean.getDimensionality() == 2;
     final Matrix Q = isRoad ? filter.getQr() : filter.getQg();
 
@@ -180,10 +181,6 @@ public class Simulation {
         .getDefault().createVector(2), covSqrt, rng);
     final Matrix Gamma = filter.getCovarianceFactor(isRoad);
     Vector thisStateSample = Gamma.times(underlyingSample).plus(mean);
-    if (isRoad) {
-      thisStateSample = StandardRoadTrackingFilter.getTruncatedEdgeLocation(
-          thisStateSample, edge);
-    } 
     return thisStateSample;
   }
 
@@ -219,14 +216,7 @@ public class Simulation {
         vehicleState.getEdgeTransitionDist(), currentLocBelief,
         currentPathEdge, vehicleState.getMovementFilter());
 
-    /*
-     * Now that we've propagated the belief, sample it again, so that we include
-     * some transition noise.
-     */
     final PathEdge newPathEdge = Iterables.getLast(newPath.getEdges());
-    final Vector transStateSample = sampleMovementBelief(vehicleState
-        .getBelief().getMean(), vehicleState.getMovementFilter(), newPathEdge);
-    vehicleState.getBelief().setMean(transStateSample);
 
     /*
      * Sample from the state and observation noise
@@ -351,11 +341,15 @@ public class Simulation {
         final double currentLoc = belief.getMean().getElement(0);
         movementFilter.predict(belief, null, null);
         /*
-         * Adjust by the current location
+         * Adjust by the current location and sample
          */
         belief.getMean().setElement(0,
             belief.getMean().getElement(0) + currentLoc);
 
+        final Vector transStateSample = sampleMovementBelief(belief.getMean(), 
+            movementFilter);
+        belief.setMean(transStateSample);
+        
         totalDistToTravel = belief.getMean().getElement(0);
       }
 

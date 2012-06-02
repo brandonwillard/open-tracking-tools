@@ -41,6 +41,8 @@ import com.vividsolutions.jts.algorithm.Angle;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.CoordinateSequence;
 import com.vividsolutions.jts.geom.Geometry;
+import com.vividsolutions.jts.linearref.LengthIndexedLine;
+import com.vividsolutions.jts.linearref.LengthLocationMap;
 import com.vividsolutions.jts.linearref.LinearLocation;
 import com.vividsolutions.jts.linearref.LocationIndexedLine;
 import com.vividsolutions.jts.math.Vector2D;
@@ -156,8 +158,8 @@ public class InferredGraph {
   
   private Set<InferredPath> computePaths(PathKey key) {
     
-    Coordinate fromCoord = GeoUtils.getLonLat(key.getStartCoord());
-    Coordinate toCoord = GeoUtils.getLonLat(key.getEndCoord());
+    Coordinate fromCoord = GeoUtils.reverseCoordinates(key.getStartCoord());
+    Coordinate toCoord = GeoUtils.reverseCoordinates(key.getEndCoord());
     
     Set<InferredPath> paths = Sets.newHashSet(InferredPath.getEmptyPath());
     Builder<PathEdge> path = ImmutableList.builder();
@@ -230,14 +232,8 @@ public class InferredGraph {
   
   public static class InferredEdge {
   
-    private final LocationIndexedLine line;
+    private final LocationIndexedLine locationIndexedLine;
     private final Integer edgeId;
-  
-    /*
-     * Angle between this line and the Y-axis
-     */
-    private final Double angle;
-
     private final Vertex startVertex;
     private final Vertex endVertex;
     private final Vector endPoint;
@@ -247,6 +243,9 @@ public class InferredGraph {
     private final UnivariateGaussianMeanVarianceBayesianEstimator velocityEstimator;
     private final Geometry geometry;
     private final InferredGraph graph;
+    private final LengthIndexedLine lengthIndexedLine;
+    private final LengthLocationMap lengthLocationMap;
+    
     /*
      * This is the empty edge, which stands for free movement
      */
@@ -255,8 +254,7 @@ public class InferredGraph {
   
     private InferredEdge() {
       this.edgeId = null;
-      this.angle = null;
-      this.line = null;
+      this.locationIndexedLine = null;
       this.endPoint = null;
       this.startPoint = null;
       this.length = 0;
@@ -266,22 +264,28 @@ public class InferredGraph {
       this.endVertex = null;
       this.geometry = null;
       this.graph = null;
+      this.lengthIndexedLine = null;
+      this.lengthLocationMap = null;
     }
   
     private InferredEdge(Edge edge, Integer edgeId, InferredGraph graph) {
       this.graph = graph;
       this.edgeId = edgeId;
-      this.line = new LocationIndexedLine(edge.getGeometry());
       
       /*
-       * Warning: this geometry is in lon/lat.
+       * Warning: this geometry is in lon/lat and may contain more than
+       * one straight line.
        */
       this.geometry = edge.getGeometry();
+      
+      this.locationIndexedLine = new LocationIndexedLine(edge.getGeometry());
+      this.lengthIndexedLine = new LengthIndexedLine(edge.getGeometry());
+      this.lengthLocationMap = new LengthLocationMap(geometry);
       
       this.startVertex = edge.getFromVertex();
       this.endVertex = edge.getToVertex();
       
-      final Coordinate startPoint = this.line.extractPoint(this.line
+      final Coordinate startPoint = this.locationIndexedLine.extractPoint(this.locationIndexedLine
           .getStartIndex());
       /*
        * We need to flip these coords around to get lat/lon.
@@ -291,15 +295,13 @@ public class InferredGraph {
       this.startPoint  = VectorFactory.getDefault().createVector2D(startPointCoord.x,
           startPointCoord.y);
       
-      final Coordinate endPoint = this.line.extractPoint(this.line.getEndIndex());
+      final Coordinate endPoint = this.locationIndexedLine.extractPoint(this.locationIndexedLine.getEndIndex());
       final Coordinate endPointCoord = GeoUtils.convertToEuclidean(
           new Coordinate(endPoint.y, endPoint.x));
       this.endPoint  = VectorFactory.getDefault().createVector2D(endPointCoord.x,
           endPointCoord.y);
       
-      this.length = this.startPoint.euclideanDistance(this.endPoint);
-      
-      this.angle = Angle.angle(startPoint, endPoint);
+      this.length = GeoUtils.getAngleDegreesInMeters(geometry.getLength());
       
       this.velocityPrecisionDist =
         // ~4.4 m/s, std. dev ~ 30 m/s, Gamma with exp. value = 30 m/s
@@ -310,16 +312,8 @@ public class InferredGraph {
           velocityPrecisionDist);
     }
   
-    public Double getAngle() {
-      return angle;
-    }
-  
     public Integer getEdgeId() {
       return edgeId;
-    }
-  
-    public LocationIndexedLine getLine() {
-      return line;
     }
   
     /**
@@ -332,8 +326,8 @@ public class InferredGraph {
       if (this == InferredEdge.emptyEdge)
         return null;
       final Coordinate revObsPoint = new Coordinate(obsPoint.y, obsPoint.x);
-      final LinearLocation here = line.project(revObsPoint);
-      final Coordinate pointOnLine = line.extractPoint(here);
+      final LinearLocation here = locationIndexedLine.project(revObsPoint);
+      final Coordinate pointOnLine = locationIndexedLine.extractPoint(here);
       final Coordinate revOnLine = new Coordinate(pointOnLine.y, pointOnLine.x);
       final Coordinate projPointOnLine = GeoUtils.convertToEuclidean(revOnLine);
       return VectorFactory.getDefault().createVector2D(projPointOnLine.x,
@@ -469,6 +463,26 @@ public class InferredGraph {
     public String toString() {
       return "InferredEdge [edgeId=" + edgeId + ", endPoint=" + endPoint
           + ", startPoint=" + startPoint + ", length=" + length + "]";
+    }
+
+    public LocationIndexedLine getLocationIndexedLine() {
+      return locationIndexedLine;
+    }
+
+    public InferredGraph getGraph() {
+      return graph;
+    }
+
+    public LengthIndexedLine getLengthIndexedLine() {
+      return lengthIndexedLine;
+    }
+
+    public LengthLocationMap getLengthLocationMap() {
+      return lengthLocationMap;
+    }
+
+    public static InferredGraph.InferredEdge getEmptyedge() {
+      return emptyEdge;
     }
 
   
