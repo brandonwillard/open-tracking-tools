@@ -33,7 +33,7 @@ public class InferenceInstance {
   
   public int recordsProcessed = 0;
   
-  public long seed = 0l;
+  public long simSeed = 0l;
   
   public final boolean isSimulation;
   
@@ -54,8 +54,8 @@ public class InferenceInstance {
         VectorFactory.getDefault().createVector2D(VehicleState.getDvariance(), VehicleState.getVvariance()),
         VectorFactory.getDefault().createVector2D(VehicleState.getDvariance(), VehicleState.getVvariance()),
         VectorFactory.getDefault().createVector2D(0.05d, 1d),
-        VectorFactory.getDefault().createVector2D(1d, 0.05d)
-        );
+        VectorFactory.getDefault().createVector2D(1d, 0.05d),
+        0l);
     this.vehicleId = vehicleId;
     this.isSimulation = isSimulation;
   }
@@ -64,6 +64,7 @@ public class InferenceInstance {
     this.initialParameters = parameters;
     this.vehicleId = vehicleId;
     this.isSimulation = isSimulation;
+    this.simSeed = parameters.getSeed();
   }
 
   public VehicleState getBestState() {
@@ -94,6 +95,7 @@ public class InferenceInstance {
 
     if (filter == null || belief == null) {
       filter = new VehicleTrackingFilter(obs, inferredGraph, initialParameters);
+      filter.getRandom().setSeed(simSeed);
       belief = filter.createInitialLearnedObject();
     } else {
       filter.update(belief, obs);
@@ -101,6 +103,38 @@ public class InferenceInstance {
 
     if (belief != null)
       this.bestState = belief.getMaxValueKey();
+  }
+
+  public int getRecordsProcessed() {
+    return recordsProcessed;
+  }
+
+  public long getSimSeed() {
+    return simSeed;
+  }
+
+  public boolean isSimulation() {
+    return isSimulation;
+  }
+
+  public VehicleTrackingFilter getFilter() {
+    return filter;
+  }
+
+  public DataDistribution<VehicleState> getBelief() {
+    return belief;
+  }
+
+  public InitialParameters getInitialParameters() {
+    return initialParameters;
+  }
+
+  public int getTotalRecords() {
+    return totalRecords;
+  }
+
+  public static InferredGraph getInferredGraph() {
+    return inferredGraph;
   }
 
 }

@@ -38,6 +38,12 @@ public class VehicleTrackingFilter extends
     this.setUpdater(new VehicleTrackingFilterUpdater(obs, this.inferredGraph,
         parameters));
   }
+  
+  @Override
+  public Random getRandom() {
+    VehicleTrackingFilterUpdater updater = (VehicleTrackingFilterUpdater) this.getUpdater();
+    return updater.getThreadRandom().get();
+  }
 
   /**
    * Note: this skips observations with a time delta of zero or less.
@@ -143,7 +149,7 @@ public class VehicleTrackingFilter extends
       instStateTransMap.put(state, allInstStateTransitions);
     }
 
-    final Random rng = VehicleTrackingFilterUpdater.getThreadRandom().get();
+    final Random rng = getRandom();
 
     @SuppressWarnings("unchecked")
     final ArrayList<? extends VehicleState> smoothedStates = resampler.sample(

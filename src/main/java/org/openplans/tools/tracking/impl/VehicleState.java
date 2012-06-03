@@ -33,14 +33,16 @@ public class VehicleState implements
     private final Vector offRoadStateVariance;
     private final Vector offTransitionProbs;
     private final Vector onTransitionProbs;
+    private final long seed;
 
     public InitialParameters(Vector obsVariance, Vector onRoadStateVariance,
-      Vector offRoadStateVariance, Vector offProbs, Vector onProbs) {
+      Vector offRoadStateVariance, Vector offProbs, Vector onProbs, long seed) {
       this.obsVariance = obsVariance;
       this.onRoadStateVariance = onRoadStateVariance;
       this.offRoadStateVariance = offRoadStateVariance;
       this.offTransitionProbs = offProbs;
       this.onTransitionProbs = onProbs;
+      this.seed = seed;
     }
 
     public Vector getObsVariance() {
@@ -61,6 +63,10 @@ public class VehicleState implements
 
     public Vector getOnTransitionProbs() {
       return onTransitionProbs;
+    }
+
+    public long getSeed() {
+      return seed;
     }
   }
 

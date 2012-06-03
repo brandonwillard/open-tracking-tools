@@ -30,9 +30,16 @@ public class VehicleTrackingFilterUpdater implements
 
   private final InitialParameters parameters;
 
-  private static ThreadLocal<Random> threadRandom = new ThreadLocal<Random>() {
+  private ThreadLocal<Random> threadRandom;
 
+  private static class UpdaterThreadLocal extends ThreadLocal<Random> {
+  
     long seed;
+    
+    public UpdaterThreadLocal(long seed) {
+      super();
+      this.seed = seed;
+    }
     
     @Override
     public Random get() {
@@ -41,10 +48,11 @@ public class VehicleTrackingFilterUpdater implements
 
     @Override
     protected Random initialValue() {
-      // TODO add an option for seeding?
       Random rng = new Random();
-      this.seed = rng.nextLong();
-      rng.setSeed(seed);
+      if (this.seed == 0l) {
+        this.seed = rng.nextLong();
+      }
+      rng.setSeed(this.seed);
       
       return rng;
     }
@@ -53,13 +61,14 @@ public class VehicleTrackingFilterUpdater implements
       return seed;
     }
 
-  };
-
+  }
+    
   public VehicleTrackingFilterUpdater(Observation obs,
     InferredGraph inferredGraph, InitialParameters parameters) {
     this.initialObservation = obs;
     this.inferredGraph = inferredGraph;
     this.parameters = parameters;
+    this.threadRandom = new UpdaterThreadLocal(parameters.getSeed());
   }
 
   @Override
@@ -138,7 +147,7 @@ public class VehicleTrackingFilterUpdater implements
     throw new NotImplementedError();
   }
 
-  public static ThreadLocal<Random> getThreadRandom() {
+  public ThreadLocal<Random> getThreadRandom() {
     return threadRandom;
   }
 

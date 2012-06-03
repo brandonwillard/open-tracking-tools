@@ -53,12 +53,13 @@ public class Application extends Controller {
   public static void simulation(String obs_variance_pair, String road_state_variance_pair,
     String ground_state_variance_pair, String off_prob_pair, 
     String on_prob_pair, String performInference, String start_coordinate_pair,
-    String start_unix_time, String duration_str, String frequency_str) {
+    String start_unix_time, String duration_str, String frequency_str, String seed_str) {
     
     final String[] startCoordPair = start_coordinate_pair.split(",");
     final Coordinate startCoord = new Coordinate(Double.parseDouble(startCoordPair[0]),
         Double.parseDouble(startCoordPair[1]));
     final Date startTime = new Date(Long.parseLong(start_unix_time));
+    final long seed = Long.parseLong(seed_str);
     final long duration = Long.parseLong(duration_str);
     final long frequency = Long.parseLong(frequency_str);
     final boolean inference = Boolean.parseBoolean(performInference);
@@ -87,15 +88,16 @@ public class Application extends Controller {
     
     
     InitialParameters parameters = new InitialParameters(obsVariance, roadStateVariance, 
-        groundStateVariance, offProbs, onProbs);
+        groundStateVariance, offProbs, onProbs, seed);
     
-    Simulation sim = new Simulation(parameters, simParams);
+    final String simulationName = "sim-" + start_unix_time;
+    if (InferenceService.getInferenceInstance(simulationName, true) != null) {
+      Logger.warn("removing existing inference instance named " + simulationName);
+      InferenceService.remove(simulationName);
+    }
+    Simulation sim = new Simulation(simulationName, parameters, simParams);
     Logger.info("starting simulation " + sim.getSimulationName());
 
-    if (InferenceService.getInferenceInstance(sim.getSimulationName(), true) != null) {
-      Logger.warn("removing existing inference instance = " + sim.getSimulationName());
-      InferenceService.remove(sim.getSimulationName());
-    }
     
     Application.simActor.tell(sim);
     

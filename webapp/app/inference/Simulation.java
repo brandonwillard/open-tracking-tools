@@ -105,19 +105,25 @@ public class Simulation {
   
   private final SimulationParameters simParameters;
   
-  public Simulation(InitialParameters parameters, SimulationParameters simParameters) {
+  public Simulation(String simulationName, InitialParameters parameters, 
+    SimulationParameters simParameters) {
 
     this.simParameters = simParameters;
     this.parameters = parameters;
     
     this.inferredGraph = new InferredGraph(Api.getGraph());
-    this.simulationName = "sim-" + this.simParameters.getStartTime().getTime();
+    this.simulationName = simulationName;
+    
     this.rng = new Random();
-//    this.seed = rng.nextLong();
-    this.seed = 1059842027645227566l;
+    if (parameters.getSeed() != 0l) {
+      this.seed = parameters.getSeed();
+    } else {
+      this.seed = rng.nextLong();
+    }
     this.rng.setSeed(seed);
+    
     this.instance = InferenceService.getInferenceInstance(simulationName, true);
-    this.instance.seed = seed;
+    this.instance.simSeed = seed;
     this.instance.totalRecords = (int)((simParameters.getEndTime().getTime() 
         - simParameters.getStartTime().getTime()) / (simParameters.getFrequency() * 1000d));
   }

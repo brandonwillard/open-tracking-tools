@@ -8,7 +8,7 @@
         <li>
             vehicleId: ${instance.vehicleId}<br>
             recordsProcessed: ${instance.recordsProcessed}/${instance.totalRecords}<br>
-            seed: ${instance.seed}<br>
+            seed: ${instance.simSeed}<br>
             
             #{form @Application.removeInferenceInstance(), method:'GET', id:'deleteForm'}
 	            <input type="hidden" name="name" value="${instance.vehicleId}"/>	
@@ -34,6 +34,8 @@
 </div>
 <div id="simulate" style="padding: 2px; border: 1px solid black">
 	#{form @Application.simulation(), method:'GET'}
+	 	<input name="seed_str" type="text" value="0"/>
+	    Random seed (enter 0 for none)<br>
 	 	<input name="start_coordinate_pair" type="text" value="10.300252, 123.90609"/> 
 	    Start coordinates (lat,lon)<br>
 	 	<input name="start_unix_time" type="text" value="1325570441000"/> 
