@@ -51,7 +51,7 @@ public class PlainStreetEdgeWithOSMData extends PlainStreetEdge {
                 getNotes());
         tv.setWheelchairNotes(getWheelchairNotes());
         tv.setWheelchairAccessible(isWheelchairAccessible());
-        tv.setCrossable(isCrossable());
+//        tv.setCrossable(isCrossable());
         tv.setPermission(getPermission());
         tv.setRoundabout(isRoundabout());
         tv.setBogusName(hasBogusName());

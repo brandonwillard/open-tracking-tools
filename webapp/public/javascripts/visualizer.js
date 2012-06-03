@@ -258,7 +258,7 @@ function drawResults(mean, major, minor, isOnEdge, isInferred) {
 function renderMarker() {
   if (i >= 0 && i < lines.length) {
     group.clearLayers();
-//    overlay.clearLayers();
+    overlay.clearLayers();
     
     if (lines[i].infResults) {
       var isOnEdge = false;

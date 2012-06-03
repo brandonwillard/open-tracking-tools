@@ -71,30 +71,30 @@ public class VehicleTrackingFilter extends
       final Set<InferredPath> instStateTransitions = inferredGraph.getPaths(
           state, obs.getObsCoords());
 
-      final MultivariateGaussian belief = state.getBelief().clone();
 
       state.getMovementFilter().setCurrentTimeDiff(timeDiff);
       final StandardRoadTrackingFilter filter = state.getMovementFilter()
           .clone();
 
-      /*-
-       * Produce the distance prediction.
-       * Note: here the road beliefs start at 0
-       */
-      filter.predict(belief, PathEdge.getEdge(state.getInferredEdge(), 0d),
-          null);
 
-      double totalLogLik = 0d;
+      double totalLogLik = Double.NEGATIVE_INFINITY;
       for (final InferredPath path : instStateTransitions) {
 
+        /*-
+         * Produce the distance prediction.
+         * Note: here the road beliefs start at 0
+         */
+        final MultivariateGaussian beliefPrediction = state.getBelief().clone();
+        final PathEdge firstEdge = path.getEdges().get(0);
+        filter.predict(beliefPrediction, firstEdge, PathEdge.getEdge(state.getEdge(), 0d));
+        
         /*-
          * Compute predictive dist. over path
          * Note that this path should always start with the edge that
          * this state is currently on.
          */
         PathEdge prevEdge = PathEdge.getEdge(state.getInferredEdge());
-        double pathLogLik = 0d;
-        final MultivariateGaussian edgeBelief = state.getBelief().clone();
+        double pathLogLik = Double.NEGATIVE_INFINITY;
         final Map<PathEdge, DefaultWeightedValue<MultivariateGaussian>> edgeToPredictiveBeliefAndLogLikelihood = Maps
             .newHashMap();
         for (final PathEdge edge : path.getEdges()) {
@@ -102,7 +102,12 @@ public class VehicleTrackingFilter extends
           /*
            * If we're going off-road, then pass the edge we used to be on.
            */
-          filter.predict(edgeBelief, edge, prevEdge);
+          final MultivariateGaussian edgeBelief = beliefPrediction.clone();
+          if (edge == PathEdge.getEmptyPathEdge()) {
+            filter.predict(edgeBelief, edge, prevEdge);
+          } else {
+            edge.predict(edgeBelief);
+          }
 
           // TODO should we use cumulative transition?
           double localLogLik = state.getEdgeTransitionDist()

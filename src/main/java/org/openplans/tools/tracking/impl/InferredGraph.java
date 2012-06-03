@@ -56,18 +56,23 @@ public class InferredGraph {
   private final Graph graph;
 
   private final OtpGraph narratedGraph;
+
+  private final PathSampler pathSampler;
   
   public InferredGraph(OtpGraph graph) {
    this.graph = graph.getGraph(); 
    this.narratedGraph = graph;
+   this.pathSampler = new PathSampler(graph.getGraph());
   }
     
   private static class PathKey {
     
+    private final Edge startEdge;
     private final Coordinate startCoord;
     private final Coordinate endCoord;
     
-    public PathKey(Coordinate startCoord, Coordinate endCoord) {
+    public PathKey(Edge startEdge, Coordinate startCoord, Coordinate endCoord) {
+      this.startEdge = startEdge;
       this.startCoord = startCoord;
       this.endCoord = endCoord;
     }
@@ -80,6 +85,10 @@ public class InferredGraph {
       return endCoord;
     }
 
+    public Edge getStartEdge() {
+      return startEdge;
+    }
+
     @Override
     public int hashCode() {
       final int prime = 31;
@@ -87,6 +96,8 @@ public class InferredGraph {
       result = prime * result + ((endCoord == null) ? 0 : endCoord.hashCode());
       result = prime * result
           + ((startCoord == null) ? 0 : startCoord.hashCode());
+      result = prime * result
+          + ((startEdge == null) ? 0 : startEdge.hashCode());
       return result;
     }
 
@@ -114,6 +125,13 @@ public class InferredGraph {
           return false;
         }
       } else if (!startCoord.equals(other.startCoord)) {
+        return false;
+      }
+      if (startEdge == null) {
+        if (other.startEdge != null) {
+          return false;
+        }
+      } else if (!startEdge.equals(other.startEdge)) {
         return false;
       }
       return true;
@@ -151,7 +169,7 @@ public class InferredGraph {
       fromCoord = fromState.getInferredEdge().getCenterPointCoord();
     }
     
-    PathKey key = new PathKey(fromCoord, toCoord);
+    PathKey key = new PathKey(fromState.getInferredEdge().getEdge(), fromCoord, toCoord);
     
     return pathsCache.getUnchecked(key);
   }
@@ -170,8 +188,11 @@ public class InferredGraph {
     final Geometry movementGeometry = JTSFactoryFinder
         .getGeometryFactory().createLineString(movementSeq);
     
-    final List<Edge> minimumConnectingEdges = Objects.firstNonNull(narratedGraph.getStreetMatcher()
-        .match(movementGeometry), ImmutableList.<Edge> of());
+    final List<Edge> minimumConnectingEdges = Objects.firstNonNull(
+        key.getStartEdge() != null ?
+            pathSampler.match(key.getStartEdge(), movementGeometry)
+            : narratedGraph.getStreetMatcher().match(movementGeometry), 
+        ImmutableList.<Edge> of());
     
     if (!minimumConnectingEdges.isEmpty()) {
       double pathDist = 0d;
@@ -232,7 +253,6 @@ public class InferredGraph {
   
   public static class InferredEdge {
   
-    private final LocationIndexedLine locationIndexedLine;
     private final Integer edgeId;
     private final Vertex startVertex;
     private final Vertex endVertex;
@@ -241,20 +261,28 @@ public class InferredGraph {
     private final double length;
     private final NormalInverseGammaDistribution velocityPrecisionDist;
     private final UnivariateGaussianMeanVarianceBayesianEstimator velocityEstimator;
-    private final Geometry geometry;
     private final InferredGraph graph;
-    private final LengthIndexedLine lengthIndexedLine;
-    private final LengthLocationMap lengthLocationMap;
+    
+    private final Edge edge;
+    
+    private final Geometry posGeometry;
+    private final LocationIndexedLine posLocationIndexedLine;
+    private final LengthIndexedLine posLengthIndexedLine;
+    private final LengthLocationMap posLengthLocationMap;
+    
+    // FIXME remove this negative junk; use turns.
+    private final Geometry negGeometry;
+    private final LocationIndexedLine negLocationIndexedLine;
+    private final LengthIndexedLine negLengthIndexedLine;
+    private final LengthLocationMap negLengthLocationMap;
     
     /*
      * This is the empty edge, which stands for free movement
      */
     private final static InferredGraph.InferredEdge emptyEdge = new InferredGraph.InferredEdge();
   
-  
     private InferredEdge() {
       this.edgeId = null;
-      this.locationIndexedLine = null;
       this.endPoint = null;
       this.startPoint = null;
       this.length = 0;
@@ -262,30 +290,49 @@ public class InferredGraph {
       this.velocityPrecisionDist = null;
       this.startVertex = null;
       this.endVertex = null;
-      this.geometry = null;
       this.graph = null;
-      this.lengthIndexedLine = null;
-      this.lengthLocationMap = null;
+      
+      this.edge = null;
+      
+      this.posGeometry = null;
+      this.posLocationIndexedLine = null;
+      this.posLengthIndexedLine = null;
+      this.posLengthLocationMap = null;
+      
+      this.negGeometry = null;
+      this.negLocationIndexedLine = null;
+      this.negLengthIndexedLine = null;
+      this.negLengthLocationMap = null;
     }
   
+    public Edge getEdge() {
+      return this.edge;
+    }
+
     private InferredEdge(Edge edge, Integer edgeId, InferredGraph graph) {
       this.graph = graph;
       this.edgeId = edgeId;
+      this.edge = edge;
       
       /*
        * Warning: this geometry is in lon/lat and may contain more than
        * one straight line.
        */
-      this.geometry = edge.getGeometry();
+      this.posGeometry = edge.getGeometry();
+      this.negGeometry = edge.getGeometry().reverse();
       
-      this.locationIndexedLine = new LocationIndexedLine(edge.getGeometry());
-      this.lengthIndexedLine = new LengthIndexedLine(edge.getGeometry());
-      this.lengthLocationMap = new LengthLocationMap(geometry);
+      this.posLocationIndexedLine = new LocationIndexedLine(posGeometry);
+      this.posLengthIndexedLine = new LengthIndexedLine(posGeometry);
+      this.posLengthLocationMap = new LengthLocationMap(posGeometry);
+      
+      this.negLocationIndexedLine = new LocationIndexedLine(negGeometry);
+      this.negLengthIndexedLine = new LengthIndexedLine(negGeometry);
+      this.negLengthLocationMap = new LengthLocationMap(negGeometry);
       
       this.startVertex = edge.getFromVertex();
       this.endVertex = edge.getToVertex();
       
-      final Coordinate startPoint = this.locationIndexedLine.extractPoint(this.locationIndexedLine
+      final Coordinate startPoint = this.posLocationIndexedLine.extractPoint(this.posLocationIndexedLine
           .getStartIndex());
       /*
        * We need to flip these coords around to get lat/lon.
@@ -295,13 +342,13 @@ public class InferredGraph {
       this.startPoint  = VectorFactory.getDefault().createVector2D(startPointCoord.x,
           startPointCoord.y);
       
-      final Coordinate endPoint = this.locationIndexedLine.extractPoint(this.locationIndexedLine.getEndIndex());
+      final Coordinate endPoint = this.posLocationIndexedLine.extractPoint(this.posLocationIndexedLine.getEndIndex());
       final Coordinate endPointCoord = GeoUtils.convertToEuclidean(
           new Coordinate(endPoint.y, endPoint.x));
       this.endPoint  = VectorFactory.getDefault().createVector2D(endPointCoord.x,
           endPointCoord.y);
       
-      this.length = GeoUtils.getAngleDegreesInMeters(geometry.getLength());
+      this.length = GeoUtils.getAngleDegreesInMeters(posGeometry.getLength());
       
       this.velocityPrecisionDist =
         // ~4.4 m/s, std. dev ~ 30 m/s, Gamma with exp. value = 30 m/s
@@ -326,8 +373,8 @@ public class InferredGraph {
       if (this == InferredEdge.emptyEdge)
         return null;
       final Coordinate revObsPoint = new Coordinate(obsPoint.y, obsPoint.x);
-      final LinearLocation here = locationIndexedLine.project(revObsPoint);
-      final Coordinate pointOnLine = locationIndexedLine.extractPoint(here);
+      final LinearLocation here = posLocationIndexedLine.project(revObsPoint);
+      final Coordinate pointOnLine = posLocationIndexedLine.extractPoint(here);
       final Coordinate revOnLine = new Coordinate(pointOnLine.y, pointOnLine.x);
       final Coordinate projPointOnLine = GeoUtils.convertToEuclidean(revOnLine);
       return VectorFactory.getDefault().createVector2D(projPointOnLine.x,
@@ -351,12 +398,11 @@ public class InferredGraph {
            * Only attempt one level of descent for finding street edges
            */
           tmpResults.addAll(edge.getFromVertex().getOutgoingStreetEdges());
-//          tmpResults.addAll(edge.getToVertex().getOutgoingStreetEdges());
         } else {
           tmpResults.add(edge);
         }
         for (Edge edge2 : tmpResults) {
-          if (!edge2.getGeometry().equals(geometry))
+          if (!edge2.getGeometry().equals(posGeometry))
             result.add(graph.getInferredEdge(edge2));
         }
       }
@@ -372,22 +418,7 @@ public class InferredGraph {
     public List<InferredEdge> getOutgoingTransferableEdges() {
       List<InferredEdge> result = Lists.newArrayList();
       for (Edge edge : this.endVertex.getOutgoingStreetEdges()) {
-        
-//        Set<Edge> tmpResults = Sets.newHashSet();
-//        if (edge.getGeometry() == null
-//            || !edge.getMode().equals(TraverseMode.CAR)) {
-//          /*
-//           * Only attempt one level of descent for finding street edges
-//           */
-//          tmpResults.addAll(edge.getFromVertex().getOutgoingStreetEdges());
-//          tmpResults.addAll(edge.getToVertex().getOutgoingStreetEdges());
-//        } else {
-//          tmpResults.add(edge);
-//        }
-//        for (Edge edge2 : tmpResults) {
-//          if (!edge2.getGeometry().equals(geometry))
-            result.add(graph.getInferredEdge(edge));
-//        }
+        result.add(graph.getInferredEdge(edge));
       }
       
       return result;
@@ -422,18 +453,14 @@ public class InferredGraph {
     }
 
     public Coordinate getCenterPointCoord() {
-      return this.geometry.getCentroid().getCoordinate();
-    }
-
-    public Geometry getGeometry() {
-      return geometry;
+      return this.posGeometry.getCentroid().getCoordinate();
     }
 
     @Override
     public int hashCode() {
       final int prime = 31;
       int result = 1;
-      result = prime * result + ((geometry == null) ? 0 : geometry.hashCode());
+      result = prime * result + ((posGeometry == null) ? 0 : posGeometry.hashCode());
       return result;
     }
 
@@ -449,11 +476,11 @@ public class InferredGraph {
         return false;
       }
       InferredEdge other = (InferredEdge) obj;
-      if (geometry == null) {
-        if (other.geometry != null) {
+      if (posGeometry == null) {
+        if (other.posGeometry != null) {
           return false;
         }
-      } else if (!geometry.equals(other.geometry)) {
+      } else if (!posGeometry.equals(other.posGeometry)) {
         return false;
       }
       return true;
@@ -465,24 +492,44 @@ public class InferredGraph {
           + ", startPoint=" + startPoint + ", length=" + length + "]";
     }
 
-    public LocationIndexedLine getLocationIndexedLine() {
-      return locationIndexedLine;
-    }
-
     public InferredGraph getGraph() {
       return graph;
     }
 
-    public LengthIndexedLine getLengthIndexedLine() {
-      return lengthIndexedLine;
-    }
-
-    public LengthLocationMap getLengthLocationMap() {
-      return lengthLocationMap;
-    }
-
     public static InferredGraph.InferredEdge getEmptyedge() {
       return emptyEdge;
+    }
+
+    public Geometry getPosGeometry() {
+      return posGeometry;
+    }
+
+    public LocationIndexedLine getPosLocationIndexedLine() {
+      return posLocationIndexedLine;
+    }
+
+    public LengthIndexedLine getPosLengthIndexedLine() {
+      return posLengthIndexedLine;
+    }
+
+    public LengthLocationMap getPosLengthLocationMap() {
+      return posLengthLocationMap;
+    }
+
+    public Geometry getNegGeometry() {
+      return negGeometry;
+    }
+
+    public LocationIndexedLine getNegLocationIndexedLine() {
+      return negLocationIndexedLine;
+    }
+
+    public LengthIndexedLine getNegLengthIndexedLine() {
+      return negLengthIndexedLine;
+    }
+
+    public LengthLocationMap getNegLengthLocationMap() {
+      return negLengthLocationMap;
     }
 
   

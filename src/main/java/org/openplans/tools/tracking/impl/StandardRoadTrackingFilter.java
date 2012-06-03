@@ -11,10 +11,13 @@ import org.openplans.tools.tracking.impl.util.GeoUtils;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableMultimap;
 import com.google.common.collect.Maps;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.LineSegment;
+import com.vividsolutions.jts.linearref.LengthIndexedLine;
+import com.vividsolutions.jts.linearref.LengthLocationMap;
 import com.vividsolutions.jts.linearref.LinearLocation;
 
 import gov.sandia.cognition.math.ComplexNumber;
@@ -180,7 +183,6 @@ public class StandardRoadTrackingFilter implements CloneableSerializable {
       final Matrix Q = Og.times(R).times(Og.transpose())
           .plus(groundFilter.getMeasurementCovariance());
       final Matrix A = Q.transpose().solve(Og.times(R.transpose())).transpose();
-          //R.times(Og.transpose()).times(Q.inverse());
       final Vector e = observation.minus(Og.times(a));
       
       final Matrix C = R.minus(A.times(Q.transpose()).times(A.transpose()));
@@ -188,7 +190,6 @@ public class StandardRoadTrackingFilter implements CloneableSerializable {
       
       MultivariateGaussian roadPost = projBelief.clone();
       invertProjection(roadPost, edge);
-      Preconditions.checkArgument(roadPost.getMean().getElement(0) >= 0);
       belief.setMean(roadPost.getMean());
       belief.setCovariance(roadPost.getCovariance());
     } else {
@@ -223,13 +224,12 @@ public class StandardRoadTrackingFilter implements CloneableSerializable {
    * path starting distance, and it will update the prior predictive distribution 
    * for that edge and path.  Otherwise, project free-movement onto an edge or 
    * predict free movement.
-   * @param belief
-   * @param edge
    * @param startOfEdgeDist 
    */
   public void predict(MultivariateGaussian belief, PathEdge edge, PathEdge prevEdge) {
     Preconditions.checkArgument(belief.getInputDimensionality() == 2 ||
         belief.getInputDimensionality() == 4);
+    Preconditions.checkNotNull(edge);
 
     if (edge == PathEdge.getEmptyPathEdge()) {
       if (belief.getInputDimensionality() == 4) {
@@ -256,30 +256,7 @@ public class StandardRoadTrackingFilter implements CloneableSerializable {
         invertProjection(belief, edge);
         roadFilter.predict(belief);
       } else {
-        if (edge == null) {
-          /*-
-           * Not looking for a prediction on an edge, instead
-           * the projection along the distance.
-           */
-          roadFilter.predict(belief);
-          
-        } else {
-          /*-
-           * Predict movement along an edge 
-           * TODO really, this should just be the truncated/conditional
-           * mean and covariance for the given interval/edge
-           */
-          final double S = Or.times(belief.getCovariance()).times(Or.transpose()).getElement(0, 0) 
-              + Math.pow(edge.getInferredEdge().getLength()/Math.sqrt(12), 2);
-          final Matrix W = belief.getCovariance().times(Or.transpose()).scale(1/S);
-          final Matrix R = belief.getCovariance().minus(W.times(W.transpose()).scale(S));
-          final double mean = (edge.getDistToStartOfEdge() + edge.getInferredEdge().getLength())/2d;
-          final double e = mean - Or.times(belief.getMean()).getElement(0);
-          final Vector a = belief.getMean().plus(W.getColumn(0).scale(e));
-          
-          belief.setMean(a);
-          belief.setCovariance(R);
-        }
+        roadFilter.predict(belief);
       }
     }
     
@@ -425,7 +402,7 @@ public class StandardRoadTrackingFilter implements CloneableSerializable {
     final Vector end = GeoUtils.getEuclideanVector(
         GeoUtils.reverseCoordinates(lineSegment.p1));
     
-    final double length = GeoUtils.getAngleDegreesInMeters(lineSegment.getLength());
+    final double length = start.euclideanDistance(end);
     
     final double distToStart = Math.abs(distToStartOfLine);
     
@@ -459,6 +436,37 @@ public class StandardRoadTrackingFilter implements CloneableSerializable {
     return truncatedMean;
   }
   
+  /**
+   * Returns the distance 
+   * @param edge
+   * @param distanceAlong
+   * @return
+   */
+  public static Entry<LineSegment, Double> getDistanceToStartOfSegment(
+      PathEdge edge, double distanceAlong) {
+    final boolean isNegative = distanceAlong < 0d;
+    final Geometry geometry;
+    final LengthIndexedLine lengthIdxLine;
+    if (isNegative) {
+      geometry = edge.getInferredEdge().getNegGeometry();
+      lengthIdxLine = edge.getInferredEdge().getNegLengthIndexedLine(); 
+    } else {
+      geometry = edge.getInferredEdge().getPosGeometry();
+      lengthIdxLine = edge.getInferredEdge().getPosLengthIndexedLine(); 
+    }
+      
+    final double distAlongGeometry = Math.abs(distanceAlong - edge.getDistToStartOfEdge());
+    LinearLocation lineLocation = LengthLocationMap.getLocation(geometry,
+        GeoUtils.getMetersInAngleDegrees(distAlongGeometry));
+    LineSegment lineSegment = lineLocation.getSegment(geometry);
+    final double distanceToStartOfSegmentOnGeometry = GeoUtils.getAngleDegreesInMeters(
+          lengthIdxLine.indexOf(lineSegment.p0));
+    final double distanceToStartOfSegmentOnPath = distanceToStartOfSegmentOnGeometry
+          + Math.abs(edge.getDistToStartOfEdge());
+    
+    return Maps.immutableEntry(lineSegment, distanceToStartOfSegmentOnPath);
+  }
+  
   public static void convertToGroundBelief(MultivariateGaussian belief, PathEdge edge) {
     Preconditions.checkArgument(belief.getInputDimensionality() == 2 ||
         belief.getInputDimensionality() == 4);
@@ -468,29 +476,26 @@ public class StandardRoadTrackingFilter implements CloneableSerializable {
     
     Preconditions.checkArgument(edge != PathEdge.getEmptyPathEdge());
     
-    final double distanceAlong = belief.getMean().getElement(0);
-    final boolean isNegative = distanceAlong < 0d;
-    LinearLocation lineLocation = edge.getInferredEdge().getLengthLocationMap().getLocation(
-        GeoUtils.getMetersInAngleDegrees(distanceAlong));
-    LineSegment lineSegment = lineLocation.getSegment(edge.getInferredEdge().getGeometry());
-    final double distanceToStartOfSegment = GeoUtils.getAngleDegreesInMeters(
-        edge.getInferredEdge().getLengthIndexedLine().indexOf(lineSegment.p0));
-    if (isNegative)
-      lineSegment.reverse();
-    Entry<Matrix, Vector> projPair = StandardRoadTrackingFilter.posVelProjectionPair(lineSegment,
-        distanceToStartOfSegment);
+    final Entry<LineSegment, Double> segmentDist = 
+        getDistanceToStartOfSegment(edge, belief.getMean().getElement(0));
+    Entry<Matrix, Vector> projPair = StandardRoadTrackingFilter.posVelProjectionPair(
+        segmentDist.getKey(), segmentDist.getValue());
     /*
      * First, we convert to a positive distance traveled.
      */
     Vector truncatedMean = getTruncatedEdgeLocation(belief.getMean(), edge);
     
-    if (isNegative) {
+    if (truncatedMean.getElement(0) < 0d) {
       truncatedMean.setElement(0, Math.abs(truncatedMean.getElement(0)));
     }
     
     final Matrix C = belief.getCovariance();
     final Vector projMean = projPair.getKey().times(truncatedMean).plus(projPair.getValue());
     final Matrix projCov = projPair.getKey().times(C).times(projPair.getKey().transpose());
+    
+//    MultivariateGaussian testD = new MultivariateGaussian(projMean, projCov);
+//    convertToRoadBelief(testD, edge);
+//    Preconditions.checkArgument(testD.getMean().euclideanDistance(belief.getMean()) < 5d);
     
     belief.setMean(projMean);
     belief.setCovariance(projCov);
@@ -512,12 +517,15 @@ public class StandardRoadTrackingFilter implements CloneableSerializable {
      * We snap to the line and find the segment of interest.
      */
     final Coordinate latlonCurrentPos = GeoUtils.convertToLatLon(Og.times(m));
-    LinearLocation lineLocation = edge.getInferredEdge().getLocationIndexedLine().project(
+    LinearLocation lineLocation = edge.getInferredEdge().getPosLocationIndexedLine().project(
         GeoUtils.reverseCoordinates(latlonCurrentPos));
-    LineSegment lineSegment = lineLocation.getSegment(edge.getInferredEdge().getGeometry());
-    final double distanceToStartOfSegment = GeoUtils.getAngleDegreesInMeters(
-        edge.getInferredEdge().getLengthIndexedLine().indexOf(lineSegment.p0));
-    Entry<Matrix, Vector> projPair = StandardRoadTrackingFilter.posVelProjectionPair(lineSegment, distanceToStartOfSegment);
+    LineSegment lineSegment = lineLocation.getSegment(edge.getInferredEdge().getPosGeometry());
+    final double distanceToStartOfSegmentOnGeometry = GeoUtils.getAngleDegreesInMeters(
+        edge.getInferredEdge().getPosLengthIndexedLine().indexOf(lineSegment.p0));
+    final double distanceToStartOfSegmentOnPath = distanceToStartOfSegmentOnGeometry
+          + edge.getDistToStartOfEdge();
+    Entry<Matrix, Vector> projPair = StandardRoadTrackingFilter.posVelProjectionPair(lineSegment,
+        distanceToStartOfSegmentOnPath);
     
     final Vector projMean = projPair.getKey().transpose().times(m.minus(projPair.getValue()));
     final Matrix projCov = projPair.getKey().transpose().times(C).times(projPair.getKey());

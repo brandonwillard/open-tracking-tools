@@ -339,7 +339,7 @@ public class Simulation {
         }
 
         final double currentLoc = belief.getMean().getElement(0);
-        movementFilter.predict(belief, null, null);
+        movementFilter.predict(belief, sampledPathEdge, null);
         /*
          * Adjust by the current location and sample
          */
