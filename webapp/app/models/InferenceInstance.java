@@ -85,10 +85,7 @@ public class InferenceInstance {
    * @param record
    */
   public void update(Observation obs) {
-
     updateFilter(obs);
-    recordsProcessed++;
-    
   }
 
   private void updateFilter(Observation obs) {

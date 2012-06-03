@@ -46,6 +46,7 @@ public class InferenceService extends UntypedActor {
         .getVehicleId(), false);
 
     ie.update(observation);
+    ie.recordsProcessed++;
 
     final InferenceResultRecord infResult = InferenceResultRecord
         .createInferenceResultRecord(observation, ie);
