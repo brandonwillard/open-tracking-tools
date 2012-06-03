@@ -49,7 +49,7 @@ public class InferredPath {
     Preconditions.checkArgument(edges.size() > 0);
     this.edges = edges;
     final PathEdge lastEdge = Iterables.getLast(edges);
-    final double direction = lastEdge.getDistToStartOfEdge() > 0 ? 1d : -1d;
+    final double direction = lastEdge.getDistToStartOfEdge() >= 0 ? 1d : -1d;
     this.totalPathDistance = lastEdge.getDistToStartOfEdge() + direction * lastEdge.getInferredEdge().getLength();
   }
 

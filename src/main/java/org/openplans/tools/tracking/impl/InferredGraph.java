@@ -67,12 +67,15 @@ public class InferredGraph {
     
   private static class PathKey {
     
-    private final Edge startEdge;
+    private final InferredEdge startEdge;
     private final Coordinate startCoord;
     private final Coordinate endCoord;
     
-    public PathKey(Edge startEdge, Coordinate startCoord, Coordinate endCoord) {
-      this.startEdge = startEdge;
+    public PathKey(InferredEdge inferredEdge, Coordinate startCoord, Coordinate endCoord) {
+      Preconditions.checkNotNull(inferredEdge);
+      Preconditions.checkNotNull(startCoord);
+      Preconditions.checkNotNull(endCoord);
+      this.startEdge = inferredEdge;
       this.startCoord = startCoord;
       this.endCoord = endCoord;
     }
@@ -85,7 +88,7 @@ public class InferredGraph {
       return endCoord;
     }
 
-    public Edge getStartEdge() {
+    public InferredEdge getStartEdge() {
       return startEdge;
     }
 
@@ -169,7 +172,7 @@ public class InferredGraph {
       fromCoord = fromState.getInferredEdge().getCenterPointCoord();
     }
     
-    PathKey key = new PathKey(fromState.getInferredEdge().getEdge(), fromCoord, toCoord);
+    PathKey key = new PathKey(fromState.getInferredEdge(), fromCoord, toCoord);
     
     return pathsCache.getUnchecked(key);
   }
@@ -179,7 +182,13 @@ public class InferredGraph {
     Coordinate fromCoord = GeoUtils.reverseCoordinates(key.getStartCoord());
     Coordinate toCoord = GeoUtils.reverseCoordinates(key.getEndCoord());
     
+    /*
+     * We always consider moving off of an edge, staying on an edge,
+     * and whatever else we can find.
+     */
     Set<InferredPath> paths = Sets.newHashSet(InferredPath.getEmptyPath());
+    if (key.getStartEdge() != InferredEdge.getEmptyEdge())
+      paths.add(new InferredPath(ImmutableList.of(PathEdge.getEdge(key.getStartEdge()))));
     Builder<PathEdge> path = ImmutableList.builder();
     final CoordinateSequence movementSeq = JTSFactoryFinder
         .getGeometryFactory().getCoordinateSequenceFactory()
@@ -189,8 +198,8 @@ public class InferredGraph {
         .getGeometryFactory().createLineString(movementSeq);
     
     final List<Edge> minimumConnectingEdges = Objects.firstNonNull(
-        key.getStartEdge() != null ?
-            pathSampler.match(key.getStartEdge(), movementGeometry)
+        key.getStartEdge() != InferredEdge.getEmptyEdge() ?
+          pathSampler.match(key.getStartEdge().getEdge(), movementGeometry)
             : narratedGraph.getStreetMatcher().match(movementGeometry), 
         ImmutableList.<Edge> of());
     
@@ -496,7 +505,7 @@ public class InferredGraph {
       return graph;
     }
 
-    public static InferredGraph.InferredEdge getEmptyedge() {
+    public static InferredGraph.InferredEdge getEmptyEdge() {
       return emptyEdge;
     }
 

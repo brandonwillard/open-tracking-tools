@@ -101,8 +101,9 @@ public class VehicleTrackingFilter extends
          */
         PathEdge prevEdge = PathEdge.getEdge(state.getInferredEdge());
         double pathLogLik = Double.NEGATIVE_INFINITY;
-        final Map<PathEdge, DefaultWeightedValue<MultivariateGaussian>> edgeToPredictiveBeliefAndLogLikelihood = Maps
-            .newHashMap();
+        final Map<PathEdge, DefaultWeightedValue<MultivariateGaussian>> 
+          edgeToPredictiveBeliefAndLogLikelihood = Maps.newHashMap();
+        
         for (final PathEdge edge : path.getEdges()) {
 
           /*
