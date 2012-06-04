@@ -26,6 +26,9 @@ import org.openplans.tools.tracking.impl.VehicleState.InitialParameters;
 import org.openplans.tools.tracking.impl.util.GeoUtils;
 
 import play.Logger;
+//import org.slf4j.Logger;
+//import org.slf4j.LoggerFactory;
+
 import akka.actor.UntypedActor;
 
 import com.google.common.collect.ImmutableList;
@@ -37,49 +40,92 @@ import controllers.Api;
 
 public class Simulation {
 
-  // private static final Logger _log =
-  // LoggerFactory.getLogger(Simulation.class);
+//  private static final Logger _log = LoggerFactory.getLogger(Simulation.class);
 
   public static class SimulationActor extends UntypedActor {
     @Override
     public void onReceive(Object arg0) throws Exception {
       // TODO this is a lame way to get concurrency. fix this
       final Simulation sim = (Simulation) arg0;
+      
       sim.runSimulation();
     }
   }
 
-  private final Coordinate startCoordinates;
-  private final Date startTime;
   private final long seed;
-
-  private final Date endTime;
-  private final int duration;
-
-  private final int frequency;
-
   private final Random rng;
-
   private final InferredGraph inferredGraph;
-
   private final String simulationName;
   private final InitialParameters parameters;
-  private boolean performInference;
+  private InferenceInstance instance;
 
-  public Simulation(InitialParameters parameters, boolean performInference) {
+  public static class SimulationParameters {
+    
+    private final Coordinate startCoordinate;
+    private final Date startTime;
+    private final Date endTime;
+    private final long duration;
+    private final long frequency;
+    private final boolean performInference;
+    
+    public SimulationParameters(Coordinate startCoordinate, Date startTime, long duration, 
+      long frequency, boolean performInference) {
+      this.performInference = performInference;
+      this.frequency = frequency;
+      this.startCoordinate = startCoordinate;
+      this.startTime = startTime;
+      this.endTime = new Date(startTime.getTime() + duration * 1000);
+      this.duration = duration;
+    }
 
-    this.performInference = performInference;
+    public Coordinate getStartCoordinate() {
+      return startCoordinate;
+    }
+
+    public Date getStartTime() {
+      return startTime;
+    }
+
+    public Date getEndTime() {
+      return endTime;
+    }
+
+    public long getDuration() {
+      return duration;
+    }
+
+    public long getFrequency() {
+      return frequency;
+    }
+
+    public boolean isPerformInference() {
+      return performInference;
+    }
+  }
+  
+  private final SimulationParameters simParameters;
+  
+  public Simulation(String simulationName, InitialParameters parameters, 
+    SimulationParameters simParameters) {
+
+    this.simParameters = simParameters;
     this.parameters = parameters;
-    this.startCoordinates = new Coordinate(10.300252, 123.90609);
-    this.startTime = new Date(1325570441000l);
-    this.duration = 60 * 60;
-    this.endTime = new Date(startTime.getTime() + duration * 1000);
-    this.frequency = 30;
+    
     this.inferredGraph = new InferredGraph(Api.getGraph());
-    this.simulationName = "sim-" + this.startTime.getTime();
+    this.simulationName = simulationName;
+    
     this.rng = new Random();
-    this.seed = rng.nextLong();
+    if (parameters.getSeed() != 0l) {
+      this.seed = parameters.getSeed();
+    } else {
+      this.seed = rng.nextLong();
+    }
     this.rng.setSeed(seed);
+    
+    this.instance = InferenceService.getInferenceInstance(simulationName, true);
+    this.instance.simSeed = seed;
+    this.instance.totalRecords = (int)((simParameters.getEndTime().getTime() 
+        - simParameters.getStartTime().getTime()) / (simParameters.getFrequency() * 1000d));
   }
 
   public String getSimulationName() {
@@ -88,11 +134,13 @@ public class Simulation {
 
   public void runSimulation() {
 
+    Logger.info("starting simulation with seed = " + seed);
     Observation initialObs;
     try {
       try {
         initialObs = Observation.createObservation(this.simulationName,
-            startTime, startCoordinates, null, null, null);
+            this.simParameters.getStartTime(), 
+            this.simParameters.getStartCoordinate(), null, null, null);
       } catch (final TimeOrderException e) {
         e.printStackTrace();
         return;
@@ -106,15 +154,11 @@ public class Simulation {
 
       VehicleState vehicleState = new VehicleState(this.inferredGraph,
           initialObs, currentInferredEdge, parameters);
-      final Vector thisStateSample = sampleMovementBelief(vehicleState
-          .getBelief().getMean(), vehicleState.getMovementFilter(),
-          PathEdge.getEdge(currentInferredEdge));
-      vehicleState.getBelief().setMean(thisStateSample);
 
-      long time = startTime.getTime();
+      long time = this.simParameters.getStartTime().getTime();
       int i = 0;
-      while (time < endTime.getTime()) {
-        time += frequency * 1000;
+      while (time < this.simParameters.getEndTime().getTime()) {
+        time += this.simParameters.getFrequency() * 1000;
         vehicleState = sampleState(vehicleState, time);
         i++;
       }
@@ -133,7 +177,7 @@ public class Simulation {
    * @return
    */
   public Vector sampleMovementBelief(Vector mean,
-    StandardRoadTrackingFilter filter, PathEdge edge) {
+    StandardRoadTrackingFilter filter) {
     final boolean isRoad = mean.getDimensionality() == 2;
     final Matrix Q = isRoad ? filter.getQr() : filter.getQg();
 
@@ -143,10 +187,6 @@ public class Simulation {
         .getDefault().createVector(2), covSqrt, rng);
     final Matrix Gamma = filter.getCovarianceFactor(isRoad);
     Vector thisStateSample = Gamma.times(underlyingSample).plus(mean);
-    if (isRoad) {
-      thisStateSample = StandardRoadTrackingFilter.getTruncatedEdgeLocation(
-          thisStateSample, edge);
-    } 
     return thisStateSample;
   }
 
@@ -167,8 +207,7 @@ public class Simulation {
 
   private VehicleState sampleState(VehicleState vehicleState, long time) {
     
-    InferenceInstance instance = InferenceService.getInferenceInstance(simulationName, true);
-    vehicleState.getMovementFilter().setCurrentTimeDiff(frequency);
+    vehicleState.getMovementFilter().setCurrentTimeDiff(this.simParameters.getFrequency());
     final MultivariateGaussian previousLocBelief = vehicleState.getBelief().clone();
     final MultivariateGaussian currentLocBelief = vehicleState.getBelief();
     final EdgeTransitionDistributions currentEdgeTrans = vehicleState
@@ -183,14 +222,7 @@ public class Simulation {
         vehicleState.getEdgeTransitionDist(), currentLocBelief,
         currentPathEdge, vehicleState.getMovementFilter());
 
-    /*
-     * Now that we've propagated the belief, sample it again, so that we include
-     * some transition noise.
-     */
     final PathEdge newPathEdge = Iterables.getLast(newPath.getEdges());
-    final Vector transStateSample = sampleMovementBelief(vehicleState
-        .getBelief().getMean(), vehicleState.getMovementFilter(), newPathEdge);
-    vehicleState.getBelief().setMean(transStateSample);
 
     /*
      * Sample from the state and observation noise
@@ -213,7 +245,7 @@ public class Simulation {
     
     Logger.info("processed simulation observation :" + thisObs);
     
-    if (performInference) {
+    if (this.simParameters.isPerformInference()) {
       instance.update(thisObs);
       
       Logger.info("processed simulation inference :" + thisObs);
@@ -313,13 +345,17 @@ public class Simulation {
         }
 
         final double currentLoc = belief.getMean().getElement(0);
-        movementFilter.predict(belief, null, null);
+        movementFilter.predict(belief, sampledPathEdge, null);
         /*
-         * Adjust by the current location
+         * Adjust by the current location and sample
          */
         belief.getMean().setElement(0,
             belief.getMean().getElement(0) + currentLoc);
 
+        final Vector transStateSample = sampleMovementBelief(belief.getMean(), 
+            movementFilter);
+        belief.setMean(transStateSample);
+        
         totalDistToTravel = belief.getMean().getElement(0);
       }
 
@@ -350,28 +386,8 @@ public class Simulation {
     return new InferredPath(ImmutableList.copyOf(currentPath));
   }
 
-  public Coordinate getStartCoordinates() {
-    return startCoordinates;
-  }
-
-  public Date getStartTime() {
-    return startTime;
-  }
-
   public long getSeed() {
     return seed;
-  }
-
-  public Date getEndTime() {
-    return endTime;
-  }
-
-  public int getDuration() {
-    return duration;
-  }
-
-  public int getFrequency() {
-    return frequency;
   }
 
   public Random getRng() {
@@ -384,6 +400,14 @@ public class Simulation {
 
   public InitialParameters getParameters() {
     return parameters;
+  }
+
+  public InferenceInstance getInstance() {
+    return instance;
+  }
+
+  public SimulationParameters getSimParameters() {
+    return simParameters;
   }
 
 }

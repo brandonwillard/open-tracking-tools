@@ -1,9 +1,13 @@
 package org.openplans.tools.tracking.impl.util;
 
 import gov.sandia.cognition.math.matrix.Vector;
+import gov.sandia.cognition.math.matrix.VectorFactory;
 
+import org.geotools.geometry.GeometryBuilder;
+import org.geotools.geometry.GeometryFactoryFinder;
 import org.geotools.geometry.jts.JTS;
 import org.geotools.referencing.CRS;
+import org.geotools.referencing.operation.projection.PointOutsideEnvelopeException;
 import org.opengis.referencing.crs.CRSAuthorityFactory;
 import org.opengis.referencing.crs.CoordinateReferenceSystem;
 import org.opengis.referencing.operation.MathTransform;
@@ -14,15 +18,42 @@ import com.vividsolutions.jts.geom.Coordinate;
 
 public class GeoUtils {
 
-  public static ThreadLocal<MathTransform> transform = new ThreadLocal<MathTransform>() {
+  public static class GeoSetup {
+    
+    final CoordinateReferenceSystem mapCRS;
+    final CoordinateReferenceSystem dataCRS;
+    final MathTransform transform;
+    
+    public GeoSetup(CoordinateReferenceSystem mapCRS,
+      CoordinateReferenceSystem dataCRS, MathTransform transform) {
+      this.mapCRS = mapCRS;
+      this.dataCRS = dataCRS;
+      this.transform = transform;
+    }
+
+    public CoordinateReferenceSystem getMapCRS() {
+      return mapCRS;
+    }
+
+    public CoordinateReferenceSystem getDataCRS() {
+      return dataCRS;
+    }
+
+    public MathTransform getTransform() {
+      return transform;
+    }
+    
+  }
+  
+  public static ThreadLocal<GeoSetup> geoData = new ThreadLocal<GeoSetup>() {
 
     @Override
-    public MathTransform get() {
+    public GeoSetup get() {
       return super.get();
     }
 
     @Override
-    protected MathTransform initialValue() {
+    protected GeoSetup initialValue() {
       System.setProperty("org.geotools.referencing.forceXY", "true");
       try {
         // EPSG:4326 -> WGS84
@@ -47,7 +78,10 @@ public class GeoUtils {
 
         final boolean lenient = true; // allow for some error due to different
                                       // datums
-        return CRS.findMathTransform(mapCRS, dataCRS, lenient);
+        final MathTransform transform = CRS.findMathTransform(mapCRS, dataCRS, lenient);
+        
+        return new GeoSetup(mapCRS, dataCRS, transform);
+        
       } catch (final Exception e) {
         e.printStackTrace();
       }
@@ -64,7 +98,8 @@ public class GeoUtils {
       /*
        * CRS is lon-lat order
        */
-      JTS.transform(new Coordinate(latlon.y, latlon.x), converted,
+      final Coordinate lonlat = reverseCoordinates(latlon);
+      JTS.transform(lonlat, converted,
           getCRSTransform());
     } catch (final NoninvertibleTransformException e) {
       e.printStackTrace();
@@ -98,10 +133,53 @@ public class GeoUtils {
   }
 
   public static MathTransform getCRSTransform() {
-    return transform.get();
+    return geoData.get().getTransform();
+  }
+  
+  public static CoordinateReferenceSystem getMapCRS() {
+    return geoData.get().getMapCRS();
+  }
+  
+  public static CoordinateReferenceSystem getDataCRS() {
+    return geoData.get().getDataCRS();
   }
 
-  public static Coordinate getLonLat(Coordinate startCoord) {
+  public static Coordinate reverseCoordinates(Coordinate startCoord) {
     return new Coordinate(startCoord.y, startCoord.x);
   }
+
+  public static Vector getEuclideanVector(Coordinate coordinate) {
+    Coordinate resCoord = convertToEuclidean(coordinate);
+    return VectorFactory.getDefault().createVector2D(resCoord.x, resCoord.y);
+  }
+  
+  public static double getAngleDegreesInMeters(double angularUnits) {
+    return angularUnits * (Math.PI/180d) * 6378137d; 
+  }
+
+  public static double getMetersInAngleDegrees(double distance) {
+    return distance / (Math.PI/180d) / 6378137d; 
+  }
+
+  public static boolean isInProjCoords(Coordinate rawCoords) {
+    try {
+      JTS.checkCoordinatesRange(
+          JTS.toGeometry(JTS.toDirectPosition(rawCoords, getDataCRS()).getDirectPosition())
+          , getDataCRS());
+      return true;
+    } catch (PointOutsideEnvelopeException e) {
+      return false;
+    }
+  }
+    
+  public static boolean isInLatLonCoords(Coordinate rawCoords) {
+    try {
+      JTS.checkCoordinatesRange(
+          JTS.toGeometry(JTS.toDirectPosition(rawCoords, getMapCRS()).getDirectPosition())
+          , getMapCRS());
+      return true;
+    } catch (PointOutsideEnvelopeException e) {
+      return false;
+    }
+  } 
 }

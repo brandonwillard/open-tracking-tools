@@ -33,16 +33,19 @@ public class InferenceInstance {
   
   public int recordsProcessed = 0;
   
+  public long simSeed = 0l;
+  
   public final boolean isSimulation;
   
   private VehicleTrackingFilter filter;
-
-  private final long prevTime = 0l;
 
   private DataDistribution<VehicleState> belief;
   private VehicleState bestState;
 
   private final InitialParameters initialParameters;
+
+  public int totalRecords = 0;
+  
   private static InferredGraph inferredGraph = new InferredGraph(Api.getGraph());
 
   public InferenceInstance(String vehicleId, boolean isSimulation) {
@@ -51,8 +54,8 @@ public class InferenceInstance {
         VectorFactory.getDefault().createVector2D(VehicleState.getDvariance(), VehicleState.getVvariance()),
         VectorFactory.getDefault().createVector2D(VehicleState.getDvariance(), VehicleState.getVvariance()),
         VectorFactory.getDefault().createVector2D(0.05d, 1d),
-        VectorFactory.getDefault().createVector2D(1d, 0.05d)
-        );
+        VectorFactory.getDefault().createVector2D(1d, 0.05d),
+        0l);
     this.vehicleId = vehicleId;
     this.isSimulation = isSimulation;
   }
@@ -61,14 +64,11 @@ public class InferenceInstance {
     this.initialParameters = parameters;
     this.vehicleId = vehicleId;
     this.isSimulation = isSimulation;
+    this.simSeed = parameters.getSeed();
   }
 
   public VehicleState getBestState() {
     return bestState;
-  }
-
-  public long getPrevTime() {
-    return prevTime;
   }
 
   public DataDistribution<VehicleState> getStateBelief() {
@@ -85,16 +85,14 @@ public class InferenceInstance {
    * @param record
    */
   public void update(Observation obs) {
-
     updateFilter(obs);
-    recordsProcessed++;
-    
   }
 
   private void updateFilter(Observation obs) {
 
     if (filter == null || belief == null) {
       filter = new VehicleTrackingFilter(obs, inferredGraph, initialParameters);
+      filter.getRandom().setSeed(simSeed);
       belief = filter.createInitialLearnedObject();
     } else {
       filter.update(belief, obs);
@@ -102,6 +100,38 @@ public class InferenceInstance {
 
     if (belief != null)
       this.bestState = belief.getMaxValueKey();
+  }
+
+  public int getRecordsProcessed() {
+    return recordsProcessed;
+  }
+
+  public long getSimSeed() {
+    return simSeed;
+  }
+
+  public boolean isSimulation() {
+    return isSimulation;
+  }
+
+  public VehicleTrackingFilter getFilter() {
+    return filter;
+  }
+
+  public DataDistribution<VehicleState> getBelief() {
+    return belief;
+  }
+
+  public InitialParameters getInitialParameters() {
+    return initialParameters;
+  }
+
+  public int getTotalRecords() {
+    return totalRecords;
+  }
+
+  public static InferredGraph getInferredGraph() {
+    return inferredGraph;
   }
 
 }

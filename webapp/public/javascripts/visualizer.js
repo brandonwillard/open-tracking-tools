@@ -13,7 +13,7 @@
  */
 
 var dataUrl = "/api/traces?vehicleId=";
-var coordUrl = "/api/convertEuclidToCoords?";
+var coordUrl = "/api/convertToLatLon?";
 var startLatLng = new L.LatLng(10.3181373, 123.8956844); // Portland OR
 
 var map;
@@ -258,7 +258,7 @@ function drawResults(mean, major, minor, isOnEdge, isInferred) {
 function renderMarker() {
   if (i >= 0 && i < lines.length) {
     group.clearLayers();
-//    overlay.clearLayers();
+    overlay.clearLayers();
     
     if (lines[i].infResults) {
       var isOnEdge = false;
@@ -323,17 +323,19 @@ function drawEdge(id, velocity, isInferred) {
     
     var geojson = new L.GeoJSON();
 
-    var weight = 3;
+    var weight = 5;
+    var opacity = 0.7;
     
     if (isInferred) {
-      weight = 7;
+      weight = 13;
+      opacity = 0.3
     }
     
     geojson.on('featureparse', function(e) {
       e.layer.setStyle({
         color : e.properties.color,
         weight : weight,
-        opacity : 0.3
+        opacity : opacity
       });
       if (e.properties && e.properties.popupContent){
         e.layer.bindPopup(e.properties.popupContent);
