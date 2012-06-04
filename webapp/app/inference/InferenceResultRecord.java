@@ -49,7 +49,7 @@ public class InferenceResultRecord {
       this.state = vehicleState;
     }
 
-    @JsonIgnore
+    @JsonSerialize
     public Coordinate getMajorAxisCoords() {
       return majorAxisCoords;
     }
@@ -59,7 +59,7 @@ public class InferenceResultRecord {
       return meanCoords;
     }
 
-    @JsonIgnore
+    @JsonSerialize
     public Coordinate getMinorAxisCoords() {
       return minorAxisCoords;
     }
