@@ -5,6 +5,7 @@ import gov.sandia.cognition.math.matrix.VectorFactory;
 import gov.sandia.cognition.statistics.ComputableDistribution;
 import gov.sandia.cognition.statistics.ProbabilityFunction;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
+import gov.sandia.cognition.util.ObjectUtil;
 
 import java.util.ArrayList;
 import java.util.Random;
@@ -254,9 +255,9 @@ public class VehicleState implements
 
   public VehicleState(VehicleState other) {
     this.graph = other.graph;
-    this.movementFilter = other.movementFilter;
-    this.belief = other.belief;
-    this.edgeTransitionDist = other.edgeTransitionDist;
+    this.movementFilter = other.movementFilter.clone();
+    this.belief = other.belief.clone();
+    this.edgeTransitionDist = other.edgeTransitionDist.clone();
     this.edge = other.edge;
     this.observation = other.observation;
     this.distanceFromPreviousState = other.distanceFromPreviousState;
@@ -266,13 +267,7 @@ public class VehicleState implements
 
   @Override
   public VehicleState clone() {
-    try {
-      return (VehicleState) super.clone();
-    } catch (final CloneNotSupportedException e) {
-      // TODO Auto-generated catch block
-      e.printStackTrace();
-    }
-    return null;
+    return new VehicleState(this);
   }
 
   public MultivariateGaussian getBelief() {

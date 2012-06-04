@@ -67,11 +67,19 @@ public class Api extends Controller {
     }
   }
 
-  public static void convertEuclidToCoords(String x, String y)
+  public static void convertToLatLon(String x, String y)
       throws JsonGenerationException, JsonMappingException, IOException {
-
-    Coordinate coords = GeoUtils.convertToLatLon(new Coordinate(Double.parseDouble(x), 
-        Double.parseDouble(y)));
+    
+    Coordinate rawCoords = new Coordinate(Double.parseDouble(x), 
+            Double.parseDouble(y));
+    
+    Coordinate coords;
+    if (GeoUtils.isInProjCoords(rawCoords))
+      coords = GeoUtils.convertToLatLon(rawCoords);
+//    else if (GeoUtils.isInLatLonCoords(rawCoords))
+//      coords = rawCoords;
+    else
+      coords = null;
 
     renderJSON(jsonMapper.writeValueAsString(coords));
   }

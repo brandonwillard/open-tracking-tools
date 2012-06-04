@@ -11,13 +11,18 @@
             seed: ${instance.simSeed}<br>
             
             #{form @Application.removeInferenceInstance(), method:'GET', id:'deleteForm'}
-	            <input type="hidden" name="name" value="${instance.vehicleId}"/>	
+	              <input type="hidden" name="name" value="${instance.vehicleId}"/>	
                 <input type="submit" value="Delete">
             #{/form}
             
-            #{form @Application.map(), method:'GET', id:'mapForm'}
+            #{form @Application.map(), method:'GET', target:'_blank', id:'mapForm'}
                 <input type="hidden" name="name" value="${instance.vehicleId}"/>
                 <input type="submit" value="Map"/>
+            #{/form}
+            
+            #{form @Api.traces(), method:'GET', target:'_blank', id:'tracesForm'}
+                <input type="hidden" name="vehicleId" value="${instance.vehicleId}"/>
+                <input type="submit" value="Traces"/>
             #{/form}
         </li>
     #{/list}

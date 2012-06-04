@@ -3,8 +3,11 @@ package org.openplans.tools.tracking.impl.util;
 import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.math.matrix.VectorFactory;
 
+import org.geotools.geometry.GeometryBuilder;
+import org.geotools.geometry.GeometryFactoryFinder;
 import org.geotools.geometry.jts.JTS;
 import org.geotools.referencing.CRS;
+import org.geotools.referencing.operation.projection.PointOutsideEnvelopeException;
 import org.opengis.referencing.crs.CRSAuthorityFactory;
 import org.opengis.referencing.crs.CoordinateReferenceSystem;
 import org.opengis.referencing.operation.MathTransform;
@@ -157,4 +160,26 @@ public class GeoUtils {
   public static double getMetersInAngleDegrees(double distance) {
     return distance / (Math.PI/180d) / 6378137d; 
   }
+
+  public static boolean isInProjCoords(Coordinate rawCoords) {
+    try {
+      JTS.checkCoordinatesRange(
+          JTS.toGeometry(JTS.toDirectPosition(rawCoords, getDataCRS()).getDirectPosition())
+          , getDataCRS());
+      return true;
+    } catch (PointOutsideEnvelopeException e) {
+      return false;
+    }
+  }
+    
+  public static boolean isInLatLonCoords(Coordinate rawCoords) {
+    try {
+      JTS.checkCoordinatesRange(
+          JTS.toGeometry(JTS.toDirectPosition(rawCoords, getMapCRS()).getDirectPosition())
+          , getMapCRS());
+      return true;
+    } catch (PointOutsideEnvelopeException e) {
+      return false;
+    }
+  } 
 }

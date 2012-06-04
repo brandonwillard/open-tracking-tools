@@ -175,23 +175,29 @@ public class StandardRoadTrackingFilter implements CloneableSerializable {
       /*
        * Convert road-coordinates prior predictive to ground-coordinates
        */
-      MultivariateGaussian projBelief = belief.clone();
-      invertProjection(projBelief, edge);
-      Vector a = projBelief.getMean();
-      Matrix R = projBelief.getCovariance();
+      MultivariateGaussian updatedBelief = belief.clone();
+      invertProjection(updatedBelief, edge);
       
-      final Matrix Q = Og.times(R).times(Og.transpose())
-          .plus(groundFilter.getMeasurementCovariance());
-      final Matrix A = Q.transpose().solve(Og.times(R.transpose())).transpose();
-      final Vector e = observation.minus(Og.times(a));
+      /*
+       * Perform Kalman update
+       */
+//      Vector a = projBelief.getMean();
+//      Matrix R = projBelief.getCovariance();
+//      final Matrix Q = Og.times(R).times(Og.transpose())
+//          .plus(groundFilter.getMeasurementCovariance());
+//      final Matrix A = Q.transpose().solve(Og.times(R.transpose())).transpose();
+//      final Vector e = observation.minus(Og.times(a));
+//      
+//      final Matrix C = R.minus(A.times(Q.transpose()).times(A.transpose()));
+//      final Vector m = a.plus(A.times(e));
+      this.groundFilter.measure(updatedBelief, observation);
       
-      final Matrix C = R.minus(A.times(Q.transpose()).times(A.transpose()));
-      final Vector m = a.plus(A.times(e));
-      
-      MultivariateGaussian roadPost = projBelief.clone();
-      invertProjection(roadPost, edge);
-      belief.setMean(roadPost.getMean());
-      belief.setCovariance(roadPost.getCovariance());
+      /*
+       * Convert back to road-coordinates
+       */
+      invertProjection(updatedBelief, edge);
+      belief.setMean(updatedBelief.getMean());
+      belief.setCovariance(updatedBelief.getCovariance());
     } else {
       Preconditions.checkArgument(belief.getInputDimensionality() == 4);
       this.groundFilter.measure(belief, observation);

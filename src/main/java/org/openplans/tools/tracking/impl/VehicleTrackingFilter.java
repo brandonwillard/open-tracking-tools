@@ -73,79 +73,21 @@ public class VehicleTrackingFilter extends
        * Get all possible inst. state transitions. TODO FIXME Currently there is
        * only one: the "shortest-path" between edges.
        */
-      final DataDistribution<InferredPathEntry> allInstStateTransitions = new DefaultDataDistribution<InferredPathEntry>();
+      final DataDistribution<InferredPathEntry> allInstStateTransitions = 
+          new DefaultDataDistribution<InferredPathEntry>();
       final Set<InferredPath> instStateTransitions = inferredGraph.getPaths(
           state, obs.getObsCoords());
 
 
       state.getMovementFilter().setCurrentTimeDiff(timeDiff);
-      final StandardRoadTrackingFilter filter = state.getMovementFilter()
-          .clone();
-
-
       double totalLogLik = Double.NEGATIVE_INFINITY;
+      
       for (final InferredPath path : instStateTransitions) {
-
-        /*-
-         * Produce the distance prediction.
-         * Note: here the road beliefs start at 0
-         */
-        final MultivariateGaussian beliefPrediction = state.getBelief().clone();
-        final PathEdge firstEdge = path.getEdges().get(0);
-        filter.predict(beliefPrediction, firstEdge, PathEdge.getEdge(state.getEdge(), 0d));
-        
-        /*-
-         * Compute predictive dist. over path
-         * Note that this path should always start with the edge that
-         * this state is currently on.
-         */
-        PathEdge prevEdge = PathEdge.getEdge(state.getInferredEdge());
-        double pathLogLik = Double.NEGATIVE_INFINITY;
-        final Map<PathEdge, DefaultWeightedValue<MultivariateGaussian>> 
-          edgeToPredictiveBeliefAndLogLikelihood = Maps.newHashMap();
-        
-        for (final PathEdge edge : path.getEdges()) {
-
-          /*
-           * If we're going off-road, then pass the edge we used to be on.
-           */
-          final MultivariateGaussian edgeBelief = beliefPrediction.clone();
-          if (edge == PathEdge.getEmptyPathEdge()) {
-            filter.predict(edgeBelief, edge, prevEdge);
-          } else {
-            edge.predict(edgeBelief);
-          }
-
-          // TODO should we use cumulative transition?
-          double localLogLik = state.getEdgeTransitionDist()
-              .predictiveLogLikelihood(prevEdge.getInferredEdge(),
-                  edge.getInferredEdge());
-          localLogLik += filter.logLikelihood(obs.getProjectedPoint(),
-              edgeBelief, edge);
-
-          Preconditions.checkArgument(!Double.isNaN(localLogLik));
-
-          edgeToPredictiveBeliefAndLogLikelihood.put(edge,
-              new DefaultWeightedValue<MultivariateGaussian>(
-                  edgeBelief.clone(), localLogLik));
-
-          /*
-           * Add likelihood for this edge to the path total
-           */
-          pathLogLik = LogMath.add(pathLogLik, localLogLik);
-          prevEdge = edge;
-        }
-
-        /*
-         * Add likelihood for this path to the source state's total
-         */
-        totalLogLik = LogMath.add(totalLogLik, pathLogLik);
-
-        final InferredPathEntry infPath = new InferredPathEntry(path,
-            edgeToPredictiveBeliefAndLogLikelihood, filter);
-
-        allInstStateTransitions.increment(infPath, Math.exp(pathLogLik));
+        InferredPathEntry infPath = path.getPredictiveLogLikelihood(obs, state);
+        totalLogLik = LogMath.add(totalLogLik, infPath.getTotalLogLikelihood());
+        allInstStateTransitions.increment(infPath, Math.exp(infPath.getTotalLogLikelihood()));
       }
+      
       resampler.increment(state, Math.exp(totalLogLik));
       instStateTransMap.put(state, allInstStateTransitions);
     }
@@ -192,24 +134,7 @@ public class VehicleTrackingFilter extends
        */
       final PathEdge sampledEdge;
       if (pathEntry.getPath().getEdges().size() > 1) {
-        final DataDistribution<PathEdge> pathEdgeDist = new DefaultDataDistribution<PathEdge>();
-
-        /*-
-         * Normalize to avoid zero probs.
-         * TODO put this in PathEntry
-         */
-        double totalLikelihood = Double.NEGATIVE_INFINITY;
-        for (final DefaultWeightedValue<MultivariateGaussian> weight : pathEntry
-            .getEdgeToPredictiveBelief().values()) {
-          totalLikelihood = LogMath.add(weight.getWeight(), totalLikelihood);
-        }
-        for (final PathEdge edge : pathEntry.getPath().getEdges()) {
-          final double weight = pathEntry.getEdgeToPredictiveBelief().get(edge)
-              .getWeight()
-              - totalLikelihood;
-          pathEdgeDist.set(edge, Math.exp(weight));
-        }
-
+        final DataDistribution<PathEdge> pathEdgeDist = pathEntry.getNormalizedPathDistribution();
         sampledEdge = pathEdgeDist.sample(rng);
       } else {
         sampledEdge = pathEntry.getPath().getEdges().get(0);

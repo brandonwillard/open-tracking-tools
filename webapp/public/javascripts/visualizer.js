@@ -13,7 +13,7 @@
  */
 
 var dataUrl = "/api/traces?vehicleId=";
-var coordUrl = "/api/convertEuclidToCoords?";
+var coordUrl = "/api/convertToLatLon?";
 var startLatLng = new L.LatLng(10.3181373, 123.8956844); // Portland OR
 
 var map;
