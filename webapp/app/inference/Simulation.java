@@ -14,6 +14,7 @@ import java.util.Random;
 import models.InferenceInstance;
 
 import org.openplans.tools.tracking.impl.EdgeTransitionDistributions;
+import org.openplans.tools.tracking.impl.FilterInformation;
 import org.openplans.tools.tracking.impl.InferredGraph;
 import org.openplans.tools.tracking.impl.InferredGraph.InferredEdge;
 import org.openplans.tools.tracking.impl.InferredPath;
@@ -153,7 +154,7 @@ public class Simulation {
           .size()));
 
       VehicleState vehicleState = new VehicleState(this.inferredGraph,
-          initialObs, currentInferredEdge, parameters);
+          initialObs, currentInferredEdge, parameters, null);
 
       long time = this.simParameters.getStartTime().getTime();
       int i = 0;
@@ -238,9 +239,10 @@ public class Simulation {
       return null;
     }
 
+    final FilterInformation info = new FilterInformation(newPath, null);
     final VehicleState newState = new VehicleState(this.inferredGraph, thisObs,
-        vehicleState.getMovementFilter(), currentLocBelief, currentEdgeTrans,
-        newPathEdge, newPath, vehicleState);
+        vehicleState.getMovementFilter(), currentLocBelief, currentEdgeTrans, 
+        newPathEdge, vehicleState, info);
     
     
     Logger.info("processed simulation observation :" + thisObs);

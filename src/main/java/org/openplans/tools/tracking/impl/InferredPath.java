@@ -119,7 +119,7 @@ public class InferredPath {
     final MultivariateGaussian beliefPrediction = state.getBelief().clone();
     final PathEdge firstEdge = this.getEdges().get(0);
     final StandardRoadTrackingFilter filter = state.getMovementFilter();
-    filter.predict(beliefPrediction, firstEdge, PathEdge.getEdge(state.getEdge(), 0d));
+    filter.predict(beliefPrediction, firstEdge, PathEdge.getEdge(state.getInferredEdge(), 0d));
     
     /*-
      * Compute predictive dist. over path

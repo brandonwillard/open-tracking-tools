@@ -50,26 +50,5 @@ public class InferredPathEntry {
         + totalLogLikelihood + "]";
   }
 
-  public DataDistribution<PathEdge> getNormalizedPathDistribution() {
-    final DataDistribution<PathEdge> pathEdgeDist = new DefaultDataDistribution<PathEdge>();
-
-    /*-
-     * Normalize to avoid zero probs.
-     */
-    double totalLikelihood = Double.NEGATIVE_INFINITY;
-    for (final DefaultWeightedValue<MultivariateGaussian> weight : this 
-        .getEdgeToPredictiveBelief().values()) {
-      totalLikelihood = LogMath.add(weight.getWeight(), totalLikelihood);
-    }
-    
-    for (final PathEdge edge : this.getPath().getEdges()) {
-      final double weight = this.getEdgeToPredictiveBelief().get(edge)
-          .getWeight()
-          - totalLikelihood;
-      pathEdgeDist.set(edge, Math.exp(weight));
-    }
-    
-    return pathEdgeDist;
-  }
 
 }

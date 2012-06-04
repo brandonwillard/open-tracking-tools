@@ -20,8 +20,16 @@ var map;
 
 var vertexLayer = null, edgeLayer = null;
 
-var group = new L.LayerGroup();
-var overlay = new L.LayerGroup();
+var cloudmadeUrl = 'http://{s}.tiles.mapbox.com/v3/mapbox.mapbox-streets/{z}/{x}/{y}.png'; 
+var cloudmadeAttrib = 'Map data &copy; 2011 OpenStreetMap contributors, Imagery &copy; 2011 CloudMade'; 
+var cloudmadeOptions = { maxZoom : 17, attribution : cloudmadeAttrib };
+
+var pointsGroup = new L.LayerGroup();
+var edgeGroup = new L.LayerGroup();
+var inferredGroup = new L.LayerGroup();
+var actualGroup = new L.LayerGroup();
+var evaluatedGroup = new L.LayerGroup();
+var addedGroup = new L.LayerGroup();
 
 var lines = null;
 
@@ -40,15 +48,28 @@ $(document)
 
           map = new L.Map('map');
 
-          var cloudmadeUrl = 'http://{s}.tiles.mapbox.com/v3/mapbox.mapbox-streets/{z}/{x}/{y}.png'; 
-          var cloudmadeAttrib = 'Map data &copy; 2011 OpenStreetMap contributors, Imagery &copy; 2011 CloudMade'; 
-          cloudmade = new L.TileLayer(
-            cloudmadeUrl, {
-              maxZoom : 17,
-              attribution : cloudmadeAttrib
-          });
-
-          map.setView(startLatLng, 15, true).addLayer(cloudmade);
+          var cloudmade = new L.TileLayer(cloudmadeUrl, cloudmadeOptions);
+          map.addLayer(cloudmade);
+          map.addLayer(pointsGroup);
+          map.addLayer(edgeGroup);
+          map.addLayer(inferredGroup);
+          map.addLayer(actualGroup);
+          map.addLayer(evaluatedGroup);
+          map.addLayer(addedGroup);
+          
+          map.setView(startLatLng, 17, true);
+          
+          var layersControl = new L.Control.Layers();
+          layersControl.addBaseLayer(cloudmade, "base");
+          layersControl.addOverlay(pointsGroup, "points");
+          layersControl.addOverlay(edgeGroup, "edges");
+          layersControl.addOverlay(inferredGroup, "inferred");
+          layersControl.addOverlay(actualGroup, "actual");
+          layersControl.addOverlay(evaluatedGroup, "evaluated");
+          layersControl.addOverlay(addedGroup, "user added");
+          
+          map.addControl(layersControl);
+          
 
           $("#controls").hide();
           $("#pause").hide();
@@ -58,21 +79,18 @@ $(document)
           $("#prev").click(prevPoint);
           $("#play").click(playData);
           $("#pause").click(pauseData);
-          $("#showData").click(showData);
           $("#playData").click(playData);
 
           $("#addCoordinates").click(addCoordinates);
           $("#addEdge").click(addEdge);
 
-          map.addLayer(group);
-          map.addLayer(overlay);
 
         });
 
 function addEdge() {
   
   var id = jQuery('#edge_id').val();
-  drawEdge(id);
+  drawEdge(id, null, EdgeType.ADDED);
   map.invalidateSize();
 }
   
@@ -96,7 +114,8 @@ function addCoordinates() {
           lat : parseFloat(lat),
           lon : parseFloat(lon)
         });
-        group.addLayer(new_marker);
+        pointsGroup.addLayer(new_marker);
+        addedGroup.addLayer(new_marker);
         new_marker.bindPopup("test");
         map.panTo(latlng);
     });
@@ -169,36 +188,6 @@ function prevPoint() {
   $("#slider").slider("option", "value", i);
 }
 
-function showData() {
-  group.clearLayers();
-
-//  for (line_id in lines) {
-//    if (line_id > 0) {
-//
-//      var new_marker = new L.Circle(new L.LatLng(
-//          parseFloat(lines[line_id].originalLat),
-//          parseFloat(lines[line_id].originalLon)), 10, {
-//        color : '#00c',
-//        lat : parseFloat(lines[line_id].kfMeanLat),
-//        lon : parseFloat(lines[line_id].kfMeanLon)
-//      });
-//      group.addLayer(new_marker);
-//
-//      new_marker.on('click', function(e) {
-//
-//        overlay.clearLayers();
-//
-//        var overlay_marker = new L.Circle(new L.LatLng(e.target.options.lat,
-//            e.target.options.lon), 10, {
-//          color : '#0c0'
-//        });
-//        overlay.addLayer(overlay_marker);
-//
-//      });
-//    }
-//  }
-}
-
 function moveMarker() {
   if (i != $("#slider").slider("option", "value"))
     $("#slider").slider("option", "value", i);
@@ -209,86 +198,112 @@ function moveMarker() {
     i++;
 }
 
-function drawResults(mean, major, minor, isOnEdge, isInferred) {
+function drawResults(mean, major, minor, pointType) {
 
-  if (isInferred) {
-    var color = 'red';
-    if (isOnEdge) {
-      color = 'green'
-    }
-  } else {
-    var color = 'yellow';
-    if (isOnEdge) {
-      color = 'blue'
-    }
+  var color;
+  var fill;
+  var groupType;
+  if (pointType == PointType.INFERRED_FREE) {
+    color = 'red';
+    fill = false;
+    groupType = inferredGroup;
+  } else if (pointType == PointType.INFERRED_EDGE) {
+    color = 'red'
+    fill = true;
+    groupType = inferredGroup;
+  } else if (pointType == PointType.ACTUAL_FREE) {
+    color = 'black';
+    fill = false;
+    groupType = actualGroup;
+  } else if (pointType == PointType.ACTUAL_EDGE) {
+    color = 'black';
+    fill = true;
+    groupType = actualGroup;
   }
   
   var meanCoords = new L.LatLng(parseFloat(mean.x),
           parseFloat(mean.y));
   
-  var majorAxis = new L.Polyline([
-      meanCoords,
-      new L.LatLng(parseFloat(major.x),
-          parseFloat(major.y)) ], {
-    fill : true,
-    color : '#c00'
-  })
-
-  group.addLayer(majorAxis);
-
-  var minorAxis = new L.Polyline([
-      meanCoords,
-      new L.LatLng(parseFloat(minor.x),
-          parseFloat(minor.y)) ], {
-    fill : true,
-    color : '#c0c'
-  });
-
-  group.addLayer(minorAxis);
+  if (major && minor) {
+    var majorAxis = new L.Polyline([
+        meanCoords,
+        new L.LatLng(parseFloat(major.x),
+            parseFloat(major.y)) ], {
+      fill : true,
+      color : '#c00'
+    })
+  
+    pointsGroup.addLayer(majorAxis);
+    groupType.addLayer(majorAxis);
+    
+    var minorAxis = new L.Polyline([
+        meanCoords,
+        new L.LatLng(parseFloat(minor.x),
+            parseFloat(minor.y)) ], {
+      fill : true,
+      color : '#c0c'
+    });
+  
+    pointsGroup.addLayer(minorAxis);
+    groupType.addLayer(minorAxis);
+  }
   
   var mean = new L.Circle(meanCoords, 5, {
-    fill : true,
+    fill : fill,
     color : color
   });
   
-  group.addLayer(mean);
+  pointsGroup.addLayer(mean);
+  groupType.addLayer(mean)
+  
 
+}
+
+PointType = {
+  INFERRED_FREE : 0,
+  INFERRED_EDGE : 1,
+  ACTUAL_FREE : 2,
+  ACTUAL_EDGE : 3
 }
 
 function renderMarker() {
   if (i >= 0 && i < lines.length) {
-    group.clearLayers();
-    overlay.clearLayers();
+    pointsGroup.clearLayers();
+    edgeGroup.clearLayers();
+    actualGroup.clearLayers();
+    inferredGroup.clearLayers();
+    addedGroup.clearLayers();
+    evaluatedGroup.clearLayers();
     
     if (lines[i].infResults) {
-      var isOnEdge = false;
+      var pointType = PointType.INFERRED_FREE;
       
       if (lines[i].infResults.pathSegmentIds.length > 0) {
-        isOnEdge = true;
+        pointType = PointType.INFERRED_EDGE;
       }
     
       var results = lines[i].infResults;
-      drawResults(results.meanCoords, results.majorAxisCoords, results.minorAxisCoords, isOnEdge, true);
+      drawResults(results.meanCoords, results.majorAxisCoords, results.minorAxisCoords, pointType);
     }
 
     if (lines[i].actualResults) {
-      var isOnEdge = false;
+      var pointType = PointType.ACTUAL_FREE;
       
       if (lines[i].actualResults.pathSegmentIds.length > 0) {
-        isOnEdge = true;
+        pointType = PointType.ACTUAL_EDGE;
       }
     
       var results = lines[i].actualResults;
-      drawResults(results.meanCoords, results.majorAxisCoords, results.minorAxisCoords, isOnEdge, false);
+      drawResults(results.meanCoords, results.majorAxisCoords, results.minorAxisCoords, pointType);
     }
   
     var obsCoords = new L.LatLng(parseFloat(lines[i].observedCoords.x),
         parseFloat(lines[i].observedCoords.y));
     var obs = new L.Circle(obsCoords, 10, {
       fill : true,
-      color : 'black'
+      color : 'grey'
     });
-    group.addLayer(obs);
+    pointsGroup.addLayer(obs);
     
     map.panTo(obsCoords);
 
@@ -302,7 +317,14 @@ function renderMarker() {
   }
 }
 
-function drawEdge(id, velocity, isInferred) {
+EdgeType = {
+    ACTUAL : 0,
+    INFERRED : 1,
+    EVALUATED : 2,
+    ADDED : 3
+}
+
+function drawEdge(id, velocity, edgeType) {
   $.get('/api/segment', {
     segmentId : id
   }, function(data) {
@@ -310,12 +332,31 @@ function drawEdge(id, velocity, isInferred) {
     var avg_velocity = Math.abs(velocity);
 
     var color;
+    var weight = 5;
+    var opacity = 0.7;
 
-    if (isInferred) {
+    var groupType;
+    if (edgeType == EdgeType.INFERRED) {
+      color = "red";
+      weight = 10;
+      opacity = 0.3
+      groupType = inferredGroup;
+    } else if (edgeType == EdgeType.ACTUAL){
+      color = "black";
+      weight = 5;
+      groupType = actualGroup;
+    } else if (edgeType == EdgeType.EVALUATED){
       color = "yellow";
-    } else {
+      weight = 15;
+      opacity = 0.3
+      groupType = evaluatedGroup;
+    } else if (edgeType == EdgeType.ADDED){
       color = "green";
+      weight = 20;
+      opacity = 0.2
+      groupType = addedGroup;
     }
+    
 //    if (avg_velocity < MAX_SPEED)
 //      color = '#' + getColor(avg_velocity / MAX_SPEED);
 //    else
@@ -323,14 +364,6 @@ function drawEdge(id, velocity, isInferred) {
     
     var geojson = new L.GeoJSON();
 
-    var weight = 5;
-    var opacity = 0.7;
-    
-    if (isInferred) {
-      weight = 13;
-      opacity = 0.3
-    }
-    
     geojson.on('featureparse', function(e) {
       e.layer.setStyle({
         color : e.properties.color,
@@ -350,19 +383,21 @@ function drawEdge(id, velocity, isInferred) {
     };
 
     geojson.addGeoJSON(data.geom);
-    overlay.addLayer(geojson);
+    edgeGroup.addLayer(geojson);
+    groupType.addLayer(geojson);
 
   });
 }
 
-function renderPath(segmentInfo, isInferred) {
+
+function renderPath(segmentInfo, edgeType) {
   var segment = segmentInfo;
 
   if (segmentInfo.length == 2 && segmentInfo[0] > -1) {
     $.get('/api/segment', {
       segmentId : segmentInfo[0]
     }, function(data) {
-      drawEdge(segmentInfo[0], segmentInfo[1], isInferred);
+      drawEdge(segmentInfo[0], segmentInfo[1], edgeType);
     });
   }
 }
@@ -370,12 +405,23 @@ function renderPath(segmentInfo, isInferred) {
 function renderGraph() {
   if (lines[i].actualResults) {
     for ( var j in lines[i].actualResults.pathSegmentIds) {
-      renderPath(lines[i].actualResults.pathSegmentIds[j], false);
+      renderPath(lines[i].actualResults.pathSegmentIds[j], EdgeType.ACTUAL);
     }
   }
   if (lines[i].infResults) {
     for ( var j in lines[i].infResults.pathSegmentIds) {
-      renderPath(lines[i].infResults.pathSegmentIds[j], true);
+      renderPath(lines[i].infResults.pathSegmentIds[j], EdgeType.INFERRED);
+    }
+    
+    if (lines[i].infResults.evaluatedPaths.length > 0) {
+      var evaledPaths = lines[i].infResults.evaluatedPaths;
+      var ids = new Array();
+      for (var k in evaledPaths) {
+        for (var l in evaledPaths[k]) {
+          var idVelPair = new Array(evaledPaths[k][l], 0);
+          renderPath(idVelPair, EdgeType.EVALUATED);
+        }
+      }
     }
   }
 }

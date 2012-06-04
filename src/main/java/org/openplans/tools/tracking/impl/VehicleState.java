@@ -5,7 +5,6 @@ import gov.sandia.cognition.math.matrix.VectorFactory;
 import gov.sandia.cognition.statistics.ComputableDistribution;
 import gov.sandia.cognition.statistics.ProbabilityFunction;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
-import gov.sandia.cognition.util.ObjectUtil;
 
 import java.util.ArrayList;
 import java.util.Random;
@@ -167,15 +166,22 @@ public class VehicleState implements
   private final InferredEdge edge;
   private VehicleState parentState = null;
   private final Double distanceFromPreviousState;
-  private final InferredPath path;
 
   private final InferredGraph graph;
+  
+  /*
+   * This contains information about the filtering process;
+   * e.g. paths evaluated, likelihood values for paths, edges,
+   * states, parameters.
+   */
+  private final FilterInformation info;
 
   public VehicleState(InferredGraph graph, Observation initialObservation,
-    InferredEdge inferredEdge, InitialParameters parameters) {
+    InferredEdge inferredEdge, InitialParameters parameters, FilterInformation info) {
     Preconditions.checkNotNull(initialObservation);
     Preconditions.checkNotNull(inferredEdge);
 
+    this.info = info;
     this.movementFilter = new StandardRoadTrackingFilter(
         parameters.getObsVariance(), parameters.getOffRoadStateVariance(),
         parameters.getOnRoadStateVariance());
@@ -199,7 +205,6 @@ public class VehicleState implements
               new double[] { xyPoint.getElement(0), 0d, xyPoint.getElement(1),
                   0d }));
 
-      this.path = InferredPath.getEmptyPath();
     } else {
       /*
        * Find our starting position on this edge
@@ -210,8 +215,6 @@ public class VehicleState implements
       belief.setMean(VectorFactory.getDefault().copyArray(
           new double[] { inferredEdge.getStartPoint().euclideanDistance(loc),
               0d }));
-
-      this.path = new InferredPath(inferredEdge);
     }
 
     this.edge = inferredEdge;
@@ -225,7 +228,8 @@ public class VehicleState implements
   public VehicleState(InferredGraph graph, Observation observation,
     StandardRoadTrackingFilter filter, MultivariateGaussian belief,
     EdgeTransitionDistributions edgeTransitionDist, PathEdge edge,
-    InferredPath path, VehicleState state) {
+    VehicleState state, FilterInformation info) {
+    this.info = info;
     this.observation = observation;
     this.movementFilter = filter;
     this.belief = belief;
@@ -241,7 +245,6 @@ public class VehicleState implements
     this.edgeTransitionDist = edgeTransitionDist;
     this.edge = edge.getInferredEdge();
     this.parentState = state;
-    this.path = path;
     final double timeDiff;
     if (observation.getPreviousObservation() != null) {
       timeDiff = (observation.getTimestamp().getTime() - observation
@@ -262,7 +265,7 @@ public class VehicleState implements
     this.observation = other.observation;
     this.distanceFromPreviousState = other.distanceFromPreviousState;
     this.parentState = other.parentState;
-    this.path = other.path;
+    this.info = other.info;
   }
 
   @Override
@@ -276,10 +279,6 @@ public class VehicleState implements
 
   public Double getDistanceFromPreviousState() {
     return distanceFromPreviousState;
-  }
-
-  public InferredEdge getEdge() {
-    return edge;
   }
 
   public EdgeTransitionDistributions getEdgeTransitionDist() {
@@ -343,10 +342,6 @@ public class VehicleState implements
     return parentState;
   }
 
-  public InferredPath getPath() {
-    return path;
-  }
-
   @Override
   public VehicleState.PDF getProbabilityFunction() {
     return new VehicleState.PDF(this);
@@ -388,6 +383,10 @@ public class VehicleState implements
 
   public static double getVvariance() {
     return vVariance;
+  }
+
+  public FilterInformation getFilterInformation() {
+    return info;
   }
 
 }

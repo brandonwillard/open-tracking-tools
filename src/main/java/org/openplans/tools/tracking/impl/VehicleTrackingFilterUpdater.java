@@ -101,7 +101,7 @@ public class VehicleTrackingFilterUpdater implements
     if (initialEdges.isEmpty()) {
       
       final VehicleState state = new VehicleState(this.inferredGraph, initialObservation,
-          InferredGraph.getEmptyEdge(), parameters);
+          InferredGraph.getEmptyEdge(), parameters, null);
 
       final VehicleStateConditionalParams params = 
           new VehicleStateConditionalParams(initialObservation.getProjectedPoint());
@@ -113,7 +113,7 @@ public class VehicleTrackingFilterUpdater implements
         final InferredEdge edge = inferredGraph.getInferredEdge(nativeEdge);
         final PathEdge pathEdge = PathEdge.getEdge(edge, 0d);
         final VehicleState state = new VehicleState(this.inferredGraph, initialObservation, 
-            pathEdge.getInferredEdge(), parameters);
+            pathEdge.getInferredEdge(), parameters, null);
   
         final VehicleStateConditionalParams edgeLoc = new VehicleStateConditionalParams(pathEdge,
             initialObservation.getProjectedPoint());
@@ -127,7 +127,7 @@ public class VehicleTrackingFilterUpdater implements
      * Free-motion
      */
     final VehicleState state = new VehicleState(this.inferredGraph, initialObservation, 
-        InferredGraph.getEmptyEdge(), parameters);
+        InferredGraph.getEmptyEdge(), parameters, null);
     final double lik = state.getProbabilityFunction().evaluate(
         new VehicleStateConditionalParams(initialObservation.getProjectedPoint()));
     initialDist.increment(state, lik);
