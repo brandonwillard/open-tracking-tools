@@ -18,6 +18,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 
+import org.openplans.tools.tracking.impl.util.GeoUtils;
 import org.opentripplanner.routing.edgetype.StreetEdge;
 import org.opentripplanner.routing.graph.Edge;
 import org.opentripplanner.routing.graph.Graph;
@@ -39,7 +40,7 @@ import com.vividsolutions.jts.linearref.LocationIndexedLine;
 
 public class PathSampler {
     private static final Logger log = LoggerFactory.getLogger(PathSampler.class);
-    private static final double DISTANCE_THRESHOLD = 0.002;
+    private static final double DEFAULT_DISTANCE_THRESHOLD = GeoUtils.getMetersInAngleDegrees(100); //0.002;
 
     Graph graph;
 
@@ -80,9 +81,6 @@ public class PathSampler {
         LinearLocation startIndex = indexedLine.getStartIndex();
 
         Coordinate routeStartCoordinate = startIndex.getCoordinate(routeGeometry);
-        Envelope envelope = new Envelope(routeStartCoordinate);
-        double distanceThreshold = DISTANCE_THRESHOLD;
-        envelope.expandBy(distanceThreshold);
 
         BinHeap<MatchState> states = new BinHeap<MatchState>();
         Geometry edgeGeometry = initialEdge.getGeometry();
@@ -125,7 +123,7 @@ public class PathSampler {
         return null;
     }
 
-    public List<Edge> match(Geometry routeGeometry) {
+    public List<Edge> match(Geometry routeGeometry, final double startDistanceThreshold) {
         
         routeGeometry = removeDuplicatePoints(routeGeometry);
         
@@ -139,14 +137,14 @@ public class PathSampler {
 
         Coordinate routeStartCoordinate = startIndex.getCoordinate(routeGeometry);
         Envelope envelope = new Envelope(routeStartCoordinate);
-        double distanceThreshold = DISTANCE_THRESHOLD;
-        envelope.expandBy(distanceThreshold);
+        double localDistanceThreshold = startDistanceThreshold;
+        envelope.expandBy(localDistanceThreshold);
 
         BinHeap<MatchState> states = new BinHeap<MatchState>();
         List nearbyEdges = index.query(envelope);
         while (nearbyEdges.isEmpty()) {
-            envelope.expandBy(distanceThreshold);
-            distanceThreshold *= 2;
+            envelope.expandBy(localDistanceThreshold);
+            localDistanceThreshold *= 2;
             nearbyEdges = index.query(envelope);
         }
         // compute initial states

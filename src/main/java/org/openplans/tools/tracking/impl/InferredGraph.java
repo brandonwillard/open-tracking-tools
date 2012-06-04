@@ -67,15 +67,15 @@ public class InferredGraph {
     
   private static class PathKey {
     
-    private final InferredEdge startEdge;
+    private final VehicleState state;
     private final Coordinate startCoord;
     private final Coordinate endCoord;
     
-    public PathKey(InferredEdge inferredEdge, Coordinate startCoord, Coordinate endCoord) {
-      Preconditions.checkNotNull(inferredEdge);
+    public PathKey(VehicleState state, Coordinate startCoord, Coordinate endCoord) {
+      Preconditions.checkNotNull(state);
       Preconditions.checkNotNull(startCoord);
       Preconditions.checkNotNull(endCoord);
-      this.startEdge = inferredEdge;
+      this.state = state;
       this.startCoord = startCoord;
       this.endCoord = endCoord;
     }
@@ -88,8 +88,8 @@ public class InferredGraph {
       return endCoord;
     }
 
-    public InferredEdge getStartEdge() {
-      return startEdge;
+    public VehicleState getState() {
+      return state;
     }
 
     @Override
@@ -99,8 +99,6 @@ public class InferredGraph {
       result = prime * result + ((endCoord == null) ? 0 : endCoord.hashCode());
       result = prime * result
           + ((startCoord == null) ? 0 : startCoord.hashCode());
-      result = prime * result
-          + ((startEdge == null) ? 0 : startEdge.hashCode());
       return result;
     }
 
@@ -128,13 +126,6 @@ public class InferredGraph {
           return false;
         }
       } else if (!startCoord.equals(other.startCoord)) {
-        return false;
-      }
-      if (startEdge == null) {
-        if (other.startEdge != null) {
-          return false;
-        }
-      } else if (!startEdge.equals(other.startEdge)) {
         return false;
       }
       return true;
@@ -172,7 +163,7 @@ public class InferredGraph {
       fromCoord = fromState.getInferredEdge().getCenterPointCoord();
     }
     
-    PathKey key = new PathKey(fromState.getInferredEdge(), fromCoord, toCoord);
+    PathKey key = new PathKey(fromState, fromCoord, toCoord);
     
     return pathsCache.getUnchecked(key);
   }
@@ -187,8 +178,9 @@ public class InferredGraph {
      * and whatever else we can find.
      */
     Set<InferredPath> paths = Sets.newHashSet(InferredPath.getEmptyPath());
-    if (key.getStartEdge() != InferredEdge.getEmptyEdge())
-      paths.add(new InferredPath(ImmutableList.of(PathEdge.getEdge(key.getStartEdge()))));
+    InferredEdge startEdge = key.getState().getInferredEdge();
+    if (startEdge != InferredEdge.getEmptyEdge())
+      paths.add(new InferredPath(ImmutableList.of(PathEdge.getEdge(startEdge))));
     Builder<PathEdge> path = ImmutableList.builder();
     final CoordinateSequence movementSeq = JTSFactoryFinder
         .getGeometryFactory().getCoordinateSequenceFactory()
@@ -197,12 +189,17 @@ public class InferredGraph {
     final Geometry movementGeometry = JTSFactoryFinder
         .getGeometryFactory().createLineString(movementSeq);
     
-    final List<Edge> minimumConnectingEdges = Objects.firstNonNull(
-        key.getStartEdge() != InferredEdge.getEmptyEdge() ?
-          pathSampler.match(key.getStartEdge().getEdge(), movementGeometry)
-            : narratedGraph.getStreetMatcher().match(movementGeometry), 
+    final List<Edge> matcherResults;
+    if (startEdge != InferredEdge.getEmptyEdge()) {
+      matcherResults = pathSampler.match(startEdge.getEdge(), movementGeometry);
+    } else {
+      final double radiusAroundPoint = GeoUtils.getMetersInAngleDegrees(key.getState().getMovementFilter().getGroundFilter()
+          .getMeasurementCovariance().normFrobenius());
+      matcherResults = pathSampler.match(movementGeometry, radiusAroundPoint);
+    }
+    final List<Edge> minimumConnectingEdges = Objects.firstNonNull(matcherResults,
         ImmutableList.<Edge> of());
-    
+        
     if (!minimumConnectingEdges.isEmpty()) {
       double pathDist = 0d;
       for (Edge pathEdge : minimumConnectingEdges) {
