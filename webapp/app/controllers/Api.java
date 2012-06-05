@@ -74,10 +74,10 @@ public class Api extends Controller {
             Double.parseDouble(y));
     
     Coordinate coords;
-//    if (GeoUtils.isInProjCoords(rawCoords))
-      coords = GeoUtils.convertToLatLon(rawCoords);
-//    else if (GeoUtils.isInLatLonCoords(rawCoords))
+//    if (GeoUtils.isInLatLonCoords(rawCoords))
 //      coords = rawCoords;
+//    else if (GeoUtils.isInProjCoords(rawCoords))
+      coords = GeoUtils.convertToLatLon(rawCoords);
 //    else
 //      coords = null;
 

@@ -31,11 +31,11 @@ public class GeoUtils {
       this.transform = transform;
     }
 
-    public CoordinateReferenceSystem getMapCRS() {
+    public CoordinateReferenceSystem getProjCRS() {
       return mapCRS;
     }
 
-    public CoordinateReferenceSystem getDataCRS() {
+    public CoordinateReferenceSystem getLatLonCRS() {
       return dataCRS;
     }
 
@@ -136,12 +136,12 @@ public class GeoUtils {
     return geoData.get().getTransform();
   }
   
-  public static CoordinateReferenceSystem getMapCRS() {
-    return geoData.get().getMapCRS();
+  public static CoordinateReferenceSystem getProjCRS() {
+    return geoData.get().getProjCRS();
   }
   
-  public static CoordinateReferenceSystem getDataCRS() {
-    return geoData.get().getDataCRS();
+  public static CoordinateReferenceSystem getLatLonCRS() {
+    return geoData.get().getLatLonCRS();
   }
 
   public static Coordinate reverseCoordinates(Coordinate startCoord) {
@@ -161,22 +161,22 @@ public class GeoUtils {
     return distance / (Math.PI/180d) / 6378137d; 
   }
 
-  public static boolean isInProjCoords(Coordinate rawCoords) {
+  public static boolean isInLatLonCoords(Coordinate rawCoords) {
     try {
       JTS.checkCoordinatesRange(
-          JTS.toGeometry(JTS.toDirectPosition(rawCoords, getDataCRS()).getDirectPosition())
-          , getDataCRS());
+          JTS.toGeometry(JTS.toDirectPosition(rawCoords, getLatLonCRS()).getDirectPosition())
+          , getLatLonCRS());
       return true;
     } catch (PointOutsideEnvelopeException e) {
       return false;
     }
   }
     
-  public static boolean isInLatLonCoords(Coordinate rawCoords) {
+  public static boolean isInProjCoords(Coordinate rawCoords) {
     try {
       JTS.checkCoordinatesRange(
-          JTS.toGeometry(JTS.toDirectPosition(rawCoords, getMapCRS()).getDirectPosition())
-          , getMapCRS());
+          JTS.toGeometry(JTS.toDirectPosition(rawCoords, getProjCRS()).getDirectPosition())
+          , getProjCRS());
       return true;
     } catch (PointOutsideEnvelopeException e) {
       return false;

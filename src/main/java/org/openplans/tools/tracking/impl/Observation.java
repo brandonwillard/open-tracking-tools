@@ -225,7 +225,9 @@ public class Observation {
     
     final double lat = Double.parseDouble(latStr);
     final double lon = Double.parseDouble(lonStr);
-    final Coordinate obsCoords = new Coordinate(lon, lat);
+    final Coordinate obsCoords = new Coordinate(lat, lon);
+    Preconditions.checkArgument(GeoUtils.isInLatLonCoords(obsCoords));
+      
     final Double velocityd = velocity != null ? Double.parseDouble(velocity) : null;
     final Double headingd = heading != null ? Double.parseDouble(heading) : null;
     final Double accuracyd = accuracy != null ? Double.parseDouble(accuracy) : null;
