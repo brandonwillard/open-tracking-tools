@@ -15,6 +15,7 @@ import org.opengis.referencing.operation.NoninvertibleTransformException;
 import org.opengis.referencing.operation.TransformException;
 
 import com.vividsolutions.jts.geom.Coordinate;
+import com.vividsolutions.jts.geom.Point;
 
 public class GeoUtils {
 
@@ -161,6 +162,10 @@ public class GeoUtils {
     return distance / (Math.PI/180d) / 6378137d; 
   }
 
+  public static Point lonlatToGeometry(Coordinate lonlat) {
+    return JTS.toGeometry(JTS.toDirectPosition(lonlat, getLatLonCRS()).getDirectPosition());
+  }
+  
   public static boolean isInLatLonCoords(Coordinate rawCoords) {
     try {
       JTS.checkCoordinatesRange(
