@@ -17,20 +17,23 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 
 import org.openplans.tools.tracking.impl.util.GeoUtils;
-import org.opentripplanner.routing.edgetype.StreetEdge;
-import org.opentripplanner.routing.graph.Edge;
-import org.opentripplanner.routing.graph.Graph;
-import org.opentripplanner.routing.graph.Vertex;
 import org.opentripplanner.common.geometry.DistanceLibrary;
 import org.opentripplanner.common.pqueue.BinHeap;
 import org.opentripplanner.graph_builder.impl.map.EndMatchState;
 import org.opentripplanner.graph_builder.impl.map.MatchState;
 import org.opentripplanner.graph_builder.impl.map.MidblockMatchState;
+import org.opentripplanner.routing.edgetype.StreetEdge;
+import org.opentripplanner.routing.graph.Edge;
+import org.opentripplanner.routing.graph.Graph;
+import org.opentripplanner.routing.graph.Vertex;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.collect.Maps;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Envelope;
 import com.vividsolutions.jts.geom.Geometry;
@@ -39,186 +42,249 @@ import com.vividsolutions.jts.linearref.LinearLocation;
 import com.vividsolutions.jts.linearref.LocationIndexedLine;
 
 public class PathSampler {
-    private static final Logger log = LoggerFactory.getLogger(PathSampler.class);
-    private static final double DEFAULT_DISTANCE_THRESHOLD = GeoUtils.getMetersInAngleDegrees(100); //0.002;
+  private static final Logger log = LoggerFactory
+      .getLogger(PathSampler.class);
+  private static final double DEFAULT_DISTANCE_THRESHOLD = GeoUtils
+      .getMetersInAngleDegrees(100); // 0.002;
 
-    Graph graph;
+  private final Graph graph;
 
-    private STRtree index;
+  private final STRtree edgeIndex;
+  private final STRtree vertexIndex;
 
-    STRtree createIndex() {
-        STRtree edgeIndex = new STRtree();
-        for (Vertex v : graph.getVertices()) {
-            for (Edge e : v.getOutgoing()) {
-                if (e instanceof StreetEdge) {
-                    Envelope envelope;
-                    Geometry geometry = e.getGeometry();
-                    envelope = geometry.getEnvelopeInternal();
-                    edgeIndex.insert(envelope, e);
-                }
-            }
+  public PathSampler(Graph graph) {
+    this.graph = graph;
+    final Entry<STRtree, STRtree> indices = createIndices();
+    edgeIndex = indices.getKey();
+    vertexIndex = indices.getValue();
+
+    edgeIndex.build();
+    vertexIndex.build();
+  }
+
+  Entry<STRtree, STRtree> createIndices() {
+    final STRtree edgeIndex = new STRtree();
+    final STRtree vertexIndex = new STRtree();
+
+    final Map<Geometry, Edge> geoToEdge = Maps.newHashMap();
+
+    for (final Vertex v : graph.getVertices()) {
+
+      // TODO just use the constructor for envelope, no?
+      Envelope vertexEnvelope;
+      final Geometry vertexGeometry = GeoUtils.lonlatToGeometry(v
+          .getCoordinate());
+      vertexEnvelope = vertexGeometry.getEnvelopeInternal();
+      vertexIndex.insert(vertexEnvelope, v);
+
+      for (final Edge e : v.getOutgoing()) {
+        if (e instanceof StreetEdge) {
+          Envelope envelope;
+          final Geometry geometry = e.getGeometry();
+          envelope = geometry.getEnvelopeInternal();
+          edgeIndex.insert(envelope, e);
+
+          if (geoToEdge.containsKey(geometry.reverse())) {
+
+          }
+
+          geoToEdge.put(geometry, e);
         }
-        log.debug("Created index");
-        return edgeIndex;
+      }
+    }
+    log.debug("Created index");
+    return Maps.immutableEntry(edgeIndex, vertexIndex);
+  }
+
+  public STRtree getEdgeIndex() {
+    return edgeIndex;
+  }
+
+  public Graph getGraph() {
+    return graph;
+  }
+
+  public STRtree getVertexIndex() {
+    return vertexIndex;
+  }
+
+  public List<Edge> match(Edge initialEdge, Geometry routeGeometry) {
+
+    routeGeometry = removeDuplicatePoints(routeGeometry);
+
+    if (routeGeometry == null)
+      return null;
+
+    // initial state: start midway along a block.
+    final LocationIndexedLine indexedLine = new LocationIndexedLine(
+        routeGeometry);
+
+    final LinearLocation startIndex = indexedLine.getStartIndex();
+
+    final Coordinate routeStartCoordinate = startIndex
+        .getCoordinate(routeGeometry);
+
+    final BinHeap<MatchState> states = new BinHeap<MatchState>();
+    final Geometry edgeGeometry = initialEdge.getGeometry();
+
+    final LocationIndexedLine indexedEdge = new LocationIndexedLine(
+        edgeGeometry);
+    final LinearLocation initialLocation = indexedEdge
+        .project(routeStartCoordinate);
+
+    final double error = DistanceLibrary.fastDistance(
+        initialLocation.getCoordinate(edgeGeometry),
+        routeStartCoordinate);
+    final MatchState startState = new MidblockMatchState(
+        null, routeGeometry, initialEdge, startIndex,
+        initialLocation, error, 0.01);
+    states.insert(startState, 0); // make sure all initial states are visited by
+                                  // inserting them at 0
+
+    // search for best-matching path
+    int seen_count = 0, total = 0;
+    final HashSet<MatchState> seen = new HashSet<MatchState>();
+    while (!states.empty()) {
+      final double k = states.peek_min_key();
+      final MatchState state = states.extract_min();
+      if (++total % 50000 == 0) {
+        log.debug("seen / total: " + seen_count + " / " + total);
+      }
+      if (seen.contains(state)) {
+        ++seen_count;
+        continue;
+      } else {
+        if (k != 0) {
+          // but do not mark states as closed if we start at them
+          seen.add(state);
+        }
+      }
+      if (state instanceof EndMatchState) {
+        return toEdgeList(state);
+      }
+      for (final MatchState next : state.getNextStates()) {
+        if (seen.contains(next)) {
+          continue;
+        }
+        states
+            .insert(
+                next,
+                next.getTotalError() - next.getDistanceAlongRoute());
+      }
+    }
+    return null;
+  }
+
+  public List<Edge> match(Geometry routeGeometry,
+    final double startDistanceThreshold) {
+
+    routeGeometry = removeDuplicatePoints(routeGeometry);
+
+    if (routeGeometry == null)
+      return null;
+
+    // initial state: start midway along a block.
+    final LocationIndexedLine indexedLine = new LocationIndexedLine(
+        routeGeometry);
+
+    final LinearLocation startIndex = indexedLine.getStartIndex();
+
+    final Coordinate routeStartCoordinate = startIndex
+        .getCoordinate(routeGeometry);
+    final Envelope envelope = new Envelope(routeStartCoordinate);
+    double localDistanceThreshold = startDistanceThreshold;
+    envelope.expandBy(localDistanceThreshold);
+
+    final BinHeap<MatchState> states = new BinHeap<MatchState>();
+    List nearbyEdges = edgeIndex.query(envelope);
+    while (nearbyEdges.isEmpty()) {
+      envelope.expandBy(localDistanceThreshold);
+      localDistanceThreshold *= 2;
+      nearbyEdges = edgeIndex.query(envelope);
+    }
+    // compute initial states
+    for (final Object obj : nearbyEdges) {
+      final Edge initialEdge = (Edge) obj;
+      final Geometry edgeGeometry = initialEdge.getGeometry();
+
+      final LocationIndexedLine indexedEdge = new LocationIndexedLine(
+          edgeGeometry);
+      final LinearLocation initialLocation = indexedEdge
+          .project(routeStartCoordinate);
+
+      final double error = DistanceLibrary.fastDistance(
+          initialLocation.getCoordinate(edgeGeometry),
+          routeStartCoordinate);
+      final MatchState state = new MidblockMatchState(
+          null, routeGeometry, initialEdge, startIndex,
+          initialLocation, error, 0.01);
+      states.insert(state, 0); // make sure all initial states are visited by
+                               // inserting them at 0
     }
 
-    public PathSampler(Graph graph) {
-        this.graph = graph;
-        index = createIndex();
-        index.build();
+    // search for best-matching path
+    int seen_count = 0, total = 0;
+    final HashSet<MatchState> seen = new HashSet<MatchState>();
+    while (!states.empty()) {
+      final double k = states.peek_min_key();
+      final MatchState state = states.extract_min();
+      if (++total % 50000 == 0) {
+        log.debug("seen / total: " + seen_count + " / " + total);
+      }
+      if (seen.contains(state)) {
+        ++seen_count;
+        continue;
+      } else {
+        if (k != 0) {
+          // but do not mark states as closed if we start at them
+          seen.add(state);
+        }
+      }
+      if (state instanceof EndMatchState) {
+        return toEdgeList(state);
+      }
+      for (final MatchState next : state.getNextStates()) {
+        if (seen.contains(next)) {
+          continue;
+        }
+        states
+            .insert(
+                next,
+                next.getTotalError() - next.getDistanceAlongRoute());
+      }
     }
+    return null;
+  }
 
-    public List<Edge> match(Edge initialEdge, Geometry routeGeometry) {
-      
-        routeGeometry = removeDuplicatePoints(routeGeometry);
-        
-        if (routeGeometry == null) 
-            return null;
-        
-        // initial state: start midway along a block.
-        LocationIndexedLine indexedLine = new LocationIndexedLine(routeGeometry);
-
-        LinearLocation startIndex = indexedLine.getStartIndex();
-
-        Coordinate routeStartCoordinate = startIndex.getCoordinate(routeGeometry);
-
-        BinHeap<MatchState> states = new BinHeap<MatchState>();
-        Geometry edgeGeometry = initialEdge.getGeometry();
-        
-        LocationIndexedLine indexedEdge = new LocationIndexedLine(edgeGeometry);
-        LinearLocation initialLocation = indexedEdge.project(routeStartCoordinate);
-        
-        double error = DistanceLibrary.fastDistance(initialLocation.getCoordinate(edgeGeometry), routeStartCoordinate);
-        MatchState startState = new MidblockMatchState(null, routeGeometry, initialEdge, startIndex, initialLocation, error, 0.01);
-        states.insert(startState, 0); //make sure all initial states are visited by inserting them at 0
-
-        // search for best-matching path
-        int seen_count = 0, total = 0;
-        HashSet<MatchState> seen = new HashSet<MatchState>(); 
-        while (!states.empty()) {
-            double k = states.peek_min_key();
-            MatchState state = states.extract_min();
-            if (++total % 50000 == 0) {
-                log.debug("seen / total: " + seen_count + " / " + total);
-            }
-            if (seen.contains(state)) {
-                ++seen_count;
-                continue;
-            } else {
-                if (k != 0) {
-                    //but do not mark states as closed if we start at them
-                    seen.add(state);
-                }
-            }
-            if (state instanceof EndMatchState) {
-                return toEdgeList(state);
-            }
-            for (MatchState next : state.getNextStates()) {
-                if (seen.contains(next)) {
-                    continue;
-                }
-                states.insert(next, next.getTotalError() - next.getDistanceAlongRoute());
-            }
-        }
-        return null;
+  private Geometry removeDuplicatePoints(Geometry routeGeometry) {
+    final List<Coordinate> coords = new ArrayList<Coordinate>();
+    Coordinate last = null;
+    for (final Coordinate c : routeGeometry.getCoordinates()) {
+      if (!c.equals(last)) {
+        last = c;
+        coords.add(c);
+      }
     }
-
-    public List<Edge> match(Geometry routeGeometry, final double startDistanceThreshold) {
-        
-        routeGeometry = removeDuplicatePoints(routeGeometry);
-        
-        if (routeGeometry == null) 
-            return null;
-        
-        // initial state: start midway along a block.
-        LocationIndexedLine indexedLine = new LocationIndexedLine(routeGeometry);
-
-        LinearLocation startIndex = indexedLine.getStartIndex();
-
-        Coordinate routeStartCoordinate = startIndex.getCoordinate(routeGeometry);
-        Envelope envelope = new Envelope(routeStartCoordinate);
-        double localDistanceThreshold = startDistanceThreshold;
-        envelope.expandBy(localDistanceThreshold);
-
-        BinHeap<MatchState> states = new BinHeap<MatchState>();
-        List nearbyEdges = index.query(envelope);
-        while (nearbyEdges.isEmpty()) {
-            envelope.expandBy(localDistanceThreshold);
-            localDistanceThreshold *= 2;
-            nearbyEdges = index.query(envelope);
-        }
-        // compute initial states
-        for (Object obj : nearbyEdges) {
-            Edge initialEdge = (Edge) obj;
-            Geometry edgeGeometry = initialEdge.getGeometry();
-            
-            LocationIndexedLine indexedEdge = new LocationIndexedLine(edgeGeometry);
-            LinearLocation initialLocation = indexedEdge.project(routeStartCoordinate);
-            
-            double error = DistanceLibrary.fastDistance(initialLocation.getCoordinate(edgeGeometry), routeStartCoordinate);
-            MatchState state = new MidblockMatchState(null, routeGeometry, initialEdge, startIndex, initialLocation, error, 0.01);
-            states.insert(state, 0); //make sure all initial states are visited by inserting them at 0
-        }
-
-        // search for best-matching path
-        int seen_count = 0, total = 0;
-        HashSet<MatchState> seen = new HashSet<MatchState>(); 
-        while (!states.empty()) {
-            double k = states.peek_min_key();
-            MatchState state = states.extract_min();
-            if (++total % 50000 == 0) {
-                log.debug("seen / total: " + seen_count + " / " + total);
-            }
-            if (seen.contains(state)) {
-                ++seen_count;
-                continue;
-            } else {
-                if (k != 0) {
-                    //but do not mark states as closed if we start at them
-                    seen.add(state);
-                }
-            }
-            if (state instanceof EndMatchState) {
-                return toEdgeList(state);
-            }
-            for (MatchState next : state.getNextStates()) {
-                if (seen.contains(next)) {
-                    continue;
-                }
-                states.insert(next, next.getTotalError() - next.getDistanceAlongRoute());
-            }
-        }
-        return null;
+    if (coords.size() < 2) {
+      return null;
     }
+    final Coordinate[] coordArray = new Coordinate[coords.size()];
+    return routeGeometry.getFactory().createLineString(
+        coords.toArray(coordArray));
+  }
 
-    private Geometry removeDuplicatePoints(Geometry routeGeometry) {
-        List<Coordinate> coords = new ArrayList<Coordinate>();
-        Coordinate last = null;
-        for (Coordinate c : routeGeometry.getCoordinates()) {
-            if (!c.equals(last)) {
-                last = c;
-                coords.add(c);
-            }
-        }
-        if (coords.size() < 2) {
-            return null;
-        }
-        Coordinate[] coordArray = new Coordinate[coords.size()];
-        return routeGeometry.getFactory().createLineString(coords.toArray(coordArray));
+  private List<Edge> toEdgeList(MatchState next) {
+    final ArrayList<Edge> edges = new ArrayList<Edge>();
+    Edge lastEdge = null;
+    while (next != null) {
+      final Edge edge = next.getEdge();
+      if (edge != lastEdge) {
+        edges.add(edge);
+        lastEdge = edge;
+      }
+      next = next.parent;
     }
-
-    private List<Edge> toEdgeList(MatchState next) {
-        ArrayList<Edge> edges = new ArrayList<Edge>();
-        Edge lastEdge = null;
-        while (next != null) {
-            Edge edge = next.getEdge();
-            if (edge != lastEdge) {
-                edges.add(edge);
-                lastEdge = edge;
-            }
-            next = next.parent;
-        }
-        Collections.reverse(edges);
-        return edges;
-    }
+    Collections.reverse(edges);
+    return edges;
+  }
 }
