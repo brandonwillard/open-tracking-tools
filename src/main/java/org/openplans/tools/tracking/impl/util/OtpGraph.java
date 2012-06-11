@@ -122,4 +122,11 @@ public class OtpGraph {
     return edgeBundle.toEdgeList();
   }
 
+  public static boolean isStreetEdge(Edge pathEdge) {
+    if (!(pathEdge instanceof TurnEdge || pathEdge instanceof OutEdge || pathEdge instanceof PlainStreetEdge))
+      return true;
+    else
+      return false;
+  }
+
 }

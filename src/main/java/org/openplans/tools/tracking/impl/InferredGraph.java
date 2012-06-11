@@ -13,6 +13,8 @@ import java.util.Set;
 import org.geotools.geometry.jts.JTSFactoryFinder;
 import org.openplans.tools.tracking.impl.util.GeoUtils;
 import org.openplans.tools.tracking.impl.util.OtpGraph;
+import org.opentripplanner.routing.algorithm.GenericAStar;
+import org.opentripplanner.routing.core.RoutingRequest;
 import org.opentripplanner.routing.core.TraverseMode;
 import org.opentripplanner.routing.edgetype.OutEdge;
 import org.opentripplanner.routing.edgetype.PlainStreetEdge;
@@ -21,6 +23,9 @@ import org.opentripplanner.routing.edgetype.TurnEdge;
 import org.opentripplanner.routing.graph.Edge;
 import org.opentripplanner.routing.graph.Graph;
 import org.opentripplanner.routing.graph.Vertex;
+import org.opentripplanner.routing.impl.StreetVertexIndexServiceImpl.CandidateEdgeBundle;
+import org.opentripplanner.routing.spt.GraphPath;
+import org.opentripplanner.routing.spt.ShortestPathTree;
 import org.opentripplanner.routing.util.LengthConstrainedPathFinder;
 import org.opentripplanner.routing.util.LengthConstrainedPathFinder.State;
 import org.opentripplanner.routing.vertextype.TurnVertex;
@@ -295,6 +300,20 @@ public class InferredGraph {
       return VectorFactory.getDefault().createVector2D(
           projPointOnLine.x, projPointOnLine.y);
     }
+    
+    public Coordinate getCoordOnEdge(Vector obsPoint) {
+      if (this == InferredEdge.emptyEdge)
+        return null;
+      final Coordinate revObsPoint = new Coordinate(
+          obsPoint.getElement(1), obsPoint.getElement(0));
+      final LinearLocation here = posLocationIndexedLine
+          .project(revObsPoint);
+      final Coordinate pointOnLine = posLocationIndexedLine
+          .extractPoint(here);
+      final Coordinate revOnLine = new Coordinate(
+          pointOnLine.y, pointOnLine.x);
+      return revOnLine;
+    }
 
     public Geometry getPosGeometry() {
       return posGeometry;
@@ -379,11 +398,7 @@ public class InferredGraph {
       if (getClass() != obj.getClass()) {
         return false;
       }
-      final PathKey other = (PathKey) obj;
-      if (Double.doubleToLongBits(distanceToTravel) != Double
-          .doubleToLongBits(other.distanceToTravel)) {
-        return false;
-      }
+      PathKey other = (PathKey) obj;
       if (endCoord == null) {
         if (other.endCoord != null) {
           return false;
@@ -413,9 +428,6 @@ public class InferredGraph {
     public int hashCode() {
       final int prime = 31;
       int result = 1;
-      long temp;
-      temp = Double.doubleToLongBits(distanceToTravel);
-      result = prime * result + (int) (temp ^ (temp >>> 32));
       result = prime * result
           + ((endCoord == null) ? 0 : endCoord.hashCode());
       result = prime * result
@@ -517,47 +529,62 @@ public class InferredGraph {
 
   private Set<InferredPath> computePaths(PathKey key) {
 
-    Coordinate fromCoord = GeoUtils.reverseCoordinates(key.getStartCoord());
-    Coordinate toCoord = GeoUtils.reverseCoordinates(key.getEndCoord());
-
     /*
      * We always consider moving off of an edge, staying on an edge, and
      * whatever else we can find.
      */
-    Set<InferredPath> paths = Sets.newHashSet(InferredPath
-        .getEmptyPath());
     InferredEdge startEdge = key.getState().getInferredEdge();
     
-    if (startEdge != InferredEdge.getEmptyEdge())
-      paths.add(new InferredPath(ImmutableList.of(PathEdge
-          .getEdge(startEdge))));
-    
-    Builder<PathEdge> path = ImmutableList.builder();
-    final CoordinateSequence movementSeq = JTSFactoryFinder
-        .getGeometryFactory().getCoordinateSequenceFactory()
-        .create(new Coordinate[] { fromCoord, toCoord });
+  	RoutingRequest options = new RoutingRequest();
+  	options.setMode(TraverseMode.CAR);
+    Coordinate toCoord = GeoUtils.reverseCoordinates(key.getEndCoord());
+    Set<InferredPath> paths = Sets.newHashSet(InferredPath
+        .getEmptyPath());
+    final Vertex startVertex;
+    if (startEdge != InferredEdge.getEmptyEdge()) {
+      startVertex = startEdge.getStartVertex();
+      paths.add(new InferredPath(ImmutableList.of(PathEdge.getEdge(startEdge)), 0d));
+    } else {
+      startVertex = this.narratedGraph.getIndexService().getClosestVertex(
+          GeoUtils.reverseCoordinates(key.getStartCoord()), null, options, null);
+    }
+//  	final Vertex endVertex = this.narratedGraph.getIndexService().getClosestVertex(toCoord, null, options, null);
+  	final CandidateEdgeBundle edgeBundle = this.narratedGraph.getIndexService().getClosestEdges(toCoord, options, null, null);
+  	Set<Vertex> endVerticies = Sets.newHashSet();
+  	for (Edge edge : edgeBundle.toEdgeList()) {
+  	  endVerticies.add(edge.getFromVertex());
+  	  endVerticies.add(edge.getToVertex());
+  	}
+  	Set<GraphPath> gPaths = Sets.newHashSet();
+  	for (Vertex vertex : endVerticies) {
+      options.setRoutingContext(graph, startVertex, vertex);
+      GenericAStar aStar = new GenericAStar();
+      ShortestPathTree spt1 = aStar.getShortestPathTree(options);
+      gPaths.addAll(spt1.getPaths());
+  	}
 
-    final Geometry movementGeometry = JTSFactoryFinder
-        .getGeometryFactory().createLineString(movementSeq);
-
-    final double radiusAroundPoint = GeoUtils
-        .getMetersInAngleDegrees(Math.sqrt(key.getState().getMovementFilter()
-            .getGroundFilter().getMeasurementCovariance()
-            .normFrobenius()));
-    List<Edge> matcherResults = pathSampler.match(
-        movementGeometry, radiusAroundPoint);
-    
-    final List<Edge> minimumConnectingEdges = Objects.firstNonNull(
-        matcherResults, ImmutableList.<Edge> of());
-
-    if (!minimumConnectingEdges.isEmpty()) {
+    if (!gPaths.isEmpty()) {
       double pathDist = 0d;
-      for (Edge pathEdge : minimumConnectingEdges) {
-        path.add(PathEdge.getEdge(
-            this.getInferredEdge(pathEdge), pathDist));
-        pathDist += pathEdge.getDistance();
+      for (GraphPath gpath : gPaths) {
+        List<PathEdge> path = Lists.newArrayList();
+        for (Edge pathEdge : gpath.edges) {
+          if (OtpGraph.isStreetEdge(pathEdge) && pathEdge.getGeometry() != null) {
+            path.add(PathEdge.getEdge(
+                this.getInferredEdge(pathEdge), pathDist));
+            pathDist += pathEdge.getDistance();
+          } else if (!pathEdge.getFromVertex().getOutgoingStreetEdges().isEmpty()) {
+            /*
+             * Find a valid street edge to work with
+             */
+            path.add(PathEdge.getEdge(
+                this.getInferredEdge(
+                    pathEdge.getFromVertex().getOutgoingStreetEdges().get(0)), pathDist));
+            pathDist += pathEdge.getDistance();
+          }
+        }
+        if (!path.isEmpty())
+          paths.add(new InferredPath(ImmutableList.copyOf(path), pathDist));
       }
-      paths.add(new InferredPath(path.build(), pathDist));
     }
     return paths;
   }

@@ -46,26 +46,6 @@ public class InferredPath {
   public InferredPath(ImmutableList<PathEdge> edges,
     double totalPathDistance) {
     Preconditions.checkArgument(edges.size() >= 1);
-    // TODO remove/revise these sanity checks
-    PathEdge prevEdge = null;
-    for (final PathEdge edge : edges) {
-      if (prevEdge != null) {
-        Preconditions.checkArgument(!edge.equals(prevEdge));
-        if (prevEdge != PathEdge.getEmptyPathEdge()
-            && edge != PathEdge.getEmptyPathEdge()) {
-          final Vector start = edge.getDistToStartOfEdge() >= 0 ? edge
-              .getInferredEdge().getStartPoint() : edge
-              .getInferredEdge().getEndPoint();
-          final Vector end = edge.getDistToStartOfEdge() >= 0 ? prevEdge
-              .getInferredEdge().getEndPoint() : prevEdge
-              .getInferredEdge().getStartPoint();
-          final double dist = start.euclideanDistance(end);
-
-          Preconditions.checkArgument(dist < 5d);
-        }
-      }
-      prevEdge = edge;
-    }
     this.edges = edges;
     this.totalPathDistance = totalPathDistance;
   }
@@ -88,7 +68,7 @@ public class InferredPath {
     if (getClass() != obj.getClass()) {
       return false;
     }
-    final InferredPath other = (InferredPath) obj;
+    InferredPath other = (InferredPath) obj;
     if (edges == null) {
       if (other.edges != null) {
         return false;

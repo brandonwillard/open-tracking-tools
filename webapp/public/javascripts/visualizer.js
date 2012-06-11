@@ -345,17 +345,17 @@ function drawEdge(id, velocity, edgeType) {
     if (edgeType == EdgeType.INFERRED) {
       color = "red";
       weight = 10;
-      opacity = 0.7
+      opacity = 0.3
       groupType = inferredGroup;
     } else if (edgeType == EdgeType.ACTUAL){
       color = "black";
-      weight = 5;
+      weight = 2;
       opacity = 1.0;
       groupType = actualGroup;
     } else if (edgeType == EdgeType.EVALUATED){
       color = "yellow";
-      weight = 15;
-      opacity = 0.3
+      weight = 20;
+      opacity = 0.2
       groupType = evaluatedGroup;
     } else if (edgeType == EdgeType.ADDED){
       color = "green";
@@ -410,15 +410,7 @@ function renderPath(segmentInfo, edgeType) {
 }
 
 function renderGraph() {
-  if (lines[i].actualResults) {
-    for ( var j in lines[i].actualResults.pathSegmentIds) {
-      renderPath(lines[i].actualResults.pathSegmentIds[j], EdgeType.ACTUAL);
-    }
-  }
   if (lines[i].infResults) {
-    for ( var j in lines[i].infResults.pathSegmentIds) {
-      renderPath(lines[i].infResults.pathSegmentIds[j], EdgeType.INFERRED);
-    }
     
     if (lines[i].infResults.evaluatedPaths.length > 0) {
       var evaledPaths = lines[i].infResults.evaluatedPaths;
@@ -429,6 +421,16 @@ function renderGraph() {
           renderPath(idVelPair, EdgeType.EVALUATED);
         }
       }
+    }
+    
+    for ( var j in lines[i].infResults.pathSegmentIds) {
+      renderPath(lines[i].infResults.pathSegmentIds[j], EdgeType.INFERRED);
+    }
+  }
+  
+  if (lines[i].actualResults) {
+    for ( var j in lines[i].actualResults.pathSegmentIds) {
+      renderPath(lines[i].actualResults.pathSegmentIds[j], EdgeType.ACTUAL);
     }
   }
 }

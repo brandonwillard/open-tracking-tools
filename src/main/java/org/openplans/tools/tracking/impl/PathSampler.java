@@ -19,6 +19,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 
 import org.openplans.tools.tracking.impl.util.GeoUtils;
 import org.opentripplanner.common.geometry.DistanceLibrary;
@@ -34,6 +35,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Envelope;
 import com.vividsolutions.jts.geom.Geometry;
@@ -175,7 +177,7 @@ public class PathSampler {
     return null;
   }
 
-  public List<Edge> match(Geometry routeGeometry,
+  public Set<List<Edge>> match(Geometry routeGeometry,
     final double startDistanceThreshold) {
 
     routeGeometry = removeDuplicatePoints(routeGeometry);
@@ -193,15 +195,19 @@ public class PathSampler {
         .getCoordinate(routeGeometry);
     final Envelope envelope = new Envelope(routeStartCoordinate);
     double localDistanceThreshold = startDistanceThreshold;
-    envelope.expandBy(localDistanceThreshold);
+    if (localDistanceThreshold > 0d)
+      envelope.expandBy(localDistanceThreshold);
 
     final BinHeap<MatchState> states = new BinHeap<MatchState>();
     List nearbyEdges = edgeIndex.query(envelope);
-    while (nearbyEdges.isEmpty()) {
-      envelope.expandBy(localDistanceThreshold);
-      localDistanceThreshold *= 2;
-      nearbyEdges = edgeIndex.query(envelope);
+    if (localDistanceThreshold > 0d) {
+      while (nearbyEdges.isEmpty()) {
+          envelope.expandBy(localDistanceThreshold);
+        localDistanceThreshold *= 2;
+        nearbyEdges = edgeIndex.query(envelope);
+      }
     }
+    
     // compute initial states
     for (final Object obj : nearbyEdges) {
       final Edge initialEdge = (Edge) obj;
@@ -224,6 +230,7 @@ public class PathSampler {
 
     // search for best-matching path
     int seen_count = 0, total = 0;
+    final Set<List<Edge>> results = Sets.newHashSet();
     final HashSet<MatchState> seen = new HashSet<MatchState>();
     while (!states.empty()) {
       final double k = states.peek_min_key();
@@ -241,7 +248,8 @@ public class PathSampler {
         }
       }
       if (state instanceof EndMatchState) {
-        return toEdgeList(state);
+        results.add(toEdgeList(state));
+        continue;
       }
       for (final MatchState next : state.getNextStates()) {
         if (seen.contains(next)) {
@@ -253,7 +261,7 @@ public class PathSampler {
                 next.getTotalError() - next.getDistanceAlongRoute());
       }
     }
-    return null;
+    return results;
   }
 
   private Geometry removeDuplicatePoints(Geometry routeGeometry) {
@@ -273,7 +281,7 @@ public class PathSampler {
         coords.toArray(coordArray));
   }
 
-  private List<Edge> toEdgeList(MatchState next) {
+  public List<Edge> toEdgeList(MatchState next) {
     final ArrayList<Edge> edges = new ArrayList<Edge>();
     Edge lastEdge = null;
     while (next != null) {
