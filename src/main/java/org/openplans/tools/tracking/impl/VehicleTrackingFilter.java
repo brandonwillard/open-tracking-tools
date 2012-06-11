@@ -3,14 +3,11 @@ package org.openplans.tools.tracking.impl;
 import gov.sandia.cognition.math.LogMath;
 import gov.sandia.cognition.statistics.DataDistribution;
 import gov.sandia.cognition.statistics.bayesian.AbstractParticleFilter;
-import gov.sandia.cognition.statistics.distribution.DefaultDataDistribution;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 import gov.sandia.cognition.util.DefaultWeightedValue;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
-import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 
@@ -18,12 +15,10 @@ import org.openplans.tools.tracking.impl.InferredGraph.InferredEdge;
 import org.openplans.tools.tracking.impl.VehicleState.InitialParameters;
 import org.openplans.tools.tracking.impl.statistics.StatisticsUtil;
 
-import com.google.common.base.Preconditions;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
 import com.google.common.collect.Multimap;
-import com.google.common.collect.Multimaps;
+import com.google.common.collect.Sets;
 
 public class VehicleTrackingFilter extends
     AbstractParticleFilter<Observation, VehicleState> {
@@ -38,17 +33,18 @@ public class VehicleTrackingFilter extends
 
   private double prevTime = 0;
 
-  public VehicleTrackingFilter(Observation obs, InferredGraph inferredGraph,
-    InitialParameters parameters) {
+  public VehicleTrackingFilter(Observation obs,
+    InferredGraph inferredGraph, InitialParameters parameters) {
     this.setNumParticles(50);
     this.inferredGraph = inferredGraph;
-    this.setUpdater(new VehicleTrackingFilterUpdater(obs, this.inferredGraph,
-        parameters));
+    this.setUpdater(new VehicleTrackingFilterUpdater(
+        obs, this.inferredGraph, parameters));
   }
-  
+
   @Override
   public Random getRandom() {
-    VehicleTrackingFilterUpdater updater = (VehicleTrackingFilterUpdater) this.getUpdater();
+    final VehicleTrackingFilterUpdater updater = (VehicleTrackingFilterUpdater) this
+        .getUpdater();
     return updater.getThreadRandom().get();
   }
 
@@ -56,51 +52,66 @@ public class VehicleTrackingFilter extends
    * Note: this skips observations with a time delta of zero or less.
    */
   @Override
-  public void update(DataDistribution<VehicleState> target, Observation obs) {
+  public void update(DataDistribution<VehicleState> target,
+    Observation obs) {
 
-    final double timeDiff = prevTime == 0 ? 0
-        : (obs.getTimestamp().getTime() - prevTime) / 1000;
+    final double timeDiff = prevTime == 0 ? 0 : (obs.getTimestamp()
+        .getTime() - prevTime) / 1000;
     prevTime = obs.getTimestamp().getTime();
 
     if (timeDiff <= 0)
       return;
     // Preconditions.checkArgument(timeDiff > 0, "timeDiff=" + timeDiff);
 
-    final Multimap<VehicleState, DefaultWeightedValue<InferredPathEntry>> stateToPaths = 
-        HashMultimap.create();
+    final Multimap<VehicleState, DefaultWeightedValue<InferredPathEntry>> stateToPaths = HashMultimap
+        .create();
+    final Set<InferredPathEntry> evaluatedPaths = Sets.newHashSet();
 
     /*
      * Resample based on predictive likelihood to get a smoothed sample
      */
-    final List<DefaultWeightedValue<VehicleState>> resampler = Lists.newArrayList();
+    final List<DefaultWeightedValue<VehicleState>> resampler = Lists
+        .newArrayList();
     for (final VehicleState state : target.getDomain()) {
 
+      state.getBelief().clone();
+
       /*
-       * Get all possible inst. state transitions. TODO FIXME Currently there is
-       * only one: the "shortest-path" between edges.
+       * Take the prediction step
        */
-      final Set<InferredPath> instStateTransitions = inferredGraph.getPaths(
-          state, obs.getObsCoords());
+      state.getMovementFilter().predict(
+          state.getBelief(),
+          PathEdge.getEdge(state.getInferredEdge()),
+          PathEdge.getEdge(state.getInferredEdge(), 0d));
+
+      final Set<InferredPath> instStateTransitions = inferredGraph
+          .getPaths(state, obs.getObsCoords());
 
       state.getMovementFilter().setCurrentTimeDiff(timeDiff);
       double totalLogLik = Double.NEGATIVE_INFINITY;
-      
+
       for (final InferredPath path : instStateTransitions) {
-        InferredPathEntry infPath = path.getPredictiveLogLikelihood(obs, state);
-        totalLogLik = LogMath.add(totalLogLik, infPath.getTotalLogLikelihood());
-        stateToPaths.put(state, new DefaultWeightedValue<InferredPathEntry>(infPath, 
-            infPath.getTotalLogLikelihood()));
+        final InferredPathEntry infPath = path
+            .getPredictiveLogLikelihood(obs, state);
+        evaluatedPaths.add(infPath);
+        totalLogLik = LogMath.add(
+            totalLogLik, infPath.getTotalLogLikelihood());
+        stateToPaths.put(
+            state, new DefaultWeightedValue<InferredPathEntry>(
+                infPath, infPath.getTotalLogLikelihood()));
       }
-      
-      resampler.add(new DefaultWeightedValue<VehicleState>(state, totalLogLik));
+
+      resampler.add(new DefaultWeightedValue<VehicleState>(
+          state, totalLogLik));
     }
 
     final Random rng = getRandom();
 
     @SuppressWarnings("unchecked")
-    final DataDistribution<VehicleState> resampleDist = StatisticsUtil.getLogNormalizedDistribution(resampler);
-    final ArrayList<? extends VehicleState> smoothedStates = resampleDist.sample(
-        rng, getNumParticles());
+    final DataDistribution<VehicleState> resampleDist = StatisticsUtil
+        .getLogNormalizedDistribution(resampler);
+    final ArrayList<? extends VehicleState> smoothedStates = resampleDist
+        .sample(rng, getNumParticles());
 
     // TODO FIXME this really sucks, but due to the interface we have to
     // alter the argument map
@@ -115,8 +126,8 @@ public class VehicleTrackingFilter extends
        * First, the inst. state. TODO unfortunately, there isn't much of
        * anything to sample yet.
        */
-      final DataDistribution<InferredPathEntry> instStateDist = StatisticsUtil.getLogNormalizedDistribution(stateToPaths
-          .get(state));
+      final DataDistribution<InferredPathEntry> instStateDist = StatisticsUtil
+          .getLogNormalizedDistribution(stateToPaths.get(state));
       final InferredPathEntry pathEntry = instStateDist.sample(rng);
 
       /*-
@@ -138,20 +149,23 @@ public class VehicleTrackingFilter extends
        */
       final PathEdge sampledEdge;
       if (pathEntry.getPath().getEdges().size() > 1) {
-        final DataDistribution<PathEdge> pathEdgeDist = StatisticsUtil.getLogNormalizedDistribution(
-            pathEntry.getEdgeToPredictiveBelief());
+        final DataDistribution<PathEdge> pathEdgeDist = StatisticsUtil
+            .getLogNormalizedDistribution(pathEntry
+                .getEdgeToPredictiveBelief());
         sampledEdge = pathEdgeDist.sample(rng);
       } else {
         sampledEdge = pathEntry.getPath().getEdges().get(0);
       }
       final MultivariateGaussian sampledBelief = pathEntry
-          .getEdgeToPredictiveBelief().get(sampledEdge).getValue().clone();
+          .getEdgeToPredictiveBelief().get(sampledEdge).getValue()
+          .clone();
 
       @SuppressWarnings("unchecked")
-      final FilterInformation info = new FilterInformation(pathEntry.getPath(), 
-          (Collection<InferredPathEntry>) instStateDist.getDomain());
-      final VehicleState newState = new VehicleState(this.inferredGraph, obs,
-          filter, sampledBelief, edgeTransDist, sampledEdge, state, info);
+      final FilterInformation info = new FilterInformation(
+          pathEntry.getPath(), evaluatedPaths);
+      final VehicleState newState = new VehicleState(
+          this.inferredGraph, obs, filter, sampledBelief,
+          edgeTransDist, sampledEdge, state, info);
       target.set(newState, 1d / getNumParticles());
 
       /*-
@@ -159,7 +173,8 @@ public class VehicleTrackingFilter extends
        * transitions for now.
        * TODO FIXME must make sure the point is projected onto an edge
        */
-      filter.measure(sampledBelief, obs.getProjectedPoint(), sampledEdge);
+      filter.measure(
+          sampledBelief, obs.getProjectedPoint(), sampledEdge);
       InferredEdge prevEdge = pathEntry.getPath().getEdges().get(0)
           .getInferredEdge();
       for (final PathEdge edge : pathEntry.getPath().getEdges()) {

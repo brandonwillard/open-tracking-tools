@@ -202,8 +202,12 @@ public class InferenceResultRecord {
               .getCovariance()));
 
       final Matrix Shalf = MatrixFactory.getDefault().createIdentity(2, 2);
-      Shalf.setElement(0, 0, Math.sqrt(decomp.getEigenValue(0).getRealPart()));
-      Shalf.setElement(1, 1, Math.sqrt(decomp.getEigenValue(1).getRealPart()));
+      double eigenValue1 = decomp.getEigenValue(0).getRealPart();
+      double eigenValue2 = decomp.getEigenValue(1).getRealPart();
+      eigenValue1 = Math.abs(eigenValue1) > 1e-10 ? eigenValue1 : 0d;
+      eigenValue2 = Math.abs(eigenValue2) > 1e-10 ? eigenValue2 : 0d;
+      Shalf.setElement(0, 0, Math.sqrt(eigenValue1));
+      Shalf.setElement(1, 1, Math.sqrt(eigenValue2));
       majorAxis = mean.plus(O
           .times(decomp.getEigenVectorsRealPart().getColumn(0)).times(Shalf)
           .scale(1.98));

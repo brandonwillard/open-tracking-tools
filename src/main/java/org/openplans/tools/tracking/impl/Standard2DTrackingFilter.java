@@ -51,16 +51,19 @@ public class Standard2DTrackingFilter extends AbstractKalmanFilter {
   public Standard2DTrackingFilter(double gVariance, double aVariance,
     double a0Variance, Double angle) {
 
-    super(VectorFactory.getDefault().createVector(4),
+    super(
+        VectorFactory.getDefault().createVector(4),
         createStateCovarianceMatrix(1d, aVariance, a0Variance, angle),
-        MatrixFactory.getDefault().createIdentity(2, 2).scale(gVariance));
+        MatrixFactory.getDefault().createIdentity(2, 2)
+            .scale(gVariance));
 
     this.aVariance = aVariance;
     this.gVariance = gVariance;
     this.a0Variance = a0Variance;
     this.angle = angle;
 
-    final LinearDynamicalSystem model = new LinearDynamicalSystem(0, 4);
+    final LinearDynamicalSystem model = new LinearDynamicalSystem(
+        0, 4);
 
     final Matrix Gct = createStateTransitionMatrix(currentTimeDiff);
     final Matrix G = MatrixFactory.getDefault().createIdentity(4, 4);
@@ -91,14 +94,14 @@ public class Standard2DTrackingFilter extends AbstractKalmanFilter {
   }
 
   public void constrainMotion(Double angle) {
-    this.setModelCovariance(createStateCovarianceMatrix(this.currentTimeDiff,
-        this.aVariance, this.a0Variance, angle));
+    this.setModelCovariance(createStateCovarianceMatrix(
+        this.currentTimeDiff, this.aVariance, this.a0Variance, angle));
   }
 
   @Override
   public MultivariateGaussian createInitialLearnedObject() {
-    return new MultivariateGaussian(this.model.getState(),
-        this.getModelCovariance());
+    return new MultivariateGaussian(
+        this.model.getState(), this.getModelCovariance());
   }
 
   public double getCurrentTimeDiff() {
@@ -149,8 +152,8 @@ public class Standard2DTrackingFilter extends AbstractKalmanFilter {
       final Matrix G = createStateTransitionMatrix(currentTimeDiff);
       this.model.setA(G);
     }
-    final Matrix P = this.computePredictionCovariance(this.model.getA(),
-        belief.getCovariance());
+    final Matrix P = this.computePredictionCovariance(
+        this.model.getA(), belief.getCovariance());
 
     // Load the updated belief
     belief.setMean(xpred);
@@ -161,18 +164,22 @@ public class Standard2DTrackingFilter extends AbstractKalmanFilter {
     belief.setCovariance(P);
 
   }
-  
+
   /**
-   * Evaluates the predictive observation likelihood given the predictive state distribution.  
+   * Evaluates the predictive observation likelihood given the predictive state
+   * distribution.
+   * 
    * @param obs
    * @param belief
    * @return
    */
-  public double predictiveLikelihood(Vector obs, MultivariateGaussian belief) {
+  public double predictiveLikelihood(Vector obs,
+    MultivariateGaussian belief) {
     Matrix Q = belief.getCovariance();
-    Q = this.model.getC().times( Q ).times( this.model.getC().transpose() );
-    Q.plusEquals( this.measurementCovariance);
-    MultivariateGaussian.PDF pdf = new MultivariateGaussian.PDF(
+    Q = this.model.getC().times(Q)
+        .times(this.model.getC().transpose());
+    Q.plusEquals(this.measurementCovariance);
+    final MultivariateGaussian.PDF pdf = new MultivariateGaussian.PDF(
         this.model.getC().times(belief.getMean()), Q);
     return pdf.evaluate(obs);
   }
@@ -194,20 +201,23 @@ public class Standard2DTrackingFilter extends AbstractKalmanFilter {
 
   private static Matrix createStateCovarianceMatrix(double timeDiff,
     double aVariance, double a0Variance, Double angle) {
-    final Matrix A_half = MatrixFactory.getDefault().createMatrix(4, 2);
+    final Matrix A_half = MatrixFactory.getDefault().createMatrix(
+        4, 2);
     A_half.setElement(0, 0, Math.pow(timeDiff, 2) / 2d);
     A_half.setElement(1, 0, timeDiff);
     A_half.setElement(2, 1, Math.pow(timeDiff, 2) / 2d);
     A_half.setElement(3, 1, timeDiff);
-    
-    final Matrix Q = getVarianceConstraintMatrix(aVariance, a0Variance, angle);
+
+    final Matrix Q = getVarianceConstraintMatrix(
+        aVariance, a0Variance, angle);
     final Matrix A = A_half.times(Q).times(A_half.transpose());
     return A;
   }
 
   private static Matrix createStateTransitionMatrix(double timeDiff) {
 
-    final Matrix Gct = MatrixFactory.getDefault().createIdentity(4, 4);
+    final Matrix Gct = MatrixFactory.getDefault()
+        .createIdentity(4, 4);
     Gct.setElement(0, 1, timeDiff);
     Gct.setElement(2, 3, timeDiff);
 
@@ -222,10 +232,11 @@ public class Standard2DTrackingFilter extends AbstractKalmanFilter {
     double a0Variance, Double angle) {
 
     if (angle == null)
-      return MatrixFactory.getDefault().createIdentity(2, 2).scale(aVariance);
+      return MatrixFactory.getDefault().createIdentity(2, 2)
+          .scale(aVariance);
 
-    final Matrix rotationMatrix = MatrixFactory.getDefault().createIdentity(2,
-        2);
+    final Matrix rotationMatrix = MatrixFactory.getDefault()
+        .createIdentity(2, 2);
     rotationMatrix.setElement(0, 0, Math.cos(angle));
     rotationMatrix.setElement(0, 1, -Math.sin(angle));
     rotationMatrix.setElement(1, 0, Math.sin(angle));
@@ -234,7 +245,8 @@ public class Standard2DTrackingFilter extends AbstractKalmanFilter {
     final Matrix temp = MatrixFactory.getDefault().createDiagonal(
         VectorFactory.getDefault().copyArray(
             new double[] { a0Variance, aVariance }));
-    return rotationMatrix.times(temp).times(rotationMatrix.transpose());
+    return rotationMatrix.times(temp).times(
+        rotationMatrix.transpose());
   }
 
 }

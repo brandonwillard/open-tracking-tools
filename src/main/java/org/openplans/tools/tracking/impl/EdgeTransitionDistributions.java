@@ -24,7 +24,8 @@ import com.google.common.collect.Lists;
  * @author bwillard
  * 
  */
-public class EdgeTransitionDistributions extends AbstractCloneableSerializable {
+public class EdgeTransitionDistributions extends
+    AbstractCloneableSerializable {
 
   private static final long serialVersionUID = -8329433263373783485L;
 
@@ -33,8 +34,8 @@ public class EdgeTransitionDistributions extends AbstractCloneableSerializable {
    * free-movement -> edge-movement
    */
   DirichletDistribution freeMotionTransProbPrior;
-  MultinomialDistribution freeMotionTransPrior = new MultinomialDistribution(2,
-      1);
+  MultinomialDistribution freeMotionTransPrior = new MultinomialDistribution(
+      2, 1);
   MultinomialBayesianEstimator freeMotionTransEstimator = new MultinomialBayesianEstimator(
       freeMotionTransPrior, freeMotionTransProbPrior);
 
@@ -43,22 +44,22 @@ public class EdgeTransitionDistributions extends AbstractCloneableSerializable {
    * edge-movement -> edge-movement
    */
   DirichletDistribution edgeMotionTransProbPrior;
-  MultinomialDistribution edgeMotionTransPrior = new MultinomialDistribution(2,
-      1);
+  MultinomialDistribution edgeMotionTransPrior = new MultinomialDistribution(
+      2, 1);
   MultinomialBayesianEstimator edgeMotionTransEstimator = new MultinomialBayesianEstimator(
       freeMotionTransPrior, freeMotionTransProbPrior);
 
   private final InferredGraph graph;
 
-  private static final Vector stateOffToOff = VectorFactory.getDefault()
-      .copyValues(1d, 0d);
-  private static final Vector stateOffToOn = VectorFactory.getDefault()
-      .copyValues(0d, 1d);
+  private static final Vector stateOffToOff = VectorFactory
+      .getDefault().copyValues(1d, 0d);
+  private static final Vector stateOffToOn = VectorFactory
+      .getDefault().copyValues(0d, 1d);
 
-  private static final Vector stateOnToOn = VectorFactory.getDefault()
-      .copyValues(1d, 0d);
-  private static final Vector stateOnToOff = VectorFactory.getDefault()
-      .copyValues(0d, 1d);
+  private static final Vector stateOnToOn = VectorFactory
+      .getDefault().copyValues(1d, 0d);
+  private static final Vector stateOnToOff = VectorFactory
+      .getDefault().copyValues(0d, 1d);
 
   public EdgeTransitionDistributions(InferredGraph graph,
     Vector edgeMotionPriorParams, Vector freeMotionPriorParams) {
@@ -70,8 +71,10 @@ public class EdgeTransitionDistributions extends AbstractCloneableSerializable {
     /*
      * Start by setting the means.
      */
-    freeMotionTransPrior.setParameters(freeMotionTransProbPrior.getMean());
-    edgeMotionTransPrior.setParameters(edgeMotionTransProbPrior.getMean());
+    freeMotionTransPrior.setParameters(freeMotionTransProbPrior
+        .getMean());
+    edgeMotionTransPrior.setParameters(edgeMotionTransProbPrior
+        .getMean());
   }
 
   @Override
@@ -101,15 +104,16 @@ public class EdgeTransitionDistributions extends AbstractCloneableSerializable {
         getTransitionType(from, to));
   }
 
-  public double predictiveLogLikelihood(InferredEdge from, InferredEdge to) {
+  public double predictiveLogLikelihood(InferredEdge from,
+    InferredEdge to) {
     final Vector state = getTransitionType(from, to);
     final MultivariatePolyaDistribution predDist = freeMotionTransEstimator
         .createPredictiveDistribution(freeMotionTransProbPrior);
     return predDist.getProbabilityFunction().logEvaluate(state);
   }
 
-  public InferredEdge sample(Random rng, List<InferredEdge> transferEdges,
-    InferredEdge currentEdge) {
+  public InferredEdge sample(Random rng,
+    List<InferredEdge> transferEdges, InferredEdge currentEdge) {
 
     Preconditions.checkArgument(!transferEdges.contains(InferredGraph
         .getEmptyEdge()));
@@ -142,7 +146,8 @@ public class EdgeTransitionDistributions extends AbstractCloneableSerializable {
       if (sample.equals(stateOnToOff) || transferEdges.isEmpty()) {
         return InferredGraph.getEmptyEdge();
       } else {
-        final List<InferredEdge> support = Lists.newArrayList(transferEdges);
+        final List<InferredEdge> support = Lists
+            .newArrayList(transferEdges);
         return support.get(rng.nextInt(transferEdges.size()));
       }
 
@@ -153,13 +158,15 @@ public class EdgeTransitionDistributions extends AbstractCloneableSerializable {
   @Override
   public String toString() {
     return "EdgeTransitionDistributions [freeMotionTransPrior="
-        + freeMotionTransPrior.getParameters() + ", edgeMotionTransPrior="
+        + freeMotionTransPrior.getParameters()
+        + ", edgeMotionTransPrior="
         + edgeMotionTransPrior.getParameters() + "]";
   }
 
   public void update(InferredEdge from, InferredEdge to) {
     final Vector transType = getTransitionType(from, to);
-    freeMotionTransEstimator.update(freeMotionTransProbPrior, transType);
+    freeMotionTransEstimator.update(
+        freeMotionTransProbPrior, transType);
   }
 
   public static Vector getStateOffToOff() {
@@ -178,7 +185,8 @@ public class EdgeTransitionDistributions extends AbstractCloneableSerializable {
     return stateOnToOn;
   }
 
-  public static Vector getTransitionType(InferredEdge from, InferredEdge to) {
+  public static Vector getTransitionType(InferredEdge from,
+    InferredEdge to) {
     if (from == InferredGraph.getEmptyEdge()) {
       if (to == InferredGraph.getEmptyEdge()) {
         return stateOffToOff;

@@ -10,6 +10,7 @@ import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 import java.util.Date;
 import java.util.List;
 import java.util.Random;
+import java.util.Set;
 
 import models.InferenceInstance;
 
@@ -18,6 +19,7 @@ import org.openplans.tools.tracking.impl.FilterInformation;
 import org.openplans.tools.tracking.impl.InferredGraph;
 import org.openplans.tools.tracking.impl.InferredGraph.InferredEdge;
 import org.openplans.tools.tracking.impl.InferredPath;
+import org.openplans.tools.tracking.impl.InferredPathEntry;
 import org.openplans.tools.tracking.impl.Observation;
 import org.openplans.tools.tracking.impl.PathEdge;
 import org.openplans.tools.tracking.impl.StandardRoadTrackingFilter;
@@ -35,6 +37,7 @@ import akka.actor.UntypedActor;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
 import com.vividsolutions.jts.geom.Coordinate;
 
 import controllers.Api;
@@ -150,11 +153,27 @@ public class Simulation {
       inferredGraph.getNearbyEdges(initialObs.getProjectedPoint());
       final List<InferredEdge> edges = Lists.newArrayList(InferredGraph
           .getEmptyEdge());
+      edges.addAll(this.inferredGraph.getNearbyEdges(initialObs.getProjectedPoint()));
+      Set<InferredPathEntry> evaluatedPaths = Sets.newHashSet();
       final InferredEdge currentInferredEdge = edges.get(rng.nextInt(edges
           .size()));
+      InferredPath path = null;
+      for (InferredEdge edge : edges) {
+        final InferredPath thisPath;
+        if (edge == InferredEdge.getEmptyEdge()) {
+          thisPath = InferredPath.getEmptyPath();
+        } else {
+          thisPath = new InferredPath(ImmutableList.of(
+              PathEdge.getEdge(edge)));
+        }
+        if (edge == currentInferredEdge)
+          path = thisPath;
+        evaluatedPaths.add(new InferredPathEntry(thisPath, null, null, 0d));
+      }
+      FilterInformation info = new FilterInformation(path, evaluatedPaths);
 
       VehicleState vehicleState = new VehicleState(this.inferredGraph,
-          initialObs, currentInferredEdge, parameters, null);
+          initialObs, currentInferredEdge, parameters, info);
 
       long time = this.simParameters.getStartTime().getTime();
       int i = 0;

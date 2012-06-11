@@ -1,17 +1,9 @@
 package org.openplans.tools.tracking.impl;
 
-import java.util.Map;
-import java.util.Map.Entry;
-
-import gov.sandia.cognition.math.LogMath;
-import gov.sandia.cognition.statistics.DataDistribution;
-import gov.sandia.cognition.statistics.distribution.DefaultDataDistribution;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 import gov.sandia.cognition.util.DefaultWeightedValue;
 
-import org.openplans.tools.tracking.impl.InferredGraph.InferredEdge;
-
-import com.google.common.collect.ImmutableList;
+import java.util.Map;
 
 public class InferredPathEntry {
   private final StandardRoadTrackingFilter filter;
@@ -19,7 +11,8 @@ public class InferredPathEntry {
   private final InferredPath path;
   private final double totalLogLikelihood;
 
-  public InferredPathEntry(InferredPath path,
+  public InferredPathEntry(
+    InferredPath path,
     Map<PathEdge, DefaultWeightedValue<MultivariateGaussian>> edgeToPredictiveBeliefAndLogLikelihood,
     StandardRoadTrackingFilter filter, double totalLogLikelihood) {
     this.totalLogLikelihood = totalLogLikelihood;
@@ -28,12 +21,34 @@ public class InferredPathEntry {
     this.edgeToPredictiveBelief = edgeToPredictiveBeliefAndLogLikelihood;
   }
 
-  public StandardRoadTrackingFilter getFilter() {
-    return filter;
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj) {
+      return true;
+    }
+    if (obj == null) {
+      return false;
+    }
+    if (getClass() != obj.getClass()) {
+      return false;
+    }
+    final InferredPathEntry other = (InferredPathEntry) obj;
+    if (path == null) {
+      if (other.path != null) {
+        return false;
+      }
+    } else if (!path.equals(other.path)) {
+      return false;
+    }
+    return true;
   }
 
   public Map<PathEdge, DefaultWeightedValue<MultivariateGaussian>> getEdgeToPredictiveBelief() {
     return edgeToPredictiveBelief;
+  }
+
+  public StandardRoadTrackingFilter getFilter() {
+    return filter;
   }
 
   public InferredPath getPath() {
@@ -45,10 +60,17 @@ public class InferredPathEntry {
   }
 
   @Override
-  public String toString() {
-    return "InferredPathEntry [path=" + path + ", totalLogLikelihood="
-        + totalLogLikelihood + "]";
+  public int hashCode() {
+    final int prime = 31;
+    int result = 1;
+    result = prime * result + ((path == null) ? 0 : path.hashCode());
+    return result;
   }
 
+  @Override
+  public String toString() {
+    return "InferredPathEntry [path=" + path
+        + ", totalLogLikelihood=" + totalLogLikelihood + "]";
+  }
 
 }

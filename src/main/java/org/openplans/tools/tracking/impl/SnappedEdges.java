@@ -14,19 +14,12 @@ public class SnappedEdges {
   final private ImmutableSet<Edge> snappedEdges;
   final private ImmutableList<Edge> pathTraversed;
 
-  public SnappedEdges(ImmutableSet<Edge> snappedEdges, ImmutableList<Edge> pathTraversed) {
+  public SnappedEdges(ImmutableSet<Edge> snappedEdges,
+    ImmutableList<Edge> pathTraversed) {
     Preconditions.checkNotNull(snappedEdges);
     Preconditions.checkNotNull(pathTraversed);
     this.snappedEdges = snappedEdges;
     this.pathTraversed = pathTraversed;
-  }
-
-  public Set<Edge> getSnappedEdges() {
-    return snappedEdges;
-  }
-
-  public List<Edge> getPathTraversed() {
-    return pathTraversed;
   }
 
   @Override
@@ -34,5 +27,12 @@ public class SnappedEdges {
     return super.clone();
   }
 
-  
+  public List<Edge> getPathTraversed() {
+    return pathTraversed;
+  }
+
+  public Set<Edge> getSnappedEdges() {
+    return snappedEdges;
+  }
+
 }

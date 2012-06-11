@@ -11,52 +11,56 @@ import com.vividsolutions.jts.geom.LineString;
 /**
  * 
  * @author novalis
- *
+ * 
  */
 public class PlainStreetEdgeWithOSMData extends PlainStreetEdge {
 
-    private static final long serialVersionUID = -8417533365831538395L;
+  private static final long serialVersionUID = -8417533365831538395L;
 
-    private long way;
+  private final long way;
 
-    private long fromNode;
+  private final long fromNode;
 
-    private long toNode;
+  private final long toNode;
 
-    public PlainStreetEdgeWithOSMData(long way, long fromNode, long toNode,
-            IntersectionVertex startEndpoint, IntersectionVertex endEndpoint, LineString geometry,
-            String name, double length, StreetTraversalPermission permissions, boolean back) {
+  public PlainStreetEdgeWithOSMData(long way, long fromNode,
+    long toNode, IntersectionVertex startEndpoint,
+    IntersectionVertex endEndpoint, LineString geometry, String name,
+    double length, StreetTraversalPermission permissions, boolean back) {
 
-        super(startEndpoint, endEndpoint, geometry, name, length, permissions, back);
-        this.way = way;
-        this.fromNode = fromNode;
-        this.toNode = toNode;
-    }
+    super(startEndpoint, endEndpoint, geometry, name, length,
+        permissions, back);
+    this.way = way;
+    this.fromNode = fromNode;
+    this.toNode = toNode;
+  }
 
-    public long getWay() {
-        return way;
-    }
+  @Override
+  public TurnVertex createTurnVertex(Graph graph) {
+    final String id = getId();
+    final TurnVertexWithOSMData tv = new TurnVertexWithOSMData(
+        way, fromNode, toNode, graph, id, getGeometry(), getName(),
+        getLength(), back, getNotes());
+    tv.setWheelchairNotes(getWheelchairNotes());
+    tv.setWheelchairAccessible(isWheelchairAccessible());
+    // tv.setCrossable(isCrossable());
+    tv.setPermission(getPermission());
+    tv.setRoundabout(isRoundabout());
+    tv.setBogusName(hasBogusName());
+    tv.setNoThruTraffic(isNoThruTraffic());
+    tv.setStairs(isStairs());
+    return tv;
+  }
 
-    public long getFromNode() {
-        return fromNode;
-    }
+  public long getFromNode() {
+    return fromNode;
+  }
 
-    public long getToNode() {
-        return toNode;
-    }
+  public long getToNode() {
+    return toNode;
+  }
 
-    public TurnVertex createTurnVertex(Graph graph) {
-        String id = getId();
-        TurnVertexWithOSMData tv = new TurnVertexWithOSMData(way, fromNode, toNode,graph, id, getGeometry(), getName(), getLength(), back,
-                getNotes());
-        tv.setWheelchairNotes(getWheelchairNotes());
-        tv.setWheelchairAccessible(isWheelchairAccessible());
-//        tv.setCrossable(isCrossable());
-        tv.setPermission(getPermission());
-        tv.setRoundabout(isRoundabout());
-        tv.setBogusName(hasBogusName());
-        tv.setNoThruTraffic(isNoThruTraffic());
-        tv.setStairs(isStairs());
-        return tv;
-    }
+  public long getWay() {
+    return way;
+  }
 }

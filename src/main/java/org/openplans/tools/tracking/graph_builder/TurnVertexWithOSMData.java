@@ -10,32 +10,33 @@ import com.vividsolutions.jts.geom.LineString;
 
 public class TurnVertexWithOSMData extends TurnVertex {
 
-    private static final long serialVersionUID = -2624941463575097067L;
+  private static final long serialVersionUID = -2624941463575097067L;
 
-    private long way;
+  private final long way;
 
-    private long fromNode;
+  private final long fromNode;
 
-    private long toNode;
+  private final long toNode;
 
-    public TurnVertexWithOSMData(long way, long fromNode, long toNode, Graph graph, String id,
-            LineString geometry, String name, double length, boolean back, Set<Alert> notes) {
-        super(graph, id, geometry, name, length, back, notes);
-        this.way = way;
-        this.fromNode = fromNode;
-        this.toNode = toNode;
-    }
+  public TurnVertexWithOSMData(long way, long fromNode, long toNode,
+    Graph graph, String id, LineString geometry, String name,
+    double length, boolean back, Set<Alert> notes) {
+    super(graph, id, geometry, name, length, back, notes);
+    this.way = way;
+    this.fromNode = fromNode;
+    this.toNode = toNode;
+  }
 
-    public long getWay() {
-        return way;
-    }
+  public long getFromNode() {
+    return fromNode;
+  }
 
-    public long getFromNode() {
-        return fromNode;
-    }
+  public long getToNode() {
+    return toNode;
+  }
 
-    public long getToNode() {
-        return toNode;
-    }
+  public long getWay() {
+    return way;
+  }
 
 }

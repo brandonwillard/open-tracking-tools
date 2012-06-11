@@ -250,7 +250,8 @@ function drawResults(mean, major, minor, pointType) {
   
   var mean = new L.Circle(meanCoords, 5, {
     fill : fill,
-    color : color
+    color : color,
+    opacity : 1.0
   });
   
   pointsGroup.addLayer(mean);
@@ -274,6 +275,11 @@ function renderMarker() {
     inferredGroup.clearLayers();
     addedGroup.clearLayers();
     evaluatedGroup.clearLayers();
+    
+    /*
+     * Draw lines first
+     */
+    renderGraph();
     
     if (lines[i].infResults) {
       var pointType = PointType.INFERRED_FREE;
@@ -301,13 +307,13 @@ function renderMarker() {
         parseFloat(lines[i].observedCoords.y));
     var obs = new L.Circle(obsCoords, 10, {
       fill : true,
-      color : 'grey'
+      color : 'grey',
+      opacity : 1.0
     });
     pointsGroup.addLayer(obs);
     
     map.panTo(obsCoords);
 
-    renderGraph();
 
     $("#count_display").html(lines[i].time + ' (' + i + ')');
     return false;
@@ -339,11 +345,12 @@ function drawEdge(id, velocity, edgeType) {
     if (edgeType == EdgeType.INFERRED) {
       color = "red";
       weight = 10;
-      opacity = 0.3
+      opacity = 0.7
       groupType = inferredGroup;
     } else if (edgeType == EdgeType.ACTUAL){
       color = "black";
       weight = 5;
+      opacity = 1.0;
       groupType = actualGroup;
     } else if (edgeType == EdgeType.EVALUATED){
       color = "yellow";

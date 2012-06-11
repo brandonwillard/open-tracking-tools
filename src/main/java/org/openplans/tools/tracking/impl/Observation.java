@@ -11,7 +11,6 @@ import java.util.Map;
 import org.opengis.referencing.operation.TransformException;
 import org.openplans.tools.tracking.impl.util.GeoUtils;
 
-
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Maps;
 import com.vividsolutions.jts.geom.Coordinate;
@@ -41,8 +40,9 @@ public class Observation {
       "yyyy-MM-dd hh:mm:ss");
 
   private Observation(String vehicleId, Date timestamp,
-    Coordinate obsCoords, Coordinate obsPoint, Double velocity, Double heading,
-    Double accuracy, Observation prevObs, int recordNumber) {
+    Coordinate obsCoords, Coordinate obsPoint, Double velocity,
+    Double heading, Double accuracy, Observation prevObs,
+    int recordNumber) {
     this.recordNumber = recordNumber;
     this.vehicleId = vehicleId;
     this.timestamp = timestamp;
@@ -51,8 +51,8 @@ public class Observation {
     this.velocity = velocity;
     this.heading = heading;
     this.accuracy = accuracy;
-    this.projPoint = VectorFactory.getDefault().createVector2D(obsPoint.x,
-        obsPoint.y);
+    this.projPoint = VectorFactory.getDefault().createVector2D(
+        obsPoint.x, obsPoint.y);
     this.prevObs = prevObs;
   }
 
@@ -147,8 +147,20 @@ public class Observation {
     return prevObs;
   }
 
+  public Observation getPrevObs() {
+    return prevObs;
+  }
+
   public Vector getProjectedPoint() {
     return projPoint;
+  }
+
+  public Vector getProjPoint() {
+    return projPoint;
+  }
+
+  public int getRecordNumber() {
+    return recordNumber;
   }
 
   public Date getTimestamp() {
@@ -167,14 +179,22 @@ public class Observation {
   public int hashCode() {
     final int prime = 31;
     int result = 1;
-    result = prime * result + ((accuracy == null) ? 0 : accuracy.hashCode());
-    result = prime * result + ((heading == null) ? 0 : heading.hashCode());
-    result = prime * result + ((obsCoords == null) ? 0 : obsCoords.hashCode());
-    result = prime * result + ((obsPoint == null) ? 0 : obsPoint.hashCode());
-    result = prime * result + ((projPoint == null) ? 0 : projPoint.hashCode());
-    result = prime * result + ((timestamp == null) ? 0 : timestamp.hashCode());
-    result = prime * result + ((vehicleId == null) ? 0 : vehicleId.hashCode());
-    result = prime * result + ((velocity == null) ? 0 : velocity.hashCode());
+    result = prime * result
+        + ((accuracy == null) ? 0 : accuracy.hashCode());
+    result = prime * result
+        + ((heading == null) ? 0 : heading.hashCode());
+    result = prime * result
+        + ((obsCoords == null) ? 0 : obsCoords.hashCode());
+    result = prime * result
+        + ((obsPoint == null) ? 0 : obsPoint.hashCode());
+    result = prime * result
+        + ((projPoint == null) ? 0 : projPoint.hashCode());
+    result = prime * result
+        + ((timestamp == null) ? 0 : timestamp.hashCode());
+    result = prime * result
+        + ((vehicleId == null) ? 0 : vehicleId.hashCode());
+    result = prime * result
+        + ((velocity == null) ? 0 : velocity.hashCode());
     return result;
   }
 
@@ -182,13 +202,25 @@ public class Observation {
     this.prevObs = null;
   }
 
+  @Override
+  public String toString() {
+    return "Observation [vehicleId=" + vehicleId + ", timestamp="
+        + timestamp + ", obsCoords=" + obsCoords + ", obsPoint="
+        + obsPoint + ", velocity=" + velocity + ", heading="
+        + heading + ", accuracy=" + accuracy + ", prevObs=" + prevObs
+        + "]";
+  }
+
   public static void clearRecordData() {
     vehiclesToRecords.clear();
   }
 
-  public static synchronized Observation createObservation(String vehicleId, Date time,
-    Coordinate obsCoords, Double velocity, Double heading, Double accuracy) throws TimeOrderException {
-    final Coordinate obsPoint = GeoUtils.convertToEuclidean(obsCoords);
+  public static synchronized Observation createObservation(
+    String vehicleId, Date time, Coordinate obsCoords,
+    Double velocity, Double heading, Double accuracy)
+      throws TimeOrderException {
+    final Coordinate obsPoint = GeoUtils
+        .convertToEuclidean(obsCoords);
 
     final Observation prevObs = vehiclesToRecords.get(vehicleId);
 
@@ -205,68 +237,53 @@ public class Observation {
        */
       if (time.getTime() <= prevObs.getTimestamp().getTime())
         throw new TimeOrderException();
-      
+
     } else {
       recordNumber = 1;
     }
 
-    final Observation obs = new Observation(vehicleId, time,
-        obsCoords, obsPoint, velocity, heading, accuracy, prevObs, recordNumber);
+    final Observation obs = new Observation(
+        vehicleId, time, obsCoords, obsPoint, velocity, heading,
+        accuracy, prevObs, recordNumber);
 
     vehiclesToRecords.put(vehicleId, obs);
-    
+
     return obs;
   }
-  
+
   public static synchronized Observation createObservation(
     String vehicleId, String timestamp, String latStr, String lonStr,
     String velocity, String heading, String accuracy)
-      throws NumberFormatException, ParseException, TransformException, TimeOrderException {
-    
+      throws NumberFormatException, ParseException,
+      TransformException, TimeOrderException {
+
     final double lat = Double.parseDouble(latStr);
     final double lon = Double.parseDouble(lonStr);
     final Coordinate obsCoords = new Coordinate(lat, lon);
     Preconditions.checkArgument(GeoUtils.isInLatLonCoords(obsCoords));
-      
-    final Double velocityd = velocity != null ? Double.parseDouble(velocity) : null;
-    final Double headingd = heading != null ? Double.parseDouble(heading) : null;
-    final Double accuracyd = accuracy != null ? Double.parseDouble(accuracy) : null;
+
+    final Double velocityd = velocity != null ? Double
+        .parseDouble(velocity) : null;
+    final Double headingd = heading != null ? Double
+        .parseDouble(heading) : null;
+    final Double accuracyd = accuracy != null ? Double
+        .parseDouble(accuracy) : null;
     final Date time = sdf.parse(timestamp);
 
-    return createObservation(vehicleId, time, obsCoords, velocityd, headingd, accuracyd);
-  }
-
-  @Override
-  public String toString() {
-    return "Observation [vehicleId=" + vehicleId + ", timestamp=" + timestamp
-        + ", obsCoords=" + obsCoords + ", obsPoint=" + obsPoint
-        + ", velocity=" + velocity + ", heading="
-        + heading + ", accuracy=" + accuracy + ", prevObs=" + prevObs + "]";
-  }
-
-  public Vector getProjPoint() {
-    return projPoint;
-  }
-
-  public Observation getPrevObs() {
-    return prevObs;
-  }
-
-  public int getRecordNumber() {
-    return recordNumber;
-  }
-
-  public static Map<String, Observation> getVehiclesToRecords() {
-    return vehiclesToRecords;
+    return createObservation(
+        vehicleId, time, obsCoords, velocityd, headingd, accuracyd);
   }
 
   public static SimpleDateFormat getSdf() {
     return sdf;
   }
 
+  public static Map<String, Observation> getVehiclesToRecords() {
+    return vehiclesToRecords;
+  }
+
   public static void remove(String name) {
     vehiclesToRecords.remove(name);
   }
-
 
 }

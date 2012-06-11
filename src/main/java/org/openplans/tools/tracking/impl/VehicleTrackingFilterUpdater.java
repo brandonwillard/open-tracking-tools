@@ -3,7 +3,6 @@ package org.openplans.tools.tracking.impl;
 import gov.sandia.cognition.statistics.DataDistribution;
 import gov.sandia.cognition.statistics.bayesian.ParticleFilter;
 import gov.sandia.cognition.statistics.distribution.DefaultDataDistribution;
-import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 
 import java.util.List;
 import java.util.Random;
@@ -16,53 +15,52 @@ import org.openplans.tools.tracking.impl.VehicleState.InitialParameters;
 import org.opentripplanner.routing.edgetype.StreetEdge;
 import org.opentripplanner.routing.graph.Edge;
 
-import com.google.common.base.Objects;
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
 
 public class VehicleTrackingFilterUpdater implements
     ParticleFilter.Updater<Observation, VehicleState> {
 
-  private static final long serialVersionUID = 2884138088944317656L;
-
-  private final Observation initialObservation;
-  private final InferredGraph inferredGraph;
-
-  private final InitialParameters parameters;
-
-  private ThreadLocal<Random> threadRandom;
-
   private static class UpdaterThreadLocal extends ThreadLocal<Random> {
-  
+
     long seed;
-    
+
     public UpdaterThreadLocal(long seed) {
       super();
       this.seed = seed;
     }
-    
+
     @Override
     public Random get() {
       return super.get();
-    }
-
-    @Override
-    protected Random initialValue() {
-      Random rng = new Random();
-      if (this.seed == 0l) {
-        this.seed = rng.nextLong();
-      }
-      rng.setSeed(this.seed);
-      
-      return rng;
     }
 
     public long getSeed() {
       return seed;
     }
 
+    @Override
+    protected Random initialValue() {
+      final Random rng = new Random();
+      if (this.seed == 0l) {
+        this.seed = rng.nextLong();
+      }
+      rng.setSeed(this.seed);
+
+      return rng;
+    }
+
   }
-    
+
+  private static final long serialVersionUID = 2884138088944317656L;
+  private final Observation initialObservation;
+
+  private final InferredGraph inferredGraph;
+
+  private final InitialParameters parameters;
+
+  private final ThreadLocal<Random> threadRandom;
+
   public VehicleTrackingFilterUpdater(Observation obs,
     InferredGraph inferredGraph, InitialParameters parameters) {
     this.initialObservation = obs;
@@ -83,42 +81,45 @@ public class VehicleTrackingFilterUpdater implements
   public double computeLogLikelihood(VehicleState particle,
     Observation observation) {
     return particle.getProbabilityFunction().logEvaluate(
-        new VehicleStateConditionalParams(PathEdge.getEdge(particle.getInferredEdge(), 0d), 
-            observation.getProjectedPoint(), 0d));
+        new VehicleStateConditionalParams(PathEdge.getEdge(
+            particle.getInferredEdge(), 0d), observation
+            .getProjectedPoint(), 0d));
   }
 
   @Override
-  public DataDistribution<VehicleState> createInitialParticles(int numParticles) {
+  public DataDistribution<VehicleState> createInitialParticles(
+    int numParticles) {
     /*
      * Create initial distributions for all snapped edges
      */
-    
-    final List<StreetEdge> initialEdges = inferredGraph.getNarratedGraph()
-        .snapToGraph(null, initialObservation.getObsCoords());
+
+    final List<StreetEdge> initialEdges = inferredGraph
+        .getNarratedGraph().snapToGraph(
+            null, initialObservation.getObsCoords());
     final DataDistribution<VehicleState> initialDist = new DefaultDataDistribution<VehicleState>(
         numParticles);
 
-    if (initialEdges.isEmpty()) {
-      
-      final VehicleState state = new VehicleState(this.inferredGraph, initialObservation,
-          InferredGraph.getEmptyEdge(), parameters, null);
-
-      final VehicleStateConditionalParams params = 
-          new VehicleStateConditionalParams(initialObservation.getProjectedPoint());
-      final double lik = state.getProbabilityFunction().evaluate(params);
-      initialDist.set(state, lik);
-      
-    } else {
+    final Set<InferredPathEntry> evaluatedPaths = Sets.newHashSet();
+    if (!initialEdges.isEmpty()) {
       for (final Edge nativeEdge : initialEdges) {
-        final InferredEdge edge = inferredGraph.getInferredEdge(nativeEdge);
+        final InferredEdge edge = inferredGraph
+            .getInferredEdge(nativeEdge);
         final PathEdge pathEdge = PathEdge.getEdge(edge, 0d);
-        final VehicleState state = new VehicleState(this.inferredGraph, initialObservation, 
-            pathEdge.getInferredEdge(), parameters, null);
-  
-        final VehicleStateConditionalParams edgeLoc = new VehicleStateConditionalParams(pathEdge,
-            initialObservation.getProjectedPoint());
-        final double lik = state.getProbabilityFunction().evaluate(edgeLoc);
-  
+        final InferredPath path = new InferredPath(
+            ImmutableList.of(pathEdge));
+        final FilterInformation info = new FilterInformation(
+            path, evaluatedPaths);
+        evaluatedPaths
+            .add(new InferredPathEntry(path, null, null, 0d));
+        final VehicleState state = new VehicleState(
+            this.inferredGraph, initialObservation,
+            pathEdge.getInferredEdge(), parameters, info);
+
+        final VehicleStateConditionalParams edgeLoc = new VehicleStateConditionalParams(
+            pathEdge, initialObservation.getProjectedPoint());
+        final double lik = state.getProbabilityFunction().evaluate(
+            edgeLoc);
+
         initialDist.increment(state, lik);
       }
     }
@@ -126,10 +127,14 @@ public class VehicleTrackingFilterUpdater implements
     /*
      * Free-motion
      */
-    final VehicleState state = new VehicleState(this.inferredGraph, initialObservation, 
-        InferredGraph.getEmptyEdge(), parameters, null);
+    final FilterInformation info = new FilterInformation(
+        InferredPath.getEmptyPath(), evaluatedPaths);
+    final VehicleState state = new VehicleState(
+        this.inferredGraph, initialObservation,
+        InferredGraph.getEmptyEdge(), parameters, info);
     final double lik = state.getProbabilityFunction().evaluate(
-        new VehicleStateConditionalParams(initialObservation.getProjectedPoint()));
+        new VehicleStateConditionalParams(initialObservation
+            .getProjectedPoint()));
     initialDist.increment(state, lik);
 
     final DataDistribution<VehicleState> retDist = new DefaultDataDistribution<VehicleState>(
@@ -142,13 +147,13 @@ public class VehicleTrackingFilterUpdater implements
     return initialObservation;
   }
 
+  public ThreadLocal<Random> getThreadRandom() {
+    return threadRandom;
+  }
+
   @Override
   public VehicleState update(VehicleState previousParameter) {
     throw new NotImplementedError();
-  }
-
-  public ThreadLocal<Random> getThreadRandom() {
-    return threadRandom;
   }
 
 }
