@@ -474,14 +474,16 @@ function renderParticles() {
         
         var particleDivId = 'particle' + particleNumber; 
         var collapser = '<div class="collapser" id="' + particleDivId + '"></div>';
-        var option = jQuery('<li></li>');
         
+        var option = jQuery('<li></li>');
         option.attr("value", particleNumber);
+        
         var optionDiv = jQuery('<div class="collapsed"><span class="property">' 
             + particleNumber + ' (' + particleData.weight + '), ' + locLink + ', ' + edgeLink + '</span>' 
             + collapser + '</div>');
         option.append(optionDiv);
         particleList.append(option);
+        
         var subList = jQuery('<ul class="obj collapsible"></ul>');
         subList.append('<li><span class="property"><div class="collapsed">test</div></span></li>');
         optionDiv.append(subList);

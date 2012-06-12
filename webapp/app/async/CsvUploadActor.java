@@ -40,20 +40,21 @@ public class CsvUploadActor extends UntypedActor {
 
       final CSVReader gps_reader = new CSVReader(
           new FileReader((File) csvFile), ';');
-      String[] line;
+      
+      log.info("processing gps data from " + ((File) csvFile).getName());
+      
+      // skip header
       gps_reader.readNext();
-      log.info("processing gps data");
+      
+      String[] line = gps_reader.readNext();
 
-      /*
-       * FIXME TODO reset only data relevant to a re-run trace.
-       */
-      InferenceService.clearInferenceData();
-      Observation.clearRecordData();
+      // clear previous trace for this data
+      InferenceService.remove("trace-" + line[3]);
+      Observation.remove("trace-" + line[3]);
 
-      while ((line = gps_reader.readNext()) != null) {
-
+      do {
         try {
-          traceLocation(((File) csvFile).getName(), line[3], line[1],
+          traceLocation(((File) csvFile).getName(), "trace-" + line[3], line[1],
               line[5], line[7], line[10], null, null);
           log.info("processed time: " + line[1]); 
         } catch (final TimeOrderException ex) {
@@ -63,9 +64,10 @@ public class CsvUploadActor extends UntypedActor {
           e.printStackTrace();
           break;
         } 
-        log.info("finished processing"); 
 
-      }
+      } while ((line = gps_reader.readNext()) != null);
+      
+      log.info("finished processing " + ((File) csvFile).getName()); 
     }
 
   }
