@@ -5,6 +5,7 @@ import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.math.matrix.VectorFactory;
 import gov.sandia.cognition.math.matrix.mtj.DenseMatrixFactoryMTJ;
 import gov.sandia.cognition.math.matrix.mtj.decomposition.CholeskyDecompositionMTJ;
+import gov.sandia.cognition.statistics.DataDistribution;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 
 import java.util.Date;
@@ -266,15 +267,22 @@ public class Simulation {
     
     Logger.info("processed simulation observation :" + thisObs);
     
+    final VehicleState infState;
+    final DataDistribution<VehicleState> infBelief;
     if (this.simParameters.isPerformInference()) {
       instance.update(thisObs);
+      infState = instance.getBestState();
+      infBelief = instance.getBelief().clone();
       
       Logger.info("processed simulation inference :" + thisObs);
+    } else {
+      infState = null;
+      infBelief = null;
     }
     
     
     final InferenceResultRecord result = InferenceResultRecord
-        .createInferenceResultRecord(thisObs, newState, instance.getBestState(), instance.getBelief().clone());
+        .createInferenceResultRecord(thisObs, newState, infState, infBelief);
 
     InferenceService.addSimulationRecords(simulationName, result);
     
