@@ -20,30 +20,47 @@
 
 <body>
 
-<div id="top_bar">
-
-	<div id="loadData"> 
-    <input type="text" id="vehicle_id" value="${name}" style="width: 400px; padding: 2px; border: 1px solid black"/>
-	  <span id="loadDataLink" class="jqlink" style="padding: 2px; border: 1px solid black">load data</span>
-  </div>
-	<div id="controls">
-		<div id="slider" style="width: 250px; float: left;"></div>
-		<div>
-			 &nbsp;&nbsp; <span id="prev" class="jqlink">&laquo;</span> | <span id="next" class="jqlink">&raquo;</span> | <span id="play" class="jqlink">play</span><span id="pause" class="jqlink">pause</span>
-		</div>
-	</div>
-	<div id="count_display"></div>
-</div>
-
-<div id="debug_bar" style="width: 500px; padding: 2px; border: 1px solid black">
-    <input type="text" id="coordinate_data" style="width: 400px; padding: 2px; border: 1px solid black"/>
-    <span id="addCoordinates" class="jqlink" style="padding: 2px; border: 1px solid black">add point</span>
-<br>
-    <input type="text" id="edge_id" style="width: 400px; padding: 2px; border: 1px solid black"/>
-    <span id="addEdge" class="jqlink" style="padding: 2px; border: 1px solid black">add edge</span>
-</div>
+<table>
+  <tr>
+    <td colspan="2">
+      <div id="top_bar">
+      	<div id="loadData"> 
+          <input type="text" id="vehicle_id" value="${name}" style="width: 400px; padding: 2px; border: 1px solid black"/>
+        	<span id="loadDataLink" class="jqlink" style="padding: 2px; border: 1px solid black">load data</span>
+        </div>
+        
+      	<div id="controls">
+    		  <div id="slider" style="width: 250px; float: left;"></div>
+    		  <div>
+            &nbsp;&nbsp; <span id="prev" class="jqlink">&laquo;</span> | <span id="next" class="jqlink">&raquo;</span> | <span id="play" class="jqlink">play</span><span id="pause" class="jqlink">pause</span>
+    		  </div>
+      	  <div id="count_display"></div>
+        </div>
+      </div>
     
-<div id="map"></div>
+      <div id="debug_bar" style="width: 500px; padding: 2px; border: 1px solid black">
+          <input type="text" id="coordinate_data" style="width: 400px; padding: 2px; border: 1px solid black"/>
+          <span id="addCoordinates" class="jqlink" style="padding: 2px; border: 1px solid black">add point</span>
+        <br>
+          <input type="text" id="edge_id" style="width: 400px; padding: 2px; border: 1px solid black"/>
+          <span id="addEdge" class="jqlink" style="padding: 2px; border: 1px solid black">add edge</span>
+      </div>
+    </td>
+  </tr>
+  <tr>
+    <td>
+      <div id="map" style="width: 1000px; height: 1000px;"></div>
+    </td>
+    <td>
+      Particles <br>
+      <div id="filterControls" class="Content" style="overflow:auto; width: 600px; padding: 2px; border: 1px solid black">
+        <ul id="particles">
+            <li>Empty</li>
+        </ul>
+      </div>
+    </td>
+  </tr>
+</table>
 
 </body>
 </html>

@@ -126,7 +126,7 @@ public class Simulation {
     }
     this.rng.setSeed(seed);
     
-    this.instance = InferenceService.getInferenceInstance(simulationName, true);
+    this.instance = InferenceService.getOrCreateInferenceInstance(simulationName, true);
     this.instance.simSeed = seed;
     this.instance.totalRecords = (int)((simParameters.getEndTime().getTime() 
         - simParameters.getStartTime().getTime()) / (simParameters.getFrequency() * 1000d));
@@ -168,7 +168,7 @@ public class Simulation {
         }
         if (edge == currentInferredEdge)
           path = thisPath;
-        evaluatedPaths.add(new InferredPathEntry(thisPath, null, null, 0d));
+        evaluatedPaths.add(new InferredPathEntry(initialObs.getProjectedPoint(), thisPath, null, null, 0d));
       }
       FilterInformation info = new FilterInformation(path, evaluatedPaths);
 
@@ -274,7 +274,7 @@ public class Simulation {
     
     
     final InferenceResultRecord result = InferenceResultRecord
-        .createInferenceResultRecord(thisObs, newState, instance.getBestState());
+        .createInferenceResultRecord(thisObs, newState, instance.getBestState(), instance.getBelief().clone());
 
     InferenceService.addSimulationRecords(simulationName, result);
     

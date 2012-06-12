@@ -7,6 +7,7 @@ import gov.sandia.cognition.math.matrix.mtj.DenseMatrix;
 import gov.sandia.cognition.math.matrix.mtj.DenseMatrixFactoryMTJ;
 import gov.sandia.cognition.math.matrix.mtj.DenseVector;
 import gov.sandia.cognition.math.matrix.mtj.decomposition.EigenDecompositionRightMTJ;
+import gov.sandia.cognition.statistics.DataDistribution;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 
 import java.util.Collections;
@@ -34,17 +35,40 @@ import controllers.Api;
 
 public class InferenceResultRecord {
 
-  private static class ResultSet {
+  public static class ResultSet {
+
+    static public class EvaluatedPathInfo {
+      final Coordinate startPoint;
+      final List<Integer> pathEdgeIds;
+
+      public EvaluatedPathInfo(Coordinate startPoint,
+        List<Integer> pathEdgeIds) {
+        this.startPoint = startPoint;
+        this.pathEdgeIds = pathEdgeIds;
+      }
+
+      @JsonSerialize
+      public List<Integer> getPathEdgeIds() {
+        return pathEdgeIds;
+      }
+
+      @JsonSerialize
+      public Coordinate getStartPoint() {
+        return startPoint;
+      }
+
+    }
 
     private final Coordinate meanCoords;
     private final Coordinate majorAxisCoords;
     private final Coordinate minorAxisCoords;
     private final List<Double[]> pathSegmentIds;
+
     private final VehicleState state;
 
-    public ResultSet(VehicleState vehicleState, Coordinate meanCoords,
-      Coordinate majorAxisCoords, Coordinate minorAxisCoords,
-      List<Double[]> pathSegmentIds) {
+    public ResultSet(VehicleState vehicleState,
+      Coordinate meanCoords, Coordinate majorAxisCoords,
+      Coordinate minorAxisCoords, List<Double[]> pathSegmentIds) {
       this.meanCoords = meanCoords;
       this.majorAxisCoords = majorAxisCoords;
       this.minorAxisCoords = minorAxisCoords;
@@ -53,19 +77,23 @@ public class InferenceResultRecord {
     }
 
     @JsonSerialize
-    public List<List<Integer>> getEvaluatedPaths() {
-      List<List<Integer>> pathEdgeIds;
+    public List<EvaluatedPathInfo> getEvaluatedPaths() {
+      List<EvaluatedPathInfo> pathEdgeIds;
       if (state.getFilterInformation() != null) {
         pathEdgeIds = Lists.newArrayList();
-        for (final InferredPathEntry pathEntry : state.getFilterInformation()
-            .getEvaluatedPaths()) {
+        for (final InferredPathEntry pathEntry : state
+            .getFilterInformation().getEvaluatedPaths()) {
           final List<Integer> edgeIds = Lists.newArrayList();
           for (final PathEdge edge : pathEntry.getPath().getEdges()) {
             if (edge.getInferredEdge().getEdgeId() != null)
               edgeIds.add(edge.getInferredEdge().getEdgeId());
           }
-          if (!edgeIds.isEmpty())
-            pathEdgeIds.add(edgeIds);
+          if (!edgeIds.isEmpty()) {
+            final Vector startLocVec = pathEntry.getStartLoc();
+            final Coordinate startLoc = new Coordinate(
+                startLocVec.getElement(0), startLocVec.getElement(1));
+            pathEdgeIds.add(new EvaluatedPathInfo(startLoc, edgeIds));
+          }
         }
       } else {
         pathEdgeIds = Collections.emptyList();
@@ -118,13 +146,16 @@ public class InferenceResultRecord {
   private final ResultSet actualResults;
 
   private final ResultSet infResults;
+  
+  private final DataDistribution<VehicleState> filterDistribution;
 
   public InferenceResultRecord(long time, Coordinate obsCoords,
-    ResultSet actualResults, ResultSet infResults) {
+    ResultSet actualResults, ResultSet infResults, DataDistribution<VehicleState> filterDist) {
     this.actualResults = actualResults;
     this.infResults = infResults;
     this.observedCoords = obsCoords;
     this.time = Api.sdf.format(new Date(time));
+    this.filterDistribution = filterDist;
   }
 
   @JsonSerialize
@@ -149,13 +180,13 @@ public class InferenceResultRecord {
 
   public static InferenceResultRecord createInferenceResultRecord(
     Observation observation, InferenceInstance inferenceInstance) {
-    return createInferenceResultRecord(observation, null,
-        inferenceInstance.getBestState());
+    return createInferenceResultRecord(
+        observation, null, inferenceInstance.getBestState(), inferenceInstance.getBelief());
   }
 
   public static InferenceResultRecord createInferenceResultRecord(
     Observation observation, VehicleState actualState,
-    VehicleState inferredState) {
+    VehicleState inferredState, DataDistribution<VehicleState> filterDist) {
 
     Preconditions.checkNotNull(observation);
 
@@ -169,11 +200,13 @@ public class InferenceResultRecord {
       infResults = processVehicleStateResults(inferredState);
     }
 
-    return new InferenceResultRecord(observation.getTimestamp().getTime(),
-        observation.getObsCoords(), actualResults, infResults);
+    return new InferenceResultRecord(
+        observation.getTimestamp().getTime(),
+        observation.getObsCoords(), actualResults, infResults, filterDist);
   }
 
-  private static ResultSet processVehicleStateResults(VehicleState state) {
+  private static ResultSet processVehicleStateResults(
+    VehicleState state) {
 
     /*
      * The last edge of the path should correspond to the current edge, and the
@@ -181,14 +214,17 @@ public class InferenceResultRecord {
      */
     final MultivariateGaussian belief = state.getBelief();
 
-    final PathEdge currentEdge = PathEdge.getEdge(state.getInferredEdge(), 0d);
+    final PathEdge currentEdge = PathEdge.getEdge(
+        state.getInferredEdge(), 0d);
     final MultivariateGaussian gbelief = belief.clone();
-    final Matrix O = StandardRoadTrackingFilter.getGroundObservationMatrix();
+    final Matrix O = StandardRoadTrackingFilter
+        .getGroundObservationMatrix();
     final Vector mean;
     final Vector minorAxis;
     final Vector majorAxis;
 
-    StandardRoadTrackingFilter.convertToGroundBelief(gbelief, currentEdge);
+    StandardRoadTrackingFilter.convertToGroundBelief(
+        gbelief, currentEdge);
 
     mean = O.times(gbelief.getMean().clone());
 
@@ -201,7 +237,8 @@ public class InferenceResultRecord {
           .create(DenseMatrixFactoryMTJ.INSTANCE.copyMatrix(gbelief
               .getCovariance()));
 
-      final Matrix Shalf = MatrixFactory.getDefault().createIdentity(2, 2);
+      final Matrix Shalf = MatrixFactory.getDefault().createIdentity(
+          2, 2);
       double eigenValue1 = decomp.getEigenValue(0).getRealPart();
       double eigenValue2 = decomp.getEigenValue(1).getRealPart();
       eigenValue1 = Math.abs(eigenValue1) > 1e-10 ? eigenValue1 : 0d;
@@ -209,19 +246,21 @@ public class InferenceResultRecord {
       Shalf.setElement(0, 0, Math.sqrt(eigenValue1));
       Shalf.setElement(1, 1, Math.sqrt(eigenValue2));
       majorAxis = mean.plus(O
-          .times(decomp.getEigenVectorsRealPart().getColumn(0)).times(Shalf)
-          .scale(1.98));
+          .times(decomp.getEigenVectorsRealPart().getColumn(0))
+          .times(Shalf).scale(1.98));
       minorAxis = mean.plus(O
-          .times(decomp.getEigenVectorsRealPart().getColumn(1)).times(Shalf)
-          .scale(1.98));
+          .times(decomp.getEigenVectorsRealPart().getColumn(1))
+          .times(Shalf).scale(1.98));
     } else {
       majorAxis = mean;
       minorAxis = mean;
     }
 
     final Coordinate meanCoords = GeoUtils.convertToLatLon(mean);
-    final Coordinate majorAxisCoords = GeoUtils.convertToLatLon(majorAxis);
-    final Coordinate minorAxisCoords = GeoUtils.convertToLatLon(minorAxis);
+    final Coordinate majorAxisCoords = GeoUtils
+        .convertToLatLon(majorAxis);
+    final Coordinate minorAxisCoords = GeoUtils
+        .convertToLatLon(minorAxis);
 
     final List<Double[]> pathSegmentIds = Lists.newArrayList();
     final FilterInformation info = state.getFilterInformation();
@@ -242,8 +281,14 @@ public class InferenceResultRecord {
       }
     }
 
-    return new ResultSet(state.clone(), meanCoords, majorAxisCoords,
-        minorAxisCoords, pathSegmentIds);
+    return new ResultSet(
+        state.clone(), meanCoords, majorAxisCoords, minorAxisCoords,
+        pathSegmentIds);
+  }
+
+  @JsonIgnore
+  public DataDistribution<VehicleState> getFilterDistribution() {
+    return filterDistribution;
   }
 
 }

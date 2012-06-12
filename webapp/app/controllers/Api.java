@@ -1,5 +1,7 @@
 package controllers;
 
+import gov.sandia.cognition.collection.ScalarMap.Entry;
+import inference.InferenceResultRecord;
 import inference.InferenceService;
 
 import java.io.IOException;
@@ -14,10 +16,14 @@ import org.codehaus.jackson.map.ObjectMapper;
 import org.opengis.referencing.operation.TransformException;
 import org.openplans.tools.tracking.impl.Observation;
 import org.openplans.tools.tracking.impl.TimeOrderException;
+import org.openplans.tools.tracking.impl.VehicleState;
 import org.openplans.tools.tracking.impl.util.GeoUtils;
 import org.openplans.tools.tracking.impl.util.OtpGraph;
 import org.opentripplanner.routing.graph.Edge;
 
+import com.google.common.collect.Iterables;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import com.vividsolutions.jts.geom.Coordinate;
 
 import play.*;
@@ -96,27 +102,91 @@ public class Api extends Controller {
     } else
       badRequest();
   }
-
-
-  /**
-   * Process records from a trace. Note: flags are set that cause the records to
-   * be handled differently.
-   * 
-   * @param csvFileName
-   * @param vehicleId
-   * @param timestamp
-   * @param latStr
-   * @param lonStr
-   * @param velocity
-   * @param heading
-   * @param accuracy
-   * @return
-   * @throws TimeOrderException 
-   * @throws TransformException 
-   * @throws ParseException 
-   * @throws NumberFormatException 
-   */
   
+  public static void particleDetails(String vehicleId, int recordNumber) throws JsonGenerationException,
+      JsonMappingException, IOException { 
+    
+    final Collection<InferenceResultRecord> results = InferenceService.getTraceResults(vehicleId);
+    if (results.isEmpty())
+      renderJSON(jsonMapper.writeValueAsString(null));
+      
+    final InferenceResultRecord tmpResult = Iterables.get(results, recordNumber, null);
+    
+    if (tmpResult == null)
+      error(vehicleId + " result record " + recordNumber + " is out-of-bounds");
+    
+    List<Map<String, Object>> jsonResults = Lists.newArrayList();
+    for (Entry<VehicleState> stateEntry : tmpResult.getFilterDistribution().entrySet()) {
+      Map<String, Object> thisMap = Maps.newHashMap();
+      thisMap.put("weight", stateEntry.getValue());
+      thisMap.put("edgeId", stateEntry.getKey().getInferredEdge().getEdgeId());
+      thisMap.put("meanLoc", GeoUtils.getCoordinates(stateEntry.getKey().getMeanLocation()));
+      jsonResults.add(thisMap);
+    }
+    
+    renderJSON(jsonMapper.writeValueAsString(jsonResults));
+  }
+  
+  public static void traceParticleRecord(String vehicleId, int recordNumber, int particleNumber, boolean withParent) throws JsonGenerationException,
+      JsonMappingException, IOException {
+    
+    final InferenceResultRecord result;
+    if (particleNumber < 0) {
+      final Collection<InferenceResultRecord> results = InferenceService.getTraceResults(vehicleId);
+      
+      if (results.isEmpty())
+        renderJSON(jsonMapper.writeValueAsString(null));
+      
+      result = Iterables.get(results, recordNumber, null);
+      
+      if (result == null)
+        renderJSON(jsonMapper.writeValueAsString(null));
+      
+    } else {
+      final Collection<InferenceResultRecord> results = InferenceService.getTraceResults(vehicleId);
+      if (results.isEmpty())
+        renderJSON(jsonMapper.writeValueAsString(null));
+        
+      final InferenceResultRecord tmpResult = Iterables.get(results, recordNumber, null);
+      
+      if (tmpResult == null)
+        error(vehicleId + " result record " + recordNumber + " is out-of-bounds");
+      
+      final InferenceInstance instance = InferenceService.getInferenceInstance(vehicleId);
+      final VehicleState infState = Iterables.get(instance.getBelief().getDomain(), particleNumber, null);
+      
+      if (infState == null)
+        renderJSON(jsonMapper.writeValueAsString(null));
+      
+      
+      final VehicleState actualState = tmpResult.getActualResults() != null ? tmpResult.getActualResults().getState()
+          : null;
+      
+      result = InferenceResultRecord.createInferenceResultRecord(infState.getObservation(), 
+          actualState, infState, null);
+    }
+    
+    final InferenceResultRecord parent;
+    if (withParent) {
+      final VehicleState parentState = result.getInfResults().getState().getParentState();
+      if (parentState != null) {
+        parent = InferenceResultRecord.createInferenceResultRecord(parentState.getObservation(), 
+          null, parentState, null);
+      } else {
+        parent = null;
+      }
+    } else {
+      parent = null;
+    }
+    
+    Map<String, InferenceResultRecord> mapResult = Maps.newHashMap();
+    mapResult.put("particle", result);
+    
+    if (parent != null)
+      mapResult.put("parent", parent);
+    
+    renderJSON(jsonMapper.writeValueAsString(mapResult));
+  }
 
   public static void traces(String vehicleId) throws JsonGenerationException,
       JsonMappingException, IOException {

@@ -45,9 +45,9 @@ public class StandardRoadTrackingFilter implements
   private final Matrix Qr;
   private final Matrix Qg;
 
-  private final Vector onRoadStateVariance;
-  private final Vector offRoadStateVariance;
-  private final Vector obsVariance;
+  private final Matrix onRoadStateVariance;
+  private final Matrix offRoadStateVariance;
+  private final Matrix obsVariance;
 
   /*
    * Observation matrix
@@ -71,9 +71,9 @@ public class StandardRoadTrackingFilter implements
   public StandardRoadTrackingFilter(Vector obsVariance,
     Vector offRoadStateVariance, Vector onRoadStateVariance) {
 
-    this.obsVariance = obsVariance;
-    this.offRoadStateVariance = offRoadStateVariance;
-    this.onRoadStateVariance = onRoadStateVariance;
+    this.obsVariance = MatrixFactory.getDefault().createDiagonal(obsVariance);
+    this.offRoadStateVariance = MatrixFactory.getDefault().createDiagonal(offRoadStateVariance);
+    this.onRoadStateVariance = MatrixFactory.getDefault().createDiagonal(onRoadStateVariance);
 
     /*
      * Create the road-coordinates filter
@@ -91,7 +91,7 @@ public class StandardRoadTrackingFilter implements
         onRoadStateVariance);
     this.roadFilter = new KalmanFilter(
         roadModel, createStateCovarianceMatrix(1d, Qr, true),
-        MatrixFactory.getDefault().createDiagonal(obsVariance));
+        this.obsVariance);
 
     /*
      * Create the ground-coordinates filter
@@ -112,7 +112,7 @@ public class StandardRoadTrackingFilter implements
         offRoadStateVariance);
     this.groundFilter = new KalmanFilter(
         groundModel, createStateCovarianceMatrix(1d, Qg, false),
-        MatrixFactory.getDefault().createDiagonal(obsVariance));
+        this.obsVariance);
 
   }
 
@@ -190,15 +190,15 @@ public class StandardRoadTrackingFilter implements
     return res;
   }
 
-  public Vector getObsVariance() {
+  public Matrix getObsVariance() {
     return obsVariance;
   }
 
-  public Vector getOffRoadStateVariance() {
+  public Matrix getOffRoadStateVariance() {
     return offRoadStateVariance;
   }
 
-  public Vector getOnRoadStateVariance() {
+  public Matrix getOnRoadStateVariance() {
     return onRoadStateVariance;
   }
 

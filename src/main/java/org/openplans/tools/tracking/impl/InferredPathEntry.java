@@ -1,5 +1,6 @@
 package org.openplans.tools.tracking.impl;
 
+import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 import gov.sandia.cognition.util.DefaultWeightedValue;
 
@@ -10,11 +11,14 @@ public class InferredPathEntry {
   private final Map<PathEdge, DefaultWeightedValue<MultivariateGaussian>> edgeToPredictiveBelief;
   private final InferredPath path;
   private final double totalLogLikelihood;
+  private final Vector startLoc;
 
   public InferredPathEntry(
+    Vector startLoc,
     InferredPath path,
     Map<PathEdge, DefaultWeightedValue<MultivariateGaussian>> edgeToPredictiveBeliefAndLogLikelihood,
     StandardRoadTrackingFilter filter, double totalLogLikelihood) {
+    this.startLoc = startLoc;
     this.totalLogLikelihood = totalLogLikelihood;
     this.path = path;
     this.filter = filter;
@@ -71,6 +75,10 @@ public class InferredPathEntry {
   public String toString() {
     return "InferredPathEntry [path=" + path
         + ", totalLogLikelihood=" + totalLogLikelihood + "]";
+  }
+
+  public Vector getStartLoc() {
+    return startLoc;
   }
 
 }

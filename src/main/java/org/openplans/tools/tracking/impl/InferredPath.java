@@ -161,7 +161,7 @@ public class InferredPath {
       prevEdge = edge;
     }
 
-    return new InferredPathEntry(
+    return new InferredPathEntry(state.getMeanLocation(),
         this, edgeToPredictiveBeliefAndLogLikelihood, filter,
         pathLogLik);
   }

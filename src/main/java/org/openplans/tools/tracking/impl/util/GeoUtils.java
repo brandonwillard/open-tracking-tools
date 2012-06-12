@@ -189,4 +189,8 @@ public class GeoUtils {
   public static Coordinate reverseCoordinates(Coordinate startCoord) {
     return new Coordinate(startCoord.y, startCoord.x);
   }
+
+  public static Object getCoordinates(Vector meanLocation) {
+    return new Coordinate(meanLocation.getElement(0), meanLocation.getElement(1));
+  }
 }

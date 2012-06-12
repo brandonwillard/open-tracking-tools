@@ -91,7 +91,7 @@ public class Application extends Controller {
         groundStateVariance, offProbs, onProbs, seed);
     
     final String simulationName = "sim-" + start_unix_time;
-    if (InferenceService.getInferenceInstance(simulationName, true) != null) {
+    if (InferenceService.getOrCreateInferenceInstance(simulationName, true) != null) {
       Logger.warn("removing existing inference instance named " + simulationName);
       InferenceService.remove(simulationName);
     }
