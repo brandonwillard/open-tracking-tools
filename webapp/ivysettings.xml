@@ -20,11 +20,11 @@
     <chain name="main">
       <!-- as this is not cached, even changing SNAPSHOT dependencies 
         are resolved correctly -->
-      <filesystem name="local-maven-2" m2compatible="true" local="true" 
+      <!--filesystem name="local-maven-2" m2compatible="true" local="true" 
         cache="nocache">
         <ivy pattern="${local-maven2-pattern}.pom" />
         <artifact pattern="${local-maven2-pattern}(-[classifier]).[ext]" />
-      </filesystem>
+      </filesystem-->
       <!-- use repository manager as proxy to maven-central
         (and all other repositories)--> 
       <ibiblio name="repomanager" m2compatible="true"

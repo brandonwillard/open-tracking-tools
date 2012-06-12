@@ -533,6 +533,7 @@ public class InferredGraph {
 //        if (!spt2.getPaths().isEmpty())
 //          gPaths.add(spt2.getPaths().get(0));
         
+        options.cleanup();
       }
     }
 
