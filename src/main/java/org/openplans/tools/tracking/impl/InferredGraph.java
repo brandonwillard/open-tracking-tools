@@ -565,6 +565,9 @@ public class InferredGraph {
               ImmutableList.copyOf(path), pathDist));
       }
     }
+
+    options.cleanup();
+
     return paths;
   }
 
