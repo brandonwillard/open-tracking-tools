@@ -83,33 +83,37 @@ public class EdgeTransitionDistributions extends
   }
 
   public double evaluate(InferredEdge from, InferredEdge to) {
-    return freeMotionTransPrior.getProbabilityFunction().evaluate(
-        getTransitionType(from, to));
-  }
-
-  public MultinomialBayesianEstimator getEdgeTransEstimator() {
-    return freeMotionTransEstimator;
-  }
-
-  public MultinomialDistribution getEdgeTransPrior() {
-    return freeMotionTransPrior;
-  }
-
-  public DirichletDistribution getEdgeTransProbPrior() {
-    return freeMotionTransProbPrior;
+    if (from == InferredEdge.getEmptyEdge()) {
+      return freeMotionTransPrior.getProbabilityFunction().evaluate(
+          getTransitionType(from, to));
+    } else {
+      return edgeMotionTransPrior.getProbabilityFunction().evaluate(
+          getTransitionType(from, to));
+    }
   }
 
   public double logEvaluate(InferredEdge from, InferredEdge to) {
-    return freeMotionTransPrior.getProbabilityFunction().logEvaluate(
-        getTransitionType(from, to));
+    if (from == InferredEdge.getEmptyEdge()) {
+      return freeMotionTransPrior.getProbabilityFunction().logEvaluate(
+          getTransitionType(from, to));
+    } else {
+      return edgeMotionTransPrior.getProbabilityFunction().logEvaluate(
+          getTransitionType(from, to));
+    }
   }
 
   public double predictiveLogLikelihood(InferredEdge from,
     InferredEdge to) {
     final Vector state = getTransitionType(from, to);
-    final MultivariatePolyaDistribution predDist = freeMotionTransEstimator
-        .createPredictiveDistribution(freeMotionTransProbPrior);
-    return predDist.getProbabilityFunction().logEvaluate(state);
+    if (from == InferredEdge.getEmptyEdge()) {
+      final MultivariatePolyaDistribution predDist = freeMotionTransEstimator
+          .createPredictiveDistribution(freeMotionTransProbPrior);
+      return predDist.getProbabilityFunction().logEvaluate(state);
+    } else {
+      final MultivariatePolyaDistribution predDist = edgeMotionTransEstimator
+          .createPredictiveDistribution(edgeMotionTransProbPrior);
+      return predDist.getProbabilityFunction().logEvaluate(state);
+    }
   }
 
   public InferredEdge sample(Random rng,
@@ -165,8 +169,13 @@ public class EdgeTransitionDistributions extends
 
   public void update(InferredEdge from, InferredEdge to) {
     final Vector transType = getTransitionType(from, to);
-    freeMotionTransEstimator.update(
-        freeMotionTransProbPrior, transType);
+    if (from == InferredEdge.getEmptyEdge()) {
+      freeMotionTransEstimator.update(
+          freeMotionTransProbPrior, transType);
+    } else {
+      edgeMotionTransEstimator.update(
+          edgeMotionTransProbPrior, transType);
+    }
   }
 
   public static Vector getStateOffToOff() {

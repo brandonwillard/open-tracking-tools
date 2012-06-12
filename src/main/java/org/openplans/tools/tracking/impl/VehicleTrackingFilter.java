@@ -163,9 +163,11 @@ public class VehicleTrackingFilter extends
       @SuppressWarnings("unchecked")
       final FilterInformation info = new FilterInformation(
           pathEntry.getPath(), evaluatedPaths);
+      
       final VehicleState newState = new VehicleState(
           this.inferredGraph, obs, filter, sampledBelief,
           edgeTransDist, sampledEdge, state, info);
+      
       target.set(newState, 1d / getNumParticles());
 
       /*-
@@ -175,11 +177,19 @@ public class VehicleTrackingFilter extends
        */
       filter.measure(
           sampledBelief, obs.getProjectedPoint(), sampledEdge);
+      
       InferredEdge prevEdge = pathEntry.getPath().getEdges().get(0)
           .getInferredEdge();
       for (final PathEdge edge : pathEntry.getPath().getEdges()) {
         if (prevEdge != null)
           edgeTransDist.update(prevEdge, edge.getInferredEdge());
+        
+        if (edge != PathEdge.getEmptyPathEdge()) {
+          edge.getInferredEdge().getVelocityEstimator().update(
+              edge.getInferredEdge().getVelocityPrecisionDist(), 
+              sampledBelief.getMean().getElement(1));
+        }
+        
         prevEdge = edge.getInferredEdge();
       }
 

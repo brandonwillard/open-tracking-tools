@@ -40,7 +40,7 @@ var marker2 = null;
 
 var interval = null;
 
-var MAX_SPEED = 600; // in m/min
+var MAX_SPEED = 10; // in m/s
 
 $(document)
     .ready(
@@ -95,29 +95,35 @@ function addEdge() {
 }
 function drawCoordinates(x, y, popupMessage, pan) {
   var coordGetString = "x=" + x + "&y=" + y;
-  $.get(coordUrl + coordGetString,
-    function(data) { 
+  var marker = null;
+  $.ajax({
+    url: coordUrl + coordGetString, 
+    dataType: 'json',
+    async: false,
+    success: function(data) { 
       
       lat = data['x'];
       lon = data['y'];
       
       var latlng = new L.LatLng(parseFloat(lat), parseFloat(lon));
-      var new_marker = new L.Circle(latlng, 10, {
+      marker = new L.Circle(latlng, 10, {
         color : '#0c0',
         lat : parseFloat(lat),
         lon : parseFloat(lon),
         weight : 1
       });
-      pointsGroup.addLayer(new_marker);
-      addedGroup.addLayer(new_marker);
+      $(this).data('marker', marker);
+      pointsGroup.addLayer(marker);
+      addedGroup.addLayer(marker);
       if (popupMessage != null)
-        new_marker.bindPopup(popupMessage);
+        marker.bindPopup(popupMessage);
       if (pan)
         map.panTo(latlng);
-  });
+  }});
 
   map.invalidateSize();
   
+  return marker;
 }  
 
 function addCoordinates() {
@@ -357,9 +363,13 @@ EdgeType = {
 }
 
 function drawEdge(id, velocity, edgeType) {
-  $.get('/api/segment', {
-    segmentId : id
-  }, function(data) {
+  
+  var geojson = new L.GeoJSON();
+  $.ajax({
+    url: '/api/segment?segmentId=' + id, 
+    dataType: 'json',
+    async: false,
+    success: function(data) {
 
     var avg_velocity = Math.abs(velocity);
 
@@ -369,7 +379,12 @@ function drawEdge(id, velocity, edgeType) {
 
     var groupType;
     if (edgeType == EdgeType.INFERRED) {
-      color = "red";
+      if (avg_velocity != null
+          && avg_velocity < MAX_SPEED)
+        color = '#' + getColor(avg_velocity / MAX_SPEED);
+      else
+        color = "red";
+      
       weight = 10;
       opacity = 0.3
       groupType = inferredGroup;
@@ -390,13 +405,6 @@ function drawEdge(id, velocity, edgeType) {
       groupType = addedGroup;
     }
     
-//    if (avg_velocity < MAX_SPEED)
-//      color = '#' + getColor(avg_velocity / MAX_SPEED);
-//    else
-//      color = 'purple';
-    
-    var geojson = new L.GeoJSON();
-
     geojson.on('featureparse', function(e) {
       e.layer.setStyle({
         color : e.properties.color,
@@ -418,8 +426,11 @@ function drawEdge(id, velocity, edgeType) {
     geojson.addGeoJSON(data.geom);
     edgeGroup.addLayer(geojson);
     groupType.addLayer(geojson);
+    map.invalidateSize();
 
-  });
+  }});
+  
+  return geojson;
 }
 
 
@@ -448,22 +459,85 @@ function renderParticles() {
       var particleNumber = 0;
       jQuery.each(data, function(_, particleData) {
         
+        var locLinkName = 'particle' + particleNumber + '_mean';
         var coordPair = particleData.meanLoc.x + ',' + particleData.meanLoc.y;
-        var locLink = ' <a title="' + coordPair + '" style="color : black" href="javascript:void(0)" onclick="drawCoordinates('
-          + coordPair + ', null, false)">mean</a>';
+        var locLink = '<a name="' + locLinkName + '" title="' + coordPair 
+          + '" style="color : black" href="javascript:void(0)">mean</a>';
         
-        var drawEdgeJs = null; 
-        var edgeDesc = "free movement";
+        var edgeDesc = "free";
         if (particleData.edgeId != null) {
-          drawEdgeJs = 'onclick="drawEdge(' + particleData.edgeId + ', null, EdgeType.ADDED)"';
           edgeDesc = particleData.edgeId;
         }
+        var edgeLinkName = 'particle' + particleNumber + '_edge'; 
+        var edgeLink = '<a name="' + edgeLinkName + '" title="' 
+          + edgeDesc + '" style="color : black" href="javascript:void(0)">' + edgeDesc + '</a>';
         
-        var edgeLink = ' <a title="' + edgeDesc + '" style="color : black" href="javascript:void(0)" ' 
-          + drawEdgeJs + '>edge</a>';
-        var option = jQuery("<li>" + particleData.weight + ',' + locLink + ',' + edgeLink + "</li>");
+        var particleDivId = 'particle' + particleNumber; 
+        var collapser = '<div class="collapser" id="' + particleDivId + '"></div>';
+        var option = jQuery('<li></li>');
+        
         option.attr("value", particleNumber);
+        var optionDiv = jQuery('<div class="collapsed"><span class="property">' 
+            + particleNumber + ' (' + particleData.weight + '), ' + locLink + ', ' + edgeLink + '</span>' 
+            + collapser + '</div>');
+        option.append(optionDiv);
         particleList.append(option);
+        var subList = jQuery('<ul class="obj collapsible"></ul>');
+        subList.append('<li><span class="property"><div class="collapsed">test</div></span></li>');
+        optionDiv.append(subList);
+        
+        $('#' + particleDivId).click(function() {
+          if (this.className == 'collapser') {
+              if (this.parentNode.classList.contains("collapsed"))
+                  this.parentNode.classList.remove("collapsed");
+              else
+                  this.parentNode.classList.add("collapsed");
+          }
+        });
+        
+        
+        var locLinkJName = 'a[name=' +locLinkName + ']'; 
+        $(locLinkJName).hover(function() { 
+          var marker = $(locLinkJName).data('marker');
+          if (marker == null) {
+            marker = drawCoordinates(particleData.meanLoc.x, particleData.meanLoc.y, null, false);
+            $(locLinkJName).data('marker', marker);
+          } else {
+            pointsGroup.addLayer(marker);
+            addedGroup.addLayer(marker);
+            map.invalidateSize();
+          }
+        }, function() { 
+          var marker = $(locLinkJName).data('marker');
+          if (marker != null) {
+            pointsGroup.removeLayer(marker);
+            addedGroup.removeLayer(marker);
+            map.invalidateSize();
+          }
+        }); 
+        
+        if (particleData.edgeId != null) {
+          var edgeLinkJName = 'a[name=' + edgeLinkName + ']'; 
+          $(edgeLinkJName).hover(function() { 
+            var edge = $(edgeLinkJName).data('edge');
+            if (edge == null) {
+              edge = drawEdge(particleData.edgeId, null, EdgeType.ADDED);
+              $(edgeLinkJName).data('edge', edge);
+            } else {
+              edgeGroup.addLayer(edge);
+              addedGroup.addLayer(edge);
+              map.invalidateSize();
+            }
+          }, function() { 
+            var edge = $(edgeLinkJName).data('edge');
+            if (edge != null) {
+              edgeGroup.removeLayer(edge);
+              addedGroup.removeLayer(edge);
+              map.invalidateSize();
+            }
+          }); 
+        }
+        
         particleNumber++;
       });
   });

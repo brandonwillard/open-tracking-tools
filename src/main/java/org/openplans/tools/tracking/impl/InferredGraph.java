@@ -546,13 +546,18 @@ public class InferredGraph {
             pathDist += pathEdge.getDistance();
           } else if (pathEdge.getFromVertex() != null
               && !pathEdge.getFromVertex().getOutgoingStreetEdges().isEmpty()) {
-            /*
-             * Find a valid street edge to work with
-             */
-            path.add(PathEdge.getEdge(
-                this.getInferredEdge(pathEdge.getFromVertex()
-                    .getOutgoingStreetEdges().get(0)), pathDist));
-            pathDist += pathEdge.getDistance();
+            for (Edge streetEdge : pathEdge.getFromVertex().getOutgoingStreetEdges()) {
+              if (streetEdge.getGeometry() != null
+                && streetEdge.getDistance() > 0d) {
+                /*
+                 * Find a valid street edge to work with
+                 */
+                path.add(PathEdge.getEdge(
+                    this.getInferredEdge(streetEdge.getFromVertex()
+                        .getOutgoingStreetEdges().get(0)), pathDist));
+                pathDist += streetEdge.getDistance();
+              }
+            }
           }
         }
         if (!path.isEmpty())
