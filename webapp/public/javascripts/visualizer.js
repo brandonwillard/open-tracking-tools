@@ -394,7 +394,7 @@ function drawEdge(id, velocity, edgeType) {
       opacity = 1.0;
       groupType = actualGroup;
     } else if (edgeType == EdgeType.EVALUATED){
-      color = "yellow";
+      color = "blue";
       weight = 20;
       opacity = 0.2
       groupType = evaluatedGroup;
@@ -434,7 +434,7 @@ function drawEdge(id, velocity, edgeType) {
 }
 
 
-function renderPath(segmentInfo, edgeType) {
+function renderSegment(segmentInfo, edgeType) {
   var segment = segmentInfo;
 
   if (segmentInfo.length == 2 && segmentInfo[0] > -1) {
@@ -547,20 +547,56 @@ function renderParticles() {
 
 function renderGraph() {
   if (lines[i].infResults) {
+    var pathList = jQuery("#paths");
+    pathList.empty();
+
+    var emptyOption = jQuery('<option id="none">none</option>');
+    pathList.append(emptyOption);
     
-//    if (lines[i].infResults.evaluatedPaths.length > 0) {
-//      var evaledPaths = lines[i].infResults.evaluatedPaths;
-//      var ids = new Array();
-//      for (var k in evaledPaths) {
-//        for (var l in evaledPaths[k]) {
-//          var idVelPair = new Array(evaledPaths[k][l], 0);
-//          renderPath(idVelPair, EdgeType.EVALUATED);
-//        }
-//      }
-//    }
+//    jQuery.each(data.routes, function(_, routeId) {
+//        var option = jQuery("<option>" + routeId + "</option>");
+//        option.attr("value", routeId);
+//        routeList.append(option);
+//    });
+//
+//    routeList.change(initBlockList);     
+    
+    if (lines[i].infResults.evaluatedPaths.length > 0) {
+      var evaledPaths = lines[i].infResults.evaluatedPaths;
+      var ids = new Array();
+      // paths
+      for (var k in evaledPaths) {
+        
+        // FIXME finish
+        var pathName = 'path' + k; 
+        var option = jQuery('<option id=' + pathName + '>path' + k + '</option>');
+        option.attr("value", k);
+        option.data("path", evaledPaths[k]);
+        pathList.append(option);
+        
+      }
+    }
+    
+    pathList.change(function() {
+      edgeGroup.clearLayers();
+      evaluatedGroup.clearLayers();
+      // segments
+      $("select option:selected").each(function () {
+        var pathName = $(this).text();
+        if (pathName != "none") {
+          var path = $('#'+pathName).data('path');
+          for (var l in path.pathEdgeIds) {
+            var idVelPair = new Array(path.pathEdgeIds[l], 0);
+            renderSegment(idVelPair, EdgeType.EVALUATED);
+          }
+        }
+      });
+      map.invalidateSize();
+    });     
+    
     
     for ( var j in lines[i].infResults.pathSegmentIds) {
-      renderPath(lines[i].infResults.pathSegmentIds[j], EdgeType.INFERRED);
+      renderSegment(lines[i].infResults.pathSegmentIds[j], EdgeType.INFERRED);
     }
   }
   
@@ -568,7 +604,7 @@ function renderGraph() {
   
   if (lines[i].actualResults) {
     for ( var j in lines[i].actualResults.pathSegmentIds) {
-      renderPath(lines[i].actualResults.pathSegmentIds[j], EdgeType.ACTUAL);
+      renderSegment(lines[i].actualResults.pathSegmentIds[j], EdgeType.ACTUAL);
     }
   }
 }

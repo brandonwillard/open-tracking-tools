@@ -92,6 +92,10 @@ public class Api extends Controller {
 
   public static void segment(Integer segmentId)
       throws JsonGenerationException, JsonMappingException, IOException {
+    
+    if (segmentId == null)
+      badRequest();
+    
     final Edge e = graph.getGraph().getEdgeById(segmentId);
 
     if (e != null) {

@@ -528,10 +528,10 @@ public class InferredGraph {
         if (!spt1.getPaths().isEmpty())
           copyAStarResults(spt1.getPaths().get(0), paths);
         
-//        options.setArriveBy(true);
-//        final ShortestPathTree spt2 = aStar.getShortestPathTree(options);
-//        if (!spt2.getPaths().isEmpty())
-//          gPaths.add(spt2.getPaths().get(0));
+        options.setArriveBy(true);
+        final ShortestPathTree spt2 = aStar.getShortestPathTree(options);
+        if (!spt2.getPaths().isEmpty())
+          gPaths.add(spt2.getPaths().get(0));
         
         options.cleanup();
       }
