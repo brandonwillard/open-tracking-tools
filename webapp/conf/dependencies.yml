@@ -13,6 +13,7 @@ require:
     - com.typesafe.akka -> akka-actor 2.0.1
     - com.vividsolutions -> jts 1.12
     - org.geotools -> gt-main 8.0-M4
+    - org.geotools -> gt-geojson 8.0-M4
 
 repositories:
     - typesafe:
