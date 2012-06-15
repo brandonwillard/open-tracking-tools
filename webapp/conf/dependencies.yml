@@ -11,8 +11,8 @@ require:
     - org.codehaus.jackson -> jackson-core-asl 1.9.5
     - org.codehaus.jackson -> jackson-mapper-asl 1.9.5
     - com.typesafe.akka -> akka-actor 2.0.1
-
-
+    - com.vividsolutions -> jts 1.12
+    - org.geotools -> gt-main 8.0-M4
 
 repositories:
     - typesafe:
@@ -20,3 +20,17 @@ repositories:
         root: "http://repo.typesafe.com/typesafe/releases/"
         contains:
             - com.typesafe.akka -> *
+    - osgeo:
+        type: iBiblio
+        root: "http://download.osgeo.org/webdav/geotools/"
+        contains:
+            - org.geotools -> *
+    - opengeo:
+        type: iBiblio
+        root: "http://repo.opengeo.org/"
+    - java.net:
+        type: iBiblio
+        root: "http://download.java.net/"
+        contains:
+            - javax.media -> *
+            - java3d -> *
