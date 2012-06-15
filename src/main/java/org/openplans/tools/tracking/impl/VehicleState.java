@@ -293,7 +293,7 @@ public class VehicleState implements
      * Reset the parent's parent state so that we don't
      * keep these objects forever.
      */
-    state.parentState = null;
+//    state.parentState = null;
     
     final double timeDiff;
     if (observation.getPreviousObservation() != null) {

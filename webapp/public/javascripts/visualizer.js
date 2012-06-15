@@ -156,7 +156,6 @@ function addCoordinates() {
         });
         pointsGroup.addLayer(new_marker);
         addedGroup.addLayer(new_marker);
-        new_marker.bindPopup("test");
         map.panTo(latlng);
     });
   
@@ -483,8 +482,8 @@ function renderParticles() {
         option.append(optionDiv);
         particleList.append(option);
         
-        var subList = jQuery('<ul class="obj collapsible"></ul>');
-        subList.append('<li><span class="property"><div class="collapsed">test</div></span></li>');
+        var subList = jQuery('<ul class="obj collapsible"><li><span class="property"><div class="collapsed"></div></span></li></ul>');
+        var collapsedDiv = subList.find(".collapsed");
         optionDiv.append(subList);
         
         $('#' + particleDivId).click(function() {
@@ -496,52 +495,87 @@ function renderParticles() {
           }
         });
         
-        
-        var locLinkJName = 'a[name=' +locLinkName + ']'; 
-        $(locLinkJName).hover(function() { 
-          var marker = $(locLinkJName).data('marker');
-          if (marker == null) {
-            marker = drawCoords(particleMeanLoc.x, particleMeanLoc.y, null, false);
-            $(locLinkJName).data('marker', marker);
-          } else {
-            pointsGroup.addLayer(marker);
-            addedGroup.addLayer(marker);
-            map.invalidateSize();
-          }
-        }, function() { 
-          var marker = $(locLinkJName).data('marker');
-          if (marker != null) {
-            pointsGroup.removeLayer(marker);
-            addedGroup.removeLayer(marker);
-            map.invalidateSize();
-          }
-        }); 
+        createHoverPointLink(locLinkName, particleMeanLoc);
         
         if (edgeId != null) {
-          var edgeLinkJName = 'a[name=' + edgeLinkName + ']'; 
-          $(edgeLinkJName).hover(function() { 
-            var edge = $(edgeLinkJName).data('edge');
-            if (edge == null) {
-              edge = drawEdge(edgeId, null, EdgeType.ADDED);
-              $(edgeLinkJName).data('edge', edge);
-            } else {
-              edgeGroup.addLayer(edge);
-              addedGroup.addLayer(edge);
-              map.invalidateSize();
-            }
-          }, function() { 
-            var edge = $(edgeLinkJName).data('edge');
-            if (edge != null) {
-              edgeGroup.removeLayer(edge);
-              addedGroup.removeLayer(edge);
-              map.invalidateSize();
-            }
-          }); 
+          createHoverLineLink(edgeLinkName, edgeId);
+        }
+        
+        if (particleData.parent) {
+          var parentEdgeDesc = "free";
+          var parentEdgeId = particleData.parent.infResults.inferredEdge.id;
+          if (parentEdgeId != null) {
+            parentEdgeDesc = parentEdgeId;
+          }
+          var parentEdgeLinkName = 'parent_particle' + particleNumber + '_edge'; 
+          var parentEdgeLink = '<a name="' + parentEdgeLinkName + '" title="' 
+            + parentEdgeDesc + '" style="color : black" href="javascript:void(0)">' 
+            + parentEdgeDesc + '</a>';
+          
+          var parentParticleMeanLoc = particleData.parent.infResults.meanCoords;
+          var parentLocLinkName = 'parent_particle' + particleNumber + '_mean';
+          var parentCoordPair = parentParticleMeanLoc.x + ',' + parentParticleMeanLoc.y;
+          var parentLocLink = '<a name="' + parentLocLinkName 
+            + '" title="' + parentCoordPair 
+            + '" style="color : black" href="javascript:void(0)">mean</a>';
+          
+          collapsedDiv.append(parentLocLink + ', ' + parentEdgeLink);
+          
+          createHoverPointLink(parentLocLinkName, parentParticleMeanLoc);
+          
+          if (parentEdgeId != null) {
+            createHoverLineLink(parentEdgeLinkName, parentEdgeId);
+          }
+          
         }
         
         particleNumber++;
       });
   });
+}
+
+function createHoverLineLink(linkName, edgeId) {
+  var edgeLinkJName = 'a[name=' + linkName + ']'; 
+  $(edgeLinkJName).hover(function() { 
+    var edge = $(edgeLinkJName).data('edge');
+    if (edge == null) {
+      edge = drawEdge(edgeId, null, EdgeType.ADDED);
+      $(edgeLinkJName).data('edge', edge);
+    } else {
+      edgeGroup.addLayer(edge);
+      addedGroup.addLayer(edge);
+      map.invalidateSize();
+    }
+  }, function() { 
+    var edge = $(edgeLinkJName).data('edge');
+    if (edge != null) {
+      edgeGroup.removeLayer(edge);
+      addedGroup.removeLayer(edge);
+      map.invalidateSize();
+    }
+  }); 
+}
+
+function createHoverPointLink(linkName, loc) {
+  var locLinkJName = 'a[name=' + linkName + ']'; 
+  $(locLinkJName).hover(function() { 
+    var marker = $(locLinkJName).data('marker');
+    if (marker == null) {
+      marker = drawCoords(loc.x, loc.y, null, false);
+      $(locLinkJName).data('marker', marker);
+    } else {
+      pointsGroup.addLayer(marker);
+      addedGroup.addLayer(marker);
+      map.invalidateSize();
+    }
+  }, function() { 
+    var marker = $(locLinkJName).data('marker');
+    if (marker != null) {
+      pointsGroup.removeLayer(marker);
+      addedGroup.removeLayer(marker);
+      map.invalidateSize();
+    }
+  }); 
 }
 
 function renderGraph() {
