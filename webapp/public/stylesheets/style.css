@@ -129,3 +129,14 @@ li {
   padding-right: 10px;
   padding-left: 6px;
 }
+
+.scrollable{
+  overflow-y: scroll;
+  overflow-x: scroll;
+  border: 1px black solid;
+}
+
+.scrollable select{
+	overflow:none;
+  border: none;
+}

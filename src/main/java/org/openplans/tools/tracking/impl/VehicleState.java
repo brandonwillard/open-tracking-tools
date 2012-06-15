@@ -2,20 +2,25 @@ package org.openplans.tools.tracking.impl;
 
 import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.math.matrix.VectorFactory;
+import gov.sandia.cognition.math.matrix.mtj.DenseVector;
 import gov.sandia.cognition.statistics.ComputableDistribution;
 import gov.sandia.cognition.statistics.ProbabilityFunction;
 import gov.sandia.cognition.statistics.bayesian.KalmanFilter;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Random;
 
 import jj2000.j2k.NotImplementedError;
 
+import org.apache.commons.lang.builder.CompareToBuilder;
 import org.openplans.tools.tracking.impl.InferredGraph.InferredEdge;
 
 import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
+import com.google.common.collect.ComparisonChain;
+import com.google.common.collect.Ordering;
 
 /**
  * This class represents the state of a vehicle, which is made up of the
@@ -26,7 +31,7 @@ import com.google.common.base.Preconditions;
  * 
  */
 public class VehicleState implements
-    ComputableDistribution<VehicleStateConditionalParams> {
+    ComputableDistribution<VehicleStateConditionalParams>, Comparable<VehicleState> {
 
   public static class InitialParameters {
     private final Vector obsVariance;
@@ -141,9 +146,6 @@ public class VehicleState implements
 
   private static final double gVariance = 50d * 50d / 4d; // meters
   private static final double dVariance = Math.pow(0.05, 2) / 4d; // m/s^2
-
-  // TODO FIXME pretty sure this constant is being used in multiple places
-  // for different things...
   private static final double vVariance = Math.pow(0.05, 2) / 4d; // m/s^2
 
   /*
@@ -154,8 +156,11 @@ public class VehicleState implements
   /**
    * This could be the 4D ground-coordinates dist. for free motion, or the 2D
    * road-coordinates, either way the tracking filter will check.
+   * Also, this could be the prior or prior predictive distribution.
    */
   protected final MultivariateGaussian belief;
+  
+  private final MultivariateGaussian initialBelief;
 
   /*-
    * Edge transition priors 
@@ -177,6 +182,12 @@ public class VehicleState implements
    * evaluated, likelihood values for paths, edges, states, parameters.
    */
   private final FilterInformation info;
+
+  private final int initialHashCode;
+  private final int edgeInitialHashCode;
+  private final int obsInitialHashCode;
+  private final int transInitialHashCode;
+  private final int beliefInitialHashCode;
 
   public VehicleState(InferredGraph graph,
     Observation initialObservation, InferredEdge inferredEdge,
@@ -217,6 +228,7 @@ public class VehicleState implements
        */
       this.belief = movementFilter.getRoadFilter()
           .createInitialLearnedObject();
+      
       final Vector loc = inferredEdge
           .getPointOnEdge(initialObservation.getObsCoords());
       belief
@@ -227,6 +239,7 @@ public class VehicleState implements
                           loc), 0d }));
     }
 
+    this.initialBelief = belief.clone();
     this.edge = inferredEdge;
     this.observation = initialObservation;
     this.graph = graph;
@@ -234,6 +247,13 @@ public class VehicleState implements
         this.graph, parameters.getOnTransitionProbs(),
         parameters.getOffTransitionProbs());
     this.distanceFromPreviousState = 0d;
+    
+    // DEBUG
+    this.initialHashCode = this.hashCode();
+    this.edgeInitialHashCode = this.edge.hashCode();
+    this.transInitialHashCode = this.edgeTransitionDist.hashCode();
+    this.beliefInitialHashCode = Arrays.hashCode(((DenseVector)this.initialBelief.convertToVector()).getArray());
+    this.obsInitialHashCode = this.observation.hashCode();
   }
 
   public VehicleState(InferredGraph graph, Observation observation,
@@ -253,6 +273,7 @@ public class VehicleState implements
     this.observation = observation;
     this.movementFilter = filter;
     this.belief = belief;
+    this.initialBelief = belief.clone();
     this.graph = graph;
     /*
      * This is the constructor used when creating transition states, so this is
@@ -266,7 +287,14 @@ public class VehicleState implements
               - edge.getDistToStartOfEdge());
     this.edgeTransitionDist = edgeTransitionDist;
     this.edge = edge.getInferredEdge();
+    
     this.parentState = state;
+    /*
+     * Reset the parent's parent state so that we don't
+     * keep these objects forever.
+     */
+    state.parentState = null;
+    
     final double timeDiff;
     if (observation.getPreviousObservation() != null) {
       timeDiff = (observation.getTimestamp().getTime() - observation
@@ -276,6 +304,12 @@ public class VehicleState implements
     }
     this.movementFilter.setCurrentTimeDiff(timeDiff);
 
+    // DEBUG
+    this.initialHashCode = this.hashCode();
+    this.edgeInitialHashCode = this.edge.hashCode();
+    this.transInitialHashCode = this.edgeTransitionDist.hashCode();
+    this.beliefInitialHashCode = Arrays.hashCode(((DenseVector)this.initialBelief.convertToVector()).getArray());
+    this.obsInitialHashCode = this.observation.hashCode();
   }
 
   public VehicleState(VehicleState other) {
@@ -288,6 +322,14 @@ public class VehicleState implements
     this.distanceFromPreviousState = other.distanceFromPreviousState;
     this.parentState = other.parentState;
     this.info = other.info;
+    this.initialBelief = other.initialBelief.clone();
+    
+    // DEBUG
+    this.initialHashCode = this.hashCode();
+    this.edgeInitialHashCode = this.edge.hashCode();
+    this.transInitialHashCode = this.edgeTransitionDist.hashCode();
+    this.beliefInitialHashCode = Arrays.hashCode(((DenseVector)this.initialBelief.convertToVector()).getArray());
+    this.obsInitialHashCode = this.observation.hashCode();
   }
 
   @Override
@@ -402,8 +444,8 @@ public class VehicleState implements
   @Override
   public String toString() {
     return Objects.toStringHelper(this).add("belief", belief)
-        .add("edge", edge).addValue(observation.getTimestamp())
-        .add("parent", parentState).add("filter", movementFilter)
+        .add("edge", edge.getEdgeId())
+        .addValue(observation.getTimestamp())
         .toString();
   }
 
@@ -430,6 +472,108 @@ public class VehicleState implements
 
   public static double getVvariance() {
     return vVariance;
+  }
+
+  private static int oneStateCompareTo(VehicleState t, VehicleState o) {
+    if (t == o)
+      return 0;
+
+    if (t == null) {
+      if (o != null)
+        return -1;
+    } else if (o == null) {
+      return 1;
+    }
+
+    DenseVector thisV = (DenseVector)t.initialBelief.convertToVector();
+    DenseVector otherV = (DenseVector)o.initialBelief.convertToVector();
+    CompareToBuilder comparator = new CompareToBuilder();
+    comparator.append(thisV.getArray(), otherV.getArray());
+    comparator.append(t.getObservation(), o.getObservation());
+    comparator.append(t.edge, o.edge);
+    comparator.append(t.edgeTransitionDist, o.edgeTransitionDist);
+    
+    return comparator.toComparison();
+  }
+  
+  @Override
+  public int compareTo(VehicleState arg0) {
+    return oneStateCompareTo(this, arg0);
+  }
+
+  @Override
+  public int hashCode() {
+    final int prime = 31;
+    int result = 1;
+    DenseVector thisV = (DenseVector)initialBelief.convertToVector();
+    result = prime * result
+        + ((initialBelief == null) ? 0 : 
+          Arrays.hashCode(thisV.getArray()));
+    result = prime * result + ((edge == null) ? 0 : edge.hashCode());
+    result = prime
+        * result
+        + ((edgeTransitionDist == null) ? 0 : edgeTransitionDist
+            .hashCode());
+    result = prime * result
+        + ((observation == null) ? 0 : observation.hashCode());
+    return result;
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj) {
+      return true;
+    }
+    if (obj == null) {
+      return false;
+    }
+    if (getClass() != obj.getClass()) {
+      return false;
+    }
+    VehicleState other = (VehicleState) obj;
+    DenseVector thisV = (DenseVector)initialBelief.convertToVector();
+    DenseVector otherV = (DenseVector)other.initialBelief.convertToVector();
+    if (initialBelief == null) {
+      if (other.initialBelief != null) {
+        return false;
+      }
+    } else if (!Arrays.equals(thisV.getArray(), otherV.getArray())) {
+      return false;
+    }
+    if (edge == null) {
+      if (other.edge != null) {
+        return false;
+      }
+    } else if (!edge.equals(other.edge)) {
+      return false;
+    }
+    if (edgeTransitionDist == null) {
+      if (other.edgeTransitionDist != null) {
+        return false;
+      }
+    } else if (!edgeTransitionDist.equals(other.edgeTransitionDist)) {
+      return false;
+    }
+    if (observation == null) {
+      if (other.observation != null) {
+        return false;
+      }
+    } else if (!observation.equals(other.observation)) {
+      return false;
+    }
+    return true;
+  }
+
+  public MultivariateGaussian getInitialBelief() {
+    return initialBelief;
+  }
+
+  public InferredEdge getEdge() {
+    return edge;
+  }
+
+  public FilterInformation getInfo() {
+    return info;
   }
 
 }

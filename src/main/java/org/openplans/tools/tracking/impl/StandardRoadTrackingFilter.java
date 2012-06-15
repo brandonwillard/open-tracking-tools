@@ -135,8 +135,6 @@ public class StandardRoadTrackingFilter implements
 
   private double prevTimeDiff = 1d;
 
-  private MultivariateGaussian prePredictiveBelief;
-
   private final static Vector zeros2D = VectorFactory.getDefault()
       .copyValues(0, 0);
 
@@ -200,10 +198,6 @@ public class StandardRoadTrackingFilter implements
 
   public Matrix getOnRoadStateVariance() {
     return onRoadStateVariance;
-  }
-
-  public MultivariateGaussian getPrePredictiveBelief() {
-    return prePredictiveBelief;
   }
 
   public double getPrevTimeDiff() {
@@ -308,8 +302,6 @@ public class StandardRoadTrackingFilter implements
     Preconditions.checkArgument(belief.getInputDimensionality() == 2
         || belief.getInputDimensionality() == 4);
     Preconditions.checkNotNull(edge);
-
-    prePredictiveBelief = belief.clone();
 
     if (edge == PathEdge.getEmptyPathEdge()) {
       if (belief.getInputDimensionality() == 4) {

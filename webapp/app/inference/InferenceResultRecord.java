@@ -13,12 +13,15 @@ import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 
 import models.InferenceInstance;
 
 import org.codehaus.jackson.annotate.JsonIgnore;
 import org.codehaus.jackson.map.annotate.JsonSerialize;
 import org.openplans.tools.tracking.impl.FilterInformation;
+import org.openplans.tools.tracking.impl.InferredGraph.InferredEdge;
 import org.openplans.tools.tracking.impl.InferredPath;
 import org.openplans.tools.tracking.impl.InferredPathEntry;
 import org.openplans.tools.tracking.impl.Observation;
@@ -27,8 +30,10 @@ import org.openplans.tools.tracking.impl.StandardRoadTrackingFilter;
 import org.openplans.tools.tracking.impl.VehicleState;
 import org.openplans.tools.tracking.impl.util.GeoUtils;
 
+import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import com.vividsolutions.jts.geom.Coordinate;
 
 import controllers.Api;
@@ -76,6 +81,20 @@ public class InferenceResultRecord {
       this.state = vehicleState;
     }
 
+    @JsonSerialize
+    public Map<String, Double> getInferredEdge() {
+      final InferredEdge edge = state.getInferredEdge();
+      final Map<String, Double> result = Maps.newHashMap();
+      if (edge != InferredEdge.getEmptyEdge()) {
+        result.put("id", (double)state.getInferredEdge().getEdgeId());
+        result.put("velocity", state.getInferredEdge().getVelocityPrecisionDist().getLocation());
+      } else {
+        result.put("id", -1d);
+        result.put("velocity", 0d);
+      }
+      return result;
+    }
+    
     @JsonSerialize
     public List<EvaluatedPathInfo> getEvaluatedPaths() {
       List<EvaluatedPathInfo> pathEdgeIds;
@@ -212,11 +231,11 @@ public class InferenceResultRecord {
      * The last edge of the path should correspond to the current edge, and the
      * belief should be adjusted to the start of that edge.
      */
-    final MultivariateGaussian belief = state.getBelief();
-
+    
+    final VehicleState cloneState = state.clone();
     final PathEdge currentEdge = PathEdge.getEdge(
-        state.getInferredEdge(), 0d);
-    final MultivariateGaussian gbelief = belief.clone();
+        cloneState.getInferredEdge(), 0d);
+    final MultivariateGaussian gbelief = cloneState.getBelief().clone();
     final Matrix O = StandardRoadTrackingFilter
         .getGroundObservationMatrix();
     final Vector mean;
@@ -263,16 +282,12 @@ public class InferenceResultRecord {
         .convertToLatLon(minorAxis);
 
     final List<Double[]> pathSegmentIds = Lists.newArrayList();
-    final FilterInformation info = state.getFilterInformation();
+    final FilterInformation info = cloneState.getFilterInformation();
     if (info != null) {
       final InferredPath path = info.getPath();
       for (final PathEdge edge : path.getEdges()) {
         if (edge == PathEdge.getEmptyPathEdge())
           continue;
-        /*
-         * FIXME TODO we should probably be using the edge convolutions at each
-         * step.
-         */
         final double edgeMean = edge.getInferredEdge()
             .getVelocityPrecisionDist().getLocation();
         final double edgeId = edge.getInferredEdge().getEdgeId() != null ? (double) edge
@@ -282,7 +297,7 @@ public class InferenceResultRecord {
     }
 
     return new ResultSet(
-        state.clone(), meanCoords, majorAxisCoords, minorAxisCoords,
+        cloneState, meanCoords, majorAxisCoords, minorAxisCoords,
         pathSegmentIds);
   }
 

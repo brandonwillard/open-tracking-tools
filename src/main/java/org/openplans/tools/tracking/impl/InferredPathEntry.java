@@ -6,7 +6,9 @@ import gov.sandia.cognition.util.DefaultWeightedValue;
 
 import java.util.Map;
 
-public class InferredPathEntry {
+import com.google.common.collect.ComparisonChain;
+
+public class InferredPathEntry implements Comparable<InferredPathEntry> {
   private final StandardRoadTrackingFilter filter;
   private final Map<PathEdge, DefaultWeightedValue<MultivariateGaussian>> edgeToPredictiveBelief;
   private final InferredPath path;
@@ -79,6 +81,13 @@ public class InferredPathEntry {
 
   public Vector getStartLoc() {
     return startLoc;
+  }
+
+  @Override
+  public int compareTo(InferredPathEntry o) {
+    return ComparisonChain.start()
+        .compare(this.path, o.path)
+        .result();
   }
 
 }

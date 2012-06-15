@@ -12,10 +12,11 @@ import org.opengis.referencing.operation.TransformException;
 import org.openplans.tools.tracking.impl.util.GeoUtils;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.ComparisonChain;
 import com.google.common.collect.Maps;
 import com.vividsolutions.jts.geom.Coordinate;
 
-public class Observation {
+public class Observation implements Comparable<Observation> {
 
   private final String vehicleId;
   private final Date timestamp;
@@ -67,42 +68,7 @@ public class Observation {
     if (getClass() != obj.getClass()) {
       return false;
     }
-    final Observation other = (Observation) obj;
-    if (accuracy == null) {
-      if (other.accuracy != null) {
-        return false;
-      }
-    } else if (!accuracy.equals(other.accuracy)) {
-      return false;
-    }
-    if (heading == null) {
-      if (other.heading != null) {
-        return false;
-      }
-    } else if (!heading.equals(other.heading)) {
-      return false;
-    }
-    if (obsCoords == null) {
-      if (other.obsCoords != null) {
-        return false;
-      }
-    } else if (!obsCoords.equals(other.obsCoords)) {
-      return false;
-    }
-    if (obsPoint == null) {
-      if (other.obsPoint != null) {
-        return false;
-      }
-    } else if (!obsPoint.equals(other.obsPoint)) {
-      return false;
-    }
-    if (projPoint == null) {
-      if (other.projPoint != null) {
-        return false;
-      }
-    } else if (!projPoint.equals(other.projPoint)) {
-      return false;
-    }
+    Observation other = (Observation) obj;
     if (timestamp == null) {
       if (other.timestamp != null) {
         return false;
@@ -115,13 +81,6 @@ public class Observation {
         return false;
       }
     } else if (!vehicleId.equals(other.vehicleId)) {
-      return false;
-    }
-    if (velocity == null) {
-      if (other.velocity != null) {
-        return false;
-      }
-    } else if (!velocity.equals(other.velocity)) {
       return false;
     }
     return true;
@@ -180,21 +139,9 @@ public class Observation {
     final int prime = 31;
     int result = 1;
     result = prime * result
-        + ((accuracy == null) ? 0 : accuracy.hashCode());
-    result = prime * result
-        + ((heading == null) ? 0 : heading.hashCode());
-    result = prime * result
-        + ((obsCoords == null) ? 0 : obsCoords.hashCode());
-    result = prime * result
-        + ((obsPoint == null) ? 0 : obsPoint.hashCode());
-    result = prime * result
-        + ((projPoint == null) ? 0 : projPoint.hashCode());
-    result = prime * result
         + ((timestamp == null) ? 0 : timestamp.hashCode());
     result = prime * result
         + ((vehicleId == null) ? 0 : vehicleId.hashCode());
-    result = prime * result
-        + ((velocity == null) ? 0 : velocity.hashCode());
     return result;
   }
 
@@ -284,6 +231,14 @@ public class Observation {
 
   public static void remove(String name) {
     vehiclesToRecords.remove(name);
+  }
+
+  @Override
+  public int compareTo(Observation o) {
+    return ComparisonChain.start()
+        .compare(this.timestamp, o.timestamp)
+        .compare(this.vehicleId, o.vehicleId)
+        .result();
   }
 
 }

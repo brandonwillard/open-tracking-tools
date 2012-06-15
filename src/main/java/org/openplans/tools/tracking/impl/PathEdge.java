@@ -7,8 +7,10 @@ import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 import org.openplans.tools.tracking.impl.InferredGraph.InferredEdge;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.ComparisonChain;
+import com.google.common.collect.Ordering;
 
-public class PathEdge {
+public class PathEdge implements Comparable<PathEdge> {
 
   private final InferredEdge edge;
   private final Double distToStartOfEdge;
@@ -135,5 +137,13 @@ public class PathEdge {
 
   public static PathEdge getEmptyPathEdge() {
     return emptyPathEdge;
+  }
+  
+  @Override
+  public int compareTo(PathEdge o) {
+    return ComparisonChain.start()
+        .compare(this.edge, o.edge)
+        .compare(this.distToStartOfEdge, o.distToStartOfEdge, Ordering.natural().nullsLast())
+        .result();
   }
 }

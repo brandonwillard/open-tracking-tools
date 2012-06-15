@@ -7,6 +7,7 @@ import gov.sandia.cognition.util.DefaultWeightedValue;
 
 import java.util.Map;
 
+import org.apache.commons.lang.builder.CompareToBuilder;
 import org.openplans.tools.tracking.impl.InferredGraph.InferredEdge;
 
 import com.google.common.base.Preconditions;
@@ -21,7 +22,7 @@ import com.google.common.collect.Maps;
  * @author bwillard
  * 
  */
-public class InferredPath {
+public class InferredPath implements Comparable<InferredPath> {
 
   private final ImmutableList<PathEdge> edges;
   private final Double totalPathDistance;
@@ -187,6 +188,13 @@ public class InferredPath {
 
   public static InferredPath getEmptyPath() {
     return emptyPath;
+  }
+
+  @Override
+  public int compareTo(InferredPath o) {
+    CompareToBuilder comparator = new CompareToBuilder();
+    comparator.append(this.edges.toArray(), o.edges.toArray());
+    return comparator.toComparison();
   }
 
 }

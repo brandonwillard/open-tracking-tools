@@ -2,15 +2,18 @@ package org.openplans.tools.tracking.impl;
 
 import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.math.matrix.VectorFactory;
+import gov.sandia.cognition.math.matrix.mtj.DenseVector;
 import gov.sandia.cognition.statistics.bayesian.conjugate.MultinomialBayesianEstimator;
 import gov.sandia.cognition.statistics.distribution.DirichletDistribution;
 import gov.sandia.cognition.statistics.distribution.MultinomialDistribution;
 import gov.sandia.cognition.statistics.distribution.MultivariatePolyaDistribution;
 import gov.sandia.cognition.util.AbstractCloneableSerializable;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 
+import org.apache.commons.lang.builder.CompareToBuilder;
 import org.openplans.tools.tracking.impl.InferredGraph.InferredEdge;
 
 import com.google.common.base.Preconditions;
@@ -25,7 +28,7 @@ import com.google.common.collect.Lists;
  * 
  */
 public class EdgeTransitionDistributions extends
-    AbstractCloneableSerializable {
+    AbstractCloneableSerializable implements Comparable<EdgeTransitionDistributions> {
 
   private static final long serialVersionUID = -8329433263373783485L;
 
@@ -79,7 +82,17 @@ public class EdgeTransitionDistributions extends
 
   @Override
   public EdgeTransitionDistributions clone() {
-    return (EdgeTransitionDistributions) super.clone();
+    EdgeTransitionDistributions transDist = (EdgeTransitionDistributions) super.clone();
+    transDist.edgeMotionTransEstimator = (MultinomialBayesianEstimator)
+        this.edgeMotionTransEstimator.clone();
+    transDist.freeMotionTransEstimator = (MultinomialBayesianEstimator)
+        this.freeMotionTransEstimator.clone();
+    transDist.edgeMotionTransPrior = this.edgeMotionTransPrior.clone();
+    transDist.freeMotionTransPrior = this.freeMotionTransPrior.clone();
+    transDist.edgeMotionTransProbPrior = this.edgeMotionTransProbPrior.clone();
+    transDist.freeMotionTransProbPrior = this.freeMotionTransProbPrior.clone();
+    
+    return transDist;
   }
 
   public double evaluate(InferredEdge from, InferredEdge to) {
@@ -209,6 +222,98 @@ public class EdgeTransitionDistributions extends
         return stateOnToOff;
       }
     }
+  }
+
+  @Override
+  public int compareTo(EdgeTransitionDistributions o) {
+    CompareToBuilder comparator = new CompareToBuilder();
+    comparator.append(((DenseVector)this.edgeMotionTransPrior.getParameters()).getArray(), 
+        ((DenseVector)o.edgeMotionTransPrior.getParameters()).getArray());
+    comparator.append(((DenseVector)this.freeMotionTransPrior.getParameters()).getArray(), 
+        ((DenseVector)o.freeMotionTransPrior.getParameters()).getArray());
+    
+    comparator.append(((DenseVector)this.edgeMotionTransProbPrior.getParameters()).getArray(), 
+        ((DenseVector)o.edgeMotionTransProbPrior.getParameters()).getArray());
+    comparator.append(((DenseVector)this.freeMotionTransProbPrior.getParameters()).getArray(), 
+        ((DenseVector)o.freeMotionTransProbPrior.getParameters()).getArray());
+    
+    return comparator.toComparison();
+  }
+
+  @Override
+  public int hashCode() {
+    final int prime = 31;
+    int result = 1;
+    result = prime
+        * result
+        + ((edgeMotionTransPrior == null) ? 0 : Arrays.hashCode(
+            ((DenseVector)edgeMotionTransPrior.getParameters()).getArray()
+            ));
+    result = prime
+        * result
+        + ((edgeMotionTransProbPrior == null) ? 0
+            : Arrays.hashCode(
+            ((DenseVector)edgeMotionTransProbPrior.getParameters()).getArray()
+            ));
+    result = prime
+        * result
+        + ((freeMotionTransPrior == null) ? 0 : Arrays.hashCode(
+            ((DenseVector)freeMotionTransPrior.getParameters()).getArray()
+            ));
+    result = prime
+        * result
+        + ((freeMotionTransProbPrior == null) ? 0
+            : Arrays.hashCode(
+            ((DenseVector)freeMotionTransProbPrior.getParameters()).getArray()
+            ));
+    return result;
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj) {
+      return true;
+    }
+    if (obj == null) {
+      return false;
+    }
+    if (getClass() != obj.getClass()) {
+      return false;
+    }
+    EdgeTransitionDistributions other = (EdgeTransitionDistributions) obj;
+    if (edgeMotionTransPrior == null) {
+      if (other.edgeMotionTransPrior != null) {
+        return false;
+      }
+    } else if (!Arrays.equals(((DenseVector)edgeMotionTransPrior.getParameters()).getArray(), 
+        ((DenseVector)other.edgeMotionTransPrior.getParameters()).getArray())) {
+      return false;
+    }
+    if (edgeMotionTransProbPrior == null) {
+      if (other.edgeMotionTransProbPrior != null) {
+        return false;
+      }
+    } else if (!Arrays.equals(((DenseVector)edgeMotionTransProbPrior.getParameters()).getArray(), 
+        ((DenseVector)other.edgeMotionTransProbPrior.getParameters()).getArray())) {
+      return false;
+    }
+    if (freeMotionTransPrior == null) {
+      if (other.freeMotionTransPrior != null) {
+        return false;
+      }
+    } else if (!Arrays.equals(((DenseVector)freeMotionTransPrior.getParameters()).getArray(), 
+        ((DenseVector)other.freeMotionTransPrior.getParameters()).getArray())) {
+      return false;
+    }
+    if (freeMotionTransProbPrior == null) {
+      if (other.freeMotionTransProbPrior != null) {
+        return false;
+      }
+    } else if (!Arrays.equals(((DenseVector)freeMotionTransProbPrior.getParameters()).getArray(), 
+        ((DenseVector)other.freeMotionTransProbPrior.getParameters()).getArray())) {
+      return false;
+    }
+    return true;
   }
 
 }

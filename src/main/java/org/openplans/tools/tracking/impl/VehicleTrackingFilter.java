@@ -74,10 +74,9 @@ public class VehicleTrackingFilter extends
         .newArrayList();
     for (final VehicleState state : target.getDomain()) {
 
-      state.getBelief().clone();
-
-      /*
-       * Take the prediction step
+      /*-
+       * Take the prediction step.
+       * XXX this will alter the belief, and thus vehicle state!
        */
       state.getMovementFilter().predict(
           state.getBelief(),
@@ -104,17 +103,15 @@ public class VehicleTrackingFilter extends
       resampler.add(new DefaultWeightedValue<VehicleState>(
           state, totalLogLik));
     }
-
+    
     final Random rng = getRandom();
 
-    @SuppressWarnings("unchecked")
     final DataDistribution<VehicleState> resampleDist = StatisticsUtil
         .getLogNormalizedDistribution(resampler);
+    @SuppressWarnings("unchecked")
     final ArrayList<? extends VehicleState> smoothedStates = resampleDist
         .sample(rng, getNumParticles());
-
-    // TODO FIXME this really sucks, but due to the interface we have to
-    // alter the argument map
+    
     target.clear();
 
     /*
@@ -122,12 +119,9 @@ public class VehicleTrackingFilter extends
      */
     for (final VehicleState state : smoothedStates) {
 
-      /*-
-       * First, the inst. state. TODO unfortunately, there isn't much of
-       * anything to sample yet.
-       */
+      final VehicleState newState = state.clone();
       final DataDistribution<InferredPathEntry> instStateDist = StatisticsUtil
-          .getLogNormalizedDistribution(stateToPaths.get(state));
+          .getLogNormalizedDistribution(Lists.newArrayList(stateToPaths.get(newState)));
       final InferredPathEntry pathEntry = instStateDist.sample(rng);
 
       /*-
@@ -140,9 +134,6 @@ public class VehicleTrackingFilter extends
        * State suffient stats are next (e.g. kalman params)
        */
 
-      final StandardRoadTrackingFilter filter = pathEntry.getFilter();
-      final EdgeTransitionDistributions edgeTransDist = state
-          .getEdgeTransitionDist().clone();
 
       /*
        * Sample the edge we're on.
@@ -164,25 +155,21 @@ public class VehicleTrackingFilter extends
       final FilterInformation info = new FilterInformation(
           pathEntry.getPath(), evaluatedPaths);
       
-      final VehicleState newState = new VehicleState(
-          this.inferredGraph, obs, filter, sampledBelief,
-          edgeTransDist, sampledEdge, state, info);
-      
-      target.set(newState, 1d / getNumParticles());
-
       /*-
        * Propagate sufficient stats (can be done off-line) Just the edge
        * transitions for now.
-       * TODO FIXME must make sure the point is projected onto an edge
        */
-      filter.measure(
+      final StandardRoadTrackingFilter updatedFilter = pathEntry.getFilter().clone();
+      updatedFilter.measure(
           sampledBelief, obs.getProjectedPoint(), sampledEdge);
       
       InferredEdge prevEdge = pathEntry.getPath().getEdges().get(0)
           .getInferredEdge();
+      final EdgeTransitionDistributions updatedEdgeTransDist = newState
+          .getEdgeTransitionDist().clone();
       for (final PathEdge edge : pathEntry.getPath().getEdges()) {
         if (prevEdge != null)
-          edgeTransDist.update(prevEdge, edge.getInferredEdge());
+          updatedEdgeTransDist.update(prevEdge, edge.getInferredEdge());
         
         if (edge != PathEdge.getEmptyPathEdge()) {
           edge.getInferredEdge().getVelocityEstimator().update(
@@ -192,6 +179,12 @@ public class VehicleTrackingFilter extends
         
         prevEdge = edge.getInferredEdge();
       }
+
+      final VehicleState newTransState = new VehicleState(
+          this.inferredGraph, obs, updatedFilter, sampledBelief,
+          updatedEdgeTransDist, sampledEdge, state, info);
+      
+      target.set(newTransState, 1d / getNumParticles());
 
     }
 

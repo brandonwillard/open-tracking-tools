@@ -1,6 +1,7 @@
 package controllers;
 
 import gov.sandia.cognition.collection.ScalarMap.Entry;
+import gov.sandia.cognition.statistics.DataDistribution;
 import inference.InferenceResultRecord;
 import inference.InferenceService;
 
@@ -131,65 +132,95 @@ public class Api extends Controller {
     renderJSON(jsonMapper.writeValueAsString(jsonResults));
   }
   
-  public static void traceParticleRecord(String vehicleId, int recordNumber, int particleNumber, boolean withParent) throws JsonGenerationException,
+  public static void traceParticleRecord(String vehicleId, int recordNumber, Integer particleNumber, Boolean withParent) throws JsonGenerationException,
       JsonMappingException, IOException {
     
-    final InferenceResultRecord result;
-    if (particleNumber < 0) {
-      final Collection<InferenceResultRecord> results = InferenceService.getTraceResults(vehicleId);
+    final List<InferenceResultRecord> results = Lists.newArrayList();
+    DataDistribution<VehicleState> belief = null;
+    if (particleNumber == null) {
+      /*
+       * Just return the "best" state
+       */
+      final Collection<InferenceResultRecord> tmpResults = InferenceService.getTraceResults(vehicleId);
       
-      if (results.isEmpty())
+      if (tmpResults.isEmpty())
         renderJSON(jsonMapper.writeValueAsString(null));
       
-      result = Iterables.get(results, recordNumber, null);
+      final InferenceResultRecord result = Iterables.get(tmpResults, recordNumber, null);
       
       if (result == null)
         renderJSON(jsonMapper.writeValueAsString(null));
       
+      results.add(result);
+      
     } else {
-      final Collection<InferenceResultRecord> results = InferenceService.getTraceResults(vehicleId);
-      if (results.isEmpty())
+      final Collection<InferenceResultRecord> tmpResults = InferenceService.getTraceResults(vehicleId);
+      if (tmpResults.isEmpty())
         renderJSON(jsonMapper.writeValueAsString(null));
         
-      final InferenceResultRecord tmpResult = Iterables.get(results, recordNumber, null);
+      final InferenceResultRecord tmpResult = Iterables.get(tmpResults, recordNumber, null);
       
       if (tmpResult == null)
         error(vehicleId + " result record " + recordNumber + " is out-of-bounds");
       
-      final InferenceInstance instance = InferenceService.getInferenceInstance(vehicleId);
-      final VehicleState infState = Iterables.get(instance.getBelief().getDomain(), particleNumber, null);
+      belief = tmpResult.getFilterDistribution();
       
-      if (infState == null)
-        renderJSON(jsonMapper.writeValueAsString(null));
-      
-      
-      final VehicleState actualState = tmpResult.getActualResults() != null ? tmpResult.getActualResults().getState()
-          : null;
-      
-      result = InferenceResultRecord.createInferenceResultRecord(infState.getObservation(), 
-          actualState, infState, null);
+      if (particleNumber < 0) {
+        for (VehicleState infState : belief.getDomain()) {
+          
+          final VehicleState actualState = tmpResult.getActualResults() != null ? tmpResult.getActualResults().getState()
+              : null;
+          final InferenceResultRecord result = InferenceResultRecord.createInferenceResultRecord(infState.getObservation(), 
+              actualState, infState, null);
+          results.add(result);
+        }
+      } else {
+        
+        final VehicleState infState = Iterables.get(belief.getDomain(), particleNumber, null);
+        
+        if (infState == null)
+          renderJSON(jsonMapper.writeValueAsString(null));
+        
+        final VehicleState actualState = tmpResult.getActualResults() != null ? tmpResult.getActualResults().getState()
+            : null;
+        
+        final InferenceResultRecord result = InferenceResultRecord.createInferenceResultRecord(infState.getObservation(), 
+            actualState, infState, null);
+        results.add(result);
+      }
     }
     
-    final InferenceResultRecord parent;
-    if (withParent) {
-      final VehicleState parentState = result.getInfResults().getState().getParentState();
-      if (parentState != null) {
-        parent = InferenceResultRecord.createInferenceResultRecord(parentState.getObservation(), 
-          null, parentState, null);
+    List<Map<String, Object>> mapResults = Lists.newArrayList();
+    for (InferenceResultRecord result : results) {
+      final VehicleState state = result.getInfResults().getState();
+      final InferenceResultRecord parent;
+      if (withParent == Boolean.TRUE) {
+        final VehicleState parentState = state.getParentState();
+        if (parentState != null) {
+          parent = InferenceResultRecord.createInferenceResultRecord(parentState.getObservation(), 
+            null, parentState, null);
+        } else {
+          parent = null;
+        }
       } else {
         parent = null;
       }
-    } else {
-      parent = null;
+      
+      Map<String, Object> mapResult = Maps.newHashMap();
+      mapResult.put("particle", result);
+      
+      if (belief != null) {
+        final double weight = belief.getFraction(state);
+        mapResult.put("weight", weight);
+      }
+      
+      if (parent != null)
+        mapResult.put("parent", parent);
+      
+      mapResults.add(mapResult);
     }
     
-    Map<String, InferenceResultRecord> mapResult = Maps.newHashMap();
-    mapResult.put("particle", result);
-    
-    if (parent != null)
-      mapResult.put("parent", parent);
-    
-    renderJSON(jsonMapper.writeValueAsString(mapResult));
+    renderJSON(jsonMapper.writeValueAsString(mapResults));
   }
 
   public static void traces(String vehicleId) throws JsonGenerationException,

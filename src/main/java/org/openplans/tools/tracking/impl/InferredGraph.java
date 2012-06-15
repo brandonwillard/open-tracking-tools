@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.apache.commons.lang.builder.CompareToBuilder;
 import org.openplans.tools.tracking.impl.util.GeoUtils;
 import org.openplans.tools.tracking.impl.util.OtpGraph;
 import org.opentripplanner.routing.algorithm.GenericAStar;
@@ -27,9 +28,12 @@ import com.google.common.base.Preconditions;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
+import com.google.common.collect.ComparisonChain;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.google.common.collect.Ordering;
 import com.google.common.collect.Sets;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Envelope;
@@ -41,7 +45,7 @@ import com.vividsolutions.jts.linearref.LocationIndexedLine;
 
 public class InferredGraph {
 
-  public static class InferredEdge {
+  public static class InferredEdge implements Comparable<InferredEdge> {
 
     private final Integer edgeId;
     private final Vertex startVertex;
@@ -163,12 +167,19 @@ public class InferredGraph {
       if (getClass() != obj.getClass()) {
         return false;
       }
-      final InferredEdge other = (InferredEdge) obj;
-      if (posGeometry == null) {
-        if (other.posGeometry != null) {
+      InferredEdge other = (InferredEdge) obj;
+      if (endVertex == null) {
+        if (other.endVertex != null) {
           return false;
         }
-      } else if (!posGeometry.equals(other.posGeometry)) {
+      } else if (!endVertex.equals(other.endVertex)) {
+        return false;
+      }
+      if (startVertex == null) {
+        if (other.startVertex != null) {
+          return false;
+        }
+      } else if (!startVertex.equals(other.startVertex)) {
         return false;
       }
       return true;
@@ -341,7 +352,9 @@ public class InferredGraph {
       final int prime = 31;
       int result = 1;
       result = prime * result
-          + ((posGeometry == null) ? 0 : posGeometry.hashCode());
+          + ((endVertex == null) ? 0 : endVertex.hashCode());
+      result = prime * result
+          + ((startVertex == null) ? 0 : startVertex.hashCode());
       return result;
     }
 
@@ -354,6 +367,17 @@ public class InferredGraph {
 
     public static InferredGraph.InferredEdge getEmptyEdge() {
       return emptyEdge;
+    }
+
+    @Override
+    public int compareTo(InferredEdge o) {
+      CompareToBuilder comparator = new CompareToBuilder();
+      comparator.append(this.endVertex.getLabel(), 
+          o.endVertex.getLabel());
+      comparator.append(this.startVertex.getLabel(), 
+          o.startVertex.getLabel());
+      
+      return comparator.toComparison();
     }
 
   }
@@ -544,17 +568,27 @@ public class InferredGraph {
     double pathDist = 0d;
     final List<PathEdge> path = Lists.newArrayList();
     for (final Edge pathEdge : gpath.edges) {
+      
       if (OtpGraph.isStreetEdge(pathEdge)
           && pathEdge.getGeometry() != null
-          && pathEdge.getDistance() > 0d) {
+          && pathEdge.getDistance() > 0d
+          && graph.getIdForEdge(pathEdge) != null
+          && !pathEdge.equals(Iterables.getLast(path, null))) {
+        
         path.add(PathEdge.getEdge(
             this.getInferredEdge(pathEdge), pathDist));
         pathDist += pathEdge.getDistance();
+        
       } else if (pathEdge.getFromVertex() != null
           && !pathEdge.getFromVertex().getOutgoingStreetEdges().isEmpty()) {
+        
         for (Edge streetEdge : pathEdge.getFromVertex().getOutgoingStreetEdges()) {
+          
           if (streetEdge.getGeometry() != null
-            && streetEdge.getDistance() > 0d) {
+            && !streetEdge.equals(Iterables.getLast(path, null)) 
+            && streetEdge.getDistance() > 0d
+            && graph.getIdForEdge(streetEdge) != null) {
+            
             /*
              * Find a valid street edge to work with
              */
@@ -562,6 +596,7 @@ public class InferredGraph {
                 this.getInferredEdge(streetEdge.getFromVertex()
                     .getOutgoingStreetEdges().get(0)), pathDist));
             pathDist += streetEdge.getDistance();
+            break;
           }
         }
       }
