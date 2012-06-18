@@ -9,10 +9,12 @@ import java.util.Map;
 
 import org.apache.commons.lang.builder.CompareToBuilder;
 import org.openplans.tools.tracking.impl.InferredGraph.InferredEdge;
+import org.opentripplanner.routing.graph.Vertex;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
+import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
 /**
@@ -26,6 +28,9 @@ public class InferredPath implements Comparable<InferredPath> {
 
   private final ImmutableList<PathEdge> edges;
   private final Double totalPathDistance;
+  private Vertex startVertex;
+  private Vertex endVertex;
+  
 
   private static InferredPath emptyPath = new InferredPath();
 
@@ -37,18 +42,15 @@ public class InferredPath implements Comparable<InferredPath> {
   public InferredPath(ImmutableList<PathEdge> edges) {
     Preconditions.checkArgument(edges.size() > 0);
     this.edges = edges;
-    final PathEdge lastEdge = Iterables.getLast(edges);
-    final double direction = lastEdge.getDistToStartOfEdge() >= 0 ? 1d
-        : -1d;
-    this.totalPathDistance = lastEdge.getDistToStartOfEdge()
-        + direction * lastEdge.getInferredEdge().getLength();
-  }
-
-  public InferredPath(ImmutableList<PathEdge> edges,
-    double totalPathDistance) {
-    Preconditions.checkArgument(edges.size() >= 1);
-    this.edges = edges;
-    this.totalPathDistance = totalPathDistance;
+    
+    PathEdge lastEdge = null;
+    for (PathEdge edge : Lists.reverse(edges)) {
+      if (edge != PathEdge.getEmptyPathEdge()) {
+        lastEdge = edge;
+        break;
+      }
+    }
+    this.totalPathDistance = lastEdge.getDistToStartOfEdge() + lastEdge.getInferredEdge().getLength();
   }
 
   public InferredPath(InferredEdge inferredEdge) {
@@ -162,12 +164,11 @@ public class InferredPath implements Comparable<InferredPath> {
       prevEdge = edge;
     }
 
-    return new InferredPathEntry(state.getMeanLocation(),
-        this, edgeToPredictiveBeliefAndLogLikelihood, filter,
+    return new InferredPathEntry(this, edgeToPredictiveBeliefAndLogLikelihood, filter,
         pathLogLik);
   }
 
-  public double getTotalPathDistance() {
+  public Double getTotalPathDistance() {
     return totalPathDistance;
   }
 
@@ -195,6 +196,22 @@ public class InferredPath implements Comparable<InferredPath> {
     CompareToBuilder comparator = new CompareToBuilder();
     comparator.append(this.edges.toArray(), o.edges.toArray());
     return comparator.toComparison();
+  }
+
+  public Vertex getStartVertex() {
+    return startVertex;
+  }
+
+  public void setStartVertex(Vertex startVertex) {
+    this.startVertex = startVertex;
+  }
+
+  public Vertex getEndVertex() {
+    return endVertex;
+  }
+
+  public void setEndVertex(Vertex endVertex) {
+    this.endVertex = endVertex;
   }
 
 }

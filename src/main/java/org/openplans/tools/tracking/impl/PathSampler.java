@@ -22,6 +22,7 @@ import java.util.Map.Entry;
 import java.util.Set;
 
 import org.openplans.tools.tracking.impl.util.GeoUtils;
+import org.openplans.tools.tracking.impl.util.OtpGraph;
 import org.opentripplanner.common.geometry.DistanceLibrary;
 import org.opentripplanner.common.pqueue.BinHeap;
 import org.opentripplanner.graph_builder.impl.map.EndMatchState;
@@ -79,8 +80,8 @@ public class PathSampler {
       vertexEnvelope = vertexGeometry.getEnvelopeInternal();
       vertexIndex.insert(vertexEnvelope, v);
 
-      for (final Edge e : v.getOutgoing()) {
-        if (e instanceof StreetEdge) {
+      for (final Edge e : OtpGraph.filterForStreetEdges(v.getOutgoing())) {
+        if (graph.getIdForEdge(e) != null) {
           Envelope envelope;
           final Geometry geometry = e.getGeometry();
           envelope = geometry.getEnvelopeInternal();

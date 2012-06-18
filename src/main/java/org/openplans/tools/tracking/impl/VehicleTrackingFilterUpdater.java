@@ -1,8 +1,11 @@
 package org.openplans.tools.tracking.impl;
 
+import gov.sandia.cognition.math.matrix.Vector;
+import gov.sandia.cognition.math.matrix.VectorFactory;
 import gov.sandia.cognition.statistics.DataDistribution;
 import gov.sandia.cognition.statistics.bayesian.ParticleFilter;
 import gov.sandia.cognition.statistics.distribution.DefaultDataDistribution;
+import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 
 import java.util.List;
 import java.util.Random;
@@ -93,9 +96,19 @@ public class VehicleTrackingFilterUpdater implements
      * Create initial distributions for all snapped edges
      */
 
-    final List<StreetEdge> initialEdges = inferredGraph
-        .getNarratedGraph().snapToGraph(
-            null, initialObservation.getObsCoords());
+//    final List<StreetEdge> initialEdges = inferredGraph.getNearbyEdges(null)
+//        .getNarratedGraph().snapToGraph(
+//            null, initialObservation.getObsCoords());
+    
+    final StandardRoadTrackingFilter trackingFilter = new StandardRoadTrackingFilter(parameters.getObsVariance(), 
+        parameters.getOffRoadStateVariance(), parameters.getOnRoadStateVariance());
+    final MultivariateGaussian initialBelief = trackingFilter.createInitialLearnedObject();
+    final Vector xyPoint = initialObservation.getProjectedPoint();
+    initialBelief.setMean(VectorFactory.getDefault().copyArray(
+        new double[] { xyPoint.getElement(0), 0d,
+            xyPoint.getElement(1), 0d }));
+    final List<StreetEdge> initialEdges = inferredGraph.getNearbyEdges(initialBelief, trackingFilter);
+    
     final DataDistribution<VehicleState> initialDist = new DefaultDataDistribution<VehicleState>(
         numParticles);
 
@@ -108,9 +121,10 @@ public class VehicleTrackingFilterUpdater implements
         final InferredPath path = new InferredPath(
             ImmutableList.of(pathEdge));
         final FilterInformation info = new FilterInformation(
-            path, evaluatedPaths);
+            path, evaluatedPaths, initialDist);
         evaluatedPaths
-            .add(new InferredPathEntry(initialObservation.getProjectedPoint(), path, null, null, 0d));
+            .add(new InferredPathEntry(path, null, null, Double.NEGATIVE_INFINITY));
+        
         final VehicleState state = new VehicleState(
             this.inferredGraph, initialObservation,
             pathEdge.getInferredEdge(), parameters, info);
@@ -128,7 +142,7 @@ public class VehicleTrackingFilterUpdater implements
      * Free-motion
      */
     final FilterInformation info = new FilterInformation(
-        InferredPath.getEmptyPath(), evaluatedPaths);
+        InferredPath.getEmptyPath(), evaluatedPaths, initialDist);
     final VehicleState state = new VehicleState(
         this.inferredGraph, initialObservation,
         InferredGraph.getEmptyEdge(), parameters, info);

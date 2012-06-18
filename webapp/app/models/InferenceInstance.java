@@ -1,5 +1,12 @@
 package models;
 
+import inference.InferenceResultRecord;
+
+import java.util.Collection;
+import java.util.Collections;
+import java.util.LinkedList;
+import java.util.List;
+
 import org.openplans.tools.tracking.impl.InferredGraph;
 import org.openplans.tools.tracking.impl.InferredGraph.InferredEdge;
 import org.openplans.tools.tracking.impl.Observation;
@@ -38,6 +45,8 @@ public class InferenceInstance {
   public final boolean isSimulation;
   
   private VehicleTrackingFilter filter;
+  
+  private final LinkedList<InferenceResultRecord> resultRecords = Lists.newLinkedList();
 
   private DataDistribution<VehicleState> belief;
   private VehicleState bestState;
@@ -45,10 +54,12 @@ public class InferenceInstance {
   private final InitialParameters initialParameters;
 
   public int totalRecords = 0;
+
+  private final boolean isDebug;
   
   private static InferredGraph inferredGraph = new InferredGraph(Api.getGraph());
 
-  public InferenceInstance(String vehicleId, boolean isSimulation) {
+  public InferenceInstance(String vehicleId, boolean isSimulation, boolean isDebug) {
     this.initialParameters = new InitialParameters(
         VectorFactory.getDefault().createVector2D(VehicleState.getGvariance(), VehicleState.getGvariance()),
         VectorFactory.getDefault().createVector2D(VehicleState.getDvariance(), VehicleState.getVvariance()),
@@ -58,13 +69,15 @@ public class InferenceInstance {
         0l);
     this.vehicleId = vehicleId;
     this.isSimulation = isSimulation;
+    this.isDebug = isDebug;
   }
   
-  public InferenceInstance(String vehicleId, boolean isSimulation, InitialParameters parameters) {
+  public InferenceInstance(String vehicleId, boolean isSimulation, boolean isDebug, InitialParameters parameters) {
     this.initialParameters = parameters;
     this.vehicleId = vehicleId;
     this.isSimulation = isSimulation;
     this.simSeed = parameters.getSeed();
+    this.isDebug = isDebug;
   }
 
   public VehicleState getBestState() {
@@ -78,6 +91,23 @@ public class InferenceInstance {
   public String getVehicleId() {
     return vehicleId;
   }
+  
+  public void update(VehicleState actualState, Observation obs, boolean performInference) {
+    
+    if (performInference)
+      updateFilter(obs);
+    
+    this.recordsProcessed++;
+
+    final InferenceResultRecord result = InferenceResultRecord
+        .createInferenceResultRecord(obs, actualState, belief.getMaxValueKey(), 
+            belief.clone());
+
+    if (!isDebug)
+      this.resultRecords.pop();
+      
+    this.resultRecords.add(result);
+  }
 
   /**
    * Update the tracking filter and the graph's edge-velocity distributions.
@@ -85,7 +115,17 @@ public class InferenceInstance {
    * @param record
    */
   public void update(Observation obs) {
+    
     updateFilter(obs);
+    this.recordsProcessed++;
+
+    final InferenceResultRecord infResult = InferenceResultRecord
+        .createInferenceResultRecord(obs, this);
+
+    if (!isDebug && !this.resultRecords.isEmpty())
+      this.resultRecords.pop();
+      
+    this.resultRecords.add(infResult);
   }
 
   private void updateFilter(Observation obs) {
@@ -132,6 +172,14 @@ public class InferenceInstance {
 
   public static InferredGraph getInferredGraph() {
     return inferredGraph;
+  }
+
+  public boolean isDebug() {
+    return isDebug;
+  }
+
+  public List<InferenceResultRecord> getResultRecords() {
+    return Collections.unmodifiableList(this.resultRecords);
   }
 
 }

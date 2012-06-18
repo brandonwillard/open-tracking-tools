@@ -153,7 +153,7 @@ public class VehicleTrackingFilter extends
 
       @SuppressWarnings("unchecked")
       final FilterInformation info = new FilterInformation(
-          pathEntry.getPath(), evaluatedPaths);
+          pathEntry.getPath(), evaluatedPaths, resampleDist);
       
       /*-
        * Propagate sufficient stats (can be done off-line) Just the edge
@@ -184,10 +184,9 @@ public class VehicleTrackingFilter extends
           this.inferredGraph, obs, updatedFilter, sampledBelief,
           updatedEdgeTransDist, sampledEdge, state, info);
       
-      target.set(newTransState, 1d / getNumParticles());
+      target.set(newTransState, 1d / smoothedStates.size());
 
     }
-
   }
 
 }

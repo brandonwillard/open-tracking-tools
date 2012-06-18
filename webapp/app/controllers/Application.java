@@ -33,13 +33,11 @@ public class Application extends Controller {
   static ActorRef simActor = system.actorOf(new Props(SimulationActor.class), "simActor");
   static ActorRef locationActor = system.actorOf(new Props(InferenceService.class), "locationActor");
   static ActorRef csvActor = system.actorOf(new Props(CsvUploadActor.class), "csvActor");
-  
 
   public static void map(String name) {
 	  render(name);
   }
   
-
   public static void getInferenceInstances() {
 	  List<InferenceInstance> instances = InferenceService.getInferenceInstances();
 	  render(instances);
@@ -91,7 +89,7 @@ public class Application extends Controller {
         groundStateVariance, offProbs, onProbs, seed);
     
     final String simulationName = "sim-" + start_unix_time;
-    if (InferenceService.getOrCreateInferenceInstance(simulationName, true) != null) {
+    if (InferenceService.getInferenceInstance(simulationName) != null) {
       Logger.warn("removing existing inference instance named " + simulationName);
       InferenceService.remove(simulationName);
     }

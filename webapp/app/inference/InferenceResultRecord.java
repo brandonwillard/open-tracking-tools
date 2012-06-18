@@ -10,6 +10,8 @@ import gov.sandia.cognition.math.matrix.mtj.decomposition.EigenDecompositionRigh
 import gov.sandia.cognition.statistics.DataDistribution;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 
+import inference.InferenceResultRecord.ResultSet.EvaluatedPathInfo;
+
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
@@ -43,13 +45,19 @@ public class InferenceResultRecord {
   public static class ResultSet {
 
     static public class EvaluatedPathInfo {
-      final Coordinate startPoint;
+      final Coordinate startVertex;
+      final Coordinate endVertex;
       final List<Integer> pathEdgeIds;
+      final double totalLogLikelihood;
+      private final double direction;
 
-      public EvaluatedPathInfo(Coordinate startPoint,
-        List<Integer> pathEdgeIds) {
-        this.startPoint = startPoint;
+      public EvaluatedPathInfo(Coordinate startVertex, Coordinate endVertex, 
+        List<Integer> pathEdgeIds, double totalLogLikelihood, double direction) {
+        this.startVertex = startVertex;
+        this.endVertex = endVertex;
         this.pathEdgeIds = pathEdgeIds;
+        this.totalLogLikelihood = totalLogLikelihood;
+        this.direction = direction;
       }
 
       @JsonSerialize
@@ -58,8 +66,23 @@ public class InferenceResultRecord {
       }
 
       @JsonSerialize
-      public Coordinate getStartPoint() {
-        return startPoint;
+      public double getTotalLogLikelihood() {
+        return totalLogLikelihood;
+      }
+
+      @JsonSerialize
+      public double getDirection() {
+        return direction;
+      }
+
+      @JsonSerialize
+      public Coordinate getStartVertex() {
+        return startVertex;
+      }
+
+      @JsonSerialize
+      public Coordinate getEndVertex() {
+        return endVertex;
       }
 
     }
@@ -70,24 +93,31 @@ public class InferenceResultRecord {
     private final List<Double[]> pathSegmentIds;
 
     private final VehicleState state;
+    private final Double pathDirection;
+    private final Map<String, Double> inferredEdge;
+    private final List<EvaluatedPathInfo> evaluatedPaths;
 
     public ResultSet(VehicleState vehicleState,
       Coordinate meanCoords, Coordinate majorAxisCoords,
-      Coordinate minorAxisCoords, List<Double[]> pathSegmentIds) {
+      Coordinate minorAxisCoords, List<Double[]> pathSegmentIds, Double pathDirection) {
       this.meanCoords = meanCoords;
       this.majorAxisCoords = majorAxisCoords;
       this.minorAxisCoords = minorAxisCoords;
       this.pathSegmentIds = pathSegmentIds;
       this.state = vehicleState;
+      this.pathDirection = pathDirection;
+      this.inferredEdge = createInferredEdge(); 
+      this.evaluatedPaths = createEvaluatedPaths();
     }
 
-    @JsonSerialize
-    public Map<String, Double> getInferredEdge() {
+    @JsonIgnore
+    private Map<String, Double> createInferredEdge() {
       final InferredEdge edge = state.getInferredEdge();
       final Map<String, Double> result = Maps.newHashMap();
       if (edge != InferredEdge.getEmptyEdge()) {
-        result.put("id", (double)state.getInferredEdge().getEdgeId());
-        result.put("velocity", state.getInferredEdge().getVelocityPrecisionDist().getLocation());
+        if (edge.getEdgeId() != null)
+          result.put("id", (double)edge.getEdgeId());
+        result.put("velocity", edge.getVelocityPrecisionDist().getLocation());
       } else {
         result.put("id", -1d);
         result.put("velocity", 0d);
@@ -95,8 +125,8 @@ public class InferenceResultRecord {
       return result;
     }
     
-    @JsonSerialize
-    public List<EvaluatedPathInfo> getEvaluatedPaths() {
+    @JsonIgnore
+    private List<EvaluatedPathInfo> createEvaluatedPaths() {
       List<EvaluatedPathInfo> pathEdgeIds;
       if (state.getFilterInformation() != null) {
         pathEdgeIds = Lists.newArrayList();
@@ -108,10 +138,16 @@ public class InferenceResultRecord {
               edgeIds.add(edge.getInferredEdge().getEdgeId());
           }
           if (!edgeIds.isEmpty()) {
-            final Vector startLocVec = pathEntry.getStartLoc();
-            final Coordinate startLoc = new Coordinate(
-                startLocVec.getElement(0), startLocVec.getElement(1));
-            pathEdgeIds.add(new EvaluatedPathInfo(startLoc, edgeIds));
+            Coordinate startVertex = null; 
+            Coordinate endVertex = null; 
+            if (pathEntry.getPath().getStartVertex() != null
+                && pathEntry.getPath().getEndVertex() != null) {
+              startVertex = GeoUtils.reverseCoordinates(pathEntry.getPath().getStartVertex().getCoordinate());
+              endVertex = GeoUtils.reverseCoordinates(pathEntry.getPath().getEndVertex().getCoordinate());
+            }
+            final double logLikelihood = pathEntry.getTotalLogLikelihood();
+            pathEdgeIds.add(new EvaluatedPathInfo(startVertex, endVertex, edgeIds, logLikelihood, 
+                pathEntry.getPath().getTotalPathDistance() > 0d ? 1d : -1d));
           }
         }
       } else {
@@ -154,6 +190,21 @@ public class InferenceResultRecord {
     @JsonSerialize
     public double[] getStateMean() {
       return ((DenseVector) state.getBelief().getMean()).getArray();
+    }
+
+    @JsonSerialize
+    public Double getPathDirection() {
+      return pathDirection;
+    }
+
+    @JsonSerialize
+    public Map<String, Double> getInferredEdge() {
+      return inferredEdge;
+    }
+
+    @JsonSerialize
+    public List<EvaluatedPathInfo> getEvaluatedPaths() {
+      return evaluatedPaths;
     }
 
   }
@@ -200,7 +251,8 @@ public class InferenceResultRecord {
   public static InferenceResultRecord createInferenceResultRecord(
     Observation observation, InferenceInstance inferenceInstance) {
     return createInferenceResultRecord(
-        observation, null, inferenceInstance.getBestState(), inferenceInstance.getBelief());
+        observation, null, inferenceInstance.getBestState(), 
+        inferenceInstance.isDebug() ? inferenceInstance.getBelief() : null);
   }
 
   public static InferenceResultRecord createInferenceResultRecord(
@@ -219,9 +271,13 @@ public class InferenceResultRecord {
       infResults = processVehicleStateResults(inferredState);
     }
 
+    /*
+     * XXX filterDist is cloned, if given.
+     */
     return new InferenceResultRecord(
         observation.getTimestamp().getTime(),
-        observation.getObsCoords(), actualResults, infResults, filterDist);
+        observation.getObsCoords(), actualResults, infResults, 
+        filterDist != null ? filterDist.clone() : null);
   }
 
   private static ResultSet processVehicleStateResults(
@@ -283,8 +339,11 @@ public class InferenceResultRecord {
 
     final List<Double[]> pathSegmentIds = Lists.newArrayList();
     final FilterInformation info = cloneState.getFilterInformation();
+    Double pathDirection = null;
     if (info != null) {
       final InferredPath path = info.getPath();
+      if (path.getTotalPathDistance() != null)
+        pathDirection = path.getTotalPathDistance() > 0d ? 1d : -1d;
       for (final PathEdge edge : path.getEdges()) {
         if (edge == PathEdge.getEmptyPathEdge())
           continue;
@@ -292,13 +351,13 @@ public class InferenceResultRecord {
             .getVelocityPrecisionDist().getLocation();
         final double edgeId = edge.getInferredEdge().getEdgeId() != null ? (double) edge
             .getInferredEdge().getEdgeId() : -1d;
-        pathSegmentIds.add(new Double[] { edgeId, edgeMean });
+        pathSegmentIds.add(new Double[] { edgeId, edgeMean});
       }
     }
 
     return new ResultSet(
         cloneState, meanCoords, majorAxisCoords, minorAxisCoords,
-        pathSegmentIds);
+        pathSegmentIds, pathDirection);
   }
 
   @JsonIgnore

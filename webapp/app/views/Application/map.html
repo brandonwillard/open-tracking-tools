@@ -8,9 +8,9 @@
 <link rel="stylesheet" href="@{'/public/javascripts/leaflet.css'}" />
 <script src="@{'/public/javascripts/OpenLayers-2.11/OpenLayers.js'}"></script>
 <!-- jquery -->
-<link type="text/css" href="@{'/public/javascripts/jquery/ui-lightness/jquery-ui-1.8.18.custom.css'}" rel="stylesheet" />	
-<script type="text/javascript" src="@{'/public/javascripts/jquery/jquery-1.7.1.min.js'}"></script>
-<script type="text/javascript" src="@{'/public/javascripts/jquery/jquery-ui-1.8.18.custom.min.js'}"></script>
+<link type="text/css" href="@{'/public/javascripts/jquery/ui-lightness/jquery-ui-1.8.21.custom.css'}" rel="stylesheet" />	
+<script type="text/javascript" src="@{'/public/javascripts/jquery/jquery-1.7.2.min.js'}"></script>
+<script type="text/javascript" src="@{'/public/javascripts/jquery/jquery-ui-1.8.21.custom.min.js'}"></script>
 
 <script src="@{'/public/javascripts/visualizer.js'}"></script>
 <link rel="stylesheet" href="@{'/public/stylesheets/style.css'}" />
@@ -48,18 +48,27 @@
   </tr>
   <tr>
     <td>
-      <div id="map" style="width: 1000px; height: 1000px;"></div>
+      <div id="map" style="width: 700px; height: 700px;"></div>
     </td>
     <td>
-      Particles 
-      <br>
-      <div id="filterControls" class="Content" style="overflow-y:scroll; width:500px; height:500px; padding: 2px; border: 1px solid black">
-        <ul id="particles">
-            <li>...</li>
-        </ul>
+      <div id="filterControls" class="ui-widget-content" style="overflow-y:scroll; width:400px; height:400px; padding: 2px; border: 1px solid black">
+        <ul>
+          <li><a href="#tabs-1">Prior Particles</a></li>
+          <li><a href="#tabs-2">Posterior Particles</a></li>
+        </ul> 
+        <div id="tabs-1">
+          <div id="priorParticles" class="ui-accordion-container">
+              ...
+          </div>
+        </div>
+        <div id="tabs-2">
+          <div id="posteriorParticles" class="ui-accordion-container">
+              ...
+          </div>
+        </div>
       </div>
-      <div class="scrollable" style="width:500px; height:500px;">
-        <select size="10" id="paths">
+      <div class="ui-widget-content" style="width:400px; height:300px;">
+        <select size="20" style="width:400px; height:300px;" id="paths">
           <option value="">...</option>
         </select>
       </div>

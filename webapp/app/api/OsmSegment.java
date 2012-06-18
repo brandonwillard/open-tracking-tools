@@ -12,13 +12,17 @@ public class OsmSegment {
 
 	private int id;
 	private Geometry geom;
-	private double angle;
+	private Double angle;
 	private String name;
 
 	public OsmSegment(Integer i, Geometry g, String name)
 	{
-    angle = Angle.angle(g.getCoordinates()[0],
-        g.getCoordinates()[1]);
+    final int length = g.getCoordinates().length;
+    if (length > 1)
+      angle = Angle.toDegrees(Angle.normalizePositive(Angle.angle(g.getCoordinates()[length-2], g.getCoordinates()[length-1])));
+    else
+      angle = null;
+      
 		id = i;
 		geom = g;
 		this.name = name;
@@ -35,7 +39,7 @@ public class OsmSegment {
 	}
 
 	@JsonSerialize
-  public double getAngle() {
+  public Double getAngle() {
     return angle;
   }
 

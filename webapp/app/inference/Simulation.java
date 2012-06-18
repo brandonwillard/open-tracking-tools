@@ -127,7 +127,7 @@ public class Simulation {
     }
     this.rng.setSeed(seed);
     
-    this.instance = InferenceService.getOrCreateInferenceInstance(simulationName, true);
+    this.instance = InferenceService.getOrCreateInferenceInstance(simulationName, true, true);
     this.instance.simSeed = seed;
     this.instance.totalRecords = (int)((simParameters.getEndTime().getTime() 
         - simParameters.getStartTime().getTime()) / (simParameters.getFrequency() * 1000d));
@@ -143,6 +143,7 @@ public class Simulation {
     Observation initialObs;
     try {
       try {
+        Observation.remove(simulationName);
         initialObs = Observation.createObservation(this.simulationName,
             this.simParameters.getStartTime(), 
             this.simParameters.getStartCoordinate(), null, null, null);
@@ -164,14 +165,13 @@ public class Simulation {
         if (edge == InferredEdge.getEmptyEdge()) {
           thisPath = InferredPath.getEmptyPath();
         } else {
-          thisPath = new InferredPath(ImmutableList.of(
-              PathEdge.getEdge(edge)));
+          thisPath = new InferredPath(edge);
         }
         if (edge == currentInferredEdge)
           path = thisPath;
-        evaluatedPaths.add(new InferredPathEntry(initialObs.getProjectedPoint(), thisPath, null, null, 0d));
+        evaluatedPaths.add(new InferredPathEntry(thisPath, null, null, Double.NEGATIVE_INFINITY));
       }
-      FilterInformation info = new FilterInformation(path, evaluatedPaths);
+      FilterInformation info = new FilterInformation(path, evaluatedPaths, null);
 
       VehicleState vehicleState = new VehicleState(this.inferredGraph,
           initialObs, currentInferredEdge, parameters, info);
@@ -259,7 +259,7 @@ public class Simulation {
       return null;
     }
 
-    final FilterInformation info = new FilterInformation(newPath, null);
+    final FilterInformation info = new FilterInformation(newPath, null, null);
     final VehicleState newState = new VehicleState(this.inferredGraph, thisObs,
         vehicleState.getMovementFilter(), currentLocBelief, currentEdgeTrans, 
         newPathEdge, vehicleState, info);
@@ -267,24 +267,9 @@ public class Simulation {
     
     Logger.info("processed simulation observation :" + thisObs);
     
-    final VehicleState infState;
-    final DataDistribution<VehicleState> infBelief;
-    if (this.simParameters.isPerformInference()) {
-      instance.update(thisObs);
-      infState = instance.getBestState();
-      infBelief = instance.getBelief().clone();
-      
+    instance.update(newState, thisObs, this.simParameters.isPerformInference());
+    if (this.simParameters.isPerformInference())
       Logger.info("processed simulation inference :" + thisObs);
-    } else {
-      infState = null;
-      infBelief = null;
-    }
-    
-    
-    final InferenceResultRecord result = InferenceResultRecord
-        .createInferenceResultRecord(thisObs, newState, infState, infBelief);
-
-    InferenceService.addSimulationRecords(simulationName, result);
     
     return newState;
   }
@@ -355,8 +340,7 @@ public class Simulation {
           return InferredPath.getEmptyPath();
         } else {
           currentPath.add(PathEdge.getEmptyPathEdge());
-          return new InferredPath(ImmutableList.copyOf(currentPath),
-              distTraveled);
+          return new InferredPath(ImmutableList.copyOf(currentPath));
         }
       }
 

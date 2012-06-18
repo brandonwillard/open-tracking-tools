@@ -32,27 +32,22 @@ public class InferenceService extends UntypedActor {
   private static final Map<String, InferenceInstance> vehicleToInstance = Maps
       .newConcurrentMap();
 
-  private static final Multimap<String, InferenceResultRecord> vehicleToTraceResults = 
-      Multimaps.synchronizedSetMultimap(LinkedHashMultimap.<String, InferenceResultRecord>create());
+  /**
+   * This constant determines whether to collect debug information 
+   * for new inference instances created on the fly.
+   */
+  private static final boolean DEBUG_DEFAULT = false;
 
   public static void clearInferenceData() {
     vehicleToInstance.clear();
-    vehicleToTraceResults.clear();
   }
   
   public static void processRecord(Observation observation) {
 
     final InferenceInstance ie = getOrCreateInferenceInstance(observation
-        .getVehicleId(), false);
+        .getVehicleId(), false, DEBUG_DEFAULT);
 
     ie.update(observation);
-    ie.recordsProcessed++;
-
-    final InferenceResultRecord infResult = InferenceResultRecord
-        .createInferenceResultRecord(observation, ie);
-
-    vehicleToTraceResults.put(observation.getVehicleId(), infResult);
-
   }
   
   @Override
@@ -74,28 +69,15 @@ public class InferenceService extends UntypedActor {
     return ie;
   }
 
-  public static InferenceInstance getOrCreateInferenceInstance(String vehicleId, boolean isSimulation) {
+  public static InferenceInstance getOrCreateInferenceInstance(String vehicleId, boolean isSimulation, boolean isDebug) {
     InferenceInstance ie = vehicleToInstance.get(vehicleId);
 
     if (ie == null) {
-      ie = new InferenceInstance(vehicleId, isSimulation);
+      ie = new InferenceInstance(vehicleId, isSimulation, isDebug);
       vehicleToInstance.put(vehicleId, ie);
     }
 
     return ie;
-  }
-
-  public static Collection<InferenceResultRecord> getTraceResults(
-    String vehicleId) {
-    return vehicleToTraceResults.get(vehicleId);
-  }
-
-  public static void addSimulationRecords(String simulationName,
-    InferenceResultRecord result) {
-    InferenceInstance instance = getOrCreateInferenceInstance(simulationName, true);
-    vehicleToTraceResults.put(simulationName, result);
-    instance.recordsProcessed += 1;
-    vehicleToInstance.put(simulationName, instance);
   }
 
   public static List<InferenceInstance> getInferenceInstances() {
@@ -103,11 +85,8 @@ public class InferenceService extends UntypedActor {
   }
 
   public static void remove(String name) {
-    
     vehicleToInstance.remove(name);
-    vehicleToTraceResults.removeAll(name);
     Observation.remove(name);
-    
   }
 
 }

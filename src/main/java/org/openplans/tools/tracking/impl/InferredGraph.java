@@ -3,6 +3,7 @@ package org.openplans.tools.tracking.impl;
 import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.math.matrix.VectorFactory;
 import gov.sandia.cognition.statistics.bayesian.conjugate.UnivariateGaussianMeanVarianceBayesianEstimator;
+import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 import gov.sandia.cognition.statistics.distribution.NormalInverseGammaDistribution;
 
 import java.util.Collection;
@@ -233,23 +234,10 @@ public class InferredGraph {
     public List<InferredEdge> getIncomingTransferableEdges() {
 
       final List<InferredEdge> result = Lists.newArrayList();
-      for (final Edge edge : this.startVertex.getIncoming()) {
-
-        final Set<Edge> tmpResults = Sets.newHashSet();
-        if (edge.getGeometry() == null
-            || !edge.getMode().equals(TraverseMode.CAR)) {
-          /*
-           * Only attempt one level of descent for finding street edges
-           */
-          tmpResults.addAll(edge.getFromVertex()
-              .getOutgoingStreetEdges());
-        } else {
-          tmpResults.add(edge);
-        }
-        for (final Edge edge2 : tmpResults) {
-          if (!edge2.getGeometry().equals(posGeometry))
-            result.add(graph.getInferredEdge(edge2));
-        }
+      this.graph.getNarratedGraph();
+      for (final Edge edge : OtpGraph.filterForStreetEdges(this.startVertex.getIncoming())) {
+        if (graph.getGraph().getIdForEdge(edge) != null)
+          result.add(graph.getInferredEdge(edge));
       }
 
       return result;
@@ -505,57 +493,71 @@ public class InferredGraph {
     final Set<InferredPath> paths = Sets.newHashSet(InferredPath
         .getEmptyPath());
     final Set<Vertex> startVerticies = Sets.newHashSet();
+    final double stateStdDevDistance = 1.98d*Math.sqrt(key.getState().getBelief()
+        .getCovariance().normFrobenius());
     if (startEdge != InferredEdge.getEmptyEdge()) {
-//      for (Object obj : this.pathSampler.getVertexIndex().query(
-//          new Envelope(startEdge.getStartVertex().getCoordinate()))) {
-//        final Vertex vertex = (Vertex) obj;
-//        startVerticies.add(vertex);
-//      }
       
       startVerticies.add(startEdge.getStartVertex());
       startVerticies.add(startEdge.getEndVertex());
       
-      paths.add(new InferredPath(ImmutableList.of(PathEdge
-          .getEdge(startEdge)), 0d));
+//      paths.add(new InferredPath(ImmutableList.of(PathEdge
+//          .getEdge(startEdge)), 0d));
+      
     } else {
-      final RoutingRequest options = new RoutingRequest(TraverseMode.CAR);
-      startVerticies.add(this.narratedGraph.getIndexService()
-          .getClosestVertex(
-              GeoUtils.reverseCoordinates(key.getStartCoord()), null,
-              options, null));
+      final Coordinate fromCoord = GeoUtils.reverseCoordinates(key
+          .getStartCoord());
+      final Envelope fromEnv = new Envelope(fromCoord);
+      fromEnv.expandBy(GeoUtils.getMetersInAngleDegrees(stateStdDevDistance));
+      for (final Object obj : this.pathSampler.getEdgeIndex().query(fromEnv)) {
+        final Edge edge = (Edge) obj;
+        startVerticies.add(edge.getFromVertex());
+      }
     }
     
-    final RoutingRequest endVertexOptions = new RoutingRequest(TraverseMode.CAR);
     final Set<Vertex> endVerticies = Sets.newHashSet();
-    endVerticies.add(this.narratedGraph.getIndexService().getClosestVertex(toCoord, null, endVertexOptions));
     
-//    final Envelope toEnv = new Envelope(toCoord);
-//    final double varDistance = Math.sqrt(key.getState().getMovementFilter().getObsVariance().normFrobenius())/2d;
-//    toEnv.expandBy(GeoUtils.getMetersInAngleDegrees(varDistance));
+    final Envelope toEnv = new Envelope(toCoord);
+    final double obsStdDevDistance = 1.98d*Math.sqrt(key.getState().getMovementFilter()
+        .getObsVariance().normFrobenius());
+    toEnv.expandBy(GeoUtils.getMetersInAngleDegrees(obsStdDevDistance));
     
-//    for (final Object obj : this.pathSampler.getEdgeIndex().query(toEnv)) {
-//      final Edge edge = (Edge) obj;
-//      endVerticies.add(edge.getFromVertex());
-//      endVerticies.add(edge.getToVertex());
-//    }
+    for (final Object obj : this.pathSampler.getEdgeIndex().query(toEnv)) {
+      final Edge edge = (Edge) obj;
+      endVerticies.add(edge.getFromVertex());
+      endVerticies.add(edge.getToVertex());
+    }
     
-    final Set<GraphPath> gPaths = Sets.newHashSet();
     final GenericAStar aStar = new GenericAStar();
     for (final Vertex startVertex : startVerticies) {
       for (final Vertex endVertex : endVerticies) {
-        final RoutingRequest options = new RoutingRequest(TraverseMode.CAR);
-        options.setArriveBy(false);
-        options.setRoutingContext(graph, startVertex, endVertex);
-        final ShortestPathTree spt1 = aStar
-            .getShortestPathTree(options);
         
-        if (!spt1.getPaths().isEmpty())
-          copyAStarResults(spt1.getPaths().get(0), paths);
+        final RoutingRequest options = new RoutingRequest(TraverseMode.CAR);
+        options.setRoutingContext(graph, startVertex, endVertex);
+        
+        options.setArriveBy(false);
+        final ShortestPathTree spt1 = aStar.getShortestPathTree(options);
+        final InferredPath result;
+        if (!spt1.getPaths().isEmpty()) {
+          result = copyAStarResults(spt1.getPaths().get(0), false);
+          if (result != null) {
+            paths.add(result);
+            result.setEndVertex(endVertex);
+            result.setStartVertex(startVertex);
+          }
+        }
         
         options.setArriveBy(true);
         final ShortestPathTree spt2 = aStar.getShortestPathTree(options);
-        if (!spt2.getPaths().isEmpty())
-          gPaths.add(spt2.getPaths().get(0));
+        final InferredPath revResult;
+        if (!spt2.getPaths().isEmpty()) {
+          revResult = copyAStarResults(spt2.getPaths().get(0), true);
+          if (revResult != null) {
+            paths.add(revResult);
+            revResult.setEndVertex(endVertex);
+            revResult.setStartVertex(startVertex);
+          }
+        }
+        
         
         options.cleanup();
       }
@@ -564,10 +566,11 @@ public class InferredGraph {
     return paths;
   }
 
-  private void copyAStarResults(GraphPath gpath, Set<InferredPath> paths) {
+  private InferredPath copyAStarResults(GraphPath gpath, boolean isReverse) {
+    final double direction = isReverse ? -1d : 1d;
     double pathDist = 0d;
     final List<PathEdge> path = Lists.newArrayList();
-    for (final Edge pathEdge : gpath.edges) {
+    for (final Edge pathEdge : isReverse ? Lists.reverse(gpath.edges) : gpath.edges) {
       
       if (OtpGraph.isStreetEdge(pathEdge)
           && pathEdge.getGeometry() != null
@@ -577,7 +580,7 @@ public class InferredGraph {
         
         path.add(PathEdge.getEdge(
             this.getInferredEdge(pathEdge), pathDist));
-        pathDist += pathEdge.getDistance();
+        pathDist += direction * pathEdge.getDistance();
         
       } else if (pathEdge.getFromVertex() != null
           && !pathEdge.getFromVertex().getOutgoingStreetEdges().isEmpty()) {
@@ -595,15 +598,16 @@ public class InferredGraph {
             path.add(PathEdge.getEdge(
                 this.getInferredEdge(streetEdge.getFromVertex()
                     .getOutgoingStreetEdges().get(0)), pathDist));
-            pathDist += streetEdge.getDistance();
+            pathDist += direction * streetEdge.getDistance();
             break;
           }
         }
       }
     }
     if (!path.isEmpty())
-      paths.add(new InferredPath(
-          ImmutableList.copyOf(path), pathDist));
+      return new InferredPath(ImmutableList.copyOf(path));
+    else
+      return null;
   }
   
   public InferredEdge getEdge(int id) {
@@ -650,97 +654,53 @@ public class InferredGraph {
     final Set<InferredEdge> results = Sets.newHashSet();
     final Coordinate latlon = GeoUtils.convertToLatLon(mean);
     final List<StreetEdge> snappedEdges = this.narratedGraph
-        .snapToGraph(null, latlon);
+        .snapToGraph(latlon);
     for (final Edge edge : snappedEdges) {
       results.add(getInferredEdge(edge));
     }
     return results;
   }
 
-  /**
-   * Compute a path of InferredEdge's between observations. This includes the
-   * empty edge. Also, it finds the edges nearest to the toCoord and gets paths
-   * to the center points of those edges.
-   * 
-   * @param fromState
-   * @param toCoord
-   * @return
-   */
-  // public Set<InferredPath> getPathsNew(VehicleState fromState,
-  // Coordinate toCoord) {
-  // Preconditions.checkNotNull(fromState);
-  //
-  // final Vector posVecTo = fromState.getNonVelocityVector();
-  // final Vector posVecFrom = VehicleState
-  // .getNonVelocityVector(fromState.getMovementFilter()
-  // .getPrePredictiveBelief().getMean());
-  // final Matrix O = fromState.getBelief().getInputDimensionality() == 4 ?
-  // StandardRoadTrackingFilter.getOg() : StandardRoadTrackingFilter.getOr();
-  // final double varDistance =
-  // O.times(fromState.getBelief().getCovariance()).times(O.transpose()).normFrobenius();
-  // fromState.getBelief().getCovariance().normFrobenius();
-  // final double distance = posVecFrom.euclideanDistance(posVecTo)
-  // + 1.98*Math.sqrt(varDistance);
-  //
-  // Preconditions.checkArgument(distance < 1e4);
-  //
-  // if (distance == 0d) {
-  // final InferredPath path;
-  // if (fromState.getInferredEdge() == InferredEdge.getEmptyEdge()) {
-  // path = InferredPath.getEmptyPath();
-  // } else {
-  // path = new InferredPath(ImmutableList.of(PathEdge
-  // .getEdge(fromState.getInferredEdge())));
-  // }
-  // return Sets.newHashSet(path);
-  // }
-  //
-  // final Set<Edge> startEdges = Sets.newHashSet();
-  // if (fromState.getInferredEdge() != InferredEdge.getEmptyEdge()) {
-  // startEdges.add(fromState.getInferredEdge().getEdge());
-  // } else {
-  // final Coordinate latlon = GeoUtils.convertToLatLon(fromState
-  // .getMeanLocation());
-  // startEdges.addAll(this.narratedGraph.snapToGraph(null, latlon));
-  // }
-  //
-  // final Set<StreetEdge> endEdges = Sets
-  // .newHashSet(this.narratedGraph.snapToGraph(null, toCoord));
-  // final Set<InferredPath> paths = Sets.newHashSet();
-  // for (final Edge start : startEdges) {
-  // for (final Edge end : endEdges) {
-  // /*
-  // * I'm adding the from and to edge lengths as a hack so that
-  // * the path finder will not be too discriminant
-  // */
-  // final double distanceAdj = Math.max(distance,
-  // fromState.getMeanLocation().euclideanDistance(
-  // fromState.getObservation().getProjectedPoint()))
-  // + start.getDistance() + end.getDistance();
-  // final PathKey startEndEntry = new PathKey(
-  // fromState, start, end, distanceAdj);
-  // paths.addAll(pathsCache.getUnchecked(startEndEntry));
-  // }
-  // }
-  //
-  // paths.add(InferredPath.getEmptyPath());
-  // return paths;
-  // }
-
   public Set<InferredPath> getPaths(VehicleState fromState,
     Coordinate toCoord) {
     Preconditions.checkNotNull(fromState);
 
+    final Coordinate fromCoord;
+    if (fromState.getInferredEdge() != InferredEdge.getEmptyEdge()) {
+      fromCoord = fromState.getInferredEdge().getCenterPointCoord();
+    } else {
+      fromCoord = GeoUtils.convertToLatLon(fromState
+            .getMeanLocation());
+    }
+      
+      
     final Set<InferredPath> paths = Sets.newHashSet();
     final PathKey startEndEntry = new PathKey(
-        fromState, GeoUtils.convertToLatLon(fromState
-            .getMeanLocation()), toCoord, 0d);
+        fromState, fromCoord , toCoord, 0d);
     paths.addAll(pathsCache.getUnchecked(startEndEntry));
     return paths;
   }
 
   public static InferredEdge getEmptyEdge() {
     return InferredEdge.emptyEdge;
+  }
+
+  public List<StreetEdge> getNearbyEdges(
+    MultivariateGaussian initialBelief,
+    StandardRoadTrackingFilter trackingFilter) {
+    Preconditions.checkArgument(initialBelief.getInputDimensionality() == 4);
+    
+    final Envelope toEnv = new Envelope(GeoUtils.convertToLonLat(
+        StandardRoadTrackingFilter.getOg().times(initialBelief.getMean())));
+    final double varDistance = 1.98d*Math.sqrt(trackingFilter.getObsVariance().normFrobenius());
+    toEnv.expandBy(GeoUtils.getMetersInAngleDegrees(varDistance));
+    
+    List<StreetEdge> streetEdges = Lists.newArrayList();
+    for (final Object obj : this.pathSampler.getEdgeIndex().query(toEnv)) {
+      final Edge edge = (Edge) obj;
+      streetEdges.add((StreetEdge)edge);
+    }
+    return streetEdges;
   }
 
 }

@@ -99,18 +99,10 @@ public class OtpGraph {
     return graph.getVertices().size();
   }
 
-  /**
-   * Snaps the observed location to a graph edge, computes edges traveled
-   * between observations (when applicable), and returns both sets of edges.
-   * 
-   * @param loc
-   * @return
-   */
-  public List<StreetEdge> snapToGraph(Coordinate fromCoords,
-    Coordinate toCoords) {
+  public List<StreetEdge> snapToGraph(Coordinate toCoords) {
 
     Preconditions.checkNotNull(toCoords);
-
+    
     final RoutingRequest options = OtpGraph.defaultOptions;
     /*
      * XXX: indexService uses lon/lat

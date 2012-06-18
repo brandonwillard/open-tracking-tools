@@ -7,46 +7,22 @@ import gov.sandia.cognition.util.DefaultWeightedValue;
 import java.util.Map;
 
 import com.google.common.collect.ComparisonChain;
+import com.google.common.base.Objects;
 
 public class InferredPathEntry implements Comparable<InferredPathEntry> {
   private final StandardRoadTrackingFilter filter;
   private final Map<PathEdge, DefaultWeightedValue<MultivariateGaussian>> edgeToPredictiveBelief;
   private final InferredPath path;
   private final double totalLogLikelihood;
-  private final Vector startLoc;
 
   public InferredPathEntry(
-    Vector startLoc,
     InferredPath path,
     Map<PathEdge, DefaultWeightedValue<MultivariateGaussian>> edgeToPredictiveBeliefAndLogLikelihood,
     StandardRoadTrackingFilter filter, double totalLogLikelihood) {
-    this.startLoc = startLoc;
     this.totalLogLikelihood = totalLogLikelihood;
     this.path = path;
     this.filter = filter;
     this.edgeToPredictiveBelief = edgeToPredictiveBeliefAndLogLikelihood;
-  }
-
-  @Override
-  public boolean equals(Object obj) {
-    if (this == obj) {
-      return true;
-    }
-    if (obj == null) {
-      return false;
-    }
-    if (getClass() != obj.getClass()) {
-      return false;
-    }
-    final InferredPathEntry other = (InferredPathEntry) obj;
-    if (path == null) {
-      if (other.path != null) {
-        return false;
-      }
-    } else if (!path.equals(other.path)) {
-      return false;
-    }
-    return true;
   }
 
   public Map<PathEdge, DefaultWeightedValue<MultivariateGaussian>> getEdgeToPredictiveBelief() {
@@ -66,21 +42,25 @@ public class InferredPathEntry implements Comparable<InferredPathEntry> {
   }
 
   @Override
-  public int hashCode() {
-    final int prime = 31;
-    int result = 1;
-    result = prime * result + ((path == null) ? 0 : path.hashCode());
-    return result;
+  public int hashCode(){
+  	return Objects.hashCode(super.hashCode(), path);
+  }
+  
+  @Override
+  public boolean equals(Object object){
+  	if (object instanceof InferredPathEntry) {
+  		if (!super.equals(object)) 
+  			return false;
+  		InferredPathEntry that = (InferredPathEntry) object;
+  		return Objects.equal(this.path, that.path);
+  	}
+  	return false;
   }
 
   @Override
   public String toString() {
     return "InferredPathEntry [path=" + path
         + ", totalLogLikelihood=" + totalLogLikelihood + "]";
-  }
-
-  public Vector getStartLoc() {
-    return startLoc;
   }
 
   @Override

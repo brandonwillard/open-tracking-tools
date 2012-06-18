@@ -193,4 +193,18 @@ public class GeoUtils {
   public static Object getCoordinates(Vector meanLocation) {
     return new Coordinate(meanLocation.getElement(0), meanLocation.getElement(1));
   }
+
+  public static Coordinate convertToLonLat(Vector vec) {
+    final Coordinate converted = new Coordinate();
+    try {
+      JTS.transform(new Coordinate(
+        vec.getElement(0), vec.getElement(1)), converted, getCRSTransform().inverse());
+    } catch (final NoninvertibleTransformException e) {
+      e.printStackTrace();
+    } catch (final TransformException e) {
+      e.printStackTrace();
+    }
+
+    return converted;
+  }
 }
