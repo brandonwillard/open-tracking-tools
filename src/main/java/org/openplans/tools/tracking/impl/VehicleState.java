@@ -177,28 +177,22 @@ public class VehicleState implements
 
   private final InferredGraph graph;
 
-  /*
-   * This contains information about the filtering process; e.g. paths
-   * evaluated, likelihood values for paths, edges, states, parameters.
-   */
-  private final FilterInformation info;
+//  private final int initialHashCode;
+//  private final int edgeInitialHashCode;
+//  private final int obsInitialHashCode;
+//  private final int transInitialHashCode;
+//  private final int beliefInitialHashCode;
 
-  private final int initialHashCode;
-  private final int edgeInitialHashCode;
-  private final int obsInitialHashCode;
-  private final int transInitialHashCode;
-  private final int beliefInitialHashCode;
+  private final InferredPath path;
 
   public VehicleState(InferredGraph graph,
     Observation initialObservation, InferredEdge inferredEdge,
-    InitialParameters parameters, FilterInformation info) {
+    InitialParameters parameters) {
 
     Preconditions.checkNotNull(initialObservation);
     Preconditions.checkNotNull(inferredEdge);
-    Preconditions.checkNotNull(info);
     Preconditions.checkNotNull(parameters);
 
-    this.info = info;
     this.movementFilter = new StandardRoadTrackingFilter(
         parameters.getObsVariance(),
         parameters.getOffRoadStateVariance(),
@@ -241,6 +235,7 @@ public class VehicleState implements
 
     this.initialBelief = belief.clone();
     this.edge = inferredEdge;
+    this.path = new InferredPath(this.edge);
     this.observation = initialObservation;
     this.graph = graph;
     this.edgeTransitionDist = new EdgeTransitionDistributions(
@@ -249,19 +244,18 @@ public class VehicleState implements
     this.distanceFromPreviousState = 0d;
     
     // DEBUG
-    this.initialHashCode = this.hashCode();
-    this.edgeInitialHashCode = this.edge.hashCode();
-    this.transInitialHashCode = this.edgeTransitionDist.hashCode();
-    this.beliefInitialHashCode = Arrays.hashCode(((DenseVector)this.initialBelief.convertToVector()).getArray());
-    this.obsInitialHashCode = this.observation.hashCode();
+//    this.initialHashCode = this.hashCode();
+//    this.edgeInitialHashCode = this.edge.hashCode();
+//    this.transInitialHashCode = this.edgeTransitionDist.hashCode();
+//    this.beliefInitialHashCode = Arrays.hashCode(((DenseVector)this.initialBelief.convertToVector()).getArray());
+//    this.obsInitialHashCode = this.observation.hashCode();
   }
 
   public VehicleState(InferredGraph graph, Observation observation,
     StandardRoadTrackingFilter filter, MultivariateGaussian belief,
     EdgeTransitionDistributions edgeTransitionDist, PathEdge edge,
-    VehicleState state, FilterInformation info) {
+    InferredPath path, VehicleState state) {
 
-    Preconditions.checkNotNull(info);
     Preconditions.checkNotNull(state);
     Preconditions.checkNotNull(graph);
     Preconditions.checkNotNull(observation);
@@ -269,12 +263,12 @@ public class VehicleState implements
     Preconditions.checkNotNull(belief);
     Preconditions.checkNotNull(edge);
 
-    this.info = info;
     this.observation = observation;
     this.movementFilter = filter;
     this.belief = belief;
     this.initialBelief = belief.clone();
     this.graph = graph;
+    this.path = path;
     /*
      * This is the constructor used when creating transition states, so this is
      * where we'll need to reset the distance measures
@@ -305,11 +299,11 @@ public class VehicleState implements
     this.movementFilter.setCurrentTimeDiff(timeDiff);
 
     // DEBUG
-    this.initialHashCode = this.hashCode();
-    this.edgeInitialHashCode = this.edge.hashCode();
-    this.transInitialHashCode = this.edgeTransitionDist.hashCode();
-    this.beliefInitialHashCode = Arrays.hashCode(((DenseVector)this.initialBelief.convertToVector()).getArray());
-    this.obsInitialHashCode = this.observation.hashCode();
+//    this.initialHashCode = this.hashCode();
+//    this.edgeInitialHashCode = this.edge.hashCode();
+//    this.transInitialHashCode = this.edgeTransitionDist.hashCode();
+//    this.beliefInitialHashCode = Arrays.hashCode(((DenseVector)this.initialBelief.convertToVector()).getArray());
+//    this.obsInitialHashCode = this.observation.hashCode();
   }
 
   public VehicleState(VehicleState other) {
@@ -321,15 +315,15 @@ public class VehicleState implements
     this.observation = other.observation;
     this.distanceFromPreviousState = other.distanceFromPreviousState;
     this.parentState = other.parentState;
-    this.info = other.info;
     this.initialBelief = other.initialBelief.clone();
+    this.path = other.path;
     
     // DEBUG
-    this.initialHashCode = this.hashCode();
-    this.edgeInitialHashCode = this.edge.hashCode();
-    this.transInitialHashCode = this.edgeTransitionDist.hashCode();
-    this.beliefInitialHashCode = Arrays.hashCode(((DenseVector)this.initialBelief.convertToVector()).getArray());
-    this.obsInitialHashCode = this.observation.hashCode();
+//    this.initialHashCode = this.hashCode();
+//    this.edgeInitialHashCode = this.edge.hashCode();
+//    this.transInitialHashCode = this.edgeTransitionDist.hashCode();
+//    this.beliefInitialHashCode = Arrays.hashCode(((DenseVector)this.initialBelief.convertToVector()).getArray());
+//    this.obsInitialHashCode = this.observation.hashCode();
   }
 
   @Override
@@ -347,10 +341,6 @@ public class VehicleState implements
 
   public EdgeTransitionDistributions getEdgeTransitionDist() {
     return edgeTransitionDist;
-  }
-
-  public FilterInformation getFilterInformation() {
-    return info;
   }
 
   public InferredGraph getGraph() {
@@ -572,8 +562,8 @@ public class VehicleState implements
     return edge;
   }
 
-  public FilterInformation getInfo() {
-    return info;
+  public InferredPath getPath() {
+    return path;
   }
 
 }

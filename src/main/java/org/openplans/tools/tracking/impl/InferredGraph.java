@@ -30,10 +30,12 @@ import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.common.collect.ComparisonChain;
+import com.google.common.collect.HashMultimap;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.google.common.collect.Multimap;
 import com.google.common.collect.Ordering;
 import com.google.common.collect.Sets;
 import com.vividsolutions.jts.geom.Coordinate;
@@ -348,8 +350,7 @@ public class InferredGraph {
 
     @Override
     public String toString() {
-      return "InferredEdge [edgeId=" + edgeId + ", endPoint="
-          + endPoint + ", startPoint=" + startPoint + ", length="
+      return "InferredEdge [edgeId=" + edgeId + ", length="
           + length + "]";
     }
 
@@ -445,9 +446,70 @@ public class InferredGraph {
     }
 
   }
+  
+  public static class VertexPair {
+    
+    private final Vertex startVertex;
+    private final Vertex endVertex;
+    
+    public VertexPair(Vertex startVertex, Vertex endVertex) {
+      this.startVertex = startVertex;
+      this.endVertex = endVertex;
+    }
 
-  private final Map<Edge, InferredEdge> edgeToInfo = Maps
-      .newConcurrentMap();
+    public Vertex getStartVertex() {
+      return startVertex;
+    }
+
+    public Vertex getEndVertex() {
+      return endVertex;
+    }
+
+    @Override
+    public int hashCode() {
+      final int prime = 31;
+      int result = 1;
+      result = prime * result
+          + ((endVertex == null) ? 0 : endVertex.hashCode());
+      result = prime * result
+          + ((startVertex == null) ? 0 : startVertex.hashCode());
+      return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+      if (this == obj) {
+        return true;
+      }
+      if (obj == null) {
+        return false;
+      }
+      if (getClass() != obj.getClass()) {
+        return false;
+      }
+      VertexPair other = (VertexPair) obj;
+      if (endVertex == null) {
+        if (other.endVertex != null) {
+          return false;
+        }
+      } else if (!endVertex.equals(other.endVertex)) {
+        return false;
+      }
+      if (startVertex == null) {
+        if (other.startVertex != null) {
+          return false;
+        }
+      } else if (!startVertex.equals(other.startVertex)) {
+        return false;
+      }
+      return true;
+    }
+    
+    
+    
+  }
+
+  private final Map<VertexPair, InferredEdge> edgeToInfo = Maps.newHashMap();
 
   private final Graph graph;
 
@@ -613,11 +675,12 @@ public class InferredGraph {
   public InferredEdge getEdge(int id) {
 
     final Edge edge = graph.getEdgeById(id);
-    InferredEdge edgeInfo = edgeToInfo.get(edge);
+    VertexPair key = new VertexPair(edge.getFromVertex(), edge.getToVertex());
+    InferredEdge edgeInfo = edgeToInfo.get(key);
 
     if (edgeInfo == null) {
       edgeInfo = new InferredEdge(edge, id, this);
-      edgeToInfo.put(edge, edgeInfo);
+      edgeToInfo.put(key, edgeInfo);
     }
 
     return edgeInfo;
@@ -629,12 +692,13 @@ public class InferredGraph {
 
   public InferredEdge getInferredEdge(Edge edge) {
 
-    InferredEdge edgeInfo = edgeToInfo.get(edge);
+    VertexPair key = new VertexPair(edge.getFromVertex(), edge.getToVertex());
+    InferredEdge edgeInfo = edgeToInfo.get(key);
     final Integer edgeId = graph.getIdForEdge(edge);
 
     if (edgeInfo == null) {
       edgeInfo = new InferredEdge(edge, edgeId, this);
-      edgeToInfo.put(edge, edgeInfo);
+      edgeToInfo.put(key, edgeInfo);
     }
 
     return edgeInfo;

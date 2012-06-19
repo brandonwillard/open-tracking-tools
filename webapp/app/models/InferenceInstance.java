@@ -7,6 +7,7 @@ import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 
+import org.openplans.tools.tracking.impl.FilterInformation;
 import org.openplans.tools.tracking.impl.InferredGraph;
 import org.openplans.tools.tracking.impl.InferredGraph.InferredEdge;
 import org.openplans.tools.tracking.impl.Observation;
@@ -48,7 +49,8 @@ public class InferenceInstance {
   
   private final LinkedList<InferenceResultRecord> resultRecords = Lists.newLinkedList();
 
-  private DataDistribution<VehicleState> belief;
+  private DataDistribution<VehicleState> postBelief;
+  private DataDistribution<VehicleState> resampleBelief;
   private VehicleState bestState;
 
   private final InitialParameters initialParameters;
@@ -56,6 +58,7 @@ public class InferenceInstance {
   public int totalRecords = 0;
 
   private final boolean isDebug;
+
   
   private static InferredGraph inferredGraph = new InferredGraph(Api.getGraph());
 
@@ -84,10 +87,6 @@ public class InferenceInstance {
     return bestState;
   }
 
-  public DataDistribution<VehicleState> getStateBelief() {
-    return belief;
-  }
-
   public String getVehicleId() {
     return vehicleId;
   }
@@ -100,8 +99,8 @@ public class InferenceInstance {
     this.recordsProcessed++;
 
     final InferenceResultRecord result = InferenceResultRecord
-        .createInferenceResultRecord(obs, actualState, belief.getMaxValueKey(), 
-            belief.clone());
+        .createInferenceResultRecord(obs, this, actualState, postBelief.getMaxValueKey(), 
+            postBelief.clone(), resampleBelief != null ? resampleBelief.clone() : null);
 
     if (!isDebug)
       this.resultRecords.pop();
@@ -130,16 +129,21 @@ public class InferenceInstance {
 
   private void updateFilter(Observation obs) {
 
-    if (filter == null || belief == null) {
-      filter = new VehicleTrackingFilter(obs, inferredGraph, initialParameters);
+    if (filter == null || postBelief == null) {
+      filter = new VehicleTrackingFilter(obs, inferredGraph, initialParameters, isDebug);
       filter.getRandom().setSeed(simSeed);
-      belief = filter.createInitialLearnedObject();
+      postBelief = filter.createInitialLearnedObject();
     } else {
-      filter.update(belief, obs);
+      filter.update(postBelief, obs);
+      if (isDebug) {
+        final FilterInformation filterInfo = filter.getFilterInformation(obs);
+        resampleBelief = filterInfo != null ? 
+            filterInfo.getResampleDist() : null;
+      }
     }
 
-    if (belief != null)
-      this.bestState = belief.getMaxValueKey();
+    if (postBelief != null)
+      this.bestState = postBelief.getMaxValueKey();
   }
 
   public int getRecordsProcessed() {
@@ -156,10 +160,6 @@ public class InferenceInstance {
 
   public VehicleTrackingFilter getFilter() {
     return filter;
-  }
-
-  public DataDistribution<VehicleState> getBelief() {
-    return belief;
   }
 
   public InitialParameters getInitialParameters() {
@@ -180,6 +180,14 @@ public class InferenceInstance {
 
   public List<InferenceResultRecord> getResultRecords() {
     return Collections.unmodifiableList(this.resultRecords);
+  }
+
+  public DataDistribution<VehicleState> getPostBelief() {
+    return this.postBelief;
+  }
+  
+  public DataDistribution<VehicleState> getResampleBelief() {
+    return this.resampleBelief;
   }
 
 }

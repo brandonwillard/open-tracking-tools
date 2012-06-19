@@ -5,12 +5,14 @@ import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 import gov.sandia.cognition.util.DefaultWeightedValue;
 
+import java.util.List;
 import java.util.Map;
 
 import org.apache.commons.lang.builder.CompareToBuilder;
 import org.openplans.tools.tracking.impl.InferredGraph.InferredEdge;
 import org.opentripplanner.routing.graph.Vertex;
 
+import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
@@ -30,6 +32,7 @@ public class InferredPath implements Comparable<InferredPath> {
   private final Double totalPathDistance;
   private Vertex startVertex;
   private Vertex endVertex;
+  public List<Integer> edgeIds = Lists.newArrayList();
   
 
   private static InferredPath emptyPath = new InferredPath();
@@ -44,11 +47,11 @@ public class InferredPath implements Comparable<InferredPath> {
     this.edges = edges;
     
     PathEdge lastEdge = null;
-    for (PathEdge edge : Lists.reverse(edges)) {
+    for (PathEdge edge : edges) {
       if (edge != PathEdge.getEmptyPathEdge()) {
         lastEdge = edge;
-        break;
       }
+      edgeIds.add(edge.getInferredEdge().getEdgeId());
     }
     this.totalPathDistance = lastEdge.getDistToStartOfEdge() + lastEdge.getInferredEdge().getLength();
   }
@@ -138,21 +141,31 @@ public class InferredPath implements Comparable<InferredPath> {
        */
       final MultivariateGaussian edgeBelief = beliefPrediction
           .clone();
+      final double edgePredMarginalLogLik;
       if (edge == PathEdge.getEmptyPathEdge()) {
         filter.predict(edgeBelief, edge, prevEdge);
+        // TODO meh?
+        edgePredMarginalLogLik = Double.NEGATIVE_INFINITY;
       } else {
-        edge.predict(edgeBelief);
+        edge.predict(edgeBelief, obs);
+        edgePredMarginalLogLik = edge.marginalPredictiveLogLikelihood(beliefPrediction);
       }
 
-      // TODO should we use cumulative transition?
-      double localLogLik = state.getEdgeTransitionDist()
+      final double edgePredTransLogLik = state.getEdgeTransitionDist()
           .predictiveLogLikelihood(
               prevEdge.getInferredEdge(), edge.getInferredEdge());
-      localLogLik += filter.logLikelihood(
+      
+      final double localPosVelPredLogLik = filter.logLikelihood(
           obs.getProjectedPoint(), edgeBelief, edge);
+      
+      final double localLogLik = edgePredMarginalLogLik + edgePredTransLogLik
+          + localPosVelPredLogLik;
 
       Preconditions.checkArgument(!Double.isNaN(localLogLik));
 
+      /*
+       * We're only going to deal with the terminating edge for now.
+       */
       edgeToPredictiveBeliefAndLogLikelihood.put(
           edge, new DefaultWeightedValue<MultivariateGaussian>(
               edgeBelief.clone(), localLogLik));
@@ -181,9 +194,10 @@ public class InferredPath implements Comparable<InferredPath> {
     return result;
   }
 
+  
   @Override
   public String toString() {
-    return "InferredPath [edges=" + edges + ", totalPathDistance="
+    return "InferredPath [edges=" + edgeIds + ", totalPathDistance="
         + totalPathDistance + "]";
   }
 

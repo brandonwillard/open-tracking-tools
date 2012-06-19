@@ -171,10 +171,9 @@ public class Simulation {
           path = thisPath;
         evaluatedPaths.add(new InferredPathEntry(thisPath, null, null, Double.NEGATIVE_INFINITY));
       }
-      FilterInformation info = new FilterInformation(path, evaluatedPaths, null);
 
       VehicleState vehicleState = new VehicleState(this.inferredGraph,
-          initialObs, currentInferredEdge, parameters, info);
+          initialObs, currentInferredEdge, parameters);
 
       long time = this.simParameters.getStartTime().getTime();
       int i = 0;
@@ -259,10 +258,9 @@ public class Simulation {
       return null;
     }
 
-    final FilterInformation info = new FilterInformation(newPath, null, null);
     final VehicleState newState = new VehicleState(this.inferredGraph, thisObs,
         vehicleState.getMovementFilter(), currentLocBelief, currentEdgeTrans, 
-        newPathEdge, vehicleState, info);
+        newPathEdge, newPath, vehicleState);
     
     
     Logger.info("processed simulation observation :" + thisObs);

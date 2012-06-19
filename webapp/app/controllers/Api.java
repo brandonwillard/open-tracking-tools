@@ -108,7 +108,7 @@ public class Api extends Controller {
     final List<Map<String, Object>> jsonResults = Lists
         .newArrayList();
     for (final Entry<VehicleState> stateEntry : tmpResult
-        .getFilterDistribution().entrySet()) {
+        .getPostDistribution().entrySet()) {
       final Map<String, Object> thisMap = Maps.newHashMap();
       thisMap.put("weight", stateEntry.getValue());
       thisMap.put("edgeId", stateEntry.getKey().getInferredEdge()
@@ -141,9 +141,9 @@ public class Api extends Controller {
   }
 
   public static void traceParticleRecord(String vehicleId,
-    int recordNumber, Integer particleNumber, Boolean withParent)
-      throws JsonGenerationException, JsonMappingException,
-      IOException {
+    int recordNumber, Integer particleNumber, Boolean withParent,
+    Boolean isPrior) throws JsonGenerationException,
+      JsonMappingException, IOException {
 
     final InferenceInstance instance = InferenceService
         .getInferenceInstance(vehicleId);
@@ -179,7 +179,10 @@ public class Api extends Controller {
         error(vehicleId + " result record " + recordNumber
             + " is out-of-bounds");
 
-      belief = tmpResult.getFilterDistribution();
+      if (!isPrior)
+        belief = tmpResult.getPostDistribution();
+      else
+        belief = tmpResult.getPriorDistribution();
 
       if (belief == null)
         renderJSON(jsonMapper.writeValueAsString(null));
@@ -192,8 +195,8 @@ public class Api extends Controller {
               .getActualResults().getState() : null;
           final InferenceResultRecord result = InferenceResultRecord
               .createInferenceResultRecord(
-                  infState.getObservation(), actualState, infState,
-                  null);
+                  infState.getObservation(), instance, actualState,
+                  infState, null, null);
           results.add(result);
         }
       } else {
@@ -209,8 +212,8 @@ public class Api extends Controller {
 
         final InferenceResultRecord result = InferenceResultRecord
             .createInferenceResultRecord(
-                infState.getObservation(), actualState, infState,
-                null);
+                infState.getObservation(), instance, actualState,
+                infState, null, null);
         results.add(result);
       }
     }
@@ -223,7 +226,8 @@ public class Api extends Controller {
         final VehicleState parentState = state.getParentState();
         if (parentState != null) {
           parent = InferenceResultRecord.createInferenceResultRecord(
-              parentState.getObservation(), null, parentState, null);
+              parentState.getObservation(), instance, null,
+              parentState, null, null);
         } else {
           parent = null;
         }

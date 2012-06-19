@@ -483,15 +483,15 @@ function createMatrixString(matrix) {
 }
 
 function getPathName(pathSegmentIds) {
-  var resStr = new Array();
-  $.each(pathSegmentIds, function(index, data) {
-    resStr.push(data[0]);
-  });
+//  var resStr = new Array();
+//  $.each(pathSegmentIds, function(index, data) {
+//    resStr.push(data[0]);
+//  });
 
-  return paths[resStr];
+  return paths[arrayHash(pathSegmentIds)];
 }
 
-function renderParticles() {
+function renderParticles(isPrior) {
   var vehicleId = jQuery('#vehicle_id').val();
   $
       .get(
@@ -500,12 +500,23 @@ function renderParticles() {
             vehicleId : vehicleId,
             recordNumber : i,
             particleNumber : -1,
-            withParent : true
+            withParent : true,
+            isPrior : !isPrior
           },
           function(data) {
 
-            var particleList = jQuery("#posteriorParticles");
+            
+            var particleList = null;
+            if (isPrior) {
+              particleList = jQuery("#posteriorParticles");
+            } else {
+              particleList = jQuery("#priorParticles");
+            }
+            
             particleList.empty();
+            
+            if (data == null)
+              return;
 
             var particleNumber = 0;
             jQuery
@@ -574,8 +585,10 @@ function renderParticles() {
 
                       var pathName = getPathName(particleData.particle.infResults.pathSegmentIds);
                       var pathData = $('#' + pathName).data('path');
-                      var pathLikelihood = parseFloat(pathData.totalLogLikelihood).toFixed(2); 
-                      collapsedDiv.append('<li>' + pathName + ', ' + pathLikelihood + '</li>');
+                      if (pathData) {
+                        var pathLikelihood = parseFloat(pathData.totalLogLikelihood).toFixed(2); 
+                        collapsedDiv.append('<li>' + pathName + ', ' + pathLikelihood + '</li>');
+                      }
                       
                       if (edgeId != null) {
                         createHoverLineLink(edgeLinkName, edgeId);
@@ -620,8 +633,10 @@ function renderParticles() {
                         parentList.append('<li>stateCov=' + stateCov + '</li>');
                         
                         var parentPathName = getPathName(particleData.parent.infResults.pathSegmentIds);
-                        parentList.append('<li>path=' + parentPathName + '</li>');
-
+                        if (parentPathName) {
+                          parentList.append('<li>path=' + parentPathName + '</li>');
+                        }
+                        
                         createHoverPointLink(parentLocLinkName,
                             parentParticleMeanLoc);
 
@@ -686,6 +701,14 @@ function createHoverPointLink(linkName, loc) {
     }
   });
 }
+function arrayHash(array) {
+  var prime = 31;
+  var result = 1;
+  $.each(array, function(index, value) {
+    result = prime*result + parseInt(value);
+  });
+  return result;
+}
 
 function renderGraph() {
   paths = {};
@@ -710,18 +733,20 @@ function renderGraph() {
 
     if (lines[i].infResults.evaluatedPaths.length > 0) {
       var evaledPaths = lines[i].infResults.evaluatedPaths;
-      // paths
+      var limit = 500;
       for ( var k in evaledPaths) {
+        if (k >= limit)
+          break;
 
         // FIXME finish
         var pathName = 'path' + k;
-        var pathStr = evaledPaths[k].pathEdgeIds.toString();
+        var pathStr = "";//evaledPaths[k].pathEdgeIds.toString();
         var option = jQuery('<option id=' + pathName + '>path' + k + ':'
             + pathStr + '</option>');
         option.attr("value", pathName);
         option.data("path", evaledPaths[k]);
         pathList.append(option);
-        paths[pathStr] = pathName;
+        paths[arrayHash(evaledPaths[k].pathEdgeIds)] = pathName;
       }
     }
 
@@ -771,7 +796,8 @@ function renderGraph() {
 
   }
 
-  renderParticles();
+  renderParticles(false);
+  renderParticles(true);
 
   if (lines[i].actualResults) {
     renderPath(lines[i].actualResults.pathSegmentIds, lines[i].actualResults.pathDirection, EdgeType.ACTUAL);

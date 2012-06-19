@@ -30,6 +30,7 @@ import org.openplans.tools.tracking.impl.Observation;
 import org.openplans.tools.tracking.impl.PathEdge;
 import org.openplans.tools.tracking.impl.StandardRoadTrackingFilter;
 import org.openplans.tools.tracking.impl.VehicleState;
+import org.openplans.tools.tracking.impl.VehicleTrackingFilter;
 import org.openplans.tools.tracking.impl.util.GeoUtils;
 
 import com.google.common.base.Objects;
@@ -92,12 +93,13 @@ public class InferenceResultRecord {
     private final Coordinate minorAxisCoords;
     private final List<Double[]> pathSegmentIds;
 
+    private final VehicleTrackingFilter filter;
     private final VehicleState state;
     private final Double pathDirection;
     private final Map<String, Double> inferredEdge;
     private final List<EvaluatedPathInfo> evaluatedPaths;
 
-    public ResultSet(VehicleState vehicleState,
+    public ResultSet(VehicleState vehicleState, VehicleTrackingFilter filter,
       Coordinate meanCoords, Coordinate majorAxisCoords,
       Coordinate minorAxisCoords, List<Double[]> pathSegmentIds, Double pathDirection) {
       this.meanCoords = meanCoords;
@@ -108,6 +110,7 @@ public class InferenceResultRecord {
       this.pathDirection = pathDirection;
       this.inferredEdge = createInferredEdge(); 
       this.evaluatedPaths = createEvaluatedPaths();
+      this.filter = filter;
     }
 
     @JsonIgnore
@@ -128,10 +131,11 @@ public class InferenceResultRecord {
     @JsonIgnore
     private List<EvaluatedPathInfo> createEvaluatedPaths() {
       List<EvaluatedPathInfo> pathEdgeIds;
-      if (state.getFilterInformation() != null) {
+      final FilterInformation filterInfo = this.filter.getFilterInformation(
+          this.state.getObservation());
+      if (filterInfo != null) {
         pathEdgeIds = Lists.newArrayList();
-        for (final InferredPathEntry pathEntry : state
-            .getFilterInformation().getEvaluatedPaths()) {
+        for (final InferredPathEntry pathEntry : filterInfo.getEvaluatedPaths()) {
           final List<Integer> edgeIds = Lists.newArrayList();
           for (final PathEdge edge : pathEntry.getPath().getEdges()) {
             if (edge.getInferredEdge().getEdgeId() != null)
@@ -207,6 +211,11 @@ public class InferenceResultRecord {
       return evaluatedPaths;
     }
 
+    @JsonIgnore
+    public VehicleTrackingFilter getFilter() {
+      return filter;
+    }
+
   }
 
   private final String time;
@@ -217,15 +226,19 @@ public class InferenceResultRecord {
 
   private final ResultSet infResults;
   
-  private final DataDistribution<VehicleState> filterDistribution;
+  private final DataDistribution<VehicleState> postDistribution;
+
+  private final DataDistribution<VehicleState> priorDistribution;
 
   public InferenceResultRecord(long time, Coordinate obsCoords,
-    ResultSet actualResults, ResultSet infResults, DataDistribution<VehicleState> filterDist) {
+    ResultSet actualResults, ResultSet infResults, 
+    DataDistribution<VehicleState> postDist, DataDistribution<VehicleState> priorDist) {
     this.actualResults = actualResults;
     this.infResults = infResults;
     this.observedCoords = obsCoords;
     this.time = Api.sdf.format(new Date(time));
-    this.filterDistribution = filterDist;
+    this.postDistribution = postDist;
+    this.priorDistribution = priorDist;
   }
 
   @JsonSerialize
@@ -251,44 +264,48 @@ public class InferenceResultRecord {
   public static InferenceResultRecord createInferenceResultRecord(
     Observation observation, InferenceInstance inferenceInstance) {
     return createInferenceResultRecord(
-        observation, null, inferenceInstance.getBestState(), 
-        inferenceInstance.isDebug() ? inferenceInstance.getBelief() : null);
+        observation, inferenceInstance, null, inferenceInstance.getBestState(), 
+        inferenceInstance.isDebug() ? inferenceInstance.getPostBelief() : null,
+        inferenceInstance.isDebug() ? inferenceInstance.getResampleBelief() : null);
   }
 
   public static InferenceResultRecord createInferenceResultRecord(
-    Observation observation, VehicleState actualState,
-    VehicleState inferredState, DataDistribution<VehicleState> filterDist) {
+    Observation observation, InferenceInstance instance, VehicleState actualState,
+    VehicleState inferredState, DataDistribution<VehicleState> postDist,
+    DataDistribution<VehicleState> priorDist) {
 
     Preconditions.checkNotNull(observation);
 
     ResultSet actualResults = null;
     if (actualState != null) {
-      actualResults = processVehicleStateResults(actualState);
+      actualResults = processVehicleStateResults(actualState, instance);
     }
 
     ResultSet infResults = null;
     if (inferredState != null) {
-      infResults = processVehicleStateResults(inferredState);
+      infResults = processVehicleStateResults(inferredState, instance);
     }
 
     /*
-     * XXX filterDist is cloned, if given.
+     * XXX distributions are cloned, if given.
      */
     return new InferenceResultRecord(
         observation.getTimestamp().getTime(),
         observation.getObsCoords(), actualResults, infResults, 
-        filterDist != null ? filterDist.clone() : null);
+        postDist != null ? postDist.clone() : null,
+        priorDist != null ? priorDist.clone() : null   );
+    
   }
 
   private static ResultSet processVehicleStateResults(
-    VehicleState state) {
+    VehicleState state, InferenceInstance instance) {
 
     /*
      * The last edge of the path should correspond to the current edge, and the
      * belief should be adjusted to the start of that edge.
      */
     
-    final VehicleState cloneState = state.clone();
+    final VehicleState cloneState = state;
     final PathEdge currentEdge = PathEdge.getEdge(
         cloneState.getInferredEdge(), 0d);
     final MultivariateGaussian gbelief = cloneState.getBelief().clone();
@@ -338,31 +355,33 @@ public class InferenceResultRecord {
         .convertToLatLon(minorAxis);
 
     final List<Double[]> pathSegmentIds = Lists.newArrayList();
-    final FilterInformation info = cloneState.getFilterInformation();
     Double pathDirection = null;
-    if (info != null) {
-      final InferredPath path = info.getPath();
-      if (path.getTotalPathDistance() != null)
-        pathDirection = path.getTotalPathDistance() > 0d ? 1d : -1d;
-      for (final PathEdge edge : path.getEdges()) {
-        if (edge == PathEdge.getEmptyPathEdge())
-          continue;
-        final double edgeMean = edge.getInferredEdge()
-            .getVelocityPrecisionDist().getLocation();
-        final double edgeId = edge.getInferredEdge().getEdgeId() != null ? (double) edge
-            .getInferredEdge().getEdgeId() : -1d;
-        pathSegmentIds.add(new Double[] { edgeId, edgeMean});
-      }
+    final InferredPath path = cloneState.getPath();
+    if (path.getTotalPathDistance() != null)
+      pathDirection = path.getTotalPathDistance() > 0d ? 1d : -1d;
+    for (final PathEdge edge : path.getEdges()) {
+      if (edge == PathEdge.getEmptyPathEdge())
+        continue;
+      final double edgeMean = edge.getInferredEdge()
+          .getVelocityPrecisionDist().getLocation();
+      final double edgeId = edge.getInferredEdge().getEdgeId() != null ? (double) edge
+          .getInferredEdge().getEdgeId() : -1d;
+      pathSegmentIds.add(new Double[] { edgeId, edgeMean});
     }
 
     return new ResultSet(
-        cloneState, meanCoords, majorAxisCoords, minorAxisCoords,
-        pathSegmentIds, pathDirection);
+        cloneState, instance.getFilter(), meanCoords, 
+        majorAxisCoords, minorAxisCoords, pathSegmentIds, pathDirection);
   }
 
   @JsonIgnore
-  public DataDistribution<VehicleState> getFilterDistribution() {
-    return filterDistribution;
+  public DataDistribution<VehicleState> getPostDistribution() {
+    return postDistribution;
+  }
+  
+  @JsonIgnore
+  public DataDistribution<VehicleState> getPriorDistribution() {
+    return priorDistribution;
   }
 
 }
