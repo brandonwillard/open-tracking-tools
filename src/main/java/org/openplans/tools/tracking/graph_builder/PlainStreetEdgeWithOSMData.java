@@ -1,5 +1,8 @@
 package org.openplans.tools.tracking.graph_builder;
 
+import java.util.ArrayList;
+import java.util.Collection;
+
 import org.opentripplanner.routing.edgetype.PlainStreetEdge;
 import org.opentripplanner.routing.edgetype.StreetTraversalPermission;
 import org.opentripplanner.routing.graph.Graph;
@@ -23,6 +26,8 @@ public class PlainStreetEdgeWithOSMData extends PlainStreetEdge {
 
   private final long toNode;
 
+  private ArrayList<TurnVertexWithOSMData> turnVertices = new ArrayList<TurnVertexWithOSMData>();
+
   public PlainStreetEdgeWithOSMData(long way, long fromNode,
     long toNode, IntersectionVertex startEndpoint,
     IntersectionVertex endEndpoint, LineString geometry, String name,
@@ -39,16 +44,16 @@ public class PlainStreetEdgeWithOSMData extends PlainStreetEdge {
   public TurnVertex createTurnVertex(Graph graph) {
     final String id = getId();
     final TurnVertexWithOSMData tv = new TurnVertexWithOSMData(
-        way, fromNode, toNode, graph, id, getGeometry(), getName(),
+        this, way, fromNode, toNode, graph, id, getGeometry(), getName(),
         getLength(), back, getNotes());
     tv.setWheelchairNotes(getWheelchairNotes());
     tv.setWheelchairAccessible(isWheelchairAccessible());
-    // tv.setCrossable(isCrossable());
     tv.setPermission(getPermission());
     tv.setRoundabout(isRoundabout());
     tv.setBogusName(hasBogusName());
     tv.setNoThruTraffic(isNoThruTraffic());
     tv.setStairs(isStairs());
+    turnVertices.add(tv);
     return tv;
   }
 
@@ -62,5 +67,9 @@ public class PlainStreetEdgeWithOSMData extends PlainStreetEdge {
 
   public long getWay() {
     return way;
+  }
+
+  public Collection<TurnVertexWithOSMData> getTurnVertices() {
+    return turnVertices;
   }
 }
