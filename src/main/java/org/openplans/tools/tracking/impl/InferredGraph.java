@@ -589,20 +589,20 @@ public class InferredGraph {
           endEdgeList, toCoord, obsStdDevDistance, startEdge);
       
       final ShortestPathTree spt1 = aStar.getSPT(false);
-      final InferredPath result;
-      if (!spt1.getPaths().isEmpty()) {
-        result = copyAStarResults(spt1.getPaths().get(0), false);
-        if (result != null) {
-          paths.add(result);
-        }
-      }
-
       final ShortestPathTree spt2 = aStar.getSPT(true);
-      final InferredPath revResult;
-      if (!spt2.getPaths().isEmpty()) {
-        revResult = copyAStarResults(spt2.getPaths().get(0), true);
-        if (revResult != null) {
-          paths.add(revResult);
+      
+      for (Edge endEdge : endEdgeList) {
+        GraphPath forwardPath = spt1.getPath(endEdge.getFromVertex(), false);
+        if (forwardPath != null) {
+          InferredPath forwardResult = copyAStarResults(forwardPath, false);
+          if (forwardResult != null)
+            paths.add(forwardResult);
+        }
+        GraphPath backwardPath = spt2.getPath(endEdge.getFromVertex(), false);
+        if (backwardPath != null) {
+          InferredPath backwardResult = copyAStarResults(backwardPath, true);
+          if (backwardResult != null)
+            paths.add(backwardResult);
         }
       }
     }
