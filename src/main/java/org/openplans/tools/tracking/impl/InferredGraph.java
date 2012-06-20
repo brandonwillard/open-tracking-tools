@@ -604,16 +604,24 @@ public class InferredGraph {
         if (forwardPath != null) {
           final InferredPath forwardResult = copyAStarResults(
               forwardPath, startEdge, false);
-          if (forwardResult != null)
+          if (forwardResult != null) {
             paths.add(forwardResult);
+            // for debugging
+            forwardResult.setStartEdge(startEdge);
+            forwardResult.setEndEdge(endEdge);
+          }
         }
         final GraphPath backwardPath = spt2.getPath(
             endEdge.getToVertex(), false);
         if (backwardPath != null) {
           final InferredPath backwardResult = copyAStarResults(
               backwardPath, startEdge, true);
-          if (backwardResult != null)
+          if (backwardResult != null) {
             paths.add(backwardResult);
+            // for debugging
+            backwardResult.setStartEdge(startEdge);
+            backwardResult.setEndEdge(endEdge);
+          }
         }
       }
     }

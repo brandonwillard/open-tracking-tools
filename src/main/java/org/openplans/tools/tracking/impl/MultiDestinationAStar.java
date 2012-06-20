@@ -65,17 +65,22 @@ public class MultiDestinationAStar implements
     final GenericAStar astar = new GenericAStar();
     astar.setSearchTerminationStrategy(this);
     astar.setSkipTraverseResultStrategy(this);
+    
     final RoutingRequest req = new RoutingRequest();
+    req.setArriveBy(arriveBy);
+    
     final Vertex startVertex = arriveBy ? start.getToVertex() : start.getFromVertex();
     // TODO FIXME how do we really avoid the name collisions?
     final String bogusName = "bogus" + System.nanoTime();
     final Vertex bogus = new IntersectionVertex(graph, bogusName, 
         startVertex.getCoordinate(), bogusName);
+    
     req.setRoutingContext(graph, startVertex, bogus);
     req.rctx.remainingWeightHeuristic = this;
-    req.setArriveBy(arriveBy);
+    
     final ShortestPathTree result = astar.getShortestPathTree(req);
     req.cleanup();
+    
     return result;
 
   }

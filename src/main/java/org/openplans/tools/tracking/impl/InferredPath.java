@@ -9,6 +9,7 @@ import java.util.Map;
 
 import org.apache.commons.lang.builder.CompareToBuilder;
 import org.openplans.tools.tracking.impl.InferredGraph.InferredEdge;
+import org.opentripplanner.routing.graph.Edge;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
@@ -27,6 +28,12 @@ public class InferredPath implements Comparable<InferredPath> {
   private final ImmutableList<PathEdge> edges;
   private final Double totalPathDistance;
   public List<Integer> edgeIds = Lists.newArrayList();
+  
+  /*
+   * These are the edges used in path finding.
+   */
+  private Edge startEdge;
+  private Object endEdge;
 
   private static InferredPath emptyPath = new InferredPath();
 
@@ -232,6 +239,22 @@ public class InferredPath implements Comparable<InferredPath> {
       return emptyPath;
     else
       return new InferredPath(ImmutableList.of(pathEdge));
+  }
+
+  public void setStartEdge(Edge startEdge) {
+    this.startEdge = startEdge;
+  }
+
+  public Object getEndEdge() {
+    return endEdge;
+  }
+
+  public void setEndEdge(Object endEdge) {
+    this.endEdge = endEdge;
+  }
+
+  public Edge getStartEdge() {
+    return startEdge;
   }
 
 }
