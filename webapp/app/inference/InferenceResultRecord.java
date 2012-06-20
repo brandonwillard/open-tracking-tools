@@ -46,16 +46,11 @@ public class InferenceResultRecord {
   public static class ResultSet {
 
     static public class EvaluatedPathInfo {
-      final Coordinate startVertex;
-      final Coordinate endVertex;
       final List<Integer> pathEdgeIds;
       final double totalLogLikelihood;
       private final double direction;
 
-      public EvaluatedPathInfo(Coordinate startVertex, Coordinate endVertex, 
-        List<Integer> pathEdgeIds, double totalLogLikelihood, double direction) {
-        this.startVertex = startVertex;
-        this.endVertex = endVertex;
+      public EvaluatedPathInfo(List<Integer> pathEdgeIds, double totalLogLikelihood, double direction) {
         this.pathEdgeIds = pathEdgeIds;
         this.totalLogLikelihood = totalLogLikelihood;
         this.direction = direction;
@@ -74,16 +69,6 @@ public class InferenceResultRecord {
       @JsonSerialize
       public double getDirection() {
         return direction;
-      }
-
-      @JsonSerialize
-      public Coordinate getStartVertex() {
-        return startVertex;
-      }
-
-      @JsonSerialize
-      public Coordinate getEndVertex() {
-        return endVertex;
       }
 
     }
@@ -144,13 +129,8 @@ public class InferenceResultRecord {
           if (!edgeIds.isEmpty()) {
             Coordinate startVertex = null; 
             Coordinate endVertex = null; 
-            if (pathEntry.getPath().getStartVertex() != null
-                && pathEntry.getPath().getEndVertex() != null) {
-              startVertex = GeoUtils.reverseCoordinates(pathEntry.getPath().getStartVertex().getCoordinate());
-              endVertex = GeoUtils.reverseCoordinates(pathEntry.getPath().getEndVertex().getCoordinate());
-            }
             final double logLikelihood = pathEntry.getTotalLogLikelihood();
-            pathEdgeIds.add(new EvaluatedPathInfo(startVertex, endVertex, edgeIds, logLikelihood, 
+            pathEdgeIds.add(new EvaluatedPathInfo(edgeIds, logLikelihood, 
                 pathEntry.getPath().getTotalPathDistance() > 0d ? 1d : -1d));
           }
         }
@@ -188,12 +168,12 @@ public class InferenceResultRecord {
     @JsonSerialize
     public double[] getStateCovariance() {
       return ((DenseMatrix) state.getBelief().getCovariance())
-          .convertToVector().getArray();
+          .convertToVector().getArray().clone();
     }
 
     @JsonSerialize
     public double[] getStateMean() {
-      return ((DenseVector) state.getBelief().getMean()).getArray();
+      return ((DenseVector) state.getBelief().getMean()).getArray().clone();
     }
 
     @JsonSerialize
@@ -305,6 +285,13 @@ public class InferenceResultRecord {
      * belief should be adjusted to the start of that edge.
      */
     
+    /* 
+     * TODO XXX why is it necessary to clone this state?
+     * when it's a parent state, it can yield
+     * a mean of dim 2 (on-road) and empty edge.
+     * something is giving away a pointer to the belief
+     * (or edge?  seems unlikely).
+     */
     final VehicleState cloneState = state.clone();
     final PathEdge currentEdge = PathEdge.getEdge(
         cloneState.getInferredEdge(), 0d);

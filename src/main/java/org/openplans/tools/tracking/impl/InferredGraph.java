@@ -543,22 +543,18 @@ public class InferredGraph {
      * We always consider moving off of an edge, staying on an edge, and
      * whatever else we can find.
      */
-    final InferredEdge startEdge = key.getState().getInferredEdge();
+    final InferredEdge currentEdge = key.getState().getInferredEdge();
 
     final Coordinate toCoord = GeoUtils.reverseCoordinates(key
         .getEndCoord());
     final Set<InferredPath> paths = Sets.newHashSet(InferredPath
         .getEmptyPath());
-    final Set<Vertex> startVerticies = Sets.newHashSet();
+    final Set<Edge> startEdges = Sets.newHashSet();
     final double stateStdDevDistance = 1.98d * Math.sqrt(key
         .getState().getBelief().getCovariance().normFrobenius());
-    if (startEdge != InferredEdge.getEmptyEdge()) {
+    if (currentEdge != InferredEdge.getEmptyEdge()) {
 
-      startVerticies.add(startEdge.getStartVertex());
-      startVerticies.add(startEdge.getEndVertex());
-
-      // paths.add(new InferredPath(ImmutableList.of(PathEdge
-      // .getEdge(startEdge)), 0d));
+      startEdges.add(currentEdge.getEdge());
 
     } else {
       final Coordinate fromCoord = GeoUtils.reverseCoordinates(key
@@ -569,11 +565,11 @@ public class InferredGraph {
       for (final Object obj : this.pathSampler.getEdgeIndex().query(
           fromEnv)) {
         final Edge edge = (Edge) obj;
-        startVerticies.add(edge.getFromVertex());
+        startEdges.add(edge);
       }
     }
 
-    final Set<Vertex> endVerticies = Sets.newHashSet();
+    final Set<Edge> endEdges = Sets.newHashSet();
 
     final Envelope toEnv = new Envelope(toCoord);
     final double obsStdDevDistance = 1.98d * Math.sqrt(key.getState()
@@ -584,45 +580,30 @@ public class InferredGraph {
     for (final Object obj : this.pathSampler.getEdgeIndex().query(
         toEnv)) {
       final Edge edge = (Edge) obj;
-      endVerticies.add(edge.getFromVertex());
-      endVerticies.add(edge.getToVertex());
+      endEdges.add(edge);
     }
 
-    final GenericAStar aStar = new GenericAStar();
-    for (final Vertex startVertex : startVerticies) {
-      for (final Vertex endVertex : endVerticies) {
-
-        final RoutingRequest options = new RoutingRequest(
-            TraverseMode.CAR);
-        options.setRoutingContext(graph, startVertex, endVertex);
-
-        options.setArriveBy(false);
-        final ShortestPathTree spt1 = aStar
-            .getShortestPathTree(options);
-        final InferredPath result;
-        if (!spt1.getPaths().isEmpty()) {
-          result = copyAStarResults(spt1.getPaths().get(0), false);
-          if (result != null) {
-            paths.add(result);
-            result.setEndVertex(endVertex);
-            result.setStartVertex(startVertex);
-          }
+    List<Edge> endEdgeList = Lists.newArrayList(endEdges);
+    for (final Edge startEdge : startEdges) {
+      final MultiDestinationAStar aStar = new MultiDestinationAStar(this.graph, 
+          endEdgeList, toCoord, obsStdDevDistance, startEdge);
+      
+      final ShortestPathTree spt1 = aStar.getSPT(false);
+      final InferredPath result;
+      if (!spt1.getPaths().isEmpty()) {
+        result = copyAStarResults(spt1.getPaths().get(0), false);
+        if (result != null) {
+          paths.add(result);
         }
+      }
 
-        options.setArriveBy(true);
-        final ShortestPathTree spt2 = aStar
-            .getShortestPathTree(options);
-        final InferredPath revResult;
-        if (!spt2.getPaths().isEmpty()) {
-          revResult = copyAStarResults(spt2.getPaths().get(0), true);
-          if (revResult != null) {
-            paths.add(revResult);
-            revResult.setEndVertex(endVertex);
-            revResult.setStartVertex(startVertex);
-          }
+      final ShortestPathTree spt2 = aStar.getSPT(true);
+      final InferredPath revResult;
+      if (!spt2.getPaths().isEmpty()) {
+        revResult = copyAStarResults(spt2.getPaths().get(0), true);
+        if (revResult != null) {
+          paths.add(revResult);
         }
-
-        options.cleanup();
       }
     }
 

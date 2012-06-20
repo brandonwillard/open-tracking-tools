@@ -7,9 +7,11 @@ import gov.sandia.cognition.util.DefaultWeightedValue;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.apache.commons.lang.builder.CompareToBuilder;
 import org.openplans.tools.tracking.impl.InferredGraph.InferredEdge;
+import org.opentripplanner.routing.graph.Edge;
 import org.opentripplanner.routing.graph.Vertex;
 
 import com.google.common.base.Preconditions;
@@ -28,10 +30,8 @@ public class InferredPath implements Comparable<InferredPath> {
 
   private final ImmutableList<PathEdge> edges;
   private final Double totalPathDistance;
-  private Vertex startVertex;
-  private Vertex endVertex;
   public List<Integer> edgeIds = Lists.newArrayList();
-
+  
   private static InferredPath emptyPath = new InferredPath();
 
   private InferredPath() {
@@ -133,10 +133,6 @@ public class InferredPath implements Comparable<InferredPath> {
     return edges;
   }
 
-  public Vertex getEndVertex() {
-    return endVertex;
-  }
-
   /**
    * XXX: the state must have a prior predictive mean.
    * 
@@ -210,10 +206,6 @@ public class InferredPath implements Comparable<InferredPath> {
         pathLogLik);
   }
 
-  public Vertex getStartVertex() {
-    return startVertex;
-  }
-
   public Double getTotalPathDistance() {
     return totalPathDistance;
   }
@@ -225,14 +217,6 @@ public class InferredPath implements Comparable<InferredPath> {
     result = prime * result
         + ((edges == null) ? 0 : edges.hashCode());
     return result;
-  }
-
-  public void setEndVertex(Vertex endVertex) {
-    this.endVertex = endVertex;
-  }
-
-  public void setStartVertex(Vertex startVertex) {
-    this.startVertex = startVertex;
   }
 
   @Override
