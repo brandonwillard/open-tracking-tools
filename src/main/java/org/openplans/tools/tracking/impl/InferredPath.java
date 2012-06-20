@@ -150,7 +150,7 @@ public class InferredPath implements Comparable<InferredPath> {
       if (edge.isEmptyEdge()) {
         filter.predict(edgeBelief, edge, prevEdge);
         // TODO meh?
-        edgePredMarginalLogLik = Double.NEGATIVE_INFINITY;
+        edgePredMarginalLogLik = 0d;
       } else {
         edge.predict(edgeBelief, obs);
         edgePredMarginalLogLik = edge
