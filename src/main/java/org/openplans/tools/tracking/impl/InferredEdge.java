@@ -8,7 +8,7 @@ import gov.sandia.cognition.statistics.distribution.NormalInverseGammaDistributi
 import java.util.List;
 
 import org.apache.commons.lang.builder.CompareToBuilder;
-import org.openplans.tools.tracking.impl.InferredGraph.InferredEdge;
+import org.openplans.tools.tracking.impl.InferredEdge;
 import org.openplans.tools.tracking.impl.util.GeoUtils;
 import org.openplans.tools.tracking.impl.util.OtpGraph;
 import org.opentripplanner.routing.graph.Edge;
