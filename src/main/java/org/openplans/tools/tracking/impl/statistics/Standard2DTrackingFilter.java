@@ -1,4 +1,4 @@
-package org.openplans.tools.tracking.impl;
+package org.openplans.tools.tracking.impl.statistics;
 
 import gov.sandia.cognition.math.ComplexNumber;
 import gov.sandia.cognition.math.matrix.Matrix;

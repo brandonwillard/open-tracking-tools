@@ -11,7 +11,7 @@
  You should have received a copy of the GNU General Public License
  along with this program.  If not, see <http://www.gnu.org/licenses/>. */
 
-package org.openplans.tools.tracking.impl;
+package org.openplans.tools.tracking.impl.graph.paths.algorithms;
 
 import java.util.ArrayList;
 import java.util.Collections;

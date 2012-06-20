@@ -15,6 +15,12 @@ import java.util.Random;
 import jj2000.j2k.NotImplementedError;
 
 import org.apache.commons.lang.builder.CompareToBuilder;
+import org.openplans.tools.tracking.impl.graph.InferredEdge;
+import org.openplans.tools.tracking.impl.graph.InferredGraph;
+import org.openplans.tools.tracking.impl.graph.paths.InferredPath;
+import org.openplans.tools.tracking.impl.graph.paths.PathEdge;
+import org.openplans.tools.tracking.impl.statistics.EdgeTransitionDistributions;
+import org.openplans.tools.tracking.impl.statistics.StandardRoadTrackingFilter;
 
 import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;

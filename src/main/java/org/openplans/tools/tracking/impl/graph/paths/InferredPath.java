@@ -1,4 +1,4 @@
-package org.openplans.tools.tracking.impl;
+package org.openplans.tools.tracking.impl.graph.paths;
 
 import gov.sandia.cognition.math.LogMath;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
@@ -8,6 +8,10 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.commons.lang.builder.CompareToBuilder;
+import org.openplans.tools.tracking.impl.Observation;
+import org.openplans.tools.tracking.impl.VehicleState;
+import org.openplans.tools.tracking.impl.graph.InferredEdge;
+import org.openplans.tools.tracking.impl.statistics.StandardRoadTrackingFilter;
 import org.opentripplanner.routing.graph.Edge;
 
 import com.google.common.base.Preconditions;

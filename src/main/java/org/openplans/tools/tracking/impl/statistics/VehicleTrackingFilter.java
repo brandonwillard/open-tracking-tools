@@ -1,4 +1,4 @@
-package org.openplans.tools.tracking.impl;
+package org.openplans.tools.tracking.impl.statistics;
 
 import gov.sandia.cognition.math.LogMath;
 import gov.sandia.cognition.statistics.DataDistribution;
@@ -13,8 +13,14 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 
+import org.openplans.tools.tracking.impl.Observation;
+import org.openplans.tools.tracking.impl.VehicleState;
 import org.openplans.tools.tracking.impl.VehicleState.InitialParameters;
-import org.openplans.tools.tracking.impl.statistics.StatisticsUtil;
+import org.openplans.tools.tracking.impl.graph.InferredEdge;
+import org.openplans.tools.tracking.impl.graph.InferredGraph;
+import org.openplans.tools.tracking.impl.graph.paths.InferredPath;
+import org.openplans.tools.tracking.impl.graph.paths.InferredPathEntry;
+import org.openplans.tools.tracking.impl.graph.paths.PathEdge;
 
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Lists;

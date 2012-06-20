@@ -1,5 +1,7 @@
 package org.openplans.tools.tracking.impl;
 
+import org.openplans.tools.tracking.impl.graph.paths.PathEdge;
+
 import gov.sandia.cognition.math.matrix.Vector;
 
 public class VehicleStateConditionalParams {

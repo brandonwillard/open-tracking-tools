@@ -1,4 +1,8 @@
-package org.openplans.tools.tracking.impl;
+package org.openplans.tools.tracking.impl.graph.paths;
+
+import org.openplans.tools.tracking.impl.Observation;
+import org.openplans.tools.tracking.impl.graph.InferredEdge;
+import org.openplans.tools.tracking.impl.statistics.StandardRoadTrackingFilter;
 
 import gov.sandia.cognition.math.matrix.Matrix;
 import gov.sandia.cognition.math.matrix.Vector;

@@ -1,4 +1,4 @@
-package org.openplans.tools.tracking.impl;
+package org.openplans.tools.tracking.impl.statistics;
 
 import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.math.matrix.VectorFactory;
@@ -13,7 +13,15 @@ import java.util.Set;
 
 import jj2000.j2k.NotImplementedError;
 
+import org.openplans.tools.tracking.impl.Observation;
+import org.openplans.tools.tracking.impl.VehicleState;
+import org.openplans.tools.tracking.impl.VehicleStateConditionalParams;
 import org.openplans.tools.tracking.impl.VehicleState.InitialParameters;
+import org.openplans.tools.tracking.impl.graph.InferredEdge;
+import org.openplans.tools.tracking.impl.graph.InferredGraph;
+import org.openplans.tools.tracking.impl.graph.paths.InferredPath;
+import org.openplans.tools.tracking.impl.graph.paths.InferredPathEntry;
+import org.openplans.tools.tracking.impl.graph.paths.PathEdge;
 import org.opentripplanner.routing.edgetype.StreetEdge;
 import org.opentripplanner.routing.graph.Edge;
 

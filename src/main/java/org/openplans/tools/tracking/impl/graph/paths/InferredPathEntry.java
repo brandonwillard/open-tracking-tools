@@ -1,9 +1,11 @@
-package org.openplans.tools.tracking.impl;
+package org.openplans.tools.tracking.impl.graph.paths;
 
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 import gov.sandia.cognition.util.DefaultWeightedValue;
 
 import java.util.Map;
+
+import org.openplans.tools.tracking.impl.statistics.StandardRoadTrackingFilter;
 
 import com.google.common.base.Objects;
 import com.google.common.collect.ComparisonChain;

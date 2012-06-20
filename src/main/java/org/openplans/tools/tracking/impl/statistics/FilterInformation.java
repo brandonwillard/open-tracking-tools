@@ -1,10 +1,13 @@
-package org.openplans.tools.tracking.impl;
+package org.openplans.tools.tracking.impl.statistics;
 
 import gov.sandia.cognition.statistics.DataDistribution;
 
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Set;
+
+import org.openplans.tools.tracking.impl.VehicleState;
+import org.openplans.tools.tracking.impl.graph.paths.InferredPath;
 
 import com.google.common.base.Objects;
 

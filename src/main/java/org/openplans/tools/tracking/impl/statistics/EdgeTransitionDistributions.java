@@ -1,4 +1,4 @@
-package org.openplans.tools.tracking.impl;
+package org.openplans.tools.tracking.impl.statistics;
 
 import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.math.matrix.VectorFactory;
@@ -14,6 +14,8 @@ import java.util.List;
 import java.util.Random;
 
 import org.apache.commons.lang.builder.CompareToBuilder;
+import org.openplans.tools.tracking.impl.graph.InferredEdge;
+import org.openplans.tools.tracking.impl.graph.InferredGraph;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;

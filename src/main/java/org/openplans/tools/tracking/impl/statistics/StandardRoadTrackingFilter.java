@@ -1,4 +1,4 @@
-package org.openplans.tools.tracking.impl;
+package org.openplans.tools.tracking.impl.statistics;
 
 import gov.sandia.cognition.math.ComplexNumber;
 import gov.sandia.cognition.math.matrix.Matrix;
@@ -14,6 +14,7 @@ import gov.sandia.cognition.util.CloneableSerializable;
 
 import java.util.Map.Entry;
 
+import org.openplans.tools.tracking.impl.graph.paths.PathEdge;
 import org.openplans.tools.tracking.impl.util.GeoUtils;
 
 import com.google.common.base.Preconditions;

@@ -1,4 +1,4 @@
-package org.openplans.tools.tracking.impl;
+package org.openplans.tools.tracking.impl.graph.paths.algorithms;
 
 import java.util.List;
 
@@ -31,7 +31,7 @@ public class MultiDestinationAStar implements
 
   private final Edge start;
 
-  MultiDestinationAStar(Graph graph, List<Edge> end,
+  public MultiDestinationAStar(Graph graph, List<Edge> end,
     Coordinate center, double radius, Edge start) {
     this.graph = graph;
     this.end = end;
@@ -60,7 +60,7 @@ public class MultiDestinationAStar implements
     return computeForwardWeight(s, target);
   }
 
-  ShortestPathTree getSPT(boolean arriveBy) {
+  public ShortestPathTree getSPT(boolean arriveBy) {
     // set up
     final GenericAStar astar = new GenericAStar();
     astar.setSearchTerminationStrategy(this);
@@ -74,7 +74,11 @@ public class MultiDestinationAStar implements
     final Vertex bogus = new IntersectionVertex(graph, bogusName, 
         startVertex.getCoordinate(), bogusName);
     
-    req.setRoutingContext(graph, startVertex, bogus);
+    if (!arriveBy) {
+      req.setRoutingContext(graph, startVertex, bogus);
+    } else {
+      req.setRoutingContext(graph, bogus, startVertex);
+    }
     req.rctx.remainingWeightHeuristic = this;
     
     final ShortestPathTree result = astar.getShortestPathTree(req);
