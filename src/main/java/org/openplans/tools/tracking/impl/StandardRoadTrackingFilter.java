@@ -306,7 +306,7 @@ public class StandardRoadTrackingFilter implements
         || belief.getInputDimensionality() == 4);
     Preconditions.checkNotNull(edge);
 
-    if (edge == PathEdge.getEmptyPathEdge()) {
+    if (edge.isEmptyEdge()) {
       if (belief.getInputDimensionality() == 4) {
         /*-
          * Predict free-movement
@@ -382,7 +382,7 @@ public class StandardRoadTrackingFilter implements
     if (belief.getInputDimensionality() == 4)
       return;
 
-    Preconditions.checkArgument(edge != PathEdge.getEmptyPathEdge());
+    Preconditions.checkArgument(!edge.isEmptyEdge());
 
     final Entry<LineSegment, Double> segmentDist = getDistanceToStartOfSegment(
         edge, belief.getMean().getElement(0));
@@ -423,7 +423,7 @@ public class StandardRoadTrackingFilter implements
     if (belief.getInputDimensionality() == 2)
       return;
 
-    Preconditions.checkArgument(edge != PathEdge.getEmptyPathEdge());
+    Preconditions.checkArgument(!edge.isEmptyEdge());
 
     final Vector m = belief.getMean().clone();
     final Matrix C = belief.getCovariance().clone();
@@ -621,7 +621,7 @@ public class StandardRoadTrackingFilter implements
   public static void invertProjection(MultivariateGaussian dist,
     PathEdge edge) {
     Preconditions.checkNotNull(edge);
-    Preconditions.checkArgument(edge != PathEdge.getEmptyPathEdge());
+    Preconditions.checkArgument(!edge.isEmptyEdge());
     Preconditions.checkArgument(dist.getInputDimensionality() == 2
         || dist.getInputDimensionality() == 4);
 

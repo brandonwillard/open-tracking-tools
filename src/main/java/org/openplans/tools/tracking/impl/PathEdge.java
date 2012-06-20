@@ -17,7 +17,7 @@ public class PathEdge implements Comparable<PathEdge> {
   private final Double distToStartOfEdge;
 
   private static PathEdge emptyPathEdge = new PathEdge(
-      InferredGraph.getEmptyEdge());
+      InferredEdge.getEmptyEdge());
 
   private PathEdge(InferredEdge edge) {
     this.edge = edge;
@@ -25,7 +25,7 @@ public class PathEdge implements Comparable<PathEdge> {
   }
 
   private PathEdge(InferredEdge edge, double distToStartOfEdge) {
-    Preconditions.checkArgument(edge != InferredGraph.getEmptyEdge());
+    Preconditions.checkArgument(!edge.isEmptyEdge());
     this.edge = edge;
     this.distToStartOfEdge = distToStartOfEdge;
   }
@@ -89,6 +89,10 @@ public class PathEdge implements Comparable<PathEdge> {
     return result;
   }
 
+  public boolean isEmptyEdge() {
+    return this == emptyPathEdge;
+  }
+  
   public double marginalPredictiveLogLikelihood(
     MultivariateGaussian beliefPrediction) {
     Preconditions.checkArgument(beliefPrediction
@@ -161,13 +165,16 @@ public class PathEdge implements Comparable<PathEdge> {
 
   @Override
   public String toString() {
-    return "PathEdge [edge=" + edge.getEdgeId() + ", distToStartOfEdge="
-        + distToStartOfEdge + "]";
+    if (this == emptyPathEdge)
+      return "PathEdge [empty edge]";
+    else
+      return "PathEdge [edge=" + edge.getEdgeId()
+          + ", distToStartOfEdge=" + distToStartOfEdge + "]";
   }
 
   public static PathEdge getEdge(InferredEdge infEdge) {
     PathEdge edge;
-    if (infEdge == InferredGraph.getEmptyEdge()) {
+    if (infEdge.isEmptyEdge()) {
       edge = PathEdge.getEmptyPathEdge();
     } else {
       edge = new PathEdge(infEdge, 0d);
@@ -178,7 +185,7 @@ public class PathEdge implements Comparable<PathEdge> {
   public static PathEdge getEdge(InferredEdge infEdge,
     double distToStart) {
     PathEdge edge;
-    if (infEdge == InferredGraph.getEmptyEdge()) {
+    if (infEdge.isEmptyEdge()) {
       edge = PathEdge.getEmptyPathEdge();
     } else {
       edge = new PathEdge(infEdge, distToStart);

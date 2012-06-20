@@ -4,15 +4,11 @@ import gov.sandia.cognition.math.LogMath;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 import gov.sandia.cognition.util.DefaultWeightedValue;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import org.apache.commons.lang.builder.CompareToBuilder;
 import org.openplans.tools.tracking.impl.InferredGraph.InferredEdge;
-import org.opentripplanner.routing.graph.Edge;
-import org.opentripplanner.routing.graph.Vertex;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
@@ -31,7 +27,7 @@ public class InferredPath implements Comparable<InferredPath> {
   private final ImmutableList<PathEdge> edges;
   private final Double totalPathDistance;
   public List<Integer> edgeIds = Lists.newArrayList();
-  
+
   private static InferredPath emptyPath = new InferredPath();
 
   private InferredPath() {
@@ -45,7 +41,7 @@ public class InferredPath implements Comparable<InferredPath> {
 
     PathEdge lastEdge = null;
     for (final PathEdge edge : edges) {
-      if (edge != PathEdge.getEmptyPathEdge()) {
+      if (!edge.isEmptyEdge()) {
         lastEdge = edge;
       }
       edgeIds.add(edge.getInferredEdge().getEdgeId());
@@ -55,28 +51,9 @@ public class InferredPath implements Comparable<InferredPath> {
   }
 
   private InferredPath(InferredEdge inferredEdge) {
-    Preconditions.checkArgument(inferredEdge != InferredGraph
-        .getEmptyEdge());
+    Preconditions.checkArgument(!inferredEdge.isEmptyEdge());
     this.edges = ImmutableList.of(PathEdge.getEdge(inferredEdge, 0d));
     this.totalPathDistance = inferredEdge.getLength();
-  }
-  
-  public static InferredPath getInferredPath(PathEdge pathEdge) {
-    if (pathEdge == PathEdge.getEmptyPathEdge())
-      return emptyPath;
-    else
-      return new InferredPath(ImmutableList.of(pathEdge));
-  }
-  
-  public static InferredPath getInferredPath(InferredEdge inferredEdge) {
-    if (inferredEdge == InferredEdge.getEmptyEdge())
-      return emptyPath;
-    else
-      return new InferredPath(inferredEdge);
-  }
-  
-  public static InferredPath getInferredPath(List<PathEdge> edges) {
-    return new InferredPath(ImmutableList.copyOf(edges));
   }
 
   @Override
@@ -108,6 +85,10 @@ public class InferredPath implements Comparable<InferredPath> {
     return true;
   }
 
+  public boolean isEmptyPath() {
+    return this == emptyPath;
+  }
+  
   /**
    * Returns the edge that covers the given distance, or null.
    * 
@@ -143,7 +124,8 @@ public class InferredPath implements Comparable<InferredPath> {
   public InferredPathEntry getPredictiveLogLikelihood(
     Observation obs, VehicleState state) {
 
-    final MultivariateGaussian beliefPrediction = state.getBelief().clone();
+    final MultivariateGaussian beliefPrediction = state.getBelief()
+        .clone();
     final StandardRoadTrackingFilter filter = state
         .getMovementFilter();
 
@@ -165,7 +147,7 @@ public class InferredPath implements Comparable<InferredPath> {
       final MultivariateGaussian edgeBelief = beliefPrediction
           .clone();
       final double edgePredMarginalLogLik;
-      if (edge == PathEdge.getEmptyPathEdge()) {
+      if (edge.isEmptyEdge()) {
         filter.predict(edgeBelief, edge, prevEdge);
         // TODO meh?
         edgePredMarginalLogLik = Double.NEGATIVE_INFINITY;
@@ -221,12 +203,33 @@ public class InferredPath implements Comparable<InferredPath> {
 
   @Override
   public String toString() {
-    return "InferredPath [edges=" + edgeIds + ", totalPathDistance="
-        + totalPathDistance + "]";
+    if (this == emptyPath)
+      return "InferredPath [empty path]";
+    else
+      return "InferredPath [edges=" + edgeIds
+          + ", totalPathDistance=" + totalPathDistance + "]";
   }
 
   public static InferredPath getEmptyPath() {
     return emptyPath;
+  }
+
+  public static InferredPath getInferredPath(InferredEdge inferredEdge) {
+    if (inferredEdge.isEmptyEdge())
+      return emptyPath;
+    else
+      return new InferredPath(inferredEdge);
+  }
+
+  public static InferredPath getInferredPath(List<PathEdge> edges) {
+    return new InferredPath(ImmutableList.copyOf(edges));
+  }
+
+  public static InferredPath getInferredPath(PathEdge pathEdge) {
+    if (pathEdge.isEmptyEdge())
+      return emptyPath;
+    else
+      return new InferredPath(ImmutableList.of(pathEdge));
   }
 
 }

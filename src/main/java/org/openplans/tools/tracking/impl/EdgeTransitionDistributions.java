@@ -185,7 +185,7 @@ public class EdgeTransitionDistributions extends
   }
 
   public double evaluate(InferredEdge from, InferredEdge to) {
-    if (from == InferredEdge.getEmptyEdge()) {
+    if (from.isEmptyEdge()) {
       return freeMotionTransPrior.getProbabilityFunction().evaluate(
           getTransitionType(from, to));
     } else {
@@ -222,7 +222,7 @@ public class EdgeTransitionDistributions extends
   }
 
   public double logEvaluate(InferredEdge from, InferredEdge to) {
-    if (from == InferredEdge.getEmptyEdge()) {
+    if (from.isEmptyEdge()) {
       return freeMotionTransPrior.getProbabilityFunction()
           .logEvaluate(getTransitionType(from, to));
     } else {
@@ -234,7 +234,7 @@ public class EdgeTransitionDistributions extends
   public double predictiveLogLikelihood(InferredEdge from,
     InferredEdge to) {
     final Vector state = getTransitionType(from, to);
-    if (from == InferredEdge.getEmptyEdge()) {
+    if (from.isEmptyEdge()) {
       final MultivariatePolyaDistribution predDist = freeMotionTransEstimator
           .createPredictiveDistribution(freeMotionTransProbPrior);
       return predDist.getProbabilityFunction().logEvaluate(state);
@@ -248,25 +248,25 @@ public class EdgeTransitionDistributions extends
   public InferredEdge sample(Random rng,
     List<InferredEdge> transferEdges, InferredEdge currentEdge) {
 
-    Preconditions.checkArgument(!transferEdges.contains(InferredGraph
+    Preconditions.checkArgument(!transferEdges.contains(InferredEdge
         .getEmptyEdge()));
     Preconditions.checkNotNull(currentEdge);
     Preconditions.checkNotNull(transferEdges);
 
-    if (currentEdge == InferredGraph.getEmptyEdge()) {
+    if (currentEdge == InferredEdge.getEmptyEdge()) {
       /*
        * We're currently in free-motion. If there are transfer edges, then
        * sample from those.
        */
       if (transferEdges.isEmpty()) {
-        return InferredGraph.getEmptyEdge();
+        return InferredEdge.getEmptyEdge();
       } else {
         final Vector sample = this.freeMotionTransPrior.sample(rng);
 
         if (sample.equals(stateOffToOn)) {
           return transferEdges.get(rng.nextInt(transferEdges.size()));
         } else {
-          return InferredGraph.getEmptyEdge();
+          return InferredEdge.getEmptyEdge();
         }
       }
     } else {
@@ -277,7 +277,7 @@ public class EdgeTransitionDistributions extends
       final Vector sample = this.edgeMotionTransPrior.sample(rng);
 
       if (sample.equals(stateOnToOff) || transferEdges.isEmpty()) {
-        return InferredGraph.getEmptyEdge();
+        return InferredEdge.getEmptyEdge();
       } else {
         final List<InferredEdge> support = Lists
             .newArrayList(transferEdges);
@@ -298,7 +298,7 @@ public class EdgeTransitionDistributions extends
 
   public void update(InferredEdge from, InferredEdge to) {
     final Vector transType = getTransitionType(from, to);
-    if (from == InferredEdge.getEmptyEdge()) {
+    if (from.isEmptyEdge()) {
       freeMotionTransEstimator.update(
           freeMotionTransProbPrior, transType);
     } else {
@@ -325,14 +325,14 @@ public class EdgeTransitionDistributions extends
 
   public static Vector getTransitionType(InferredEdge from,
     InferredEdge to) {
-    if (from == InferredGraph.getEmptyEdge()) {
-      if (to == InferredGraph.getEmptyEdge()) {
+    if (from.isEmptyEdge()) {
+      if (to.isEmptyEdge()) {
         return stateOffToOff;
       } else {
         return stateOffToOn;
       }
     } else {
-      if (to != InferredGraph.getEmptyEdge()) {
+      if (!to.isEmptyEdge()) {
         return stateOnToOn;
       } else {
         return stateOnToOff;

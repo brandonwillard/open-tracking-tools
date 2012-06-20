@@ -18,7 +18,6 @@ import org.openplans.tools.tracking.impl.VehicleState.InitialParameters;
 import org.opentripplanner.routing.edgetype.StreetEdge;
 import org.opentripplanner.routing.graph.Edge;
 
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Sets;
 
 public class VehicleTrackingFilterUpdater implements
@@ -122,7 +121,8 @@ public class VehicleTrackingFilterUpdater implements
         final InferredEdge edge = inferredGraph
             .getInferredEdge(nativeEdge);
         final PathEdge pathEdge = PathEdge.getEdge(edge, 0d);
-        final InferredPath path = InferredPath.getInferredPath(pathEdge);
+        final InferredPath path = InferredPath
+            .getInferredPath(pathEdge);
         evaluatedPaths.add(new InferredPathEntry(
             path, null, null, Double.NEGATIVE_INFINITY));
 
@@ -144,7 +144,7 @@ public class VehicleTrackingFilterUpdater implements
      */
     final VehicleState state = new VehicleState(
         this.inferredGraph, initialObservation,
-        InferredGraph.getEmptyEdge(), parameters);
+        InferredEdge.getEmptyEdge(), parameters);
 
     final double lik = state.getProbabilityFunction().evaluate(
         new VehicleStateConditionalParams(initialObservation

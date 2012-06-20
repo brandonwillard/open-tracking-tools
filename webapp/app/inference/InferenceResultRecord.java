@@ -307,7 +307,7 @@ public class InferenceResultRecord {
 
     mean = O.times(gbelief.getMean().clone());
 
-    if (currentEdge == PathEdge.getEmptyPathEdge()) {
+    if (currentEdge.isEmptyEdge()) {
       /*-
        * TODO only implemented for off-road
        * FIXME results look fishy
@@ -347,7 +347,7 @@ public class InferenceResultRecord {
     if (path.getTotalPathDistance() != null)
       pathDirection = path.getTotalPathDistance() > 0d ? 1d : -1d;
     for (final PathEdge edge : path.getEdges()) {
-      if (edge == PathEdge.getEmptyPathEdge())
+      if (edge.isEmptyEdge())
         continue;
       final double edgeMean = edge.getInferredEdge()
           .getVelocityPrecisionDist().getLocation();

@@ -153,7 +153,7 @@ public class Simulation {
       }
 
       inferredGraph.getNearbyEdges(initialObs.getProjectedPoint());
-      final List<InferredEdge> edges = Lists.newArrayList(InferredGraph
+      final List<InferredEdge> edges = Lists.newArrayList(InferredEdge
           .getEmptyEdge());
       edges.addAll(this.inferredGraph.getNearbyEdges(initialObs.getProjectedPoint()));
       Set<InferredPathEntry> evaluatedPaths = Sets.newHashSet();
@@ -162,7 +162,7 @@ public class Simulation {
       InferredPath path = null;
       for (InferredEdge edge : edges) {
         final InferredPath thisPath;
-        if (edge == InferredEdge.getEmptyEdge()) {
+        if (edge.isEmptyEdge()) {
           thisPath = InferredPath.getEmptyPath();
         } else {
           thisPath = InferredPath.getInferredPath(edge);
@@ -302,7 +302,7 @@ public class Simulation {
             + currentEdge.getInferredEdge().getLength()) {
 
       final List<InferredEdge> transferEdges = Lists.newArrayList();
-      if (currentEdge.getInferredEdge() == InferredGraph.getEmptyEdge()) {
+      if (currentEdge.getInferredEdge() == InferredEdge.getEmptyEdge()) {
         final Vector projLocation = StandardRoadTrackingFilter.getOg().times(
             belief.getMean());
         transferEdges.addAll(this.inferredGraph.getNearbyEdges(projLocation));
@@ -326,7 +326,7 @@ public class Simulation {
       final InferredEdge sampledEdge = edgeTransDist.sample(rng, transferEdges,
           currentEdge.getInferredEdge());
 
-      if (sampledEdge == InferredGraph.getEmptyEdge()) {
+      if (sampledEdge == InferredEdge.getEmptyEdge()) {
 
         /*
          * Off-road, so just return/add the empty path and be done

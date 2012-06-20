@@ -24,6 +24,9 @@ public class StatisticsUtil {
       totalLikelihood = LogMath.add(
           weight.getWeight(), totalLikelihood);
     }
+    
+    if (totalLikelihood == Double.NEGATIVE_INFINITY)
+      return null;
 
     final DataDistribution<SupportType> result = new DefaultDataDistribution<SupportType>();
 
@@ -42,6 +45,9 @@ public class StatisticsUtil {
     // });
 
     for (final DefaultWeightedValue<SupportType> entry : collection) {
+      if (entry.getWeight() == Double.NEGATIVE_INFINITY
+          || totalLikelihood == Double.NEGATIVE_INFINITY)
+        continue;
       final double weight = entry.getWeight() - totalLikelihood;
       result.set(entry.getValue(), Math.exp(weight));
     }
@@ -61,6 +67,9 @@ public class StatisticsUtil {
       totalLikelihood = LogMath.add(
           weight.getWeight(), totalLikelihood);
     }
+    
+    if (totalLikelihood == Double.NEGATIVE_INFINITY)
+      return null;
 
     /*
      * Sort before putting in the data distribution
@@ -81,6 +90,8 @@ public class StatisticsUtil {
 
     final DataDistribution<SupportType> result = new DefaultDataDistribution<SupportType>();
     for (final Entry<SupportType, DefaultWeightedValue<DistributionType>> entry : entryList) {
+      if (entry.getValue().getWeight() == Double.NEGATIVE_INFINITY)
+        continue;
       final double weight = entry.getValue().getWeight()
           - totalLikelihood;
       result.set(entry.getKey(), Math.exp(weight));

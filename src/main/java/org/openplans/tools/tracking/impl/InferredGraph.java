@@ -13,9 +13,6 @@ import java.util.Set;
 import org.apache.commons.lang.builder.CompareToBuilder;
 import org.openplans.tools.tracking.impl.util.GeoUtils;
 import org.openplans.tools.tracking.impl.util.OtpGraph;
-import org.opentripplanner.routing.algorithm.GenericAStar;
-import org.opentripplanner.routing.core.RoutingRequest;
-import org.opentripplanner.routing.core.TraverseMode;
 import org.opentripplanner.routing.edgetype.StreetEdge;
 import org.opentripplanner.routing.graph.Edge;
 import org.opentripplanner.routing.graph.Graph;
@@ -27,7 +24,6 @@ import com.google.common.base.Preconditions;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -72,6 +68,10 @@ public class InferredGraph {
      * This is the empty edge, which stands for free movement
      */
     private final static InferredGraph.InferredEdge emptyEdge = new InferredGraph.InferredEdge();
+
+    public static InferredEdge getEmptyEdge() {
+      return InferredEdge.emptyEdge;
+    }
 
     private InferredEdge() {
       this.edgeId = null;
@@ -196,6 +196,10 @@ public class InferredGraph {
 
     public Coordinate getCenterPointCoord() {
       return this.posGeometry.getCentroid().getCoordinate();
+    }
+    
+    public boolean isEmptyEdge() {
+      return this == emptyEdge;
     }
 
     public Coordinate getCoordOnEdge(Vector obsPoint) {
@@ -357,12 +361,11 @@ public class InferredGraph {
 
     @Override
     public String toString() {
-      return "InferredEdge [edgeId=" + edgeId + ", length=" + length
-          + "]";
-    }
-
-    public static InferredGraph.InferredEdge getEmptyEdge() {
-      return emptyEdge;
+      if (this == emptyEdge)
+        return "InferredEdge [empty edge]";
+      else
+        return "InferredEdge [edgeId=" + edgeId + ", length="
+            + length + "]";
     }
 
   }
@@ -552,7 +555,7 @@ public class InferredGraph {
     final Set<Edge> startEdges = Sets.newHashSet();
     final double stateStdDevDistance = 1.98d * Math.sqrt(key
         .getState().getBelief().getCovariance().normFrobenius());
-    if (currentEdge != InferredEdge.getEmptyEdge()) {
+    if (!currentEdge.isEmptyEdge()) {
 
       startEdges.add(currentEdge.getEdge());
 
@@ -583,24 +586,29 @@ public class InferredGraph {
       endEdges.add(edge);
     }
 
-    List<Edge> endEdgeList = Lists.newArrayList(endEdges);
+    final List<Edge> endEdgeList = Lists.newArrayList(endEdges);
     for (final Edge startEdge : startEdges) {
-      final MultiDestinationAStar aStar = new MultiDestinationAStar(this.graph, 
-          endEdgeList, toCoord, obsStdDevDistance, startEdge);
-      
+      final MultiDestinationAStar aStar = new MultiDestinationAStar(
+          this.graph, endEdgeList, toCoord, obsStdDevDistance,
+          startEdge);
+
       final ShortestPathTree spt1 = aStar.getSPT(false);
       final ShortestPathTree spt2 = aStar.getSPT(true);
-      
-      for (Edge endEdge : endEdgeList) {
-        GraphPath forwardPath = spt1.getPath(endEdge.getFromVertex(), false);
+
+      for (final Edge endEdge : endEdgeList) {
+        final GraphPath forwardPath = spt1.getPath(
+            endEdge.getFromVertex(), false);
         if (forwardPath != null) {
-          InferredPath forwardResult = copyAStarResults(forwardPath, false);
+          final InferredPath forwardResult = copyAStarResults(
+              forwardPath, false);
           if (forwardResult != null)
             paths.add(forwardResult);
         }
-        GraphPath backwardPath = spt2.getPath(endEdge.getFromVertex(), false);
+        final GraphPath backwardPath = spt2.getPath(
+            endEdge.getFromVertex(), false);
         if (backwardPath != null) {
-          InferredPath backwardResult = copyAStarResults(backwardPath, true);
+          final InferredPath backwardResult = copyAStarResults(
+              backwardPath, true);
           if (backwardResult != null)
             paths.add(backwardResult);
         }
@@ -740,7 +748,7 @@ public class InferredGraph {
     Preconditions.checkNotNull(fromState);
 
     final Coordinate fromCoord;
-    if (fromState.getInferredEdge() != InferredEdge.getEmptyEdge()) {
+    if (!fromState.getInferredEdge().isEmptyEdge()) {
       fromCoord = fromState.getInferredEdge().getCenterPointCoord();
     } else {
       fromCoord = GeoUtils.convertToLatLon(fromState
@@ -752,10 +760,6 @@ public class InferredGraph {
         fromState, fromCoord, toCoord, 0d);
     paths.addAll(pathsCache.getUnchecked(startEndEntry));
     return paths;
-  }
-
-  public static InferredEdge getEmptyEdge() {
-    return InferredEdge.emptyEdge;
   }
 
 }

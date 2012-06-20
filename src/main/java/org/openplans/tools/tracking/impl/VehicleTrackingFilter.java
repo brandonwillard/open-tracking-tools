@@ -217,7 +217,7 @@ public class VehicleTrackingFilter extends
           updatedEdgeTransDist.update(
               prevEdge, edge.getInferredEdge());
 
-        if (edge != PathEdge.getEmptyPathEdge()) {
+        if (!edge.isEmptyEdge()) {
           edge
               .getInferredEdge()
               .getVelocityEstimator()

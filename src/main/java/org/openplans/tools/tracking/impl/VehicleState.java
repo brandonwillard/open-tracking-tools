@@ -116,7 +116,7 @@ public class VehicleState implements
        * Movement likelihood Note: should be predictive for PL
        */
       PathEdge edge;
-      if (this.getInferredEdge() == InferredGraph.getEmptyEdge()) {
+      if (this.getInferredEdge().isEmptyEdge()) {
         edge = PathEdge.getEmptyPathEdge();
       } else {
         edge = PathEdge.getEdge(
@@ -207,7 +207,7 @@ public class VehicleState implements
     Preconditions.checkArgument(timeDiff > 0d);
     this.movementFilter.setCurrentTimeDiff(timeDiff);
 
-    if (inferredEdge == InferredGraph.getEmptyEdge()) {
+    if (inferredEdge.isEmptyEdge()) {
       this.belief = movementFilter.getGroundFilter()
           .createInitialLearnedObject();
       final Vector xyPoint = initialObservation.getProjectedPoint();
@@ -256,8 +256,8 @@ public class VehicleState implements
     EdgeTransitionDistributions edgeTransitionDist, PathEdge edge,
     InferredPath path, VehicleState state) {
 
-    Preconditions.checkArgument(!(belief.getInputDimensionality() == 2
-        && edge == PathEdge.getEmptyPathEdge()));
+    Preconditions
+        .checkArgument(!(belief.getInputDimensionality() == 2 && edge.isEmptyEdge()));
     Preconditions.checkNotNull(state);
     Preconditions.checkNotNull(graph);
     Preconditions.checkNotNull(observation);
@@ -447,8 +447,7 @@ public class VehicleState implements
   public Vector getMeanLocation() {
     Vector v;
     if (belief.getInputDimensionality() == 2) {
-      Preconditions.checkArgument(this.edge != InferredGraph
-          .getEmptyEdge());
+      Preconditions.checkArgument(!this.edge.isEmptyEdge());
       final MultivariateGaussian projBelief = belief.clone();
       StandardRoadTrackingFilter.invertProjection(
           projBelief, PathEdge.getEdge(this.edge, 0d));

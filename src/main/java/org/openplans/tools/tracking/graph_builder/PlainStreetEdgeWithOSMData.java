@@ -26,7 +26,7 @@ public class PlainStreetEdgeWithOSMData extends PlainStreetEdge {
 
   private final long toNode;
 
-  private ArrayList<TurnVertexWithOSMData> turnVertices = new ArrayList<TurnVertexWithOSMData>();
+  private final ArrayList<TurnVertexWithOSMData> turnVertices = new ArrayList<TurnVertexWithOSMData>();
 
   public PlainStreetEdgeWithOSMData(long way, long fromNode,
     long toNode, IntersectionVertex startEndpoint,
@@ -44,8 +44,8 @@ public class PlainStreetEdgeWithOSMData extends PlainStreetEdge {
   public TurnVertex createTurnVertex(Graph graph) {
     final String id = getId();
     final TurnVertexWithOSMData tv = new TurnVertexWithOSMData(
-        this, way, fromNode, toNode, graph, id, getGeometry(), getName(),
-        getLength(), back, getNotes());
+        this, way, fromNode, toNode, graph, id, getGeometry(),
+        getName(), getLength(), back, getNotes());
     tv.setWheelchairNotes(getWheelchairNotes());
     tv.setWheelchairAccessible(isWheelchairAccessible());
     tv.setPermission(getPermission());
@@ -65,11 +65,11 @@ public class PlainStreetEdgeWithOSMData extends PlainStreetEdge {
     return toNode;
   }
 
-  public long getWay() {
-    return way;
-  }
-
   public Collection<TurnVertexWithOSMData> getTurnVertices() {
     return turnVertices;
+  }
+
+  public long getWay() {
+    return way;
   }
 }
