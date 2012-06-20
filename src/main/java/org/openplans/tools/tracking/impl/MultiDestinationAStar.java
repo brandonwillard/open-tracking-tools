@@ -75,6 +75,7 @@ public class MultiDestinationAStar implements
     req.rctx.remainingWeightHeuristic = this;
     req.setArriveBy(arriveBy);
     final ShortestPathTree result = astar.getShortestPathTree(req);
+    graph.removeVertex(bogus);
     req.cleanup();
     return result;
 
