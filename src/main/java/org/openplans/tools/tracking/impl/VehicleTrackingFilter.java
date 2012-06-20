@@ -38,20 +38,47 @@ public class VehicleTrackingFilter extends
 
   private DataDistribution<VehicleState> previousResampleDist;
 
-  private final Map<Observation, FilterInformation> filterInfo = Maps.newHashMap();
+  private final Map<Observation, FilterInformation> filterInfo = Maps
+      .newHashMap();
 
   private final boolean isDebug;
 
   private final Observation initialObservation;
 
   public VehicleTrackingFilter(Observation obs,
-    InferredGraph inferredGraph, InitialParameters parameters, boolean isDebug) {
+    InferredGraph inferredGraph, InitialParameters parameters,
+    boolean isDebug) {
     this.isDebug = isDebug;
     this.setNumParticles(50);
     this.inferredGraph = inferredGraph;
     this.setUpdater(new VehicleTrackingFilterUpdater(
         obs, this.inferredGraph, parameters));
     this.initialObservation = obs;
+  }
+
+  @Override
+  public DataDistribution<VehicleState> createInitialLearnedObject() {
+    final DataDistribution<VehicleState> dist = super
+        .createInitialLearnedObject();
+    if (isDebug) {
+      final Set<InferredPathEntry> evaledPaths = Sets.newHashSet();
+      for (final VehicleState state : dist.getDomain()) {
+        // TODO FIXME provide real info here
+        evaledPaths
+            .add(new InferredPathEntry(
+                state.getPath(),
+                Collections
+                    .<PathEdge, DefaultWeightedValue<MultivariateGaussian>> emptyMap(),
+                state.getMovementFilter(), Double.NaN));
+      }
+      this.filterInfo.put(initialObservation, new FilterInformation(
+          evaledPaths, dist));
+    }
+    return dist;
+  }
+
+  public FilterInformation getFilterInformation(Observation obs) {
+    return this.filterInfo.get(obs);
   }
 
   @Override
@@ -105,10 +132,10 @@ public class VehicleTrackingFilter extends
       for (final InferredPath path : instStateTransitions) {
         final InferredPathEntry infPath = path
             .getPredictiveLogLikelihood(obs, state);
-        
+
         if (isDebug)
           evaluatedPaths.add(infPath);
-        
+
         totalLogLik = LogMath.add(
             totalLogLik, infPath.getTotalLogLikelihood());
         stateToPaths.put(
@@ -119,7 +146,7 @@ public class VehicleTrackingFilter extends
       resampler.add(new DefaultWeightedValue<VehicleState>(
           state, totalLogLik));
     }
-    
+
     final Random rng = getRandom();
 
     final DataDistribution<VehicleState> resampleDist = StatisticsUtil
@@ -127,9 +154,11 @@ public class VehicleTrackingFilter extends
     @SuppressWarnings("unchecked")
     final ArrayList<? extends VehicleState> smoothedStates = resampleDist
         .sample(rng, getNumParticles());
-    
+
     target.clear();
-    this.filterInfo.put(obs, new FilterInformation(evaluatedPaths, resampleDist));
+    if (isDebug)
+      this.filterInfo.put(obs, new FilterInformation(
+          evaluatedPaths, resampleDist));
 
     /*
      * Propagate states
@@ -138,8 +167,10 @@ public class VehicleTrackingFilter extends
 
       final VehicleState newState = state.clone();
       final DataDistribution<InferredPathEntry> instStateDist = StatisticsUtil
-          .getLogNormalizedDistribution(Lists.newArrayList(stateToPaths.get(newState)));
-      final InferredPathEntry sampledPathEntry = instStateDist.sample(rng);
+          .getLogNormalizedDistribution(Lists
+              .newArrayList(stateToPaths.get(newState)));
+      final InferredPathEntry sampledPathEntry = instStateDist
+          .sample(rng);
 
       /*-
        * Now, if you need to, propagate/sample a predictive location state. 
@@ -150,7 +181,6 @@ public class VehicleTrackingFilter extends
       /*
        * State suffient stats are next (e.g. kalman params)
        */
-
 
       /*
        * Sample the edge we're on.
@@ -172,54 +202,41 @@ public class VehicleTrackingFilter extends
        * Propagate sufficient stats (can be done off-line) Just the edge
        * transitions for now.
        */
-      final StandardRoadTrackingFilter updatedFilter = sampledPathEntry.getFilter().clone();
+      final StandardRoadTrackingFilter updatedFilter = sampledPathEntry
+          .getFilter().clone();
       updatedFilter.measure(
           sampledBelief, obs.getProjectedPoint(), sampledEdge);
-      
-      InferredEdge prevEdge = sampledPathEntry.getPath().getEdges().get(0)
-          .getInferredEdge();
+
+      InferredEdge prevEdge = sampledPathEntry.getPath().getEdges()
+          .get(0).getInferredEdge();
       final EdgeTransitionDistributions updatedEdgeTransDist = newState
           .getEdgeTransitionDist().clone();
-      for (final PathEdge edge : sampledPathEntry.getPath().getEdges()) {
+      for (final PathEdge edge : sampledPathEntry.getPath()
+          .getEdges()) {
         if (prevEdge != null)
-          updatedEdgeTransDist.update(prevEdge, edge.getInferredEdge());
-        
+          updatedEdgeTransDist.update(
+              prevEdge, edge.getInferredEdge());
+
         if (edge != PathEdge.getEmptyPathEdge()) {
-          edge.getInferredEdge().getVelocityEstimator().update(
-              edge.getInferredEdge().getVelocityPrecisionDist(), 
-              sampledBelief.getMean().getElement(1));
+          edge
+              .getInferredEdge()
+              .getVelocityEstimator()
+              .update(
+                  edge.getInferredEdge().getVelocityPrecisionDist(),
+                  sampledBelief.getMean().getElement(1));
         }
-        
+
         prevEdge = edge.getInferredEdge();
       }
 
       final VehicleState newTransState = new VehicleState(
           this.inferredGraph, obs, updatedFilter, sampledBelief,
-          updatedEdgeTransDist, sampledEdge, sampledPathEntry.getPath(), state);
-      
+          updatedEdgeTransDist, sampledEdge,
+          sampledPathEntry.getPath(), state);
+
       target.set(newTransState, 1d / smoothedStates.size());
 
     }
-  }
-
-  public FilterInformation getFilterInformation(Observation obs) {
-    return this.filterInfo.get(obs);
-  }
-
-  @Override
-  public DataDistribution<VehicleState> createInitialLearnedObject() {
-    DataDistribution<VehicleState> dist = super.createInitialLearnedObject();
-    if (isDebug) {
-      Set<InferredPathEntry> evaledPaths = Sets.newHashSet();
-      for (VehicleState state : dist.getDomain()) {
-        // TODO FIXME provide real info here
-        evaledPaths.add(new InferredPathEntry(state.getPath(), 
-            Collections.<PathEdge, DefaultWeightedValue<MultivariateGaussian>>emptyMap(), 
-            state.getMovementFilter(), Double.NaN));
-      }
-      this.filterInfo.put(initialObservation, new FilterInformation(evaledPaths, dist));
-    }
-    return dist;
   }
 
 }

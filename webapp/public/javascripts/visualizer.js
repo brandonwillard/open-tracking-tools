@@ -731,10 +731,12 @@ function renderGraph() {
     //
     // routeList.change(initBlockList);
 
-    if (lines[i].infResults.evaluatedPaths.length > 0) {
-      var evaledPaths = lines[i].infResults.evaluatedPaths;
+    // TODO FIXME must make a separate call to get this
+    // info.  no longer contained in every particle.
+    var evaluatedPaths = lines[i].infResults.evaluatedPaths;
+    if (evaluatedPaths && evaluatedPaths.length > 0) {
       var limit = 500;
-      for ( var k in evaledPaths) {
+      for ( var k in evaluatedPaths) {
         if (k >= limit)
           break;
 
@@ -744,9 +746,9 @@ function renderGraph() {
         var option = jQuery('<option id=' + pathName + '>path' + k + ':'
             + pathStr + '</option>');
         option.attr("value", pathName);
-        option.data("path", evaledPaths[k]);
+        option.data("path", evaluatedPaths[k]);
         pathList.append(option);
-        paths[arrayHash(evaledPaths[k].pathEdgeIds)] = pathName;
+        paths[arrayHash(evaluatedPaths[k].pathEdgeIds)] = pathName;
       }
     }
 

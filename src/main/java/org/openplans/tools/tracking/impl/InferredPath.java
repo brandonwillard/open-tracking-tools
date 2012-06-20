@@ -1,10 +1,10 @@
 package org.openplans.tools.tracking.impl;
 
 import gov.sandia.cognition.math.LogMath;
-import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 import gov.sandia.cognition.util.DefaultWeightedValue;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -12,10 +12,8 @@ import org.apache.commons.lang.builder.CompareToBuilder;
 import org.openplans.tools.tracking.impl.InferredGraph.InferredEdge;
 import org.opentripplanner.routing.graph.Vertex;
 
-import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
@@ -33,7 +31,6 @@ public class InferredPath implements Comparable<InferredPath> {
   private Vertex startVertex;
   private Vertex endVertex;
   public List<Integer> edgeIds = Lists.newArrayList();
-  
 
   private static InferredPath emptyPath = new InferredPath();
 
@@ -42,25 +39,51 @@ public class InferredPath implements Comparable<InferredPath> {
     this.totalPathDistance = null;
   }
 
-  public InferredPath(ImmutableList<PathEdge> edges) {
+  private InferredPath(ImmutableList<PathEdge> edges) {
     Preconditions.checkArgument(edges.size() > 0);
     this.edges = edges;
-    
+
     PathEdge lastEdge = null;
-    for (PathEdge edge : edges) {
+    for (final PathEdge edge : edges) {
       if (edge != PathEdge.getEmptyPathEdge()) {
         lastEdge = edge;
       }
       edgeIds.add(edge.getInferredEdge().getEdgeId());
     }
-    this.totalPathDistance = lastEdge.getDistToStartOfEdge() + lastEdge.getInferredEdge().getLength();
+    this.totalPathDistance = lastEdge.getDistToStartOfEdge()
+        + lastEdge.getInferredEdge().getLength();
   }
 
-  public InferredPath(InferredEdge inferredEdge) {
+  private InferredPath(InferredEdge inferredEdge) {
     Preconditions.checkArgument(inferredEdge != InferredGraph
         .getEmptyEdge());
     this.edges = ImmutableList.of(PathEdge.getEdge(inferredEdge, 0d));
     this.totalPathDistance = inferredEdge.getLength();
+  }
+  
+  public static InferredPath getInferredPath(PathEdge pathEdge) {
+    if (pathEdge == PathEdge.getEmptyPathEdge())
+      return emptyPath;
+    else
+      return new InferredPath(ImmutableList.of(pathEdge));
+  }
+  
+  public static InferredPath getInferredPath(InferredEdge inferredEdge) {
+    if (inferredEdge == InferredEdge.getEmptyEdge())
+      return emptyPath;
+    else
+      return new InferredPath(inferredEdge);
+  }
+  
+  public static InferredPath getInferredPath(List<PathEdge> edges) {
+    return new InferredPath(ImmutableList.copyOf(edges));
+  }
+
+  @Override
+  public int compareTo(InferredPath o) {
+    final CompareToBuilder comparator = new CompareToBuilder();
+    comparator.append(this.edges.toArray(), o.edges.toArray());
+    return comparator.toComparison();
   }
 
   @Override
@@ -74,7 +97,7 @@ public class InferredPath implements Comparable<InferredPath> {
     if (getClass() != obj.getClass()) {
       return false;
     }
-    InferredPath other = (InferredPath) obj;
+    final InferredPath other = (InferredPath) obj;
     if (edges == null) {
       if (other.edges != null) {
         return false;
@@ -110,6 +133,10 @@ public class InferredPath implements Comparable<InferredPath> {
     return edges;
   }
 
+  public Vertex getEndVertex() {
+    return endVertex;
+  }
+
   /**
    * XXX: the state must have a prior predictive mean.
    * 
@@ -120,7 +147,7 @@ public class InferredPath implements Comparable<InferredPath> {
   public InferredPathEntry getPredictiveLogLikelihood(
     Observation obs, VehicleState state) {
 
-    final MultivariateGaussian beliefPrediction = state.getBelief();
+    final MultivariateGaussian beliefPrediction = state.getBelief().clone();
     final StandardRoadTrackingFilter filter = state
         .getMovementFilter();
 
@@ -148,18 +175,19 @@ public class InferredPath implements Comparable<InferredPath> {
         edgePredMarginalLogLik = Double.NEGATIVE_INFINITY;
       } else {
         edge.predict(edgeBelief, obs);
-        edgePredMarginalLogLik = edge.marginalPredictiveLogLikelihood(beliefPrediction);
+        edgePredMarginalLogLik = edge
+            .marginalPredictiveLogLikelihood(beliefPrediction);
       }
 
-      final double edgePredTransLogLik = state.getEdgeTransitionDist()
-          .predictiveLogLikelihood(
+      final double edgePredTransLogLik = state
+          .getEdgeTransitionDist().predictiveLogLikelihood(
               prevEdge.getInferredEdge(), edge.getInferredEdge());
-      
+
       final double localPosVelPredLogLik = filter.logLikelihood(
           obs.getProjectedPoint(), edgeBelief, edge);
-      
-      final double localLogLik = edgePredMarginalLogLik + edgePredTransLogLik
-          + localPosVelPredLogLik;
+
+      final double localLogLik = edgePredMarginalLogLik
+          + edgePredTransLogLik + localPosVelPredLogLik;
 
       Preconditions.checkArgument(!Double.isNaN(localLogLik));
 
@@ -177,8 +205,13 @@ public class InferredPath implements Comparable<InferredPath> {
       prevEdge = edge;
     }
 
-    return new InferredPathEntry(this, edgeToPredictiveBeliefAndLogLikelihood, filter,
+    return new InferredPathEntry(
+        this, edgeToPredictiveBeliefAndLogLikelihood, filter,
         pathLogLik);
+  }
+
+  public Vertex getStartVertex() {
+    return startVertex;
   }
 
   public Double getTotalPathDistance() {
@@ -194,7 +227,14 @@ public class InferredPath implements Comparable<InferredPath> {
     return result;
   }
 
-  
+  public void setEndVertex(Vertex endVertex) {
+    this.endVertex = endVertex;
+  }
+
+  public void setStartVertex(Vertex startVertex) {
+    this.startVertex = startVertex;
+  }
+
   @Override
   public String toString() {
     return "InferredPath [edges=" + edgeIds + ", totalPathDistance="
@@ -203,29 +243,6 @@ public class InferredPath implements Comparable<InferredPath> {
 
   public static InferredPath getEmptyPath() {
     return emptyPath;
-  }
-
-  @Override
-  public int compareTo(InferredPath o) {
-    CompareToBuilder comparator = new CompareToBuilder();
-    comparator.append(this.edges.toArray(), o.edges.toArray());
-    return comparator.toComparison();
-  }
-
-  public Vertex getStartVertex() {
-    return startVertex;
-  }
-
-  public void setStartVertex(Vertex startVertex) {
-    this.startVertex = startVertex;
-  }
-
-  public Vertex getEndVertex() {
-    return endVertex;
-  }
-
-  public void setEndVertex(Vertex endVertex) {
-    this.endVertex = endVertex;
   }
 
 }

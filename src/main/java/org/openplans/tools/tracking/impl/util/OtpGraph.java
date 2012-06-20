@@ -1,6 +1,5 @@
 package org.openplans.tools.tracking.impl.util;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
@@ -64,17 +63,6 @@ public class OtpGraph {
     log.info("Graph loaded..");
   }
 
-  public static List<Edge> filterForStreetEdges(Collection<Edge> edges) {
-    List<Edge> result = Lists.newArrayList();
-    for (Edge out : edges) {
-      if (!(out instanceof TurnEdge || out instanceof OutEdge || out instanceof PlainStreetEdge)) {
-        continue;
-      }
-      result.add((StreetEdge) out);
-    }
-    return result;
-  }
-  
   public Graph getGraph() {
     return graph;
   }
@@ -102,7 +90,7 @@ public class OtpGraph {
   public List<StreetEdge> snapToGraph(Coordinate toCoords) {
 
     Preconditions.checkNotNull(toCoords);
-    
+
     final RoutingRequest options = OtpGraph.defaultOptions;
     /*
      * XXX: indexService uses lon/lat
@@ -112,6 +100,17 @@ public class OtpGraph {
             new Coordinate(toCoords.y, toCoords.x), options, null,
             null);
     return edgeBundle.toEdgeList();
+  }
+
+  public static List<Edge> filterForStreetEdges(Collection<Edge> edges) {
+    final List<Edge> result = Lists.newArrayList();
+    for (final Edge out : edges) {
+      if (!(out instanceof TurnEdge || out instanceof OutEdge || out instanceof PlainStreetEdge)) {
+        continue;
+      }
+      result.add(out);
+    }
+    return result;
   }
 
   public static boolean isStreetEdge(Edge pathEdge) {

@@ -28,7 +28,6 @@ import org.opentripplanner.common.pqueue.BinHeap;
 import org.opentripplanner.graph_builder.impl.map.EndMatchState;
 import org.opentripplanner.graph_builder.impl.map.MatchState;
 import org.opentripplanner.graph_builder.impl.map.MidblockMatchState;
-import org.opentripplanner.routing.edgetype.StreetEdge;
 import org.opentripplanner.routing.graph.Edge;
 import org.opentripplanner.routing.graph.Graph;
 import org.opentripplanner.routing.graph.Vertex;
@@ -80,7 +79,8 @@ public class PathSampler {
       vertexEnvelope = vertexGeometry.getEnvelopeInternal();
       vertexIndex.insert(vertexEnvelope, v);
 
-      for (final Edge e : OtpGraph.filterForStreetEdges(v.getOutgoing())) {
+      for (final Edge e : OtpGraph.filterForStreetEdges(v
+          .getOutgoing())) {
         if (graph.getIdForEdge(e) != null) {
           Envelope envelope;
           final Geometry geometry = e.getGeometry();
@@ -203,12 +203,12 @@ public class PathSampler {
     List nearbyEdges = edgeIndex.query(envelope);
     if (localDistanceThreshold > 0d) {
       while (nearbyEdges.isEmpty()) {
-          envelope.expandBy(localDistanceThreshold);
+        envelope.expandBy(localDistanceThreshold);
         localDistanceThreshold *= 2;
         nearbyEdges = edgeIndex.query(envelope);
       }
     }
-    
+
     // compute initial states
     for (final Object obj : nearbyEdges) {
       final Edge initialEdge = (Edge) obj;

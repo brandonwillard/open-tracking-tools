@@ -96,19 +96,23 @@ public class VehicleTrackingFilterUpdater implements
      * Create initial distributions for all snapped edges
      */
 
-//    final List<StreetEdge> initialEdges = inferredGraph.getNearbyEdges(null)
-//        .getNarratedGraph().snapToGraph(
-//            null, initialObservation.getObsCoords());
-    
-    final StandardRoadTrackingFilter trackingFilter = new StandardRoadTrackingFilter(parameters.getObsVariance(), 
-        parameters.getOffRoadStateVariance(), parameters.getOnRoadStateVariance());
-    final MultivariateGaussian initialBelief = trackingFilter.createInitialLearnedObject();
+    // final List<StreetEdge> initialEdges = inferredGraph.getNearbyEdges(null)
+    // .getNarratedGraph().snapToGraph(
+    // null, initialObservation.getObsCoords());
+
+    final StandardRoadTrackingFilter trackingFilter = new StandardRoadTrackingFilter(
+        parameters.getObsVariance(),
+        parameters.getOffRoadStateVariance(),
+        parameters.getOnRoadStateVariance());
+    final MultivariateGaussian initialBelief = trackingFilter
+        .createInitialLearnedObject();
     final Vector xyPoint = initialObservation.getProjectedPoint();
     initialBelief.setMean(VectorFactory.getDefault().copyArray(
         new double[] { xyPoint.getElement(0), 0d,
             xyPoint.getElement(1), 0d }));
-    final List<StreetEdge> initialEdges = inferredGraph.getNearbyEdges(initialBelief, trackingFilter);
-    
+    final List<StreetEdge> initialEdges = inferredGraph
+        .getNearbyEdges(initialBelief, trackingFilter);
+
     final DataDistribution<VehicleState> initialDist = new DefaultDataDistribution<VehicleState>(
         numParticles);
 
@@ -118,11 +122,10 @@ public class VehicleTrackingFilterUpdater implements
         final InferredEdge edge = inferredGraph
             .getInferredEdge(nativeEdge);
         final PathEdge pathEdge = PathEdge.getEdge(edge, 0d);
-        final InferredPath path = new InferredPath(
-            ImmutableList.of(pathEdge));
-        evaluatedPaths
-            .add(new InferredPathEntry(path, null, null, Double.NEGATIVE_INFINITY));
-        
+        final InferredPath path = InferredPath.getInferredPath(pathEdge);
+        evaluatedPaths.add(new InferredPathEntry(
+            path, null, null, Double.NEGATIVE_INFINITY));
+
         final VehicleState state = new VehicleState(
             this.inferredGraph, initialObservation,
             pathEdge.getInferredEdge(), parameters);
@@ -139,13 +142,14 @@ public class VehicleTrackingFilterUpdater implements
     /*
      * Free-motion
      */
-    final VehicleState state = new VehicleState(this.inferredGraph, initialObservation,
+    final VehicleState state = new VehicleState(
+        this.inferredGraph, initialObservation,
         InferredGraph.getEmptyEdge(), parameters);
-    
+
     final double lik = state.getProbabilityFunction().evaluate(
         new VehicleStateConditionalParams(initialObservation
             .getProjectedPoint()));
-    
+
     initialDist.increment(state, lik);
 
     final DataDistribution<VehicleState> retDist = new DefaultDataDistribution<VehicleState>(

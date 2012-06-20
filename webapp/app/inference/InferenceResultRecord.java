@@ -97,7 +97,7 @@ public class InferenceResultRecord {
     private final VehicleState state;
     private final Double pathDirection;
     private final Map<String, Double> inferredEdge;
-    private final List<EvaluatedPathInfo> evaluatedPaths;
+//    private final List<EvaluatedPathInfo> evaluatedPaths;
 
     public ResultSet(VehicleState vehicleState, VehicleTrackingFilter filter,
       Coordinate meanCoords, Coordinate majorAxisCoords,
@@ -109,7 +109,7 @@ public class InferenceResultRecord {
       this.state = vehicleState;
       this.pathDirection = pathDirection;
       this.inferredEdge = createInferredEdge(); 
-      this.evaluatedPaths = createEvaluatedPaths();
+//      this.evaluatedPaths = createEvaluatedPaths();
       this.filter = filter;
     }
 
@@ -206,10 +206,10 @@ public class InferenceResultRecord {
       return inferredEdge;
     }
 
-    @JsonSerialize
-    public List<EvaluatedPathInfo> getEvaluatedPaths() {
-      return evaluatedPaths;
-    }
+//    @JsonSerialize
+//    public List<EvaluatedPathInfo> getEvaluatedPaths() {
+//      return evaluatedPaths;
+//    }
 
     @JsonIgnore
     public VehicleTrackingFilter getFilter() {
@@ -228,7 +228,7 @@ public class InferenceResultRecord {
   
   private final DataDistribution<VehicleState> postDistribution;
 
-  private final DataDistribution<VehicleState> priorDistribution;
+  private final DataDistribution<VehicleState> resampleDistribution;
 
   public InferenceResultRecord(long time, Coordinate obsCoords,
     ResultSet actualResults, ResultSet infResults, 
@@ -238,7 +238,7 @@ public class InferenceResultRecord {
     this.observedCoords = obsCoords;
     this.time = Api.sdf.format(new Date(time));
     this.postDistribution = postDist;
-    this.priorDistribution = priorDist;
+    this.resampleDistribution = priorDist;
   }
 
   @JsonSerialize
@@ -305,7 +305,7 @@ public class InferenceResultRecord {
      * belief should be adjusted to the start of that edge.
      */
     
-    final VehicleState cloneState = state;
+    final VehicleState cloneState = state.clone();
     final PathEdge currentEdge = PathEdge.getEdge(
         cloneState.getInferredEdge(), 0d);
     final MultivariateGaussian gbelief = cloneState.getBelief().clone();
@@ -380,8 +380,8 @@ public class InferenceResultRecord {
   }
   
   @JsonIgnore
-  public DataDistribution<VehicleState> getPriorDistribution() {
-    return priorDistribution;
+  public DataDistribution<VehicleState> getResampleDistribution() {
+    return resampleDistribution;
   }
 
 }

@@ -13,7 +13,9 @@ public class FilterInformation {
   private final DataDistribution<VehicleState> resampleDist;
 
   @SuppressWarnings("unchecked")
-  public FilterInformation(Collection<InferredPathEntry> evaluatedPaths, DataDistribution<VehicleState> resampleDist) {
+  public FilterInformation(
+    Collection<InferredPathEntry> evaluatedPaths,
+    DataDistribution<VehicleState> resampleDist) {
     this.evaluatedPaths = (Collection<InferredPathEntry>) Objects
         .firstNonNull(evaluatedPaths, Collections.emptyList());
     this.resampleDist = resampleDist;

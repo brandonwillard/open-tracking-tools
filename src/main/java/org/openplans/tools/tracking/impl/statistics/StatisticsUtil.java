@@ -1,26 +1,21 @@
 package org.openplans.tools.tracking.impl.statistics;
 
 import gov.sandia.cognition.math.LogMath;
-import gov.sandia.cognition.math.MutableDouble;
 import gov.sandia.cognition.statistics.DataDistribution;
 import gov.sandia.cognition.statistics.distribution.DefaultDataDistribution;
 import gov.sandia.cognition.util.DefaultWeightedValue;
 
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
 import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
 
 public class StatisticsUtil {
 
   public static <SupportType extends Comparable> DataDistribution<SupportType> getLogNormalizedDistribution(
     List<DefaultWeightedValue<SupportType>> collection) {
-    
+
     /*-
      * Normalize to avoid zero probs.
      */
@@ -31,20 +26,21 @@ public class StatisticsUtil {
     }
 
     final DataDistribution<SupportType> result = new DefaultDataDistribution<SupportType>();
-    
+
     /*
      * Sort before putting in the data distribution
      */
-//    Collections.sort(collection, new Comparator<DefaultWeightedValue<SupportType>> () {
-//
-//      @Override
-//      public int compare(DefaultWeightedValue<SupportType> arg0,
-//        DefaultWeightedValue<SupportType> arg1) {
-//        return arg0.getValue().compareTo(arg1.getValue());
-//      }
-//      
-//    });
-    
+    // Collections.sort(collection, new
+    // Comparator<DefaultWeightedValue<SupportType>> () {
+    //
+    // @Override
+    // public int compare(DefaultWeightedValue<SupportType> arg0,
+    // DefaultWeightedValue<SupportType> arg1) {
+    // return arg0.getValue().compareTo(arg1.getValue());
+    // }
+    //
+    // });
+
     for (final DefaultWeightedValue<SupportType> entry : collection) {
       final double weight = entry.getWeight() - totalLikelihood;
       result.set(entry.getValue(), Math.exp(weight));
@@ -69,17 +65,20 @@ public class StatisticsUtil {
     /*
      * Sort before putting in the data distribution
      */
-    List<Entry<SupportType, DefaultWeightedValue<DistributionType>>> entryList = Lists.newArrayList(map.entrySet());
-//    Collections.sort(entryList, new Comparator<Entry<SupportType, DefaultWeightedValue<DistributionType>>> () {
-//
-//      @Override
-//      public int compare(Entry<SupportType, DefaultWeightedValue<DistributionType>> arg0,
-//        Entry<SupportType, DefaultWeightedValue<DistributionType>> arg1) {
-//        return arg0.getKey().compareTo(arg1.getKey());
-//      }
-//      
-//    });
-    
+    final List<Entry<SupportType, DefaultWeightedValue<DistributionType>>> entryList = Lists
+        .newArrayList(map.entrySet());
+    // Collections.sort(entryList, new Comparator<Entry<SupportType,
+    // DefaultWeightedValue<DistributionType>>> () {
+    //
+    // @Override
+    // public int compare(Entry<SupportType,
+    // DefaultWeightedValue<DistributionType>> arg0,
+    // Entry<SupportType, DefaultWeightedValue<DistributionType>> arg1) {
+    // return arg0.getKey().compareTo(arg1.getKey());
+    // }
+    //
+    // });
+
     final DataDistribution<SupportType> result = new DefaultDataDistribution<SupportType>();
     for (final Entry<SupportType, DefaultWeightedValue<DistributionType>> entry : entryList) {
       final double weight = entry.getValue().getWeight()

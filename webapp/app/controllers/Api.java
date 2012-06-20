@@ -182,7 +182,7 @@ public class Api extends Controller {
       if (!isPrior)
         belief = tmpResult.getPostDistribution();
       else
-        belief = tmpResult.getPriorDistribution();
+        belief = tmpResult.getResampleDistribution();
 
       if (belief == null)
         renderJSON(jsonMapper.writeValueAsString(null));

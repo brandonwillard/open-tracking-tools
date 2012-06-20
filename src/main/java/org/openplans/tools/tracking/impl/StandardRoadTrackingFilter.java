@@ -71,9 +71,12 @@ public class StandardRoadTrackingFilter implements
   public StandardRoadTrackingFilter(Vector obsVariance,
     Vector offRoadStateVariance, Vector onRoadStateVariance) {
 
-    this.obsVariance = MatrixFactory.getDefault().createDiagonal(obsVariance);
-    this.offRoadStateVariance = MatrixFactory.getDefault().createDiagonal(offRoadStateVariance);
-    this.onRoadStateVariance = MatrixFactory.getDefault().createDiagonal(onRoadStateVariance);
+    this.obsVariance = MatrixFactory.getDefault().createDiagonal(
+        obsVariance);
+    this.offRoadStateVariance = MatrixFactory.getDefault()
+        .createDiagonal(offRoadStateVariance);
+    this.onRoadStateVariance = MatrixFactory.getDefault()
+        .createDiagonal(onRoadStateVariance);
 
     /*
      * Create the road-coordinates filter

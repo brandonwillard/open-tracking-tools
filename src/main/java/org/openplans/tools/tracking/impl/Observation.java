@@ -58,6 +58,13 @@ public class Observation implements Comparable<Observation> {
   }
 
   @Override
+  public int compareTo(Observation o) {
+    return ComparisonChain.start()
+        .compare(this.timestamp, o.timestamp)
+        .compare(this.vehicleId, o.vehicleId).result();
+  }
+
+  @Override
   public boolean equals(Object obj) {
     if (this == obj) {
       return true;
@@ -68,7 +75,7 @@ public class Observation implements Comparable<Observation> {
     if (getClass() != obj.getClass()) {
       return false;
     }
-    Observation other = (Observation) obj;
+    final Observation other = (Observation) obj;
     if (timestamp == null) {
       if (other.timestamp != null) {
         return false;
@@ -231,14 +238,6 @@ public class Observation implements Comparable<Observation> {
 
   public static void remove(String name) {
     vehiclesToRecords.remove(name);
-  }
-
-  @Override
-  public int compareTo(Observation o) {
-    return ComparisonChain.start()
-        .compare(this.timestamp, o.timestamp)
-        .compare(this.vehicleId, o.vehicleId)
-        .result();
   }
 
 }

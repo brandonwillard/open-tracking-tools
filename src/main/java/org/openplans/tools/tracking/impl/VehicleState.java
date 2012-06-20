@@ -19,8 +19,6 @@ import org.openplans.tools.tracking.impl.InferredGraph.InferredEdge;
 
 import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
-import com.google.common.collect.ComparisonChain;
-import com.google.common.collect.Ordering;
 
 /**
  * This class represents the state of a vehicle, which is made up of the
@@ -31,7 +29,8 @@ import com.google.common.collect.Ordering;
  * 
  */
 public class VehicleState implements
-    ComputableDistribution<VehicleStateConditionalParams>, Comparable<VehicleState> {
+    ComputableDistribution<VehicleStateConditionalParams>,
+    Comparable<VehicleState> {
 
   public static class InitialParameters {
     private final Vector obsVariance;
@@ -155,11 +154,11 @@ public class VehicleState implements
 
   /**
    * This could be the 4D ground-coordinates dist. for free motion, or the 2D
-   * road-coordinates, either way the tracking filter will check.
-   * Also, this could be the prior or prior predictive distribution.
+   * road-coordinates, either way the tracking filter will check. Also, this
+   * could be the prior or prior predictive distribution.
    */
   protected final MultivariateGaussian belief;
-  
+
   private final MultivariateGaussian initialBelief;
 
   /*-
@@ -177,11 +176,11 @@ public class VehicleState implements
 
   private final InferredGraph graph;
 
-//  private final int initialHashCode;
-//  private final int edgeInitialHashCode;
-//  private final int obsInitialHashCode;
-//  private final int transInitialHashCode;
-//  private final int beliefInitialHashCode;
+  // private final int initialHashCode;
+  // private final int edgeInitialHashCode;
+  // private final int obsInitialHashCode;
+  // private final int transInitialHashCode;
+  // private final int beliefInitialHashCode;
 
   private final InferredPath path;
 
@@ -222,7 +221,7 @@ public class VehicleState implements
        */
       this.belief = movementFilter.getRoadFilter()
           .createInitialLearnedObject();
-      
+
       final Vector loc = inferredEdge
           .getPointOnEdge(initialObservation.getObsCoords());
       belief
@@ -235,20 +234,21 @@ public class VehicleState implements
 
     this.initialBelief = belief.clone();
     this.edge = inferredEdge;
-    this.path = new InferredPath(this.edge);
+    this.path = InferredPath.getInferredPath(this.edge);
     this.observation = initialObservation;
     this.graph = graph;
     this.edgeTransitionDist = new EdgeTransitionDistributions(
         this.graph, parameters.getOnTransitionProbs(),
         parameters.getOffTransitionProbs());
     this.distanceFromPreviousState = 0d;
-    
+
     // DEBUG
-//    this.initialHashCode = this.hashCode();
-//    this.edgeInitialHashCode = this.edge.hashCode();
-//    this.transInitialHashCode = this.edgeTransitionDist.hashCode();
-//    this.beliefInitialHashCode = Arrays.hashCode(((DenseVector)this.initialBelief.convertToVector()).getArray());
-//    this.obsInitialHashCode = this.observation.hashCode();
+    // this.initialHashCode = this.hashCode();
+    // this.edgeInitialHashCode = this.edge.hashCode();
+    // this.transInitialHashCode = this.edgeTransitionDist.hashCode();
+    // this.beliefInitialHashCode =
+    // Arrays.hashCode(((DenseVector)this.initialBelief.convertToVector()).getArray());
+    // this.obsInitialHashCode = this.observation.hashCode();
   }
 
   public VehicleState(InferredGraph graph, Observation observation,
@@ -256,6 +256,8 @@ public class VehicleState implements
     EdgeTransitionDistributions edgeTransitionDist, PathEdge edge,
     InferredPath path, VehicleState state) {
 
+    Preconditions.checkArgument(!(belief.getInputDimensionality() == 2
+        && edge == PathEdge.getEmptyPathEdge()));
     Preconditions.checkNotNull(state);
     Preconditions.checkNotNull(graph);
     Preconditions.checkNotNull(observation);
@@ -265,7 +267,7 @@ public class VehicleState implements
 
     this.observation = observation;
     this.movementFilter = filter;
-    this.belief = belief;
+    this.belief = belief.clone();
     this.initialBelief = belief.clone();
     this.graph = graph;
     this.path = path;
@@ -274,21 +276,21 @@ public class VehicleState implements
      * where we'll need to reset the distance measures
      */
     this.distanceFromPreviousState = edge.getDistToStartOfEdge();
-    if (belief.getInputDimensionality() == 2)
-      belief.getMean().setElement(
+    if (this.belief.getInputDimensionality() == 2)
+      this.belief.getMean().setElement(
           0,
-          belief.getMean().getElement(0)
+          this.belief.getMean().getElement(0)
               - edge.getDistToStartOfEdge());
     this.edgeTransitionDist = edgeTransitionDist;
     this.edge = edge.getInferredEdge();
-    
+
     this.parentState = state;
     /*
-     * Reset the parent's parent state so that we don't
-     * keep these objects forever.
+     * Reset the parent's parent state so that we don't keep these objects
+     * forever.
      */
-//    state.parentState = null;
-    
+    // state.parentState = null;
+
     final double timeDiff;
     if (observation.getPreviousObservation() != null) {
       timeDiff = (observation.getTimestamp().getTime() - observation
@@ -299,11 +301,12 @@ public class VehicleState implements
     this.movementFilter.setCurrentTimeDiff(timeDiff);
 
     // DEBUG
-//    this.initialHashCode = this.hashCode();
-//    this.edgeInitialHashCode = this.edge.hashCode();
-//    this.transInitialHashCode = this.edgeTransitionDist.hashCode();
-//    this.beliefInitialHashCode = Arrays.hashCode(((DenseVector)this.initialBelief.convertToVector()).getArray());
-//    this.obsInitialHashCode = this.observation.hashCode();
+    // this.initialHashCode = this.hashCode();
+    // this.edgeInitialHashCode = this.edge.hashCode();
+    // this.transInitialHashCode = this.edgeTransitionDist.hashCode();
+    // this.beliefInitialHashCode =
+    // Arrays.hashCode(((DenseVector)this.initialBelief.convertToVector()).getArray());
+    // this.obsInitialHashCode = this.observation.hashCode();
   }
 
   public VehicleState(VehicleState other) {
@@ -311,24 +314,78 @@ public class VehicleState implements
     this.movementFilter = other.movementFilter.clone();
     this.belief = other.belief.clone();
     this.edgeTransitionDist = other.edgeTransitionDist.clone();
+    // TODO clone this?
     this.edge = other.edge;
     this.observation = other.observation;
     this.distanceFromPreviousState = other.distanceFromPreviousState;
     this.parentState = other.parentState;
     this.initialBelief = other.initialBelief.clone();
     this.path = other.path;
-    
+
     // DEBUG
-//    this.initialHashCode = this.hashCode();
-//    this.edgeInitialHashCode = this.edge.hashCode();
-//    this.transInitialHashCode = this.edgeTransitionDist.hashCode();
-//    this.beliefInitialHashCode = Arrays.hashCode(((DenseVector)this.initialBelief.convertToVector()).getArray());
-//    this.obsInitialHashCode = this.observation.hashCode();
+    // this.initialHashCode = this.hashCode();
+    // this.edgeInitialHashCode = this.edge.hashCode();
+    // this.transInitialHashCode = this.edgeTransitionDist.hashCode();
+    // this.beliefInitialHashCode =
+    // Arrays.hashCode(((DenseVector)this.initialBelief.convertToVector()).getArray());
+    // this.obsInitialHashCode = this.observation.hashCode();
   }
 
   @Override
   public VehicleState clone() {
     return new VehicleState(this);
+  }
+
+  @Override
+  public int compareTo(VehicleState arg0) {
+    return oneStateCompareTo(this, arg0);
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj) {
+      return true;
+    }
+    if (obj == null) {
+      return false;
+    }
+    if (getClass() != obj.getClass()) {
+      return false;
+    }
+    final VehicleState other = (VehicleState) obj;
+    final DenseVector thisV = (DenseVector) initialBelief
+        .convertToVector();
+    final DenseVector otherV = (DenseVector) other.initialBelief
+        .convertToVector();
+    if (initialBelief == null) {
+      if (other.initialBelief != null) {
+        return false;
+      }
+    } else if (!Arrays.equals(thisV.getArray(), otherV.getArray())) {
+      return false;
+    }
+    if (edge == null) {
+      if (other.edge != null) {
+        return false;
+      }
+    } else if (!edge.equals(other.edge)) {
+      return false;
+    }
+    if (edgeTransitionDist == null) {
+      if (other.edgeTransitionDist != null) {
+        return false;
+      }
+    } else if (!edgeTransitionDist.equals(other.edgeTransitionDist)) {
+      return false;
+    }
+    if (observation == null) {
+      if (other.observation != null) {
+        return false;
+      }
+    } else if (!observation.equals(other.observation)) {
+      return false;
+    }
+    return true;
   }
 
   public MultivariateGaussian getBelief() {
@@ -337,6 +394,10 @@ public class VehicleState implements
 
   public Double getDistanceFromPreviousState() {
     return distanceFromPreviousState;
+  }
+
+  public InferredEdge getEdge() {
+    return edge;
   }
 
   public EdgeTransitionDistributions getEdgeTransitionDist() {
@@ -366,6 +427,10 @@ public class VehicleState implements
 
   public InferredEdge getInferredEdge() {
     return this.edge;
+  }
+
+  public MultivariateGaussian getInitialBelief() {
+    return initialBelief;
   }
 
   public KalmanFilter getKalmanFilter() {
@@ -411,9 +476,33 @@ public class VehicleState implements
     return parentState;
   }
 
+  public InferredPath getPath() {
+    return path;
+  }
+
   @Override
   public VehicleState.PDF getProbabilityFunction() {
     return new VehicleState.PDF(this);
+  }
+
+  @Override
+  public int hashCode() {
+    final int prime = 31;
+    int result = 1;
+    final DenseVector thisV = (DenseVector) initialBelief
+        .convertToVector();
+    result = prime
+        * result
+        + ((initialBelief == null) ? 0 : Arrays.hashCode(thisV
+            .getArray()));
+    result = prime * result + ((edge == null) ? 0 : edge.hashCode());
+    result = prime
+        * result
+        + ((edgeTransitionDist == null) ? 0 : edgeTransitionDist
+            .hashCode());
+    result = prime * result
+        + ((observation == null) ? 0 : observation.hashCode());
+    return result;
   }
 
   @Override
@@ -435,8 +524,7 @@ public class VehicleState implements
   public String toString() {
     return Objects.toStringHelper(this).add("belief", belief)
         .add("edge", edge.getEdgeId())
-        .addValue(observation.getTimestamp())
-        .toString();
+        .addValue(observation.getTimestamp()).toString();
   }
 
   public static double getDvariance() {
@@ -475,95 +563,17 @@ public class VehicleState implements
       return 1;
     }
 
-    DenseVector thisV = (DenseVector)t.initialBelief.convertToVector();
-    DenseVector otherV = (DenseVector)o.initialBelief.convertToVector();
-    CompareToBuilder comparator = new CompareToBuilder();
+    final DenseVector thisV = (DenseVector) t.initialBelief
+        .convertToVector();
+    final DenseVector otherV = (DenseVector) o.initialBelief
+        .convertToVector();
+    final CompareToBuilder comparator = new CompareToBuilder();
     comparator.append(thisV.getArray(), otherV.getArray());
     comparator.append(t.getObservation(), o.getObservation());
     comparator.append(t.edge, o.edge);
     comparator.append(t.edgeTransitionDist, o.edgeTransitionDist);
-    
+
     return comparator.toComparison();
-  }
-  
-  @Override
-  public int compareTo(VehicleState arg0) {
-    return oneStateCompareTo(this, arg0);
-  }
-
-  @Override
-  public int hashCode() {
-    final int prime = 31;
-    int result = 1;
-    DenseVector thisV = (DenseVector)initialBelief.convertToVector();
-    result = prime * result
-        + ((initialBelief == null) ? 0 : 
-          Arrays.hashCode(thisV.getArray()));
-    result = prime * result + ((edge == null) ? 0 : edge.hashCode());
-    result = prime
-        * result
-        + ((edgeTransitionDist == null) ? 0 : edgeTransitionDist
-            .hashCode());
-    result = prime * result
-        + ((observation == null) ? 0 : observation.hashCode());
-    return result;
-  }
-
-  @Override
-  public boolean equals(Object obj) {
-    if (this == obj) {
-      return true;
-    }
-    if (obj == null) {
-      return false;
-    }
-    if (getClass() != obj.getClass()) {
-      return false;
-    }
-    VehicleState other = (VehicleState) obj;
-    DenseVector thisV = (DenseVector)initialBelief.convertToVector();
-    DenseVector otherV = (DenseVector)other.initialBelief.convertToVector();
-    if (initialBelief == null) {
-      if (other.initialBelief != null) {
-        return false;
-      }
-    } else if (!Arrays.equals(thisV.getArray(), otherV.getArray())) {
-      return false;
-    }
-    if (edge == null) {
-      if (other.edge != null) {
-        return false;
-      }
-    } else if (!edge.equals(other.edge)) {
-      return false;
-    }
-    if (edgeTransitionDist == null) {
-      if (other.edgeTransitionDist != null) {
-        return false;
-      }
-    } else if (!edgeTransitionDist.equals(other.edgeTransitionDist)) {
-      return false;
-    }
-    if (observation == null) {
-      if (other.observation != null) {
-        return false;
-      }
-    } else if (!observation.equals(other.observation)) {
-      return false;
-    }
-    return true;
-  }
-
-  public MultivariateGaussian getInitialBelief() {
-    return initialBelief;
-  }
-
-  public InferredEdge getEdge() {
-    return edge;
-  }
-
-  public InferredPath getPath() {
-    return path;
   }
 
 }

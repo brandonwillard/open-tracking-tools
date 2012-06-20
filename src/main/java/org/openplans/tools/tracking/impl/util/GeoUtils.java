@@ -132,8 +132,28 @@ public class GeoUtils {
         vec.getElement(0), vec.getElement(1)));
   }
 
+  public static Coordinate convertToLonLat(Vector vec) {
+    final Coordinate converted = new Coordinate();
+    try {
+      JTS.transform(
+          new Coordinate(vec.getElement(0), vec.getElement(1)),
+          converted, getCRSTransform().inverse());
+    } catch (final NoninvertibleTransformException e) {
+      e.printStackTrace();
+    } catch (final TransformException e) {
+      e.printStackTrace();
+    }
+
+    return converted;
+  }
+
   public static double getAngleDegreesInMeters(double angularUnits) {
     return angularUnits * (Math.PI / 180d) * 6378137d;
+  }
+
+  public static Object getCoordinates(Vector meanLocation) {
+    return new Coordinate(
+        meanLocation.getElement(0), meanLocation.getElement(1));
   }
 
   public static MathTransform getCRSTransform() {
@@ -188,23 +208,5 @@ public class GeoUtils {
 
   public static Coordinate reverseCoordinates(Coordinate startCoord) {
     return new Coordinate(startCoord.y, startCoord.x);
-  }
-
-  public static Object getCoordinates(Vector meanLocation) {
-    return new Coordinate(meanLocation.getElement(0), meanLocation.getElement(1));
-  }
-
-  public static Coordinate convertToLonLat(Vector vec) {
-    final Coordinate converted = new Coordinate();
-    try {
-      JTS.transform(new Coordinate(
-        vec.getElement(0), vec.getElement(1)), converted, getCRSTransform().inverse());
-    } catch (final NoninvertibleTransformException e) {
-      e.printStackTrace();
-    } catch (final TransformException e) {
-      e.printStackTrace();
-    }
-
-    return converted;
   }
 }

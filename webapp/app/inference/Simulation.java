@@ -165,7 +165,7 @@ public class Simulation {
         if (edge == InferredEdge.getEmptyEdge()) {
           thisPath = InferredPath.getEmptyPath();
         } else {
-          thisPath = new InferredPath(edge);
+          thisPath = InferredPath.getInferredPath(edge);
         }
         if (edge == currentInferredEdge)
           path = thisPath;
@@ -338,7 +338,7 @@ public class Simulation {
           return InferredPath.getEmptyPath();
         } else {
           currentPath.add(PathEdge.getEmptyPathEdge());
-          return new InferredPath(ImmutableList.copyOf(currentPath));
+          return InferredPath.getInferredPath(currentPath);
         }
       }
 
@@ -394,7 +394,7 @@ public class Simulation {
 
     }
 
-    return new InferredPath(ImmutableList.copyOf(currentPath));
+    return InferredPath.getInferredPath(currentPath);
   }
 
   public long getSeed() {

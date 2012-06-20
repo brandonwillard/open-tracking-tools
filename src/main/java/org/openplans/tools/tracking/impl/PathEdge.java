@@ -6,14 +6,10 @@ import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 import gov.sandia.cognition.statistics.distribution.UnivariateGaussian;
 
 import org.openplans.tools.tracking.impl.InferredGraph.InferredEdge;
-import org.openplans.tools.tracking.impl.util.GeoUtils;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ComparisonChain;
 import com.google.common.collect.Ordering;
-import com.vividsolutions.jts.linearref.LengthLocationMap;
-import com.vividsolutions.jts.linearref.LinearLocation;
-import com.vividsolutions.jts.linearref.LocationIndexedLine;
 
 public class PathEdge implements Comparable<PathEdge> {
 
@@ -32,6 +28,16 @@ public class PathEdge implements Comparable<PathEdge> {
     Preconditions.checkArgument(edge != InferredGraph.getEmptyEdge());
     this.edge = edge;
     this.distToStartOfEdge = distToStartOfEdge;
+  }
+
+  @Override
+  public int compareTo(PathEdge o) {
+    return ComparisonChain
+        .start()
+        .compare(this.edge, o.edge)
+        .compare(
+            this.distToStartOfEdge, o.distToStartOfEdge,
+            Ordering.natural().nullsLast()).result();
   }
 
   @Override
@@ -83,6 +89,25 @@ public class PathEdge implements Comparable<PathEdge> {
     return result;
   }
 
+  public double marginalPredictiveLogLikelihood(
+    MultivariateGaussian beliefPrediction) {
+    Preconditions.checkArgument(beliefPrediction
+        .getInputDimensionality() == 2);
+    final Matrix Or = StandardRoadTrackingFilter.getOr();
+    final double variance = Math.sqrt(Or
+        .times(beliefPrediction.getCovariance())
+        .times(Or.transpose()).getElement(0, 0));
+    final double mean = Or.times(beliefPrediction.getMean())
+        .getElement(0);
+    final double endDist = edge.getLength() + this.distToStartOfEdge;
+    // FIXME use actual log calculations
+    final double result = UnivariateGaussian.CDF.evaluate(
+        endDist, mean, variance)
+        - UnivariateGaussian.CDF.evaluate(
+            this.distToStartOfEdge, mean, variance);
+    return Math.log(result);
+  }
+
   /**
    * This method truncates the given belief over the interval defined by this
    * edge.
@@ -99,30 +124,34 @@ public class PathEdge implements Comparable<PathEdge> {
      */
     final Matrix Or = StandardRoadTrackingFilter.getOr();
     final double S = Or.times(belief.getCovariance())
-        .times(Or.transpose()).getElement(0, 0) 
-//        + 1d;
+        .times(Or.transpose()).getElement(0, 0)
+        // + 1d;
         + Math.pow(edge.getLength() / Math.sqrt(12), 2);
     final Matrix W = belief.getCovariance().times(Or.transpose())
         .scale(1 / S);
     final Matrix R = belief.getCovariance().minus(
         W.times(W.transpose()).scale(S));
     /*
-     * The mean can be the center-length of the geometry, or something
-     * more specific, like the snapped location!
+     * The mean can be the center-length of the geometry, or something more
+     * specific, like the snapped location!
      */
     final boolean isPositive = belief.getMean().getElement(0) >= 0d;
-    
-    final double mean = (distToStartOfEdge + (isPositive ? 1d : -1d) * edge.getLength()) / 2d;
-    
-//    final LocationIndexedLine locIdxLine = isPositive ? edge.getPosLocationIndexedLine()
-//        : edge.getNegLocationIndexedLine();
-//    final LinearLocation loc = locIdxLine.project(
-//            GeoUtils.reverseCoordinates(obs.getObsCoords()));
-//    final LengthLocationMap lengthLocLine = isPositive ? edge.getPosLengthLocationMap()
-//        : edge.getNegLengthLocationMap();
-//    final double mean = (isPositive ? 1d : -1d) 
-//        * GeoUtils.getAngleDegreesInMeters(lengthLocLine.getLength(loc)) + this.getDistToStartOfEdge();
-    
+
+    final double mean = (distToStartOfEdge + (isPositive ? 1d : -1d)
+        * edge.getLength()) / 2d;
+
+    // final LocationIndexedLine locIdxLine = isPositive ?
+    // edge.getPosLocationIndexedLine()
+    // : edge.getNegLocationIndexedLine();
+    // final LinearLocation loc = locIdxLine.project(
+    // GeoUtils.reverseCoordinates(obs.getObsCoords()));
+    // final LengthLocationMap lengthLocLine = isPositive ?
+    // edge.getPosLengthLocationMap()
+    // : edge.getNegLengthLocationMap();
+    // final double mean = (isPositive ? 1d : -1d)
+    // * GeoUtils.getAngleDegreesInMeters(lengthLocLine.getLength(loc)) +
+    // this.getDistToStartOfEdge();
+
     final double e = mean - Or.times(belief.getMean()).getElement(0);
     final Vector a = belief.getMean().plus(W.getColumn(0).scale(e));
 
@@ -132,7 +161,7 @@ public class PathEdge implements Comparable<PathEdge> {
 
   @Override
   public String toString() {
-    return "PathEdge [edge=" + edge + ", distToStartOfEdge="
+    return "PathEdge [edge=" + edge.getEdgeId() + ", distToStartOfEdge="
         + distToStartOfEdge + "]";
   }
 
@@ -159,27 +188,5 @@ public class PathEdge implements Comparable<PathEdge> {
 
   public static PathEdge getEmptyPathEdge() {
     return emptyPathEdge;
-  }
-  
-  @Override
-  public int compareTo(PathEdge o) {
-    return ComparisonChain.start()
-        .compare(this.edge, o.edge)
-        .compare(this.distToStartOfEdge, o.distToStartOfEdge, Ordering.natural().nullsLast())
-        .result();
-  }
-
-  public double marginalPredictiveLogLikelihood(
-    MultivariateGaussian beliefPrediction) {
-    Preconditions.checkArgument(beliefPrediction.getInputDimensionality() == 2);
-    final Matrix Or = StandardRoadTrackingFilter.getOr();
-    final double variance = Math.sqrt(Or.times(beliefPrediction.getCovariance())
-        .times(Or.transpose()).getElement(0, 0));
-    final double mean = Or.times(beliefPrediction.getMean()).getElement(0);
-    final double endDist = edge.getLength() + this.distToStartOfEdge;
-    // FIXME use actual log calculations
-    final double result = UnivariateGaussian.CDF.evaluate(endDist, mean, variance)
-        - UnivariateGaussian.CDF.evaluate(this.distToStartOfEdge, mean, variance);
-    return Math.log(result);
   }
 }
