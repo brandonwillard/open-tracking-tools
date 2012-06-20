@@ -115,9 +115,9 @@ public class OtpGraph {
 
   public static boolean isStreetEdge(Edge pathEdge) {
     if (!(pathEdge instanceof TurnEdge || pathEdge instanceof OutEdge || pathEdge instanceof PlainStreetEdge))
-      return true;
-    else
       return false;
+    else
+      return true;
   }
 
 }

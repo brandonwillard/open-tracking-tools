@@ -47,13 +47,11 @@ public class InferenceResultRecord {
 
     static public class EvaluatedPathInfo {
       final List<Integer> pathEdgeIds;
-      final double totalLogLikelihood;
-      private final double direction;
+      final double totalDistance;
 
-      public EvaluatedPathInfo(List<Integer> pathEdgeIds, double totalLogLikelihood, double direction) {
+      public EvaluatedPathInfo(List<Integer> pathEdgeIds, double totalDistance) {
         this.pathEdgeIds = pathEdgeIds;
-        this.totalLogLikelihood = totalLogLikelihood;
-        this.direction = direction;
+        this.totalDistance = totalDistance;
       }
 
       @JsonSerialize
@@ -62,13 +60,8 @@ public class InferenceResultRecord {
       }
 
       @JsonSerialize
-      public double getTotalLogLikelihood() {
-        return totalLogLikelihood;
-      }
-
-      @JsonSerialize
-      public double getDirection() {
-        return direction;
+      public double getTotalDistance() {
+        return totalDistance;
       }
 
     }
@@ -114,24 +107,20 @@ public class InferenceResultRecord {
     }
     
     @JsonIgnore
-    private List<EvaluatedPathInfo> createEvaluatedPaths() {
+    public List<EvaluatedPathInfo> createEvaluatedPaths() {
       List<EvaluatedPathInfo> pathEdgeIds;
       final FilterInformation filterInfo = this.filter.getFilterInformation(
           this.state.getObservation());
       if (filterInfo != null) {
         pathEdgeIds = Lists.newArrayList();
-        for (final InferredPathEntry pathEntry : filterInfo.getEvaluatedPaths()) {
+        for (final InferredPath pathEntry : filterInfo.getEvaluatedPaths()) {
           final List<Integer> edgeIds = Lists.newArrayList();
-          for (final PathEdge edge : pathEntry.getPath().getEdges()) {
+          for (final PathEdge edge : pathEntry.getEdges()) {
             if (edge.getInferredEdge().getEdgeId() != null)
               edgeIds.add(edge.getInferredEdge().getEdgeId());
           }
           if (!edgeIds.isEmpty()) {
-            Coordinate startVertex = null; 
-            Coordinate endVertex = null; 
-            final double logLikelihood = pathEntry.getTotalLogLikelihood();
-            pathEdgeIds.add(new EvaluatedPathInfo(edgeIds, logLikelihood, 
-                pathEntry.getPath().getTotalPathDistance() > 0d ? 1d : -1d));
+            pathEdgeIds.add(new EvaluatedPathInfo(edgeIds, pathEntry.getTotalPathDistance()));
           }
         }
       } else {

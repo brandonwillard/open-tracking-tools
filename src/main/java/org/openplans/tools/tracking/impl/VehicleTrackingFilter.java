@@ -61,15 +61,11 @@ public class VehicleTrackingFilter extends
     final DataDistribution<VehicleState> dist = super
         .createInitialLearnedObject();
     if (isDebug) {
-      final Set<InferredPathEntry> evaledPaths = Sets.newHashSet();
+      final Set<InferredPath> evaledPaths = Sets.newHashSet();
       for (final VehicleState state : dist.getDomain()) {
         // TODO FIXME provide real info here
         evaledPaths
-            .add(new InferredPathEntry(
-                state.getPath(),
-                Collections
-                    .<PathEdge, DefaultWeightedValue<MultivariateGaussian>> emptyMap(),
-                state.getMovementFilter(), Double.NaN));
+            .add(state.getPath());
       }
       this.filterInfo.put(initialObservation, new FilterInformation(
           evaledPaths, dist));
@@ -105,7 +101,7 @@ public class VehicleTrackingFilter extends
 
     final Multimap<VehicleState, DefaultWeightedValue<InferredPathEntry>> stateToPaths = HashMultimap
         .create();
-    final Set<InferredPathEntry> evaluatedPaths = Sets.newHashSet();
+    final Set<InferredPath> evaluatedPaths = Sets.newHashSet();
 
     /*
      * Resample based on predictive likelihood to get a smoothed sample
@@ -113,15 +109,6 @@ public class VehicleTrackingFilter extends
     final List<DefaultWeightedValue<VehicleState>> resampler = Lists
         .newArrayList();
     for (final VehicleState state : target.getDomain()) {
-
-      /*-
-       * Take the prediction step.
-       * XXX this will alter the belief, and thus vehicle state!
-       */
-      state.getMovementFilter().predict(
-          state.getBelief(),
-          PathEdge.getEdge(state.getInferredEdge()),
-          PathEdge.getEdge(state.getInferredEdge(), 0d));
 
       final Set<InferredPath> instStateTransitions = inferredGraph
           .getPaths(state, obs.getObsCoords());
@@ -134,7 +121,7 @@ public class VehicleTrackingFilter extends
             .getPredictiveLogLikelihood(obs, state);
 
         if (isDebug)
-          evaluatedPaths.add(infPath);
+          evaluatedPaths.add(path);
 
         totalLogLik = LogMath.add(
             totalLogLik, infPath.getTotalLogLikelihood());

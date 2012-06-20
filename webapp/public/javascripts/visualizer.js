@@ -717,8 +717,8 @@ function renderGraph() {
     pathList.empty();
 
     var emptyOption = jQuery('<option id="none">none</option>');
-    var startPointsOption = jQuery('<option id="startPoints">startPoints</option>');
-    var endPointsOption = jQuery('<option id="endPoints">endPoints</option>');
+    var startPointsOption = jQuery('<option id="startEdges">startEdges</option>');
+    var endPointsOption = jQuery('<option id="endEdges">endEdges</option>');
     pathList.append(emptyOption);
     pathList.append(startPointsOption);
     pathList.append(endPointsOption);
@@ -733,17 +733,29 @@ function renderGraph() {
 
     // TODO FIXME must make a separate call to get this
     // info.  no longer contained in every particle.
-    var evaluatedPaths = lines[i].infResults.evaluatedPaths;
-    if (evaluatedPaths && evaluatedPaths.length > 0) {
-      var limit = 500;
+    
+    var vehicleId = jQuery('#vehicle_id').val();
+    var evaluatedPaths = null;
+    $.ajax({
+      url : "/api/evaluatedPaths?vehicleId=" + vehicleId  + "&recordNumber=" + i,
+      dataType : 'json',
+      async : false,
+      success : function(data) {
+        evaluatedPaths = data;
+      }
+    });    
+    
+    if (evaluatedPaths != null && evaluatedPaths.length > 0) {
+//      var limit = 500;
       for ( var k in evaluatedPaths) {
-        if (k >= limit)
-          break;
+//        if (k >= limit)
+//          break;
 
         // FIXME finish
         var pathName = 'path' + k;
-        var pathStr = "";//evaledPaths[k].pathEdgeIds.toString();
-        var option = jQuery('<option id=' + pathName + '>path' + k + ':'
+        var pathStr = parseFloat(evaluatedPaths[k].totalDistance).toFixed(2) 
+          + ", [" + evaluatedPaths[k].pathEdgeIds.toString() + "]";
+        var option = jQuery('<option id=' + pathName + '>(path' + k + ')  '
             + pathStr + '</option>');
         option.attr("value", pathName);
         option.data("path", evaluatedPaths[k]);
@@ -759,8 +771,8 @@ function renderGraph() {
       $("select option:selected").each(function() {
         var pathName = this.value;
         if (pathName !== "none" 
-          && pathName !== "startPoints"
-          && pathName !== "endPoints" ) {
+          && pathName !== "startEdges"
+          && pathName !== "endEdges" ) {
           var path = $('#' + pathName).data('path');
           var pathSegmentInfo = new Array();
           for ( var l in path.pathEdgeIds) {
@@ -768,26 +780,26 @@ function renderGraph() {
             pathSegmentInfo.push(idVelPair);
             // drawLine(idVelPair[0], idVelPair[1], EdgeType.EVALUATED);
           }
-          renderPath(pathSegmentInfo, path.direction, EdgeType.EVALUATED);
-        } else if (pathName === "startPoints") {
-          var points = {};
+          renderPath(pathSegmentInfo, path.totalDistance, EdgeType.EVALUATED);
+        } else if (pathName === "startEdges") {
+          var edges = {};
           $.each(paths, function(key, value) {
             var path = $('#' + value).data('path');
-            if (path.startVertex != null)
-              points[path.startVertex.x + "," + path.startVertex.y] = [path.startVertex.x, path.startVertex.y];
+            if (path.startEdge != null)
+              edges[path.startEdge] = path.startEdge;
           });
-          $.each(points, function(key, value) {
-            evaluatedGroup.addLayer(drawCoords(value[0], value[1], null, null));
+          $.each(edges, function(key, value) {
+            evaluatedGroup.addLayer(drawEdge(value, null, EdgeType.EVALUATED));
           });
-        } else if (pathName === "endPoints") {
-          var points = {};
+        } else if (pathName === "endEdges") {
+          var edges = {};
           $.each(paths, function(key, value) {
             var path = $('#' + value).data('path');
-            if (path.endVertex != null)
-              points[path.endVertex.x + "," + path.endVertex.y] = [path.endVertex.x, path.endVertex.y];
+            if (path.endEdge != null)
+              points[path.endEdge] = path.endEdge;
           });
-          $.each(points, function(key, value) {
-            evaluatedGroup.addLayer(drawCoords(value[0], value[1], null, null));
+          $.each(edges, function(key, value) {
+            evaluatedGroup.addLayer(drawEdge(value, null, EdgeType.EVALUATED));
           });
         }
       });

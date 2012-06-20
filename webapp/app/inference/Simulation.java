@@ -169,7 +169,8 @@ public class Simulation {
         }
         if (edge == currentInferredEdge)
           path = thisPath;
-        evaluatedPaths.add(new InferredPathEntry(thisPath, null, null, Double.NEGATIVE_INFINITY));
+        evaluatedPaths.add(new InferredPathEntry(thisPath, null, 
+            null, null, Double.NEGATIVE_INFINITY));
       }
 
       VehicleState vehicleState = new VehicleState(this.inferredGraph,

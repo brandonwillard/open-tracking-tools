@@ -588,27 +588,30 @@ public class InferredGraph {
 
     final List<Edge> endEdgeList = Lists.newArrayList(endEdges);
     for (final Edge startEdge : startEdges) {
-      final MultiDestinationAStar aStar = new MultiDestinationAStar(
+      final MultiDestinationAStar forwardAStar = new MultiDestinationAStar(
+          this.graph, endEdgeList, toCoord, obsStdDevDistance,
+          startEdge);
+      final MultiDestinationAStar backwardAStar = new MultiDestinationAStar(
           this.graph, endEdgeList, toCoord, obsStdDevDistance,
           startEdge);
 
-      final ShortestPathTree spt1 = aStar.getSPT(false);
-      final ShortestPathTree spt2 = aStar.getSPT(true);
+      final ShortestPathTree spt1 = forwardAStar.getSPT(false);
+      final ShortestPathTree spt2 = backwardAStar.getSPT(true);
 
       for (final Edge endEdge : endEdgeList) {
         final GraphPath forwardPath = spt1.getPath(
-            endEdge.getFromVertex(), false);
+            endEdge.getToVertex(), false);
         if (forwardPath != null) {
           final InferredPath forwardResult = copyAStarResults(
-              forwardPath, false);
+              forwardPath, startEdge, false);
           if (forwardResult != null)
             paths.add(forwardResult);
         }
         final GraphPath backwardPath = spt2.getPath(
-            endEdge.getFromVertex(), false);
+            endEdge.getToVertex(), false);
         if (backwardPath != null) {
           final InferredPath backwardResult = copyAStarResults(
-              backwardPath, true);
+              backwardPath, startEdge, true);
           if (backwardResult != null)
             paths.add(backwardResult);
         }
@@ -619,45 +622,19 @@ public class InferredGraph {
   }
 
   private InferredPath copyAStarResults(GraphPath gpath,
-    boolean isReverse) {
+    Edge startEdge, boolean isReverse) {
     final double direction = isReverse ? -1d : 1d;
     double pathDist = 0d;
     final List<PathEdge> path = Lists.newArrayList();
-    for (final Edge pathEdge : isReverse ? Lists.reverse(gpath.edges)
-        : gpath.edges) {
-
-      if (OtpGraph.isStreetEdge(pathEdge)
-          && pathEdge.getGeometry() != null
-          && pathEdge.getDistance() > 0d
-          && graph.getIdForEdge(pathEdge) != null
-          && !pathEdge.equals(Iterables.getLast(path, null))) {
-
-        path.add(PathEdge.getEdge(
-            this.getInferredEdge(pathEdge), pathDist));
-        pathDist += direction * pathEdge.getDistance();
-
-      } else if (pathEdge.getFromVertex() != null
-          && !pathEdge.getFromVertex().getOutgoingStreetEdges()
-              .isEmpty()) {
-
-        for (final Edge streetEdge : pathEdge.getFromVertex()
-            .getOutgoingStreetEdges()) {
-
-          if (streetEdge.getGeometry() != null
-              && !streetEdge.equals(Iterables.getLast(path, null))
-              && streetEdge.getDistance() > 0d
-              && graph.getIdForEdge(streetEdge) != null) {
-
-            /*
-             * Find a valid street edge to work with
-             */
-            path.add(PathEdge.getEdge(
-                this.getInferredEdge(streetEdge.getFromVertex()
-                    .getOutgoingStreetEdges().get(0)), pathDist));
-            pathDist += direction * streetEdge.getDistance();
-            break;
-          }
-        }
+    final PathEdge startPathEdge = PathEdge.getEdge(this.getInferredEdge(startEdge));
+    if (gpath.edges.isEmpty()) {
+      path.add(startPathEdge);
+    } else {
+      for (final Edge edge : isReverse ? Lists.reverse(gpath.edges)
+          : gpath.edges) {
+        PathEdge pathEdge = getValidPathEdge(edge, pathDist, direction, path);
+        pathDist += direction * pathEdge.getInferredEdge().getLength();
+        path.add(pathEdge);
       }
     }
     if (!path.isEmpty())
@@ -666,6 +643,38 @@ public class InferredGraph {
       return null;
   }
 
+  private PathEdge getValidPathEdge(Edge edge, double pathDist, double direction, List<PathEdge> path) {
+    if (OtpGraph.isStreetEdge(edge)
+        && edge.getGeometry() != null
+        && edge.getDistance() > 0d
+        && graph.getIdForEdge(edge) != null
+        && !edge.equals(Iterables.getLast(path, null))) {
+
+      return PathEdge.getEdge(this.getInferredEdge(edge), pathDist);
+
+    } else if (edge.getFromVertex() != null
+        && !edge.getFromVertex().getOutgoingStreetEdges()
+            .isEmpty()) {
+
+      for (final Edge streetEdge : edge.getFromVertex()
+          .getOutgoingStreetEdges()) {
+
+        if (streetEdge.getGeometry() != null
+            && !streetEdge.equals(Iterables.getLast(path, null))
+            && streetEdge.getDistance() > 0d
+            && graph.getIdForEdge(streetEdge) != null) {
+
+          /*
+           * Find a valid street edge to work with
+           */
+          return PathEdge.getEdge(this.getInferredEdge(streetEdge), pathDist);
+        }
+      }
+    }
+    
+    return null;
+  }
+  
   public InferredEdge getEdge(int id) {
 
     final Edge edge = graph.getEdgeById(id);

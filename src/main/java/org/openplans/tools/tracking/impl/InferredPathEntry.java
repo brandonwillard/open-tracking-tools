@@ -10,15 +10,28 @@ import com.google.common.collect.ComparisonChain;
 
 public class InferredPathEntry implements
     Comparable<InferredPathEntry> {
+  
   private final StandardRoadTrackingFilter filter;
+  
+  /*
+   * This maps edge's to their conditional prior predictive location/velocity states.
+   */
   private final Map<PathEdge, DefaultWeightedValue<MultivariateGaussian>> edgeToPredictiveBelief;
+  
   private final InferredPath path;
+  
   private final double totalLogLikelihood;
+  
+  /*
+   * This distribution is the prior predictive on the location/velocity states.
+   */
+  private final MultivariateGaussian beliefPrediction;
 
   public InferredPathEntry(
-    InferredPath path,
+    InferredPath path, MultivariateGaussian beliefPrediction, 
     Map<PathEdge, DefaultWeightedValue<MultivariateGaussian>> edgeToPredictiveBeliefAndLogLikelihood,
     StandardRoadTrackingFilter filter, double totalLogLikelihood) {
+    this.beliefPrediction = beliefPrediction;
     this.totalLogLikelihood = totalLogLikelihood;
     this.path = path;
     this.filter = filter;
@@ -67,6 +80,10 @@ public class InferredPathEntry implements
   public String toString() {
     return "InferredPathEntry [path=" + path
         + ", totalLogLikelihood=" + totalLogLikelihood + "]";
+  }
+
+  public MultivariateGaussian getBeliefPrediction() {
+    return beliefPrediction;
   }
 
 }

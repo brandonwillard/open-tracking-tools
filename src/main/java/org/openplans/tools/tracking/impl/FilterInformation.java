@@ -4,24 +4,25 @@ import gov.sandia.cognition.statistics.DataDistribution;
 
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Set;
 
 import com.google.common.base.Objects;
 
 public class FilterInformation {
 
-  private final Collection<InferredPathEntry> evaluatedPaths;
+  private final Set<InferredPath> evaluatedPaths;
   private final DataDistribution<VehicleState> resampleDist;
 
   @SuppressWarnings("unchecked")
   public FilterInformation(
-    Collection<InferredPathEntry> evaluatedPaths,
+    Set<InferredPath> evaluatedPaths,
     DataDistribution<VehicleState> resampleDist) {
-    this.evaluatedPaths = (Collection<InferredPathEntry>) Objects
-        .firstNonNull(evaluatedPaths, Collections.emptyList());
+    this.evaluatedPaths = (Set<InferredPath>)
+        Objects.firstNonNull(evaluatedPaths, Collections.emptySet());
     this.resampleDist = resampleDist;
   }
 
-  public Collection<InferredPathEntry> getEvaluatedPaths() {
+  public Set<InferredPath> getEvaluatedPaths() {
     return evaluatedPaths;
   }
 

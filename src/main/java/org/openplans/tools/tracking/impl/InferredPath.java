@@ -124,18 +124,20 @@ public class InferredPath implements Comparable<InferredPath> {
   public InferredPathEntry getPredictiveLogLikelihood(
     Observation obs, VehicleState state) {
 
+    /*-
+     * A prior predictive is created for every path, since, in some instances,
+     * we need to project onto an edge and then predict movement.
+     */
     final MultivariateGaussian beliefPrediction = state.getBelief()
         .clone();
     final StandardRoadTrackingFilter filter = state
         .getMovementFilter();
 
-    /*-
-     * Compute predictive dist. over path
-     * Note that this path should always start with the edge that
-     * this state is currently on.
-     */
+    filter.predict(beliefPrediction, this.getEdges().get(0), 
+        PathEdge.getEdge(state.getInferredEdge()));
     PathEdge prevEdge = PathEdge.getEdge(state.getInferredEdge());
     double pathLogLik = Double.NEGATIVE_INFINITY;
+    
     final Map<PathEdge, DefaultWeightedValue<MultivariateGaussian>> edgeToPredictiveBeliefAndLogLikelihood = Maps
         .newHashMap();
 
@@ -184,7 +186,7 @@ public class InferredPath implements Comparable<InferredPath> {
     }
 
     return new InferredPathEntry(
-        this, edgeToPredictiveBeliefAndLogLikelihood, filter,
+        this, beliefPrediction, edgeToPredictiveBeliefAndLogLikelihood, filter,
         pathLogLik);
   }
 

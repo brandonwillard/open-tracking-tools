@@ -15,6 +15,7 @@ import models.InferenceInstance;
 import org.codehaus.jackson.JsonGenerationException;
 import org.codehaus.jackson.map.JsonMappingException;
 import org.codehaus.jackson.map.ObjectMapper;
+import org.openplans.tools.tracking.impl.FilterInformation;
 import org.openplans.tools.tracking.impl.Observation;
 import org.openplans.tools.tracking.impl.VehicleState;
 import org.openplans.tools.tracking.impl.util.GeoUtils;
@@ -84,6 +85,30 @@ public class Api extends Controller {
     }
   }
 
+  public static void evaluatedPaths(String vehicleId,
+    int recordNumber) throws JsonGenerationException,
+      JsonMappingException, IOException {
+    final InferenceInstance instance = InferenceService
+        .getInferenceInstance(vehicleId);
+    if (instance == null)
+      renderJSON(jsonMapper.writeValueAsString(null));
+
+    final List<InferenceResultRecord> results = instance
+        .getResultRecords();
+    if (results.isEmpty())
+      renderJSON(jsonMapper.writeValueAsString(null));
+
+    final InferenceResultRecord tmpResult = Iterables.get(
+        results, recordNumber, null);
+
+    if (tmpResult == null)
+      error(vehicleId + " result record " + recordNumber
+          + " is out-of-bounds");
+    
+    renderJSON(jsonMapper.writeValueAsString(
+        tmpResult.getInfResults().createEvaluatedPaths()));
+  }
+  
   public static void particleDetails(String vehicleId,
     int recordNumber) throws JsonGenerationException,
       JsonMappingException, IOException {

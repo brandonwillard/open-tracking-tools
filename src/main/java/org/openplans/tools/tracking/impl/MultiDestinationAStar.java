@@ -66,12 +66,17 @@ public class MultiDestinationAStar implements
     astar.setSearchTerminationStrategy(this);
     astar.setSkipTraverseResultStrategy(this);
     final RoutingRequest req = new RoutingRequest();
-    final Vertex bogus = new IntersectionVertex(graph, "bogus", start
-        .getFromVertex().getCoordinate(), "bogus");
-    req.setRoutingContext(graph, start.getFromVertex(), bogus);
+    final Vertex startVertex = arriveBy ? start.getToVertex() : start.getFromVertex();
+    // TODO FIXME how do we really avoid the name collisions?
+    final String bogusName = "bogus" + System.nanoTime();
+    final Vertex bogus = new IntersectionVertex(graph, bogusName, 
+        startVertex.getCoordinate(), bogusName);
+    req.setRoutingContext(graph, startVertex, bogus);
     req.rctx.remainingWeightHeuristic = this;
     req.setArriveBy(arriveBy);
-    return astar.getShortestPathTree(req);
+    final ShortestPathTree result = astar.getShortestPathTree(req);
+    req.cleanup();
+    return result;
 
   }
 
@@ -84,10 +89,8 @@ public class MultiDestinationAStar implements
   public boolean shouldSearchContinue(Vertex origin, Vertex target,
     State current, ShortestPathTree spt,
     RoutingRequest traverseOptions) {
-    if (end.remove(current.getBackEdge())) {
-      return end.size() == 0;
-    }
-    return false;
+    end.remove(current.getBackEdge());
+    return end.size() != 0;
   }
 
   @Override
