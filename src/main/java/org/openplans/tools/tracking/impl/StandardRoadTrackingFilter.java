@@ -648,9 +648,9 @@ public class StandardRoadTrackingFilter implements
   static private Entry<Matrix, Vector> posVelProjectionPair(
     LineSegment lineSegment, double distToStartOfLine) {
 
-    final Vector start = GeoUtils.getEuclideanVector(GeoUtils
+    final Vector start = GeoUtils.getEuclideanVectorFromLatLon(GeoUtils
         .reverseCoordinates(lineSegment.p0));
-    final Vector end = GeoUtils.getEuclideanVector(GeoUtils
+    final Vector end = GeoUtils.getEuclideanVectorFromLatLon(GeoUtils
         .reverseCoordinates(lineSegment.p1));
 
     final double length = start.euclideanDistance(end);

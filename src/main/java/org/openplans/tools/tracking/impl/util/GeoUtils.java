@@ -160,7 +160,7 @@ public class GeoUtils {
     return geoData.get().getTransform();
   }
 
-  public static Vector getEuclideanVector(Coordinate coordinate) {
+  public static Vector getEuclideanVectorFromLatLon(Coordinate coordinate) {
     final Coordinate resCoord = convertToEuclidean(coordinate);
     return VectorFactory.getDefault().createVector2D(
         resCoord.x, resCoord.y);

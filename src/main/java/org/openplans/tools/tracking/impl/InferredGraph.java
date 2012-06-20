@@ -601,7 +601,7 @@ public class InferredGraph {
           }
         }
         final GraphPath backwardPath = spt2.getPath(
-            endEdge.getToVertex(), false);
+            endEdge.getFromVertex(), false);
         if (backwardPath != null) {
           final InferredPath backwardResult = copyAStarResults(
               backwardPath, startEdge, true);
@@ -696,9 +696,9 @@ public class InferredGraph {
     final VertexPair key = new VertexPair(
         edge.getFromVertex(), edge.getToVertex());
     InferredEdge edgeInfo = edgeToInfo.get(key);
-    final Integer edgeId = graph.getIdForEdge(edge);
 
     if (edgeInfo == null) {
+      final Integer edgeId = graph.getIdForEdge(edge);
       edgeInfo = new InferredEdge(edge, edgeId, this);
       edgeToInfo.put(key, edgeInfo);
     }
