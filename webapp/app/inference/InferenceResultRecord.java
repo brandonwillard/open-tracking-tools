@@ -23,7 +23,7 @@ import models.InferenceInstance;
 import org.codehaus.jackson.annotate.JsonIgnore;
 import org.codehaus.jackson.map.annotate.JsonSerialize;
 import org.openplans.tools.tracking.impl.FilterInformation;
-import org.openplans.tools.tracking.impl.InferredGraph.InferredEdge;
+import org.openplans.tools.tracking.impl.InferredEdge;
 import org.openplans.tools.tracking.impl.InferredPath;
 import org.openplans.tools.tracking.impl.InferredPathEntry;
 import org.openplans.tools.tracking.impl.Observation;

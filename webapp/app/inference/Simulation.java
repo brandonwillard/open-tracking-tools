@@ -17,8 +17,8 @@ import models.InferenceInstance;
 
 import org.openplans.tools.tracking.impl.EdgeTransitionDistributions;
 import org.openplans.tools.tracking.impl.FilterInformation;
+import org.openplans.tools.tracking.impl.InferredEdge;
 import org.openplans.tools.tracking.impl.InferredGraph;
-import org.openplans.tools.tracking.impl.InferredGraph.InferredEdge;
 import org.openplans.tools.tracking.impl.InferredPath;
 import org.openplans.tools.tracking.impl.InferredPathEntry;
 import org.openplans.tools.tracking.impl.Observation;

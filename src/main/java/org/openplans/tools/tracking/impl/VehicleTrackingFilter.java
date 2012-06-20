@@ -13,7 +13,6 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 
-import org.openplans.tools.tracking.impl.InferredGraph.InferredEdge;
 import org.openplans.tools.tracking.impl.VehicleState.InitialParameters;
 import org.openplans.tools.tracking.impl.statistics.StatisticsUtil;
 

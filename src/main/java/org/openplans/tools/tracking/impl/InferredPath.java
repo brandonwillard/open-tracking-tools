@@ -8,7 +8,6 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.commons.lang.builder.CompareToBuilder;
-import org.openplans.tools.tracking.impl.InferredGraph.InferredEdge;
 import org.opentripplanner.routing.graph.Edge;
 
 import com.google.common.base.Preconditions;

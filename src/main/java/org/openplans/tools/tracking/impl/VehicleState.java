@@ -15,7 +15,6 @@ import java.util.Random;
 import jj2000.j2k.NotImplementedError;
 
 import org.apache.commons.lang.builder.CompareToBuilder;
-import org.openplans.tools.tracking.impl.InferredGraph.InferredEdge;
 
 import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;

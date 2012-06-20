@@ -9,7 +9,6 @@ import java.util.List;
 
 import org.openplans.tools.tracking.impl.FilterInformation;
 import org.openplans.tools.tracking.impl.InferredGraph;
-import org.openplans.tools.tracking.impl.InferredGraph.InferredEdge;
 import org.openplans.tools.tracking.impl.Observation;
 import org.openplans.tools.tracking.impl.Standard2DTrackingFilter;
 import org.openplans.tools.tracking.impl.VehicleState;

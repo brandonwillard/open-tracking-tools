@@ -13,7 +13,6 @@ import java.util.Set;
 
 import jj2000.j2k.NotImplementedError;
 
-import org.openplans.tools.tracking.impl.InferredGraph.InferredEdge;
 import org.openplans.tools.tracking.impl.VehicleState.InitialParameters;
 import org.opentripplanner.routing.edgetype.StreetEdge;
 import org.opentripplanner.routing.graph.Edge;

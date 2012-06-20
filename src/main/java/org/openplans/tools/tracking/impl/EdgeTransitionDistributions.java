@@ -14,7 +14,6 @@ import java.util.List;
 import java.util.Random;
 
 import org.apache.commons.lang.builder.CompareToBuilder;
-import org.openplans.tools.tracking.impl.InferredGraph.InferredEdge;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
