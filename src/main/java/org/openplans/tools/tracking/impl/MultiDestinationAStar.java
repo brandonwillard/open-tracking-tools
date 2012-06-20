@@ -70,8 +70,7 @@ public class MultiDestinationAStar implements
     req.setArriveBy(arriveBy);
     
     final Vertex startVertex = arriveBy ? start.getToVertex() : start.getFromVertex();
-    // TODO FIXME how do we really avoid the name collisions?
-    final String bogusName = "bogus" + System.nanoTime();
+    final String bogusName = "bogus" + Thread.currentThread().getId();
     final Vertex bogus = new IntersectionVertex(graph, bogusName, 
         startVertex.getCoordinate(), bogusName);
     

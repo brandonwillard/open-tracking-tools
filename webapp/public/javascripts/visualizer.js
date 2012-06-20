@@ -796,7 +796,7 @@ function renderGraph() {
           $.each(paths, function(key, value) {
             var path = $('#' + value).data('path');
             if (path.endEdge != null)
-              points[path.endEdge] = path.endEdge;
+              edges[path.endEdge] = path.endEdge;
           });
           $.each(edges, function(key, value) {
             evaluatedGroup.addLayer(drawEdge(value, null, EdgeType.EVALUATED));

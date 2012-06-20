@@ -607,8 +607,8 @@ public class InferredGraph {
           if (forwardResult != null) {
             paths.add(forwardResult);
             // for debugging
-            forwardResult.setStartEdge(startEdge);
-            forwardResult.setEndEdge(endEdge);
+            forwardResult.setStartEdge(this.getInferredEdge(startEdge));
+            forwardResult.setEndEdge(this.getInferredEdge(endEdge));
           }
         }
         final GraphPath backwardPath = spt2.getPath(
@@ -619,8 +619,8 @@ public class InferredGraph {
           if (backwardResult != null) {
             paths.add(backwardResult);
             // for debugging
-            backwardResult.setStartEdge(startEdge);
-            backwardResult.setEndEdge(endEdge);
+            backwardResult.setStartEdge(this.getInferredEdge(startEdge));
+            backwardResult.setEndEdge(this.getInferredEdge(endEdge));
           }
         }
       }

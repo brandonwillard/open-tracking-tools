@@ -48,10 +48,15 @@ public class InferenceResultRecord {
     static public class EvaluatedPathInfo {
       final List<Integer> pathEdgeIds;
       final double totalDistance;
+      final private Integer startEdge;
+      final private Integer endEdge;
 
-      public EvaluatedPathInfo(List<Integer> pathEdgeIds, double totalDistance) {
+      public EvaluatedPathInfo(List<Integer> pathEdgeIds, double totalDistance, 
+        Integer startEdge, Integer endEdge) {
         this.pathEdgeIds = pathEdgeIds;
         this.totalDistance = totalDistance;
+        this.startEdge = startEdge;
+        this.endEdge = endEdge;
       }
 
       @JsonSerialize
@@ -62,6 +67,16 @@ public class InferenceResultRecord {
       @JsonSerialize
       public double getTotalDistance() {
         return totalDistance;
+      }
+
+      @JsonSerialize
+      public Integer getStartEdge() {
+        return startEdge;
+      }
+
+      @JsonSerialize
+      public Integer getEndEdge() {
+        return endEdge;
       }
 
     }
@@ -120,7 +135,12 @@ public class InferenceResultRecord {
               edgeIds.add(edge.getInferredEdge().getEdgeId());
           }
           if (!edgeIds.isEmpty()) {
-            pathEdgeIds.add(new EvaluatedPathInfo(edgeIds, pathEntry.getTotalPathDistance()));
+            final Integer startEdge = pathEntry.getStartEdge() != null ? pathEntry.getStartEdge().getEdgeId()
+                : null;
+            final Integer endEdge = pathEntry.getEndEdge() != null ? pathEntry.getEndEdge().getEdgeId()
+                : null;
+            pathEdgeIds.add(new EvaluatedPathInfo(edgeIds, pathEntry.getTotalPathDistance(),
+                startEdge, endEdge));
           }
         }
       } else {

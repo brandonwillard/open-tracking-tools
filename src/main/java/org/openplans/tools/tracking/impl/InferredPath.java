@@ -32,8 +32,8 @@ public class InferredPath implements Comparable<InferredPath> {
   /*
    * These are the edges used in path finding.
    */
-  private Edge startEdge;
-  private Object endEdge;
+  private InferredEdge startEdge;
+  private InferredEdge endEdge;
 
   private static InferredPath emptyPath = new InferredPath();
 
@@ -241,19 +241,19 @@ public class InferredPath implements Comparable<InferredPath> {
       return new InferredPath(ImmutableList.of(pathEdge));
   }
 
-  public void setStartEdge(Edge startEdge) {
+  public void setStartEdge(InferredEdge startEdge) {
     this.startEdge = startEdge;
   }
 
-  public Object getEndEdge() {
+  public InferredEdge getEndEdge() {
     return endEdge;
   }
 
-  public void setEndEdge(Object endEdge) {
+  public void setEndEdge(InferredEdge endEdge) {
     this.endEdge = endEdge;
   }
 
-  public Edge getStartEdge() {
+  public InferredEdge getStartEdge() {
     return startEdge;
   }
 
