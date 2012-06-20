@@ -8,6 +8,7 @@ import gov.sandia.cognition.statistics.distribution.NormalInverseGammaDistributi
 
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 
 import org.apache.commons.lang.builder.CompareToBuilder;
@@ -31,6 +32,7 @@ import com.google.common.collect.Sets;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Envelope;
 import com.vividsolutions.jts.geom.Geometry;
+import com.vividsolutions.jts.index.strtree.STRtree;
 import com.vividsolutions.jts.linearref.LengthIndexedLine;
 import com.vividsolutions.jts.linearref.LengthLocationMap;
 import com.vividsolutions.jts.linearref.LinearLocation;
@@ -513,18 +515,6 @@ public class InferredGraph {
 
   private final OtpGraph narratedGraph;
 
-  private final PathSampler pathSampler;
-
-  // private final LoadingCache<PathKey, Set<InferredPath>> pathsCache =
-  // CacheBuilder.newBuilder()
-  // .maximumSize(1000)
-  // .build(
-  // new CacheLoader<PathKey, Set<InferredPath>>() {
-  // public Set<InferredPath> load(PathKey key) {
-  // return computePaths(key);
-  // }
-  // });
-
   private final LoadingCache<PathKey, Set<InferredPath>> pathsCache = CacheBuilder
       .newBuilder().maximumSize(1000)
       .build(new CacheLoader<PathKey, Set<InferredPath>>() {
@@ -537,7 +527,6 @@ public class InferredGraph {
   public InferredGraph(OtpGraph graph) {
     this.graph = graph.getGraph();
     this.narratedGraph = graph;
-    this.pathSampler = new PathSampler(graph.getGraph());
   }
 
   private Set<InferredPath> computePaths(PathKey key) {
@@ -565,7 +554,7 @@ public class InferredGraph {
       final Envelope fromEnv = new Envelope(fromCoord);
       fromEnv.expandBy(GeoUtils
           .getMetersInAngleDegrees(stateStdDevDistance));
-      for (final Object obj : this.pathSampler.getEdgeIndex().query(
+      for (final Object obj : this.narratedGraph.getEdgeIndex().query(
           fromEnv)) {
         final Edge edge = (Edge) obj;
         startEdges.add(edge);
@@ -580,7 +569,7 @@ public class InferredGraph {
     toEnv.expandBy(GeoUtils
         .getMetersInAngleDegrees(obsStdDevDistance));
 
-    for (final Object obj : this.pathSampler.getEdgeIndex().query(
+    for (final Object obj : this.narratedGraph.getEdgeIndex().query(
         toEnv)) {
       final Edge edge = (Edge) obj;
       endEdges.add(edge);
@@ -735,7 +724,7 @@ public class InferredGraph {
     toEnv.expandBy(GeoUtils.getMetersInAngleDegrees(varDistance));
 
     final List<StreetEdge> streetEdges = Lists.newArrayList();
-    for (final Object obj : this.pathSampler.getEdgeIndex().query(
+    for (final Object obj : this.narratedGraph.getEdgeIndex().query(
         toEnv)) {
       final Edge edge = (Edge) obj;
       streetEdges.add((StreetEdge) edge);

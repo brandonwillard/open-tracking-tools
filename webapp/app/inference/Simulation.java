@@ -181,6 +181,7 @@ public class Simulation {
       while (time < this.simParameters.getEndTime().getTime()) {
         time += this.simParameters.getFrequency() * 1000;
         vehicleState = sampleState(vehicleState, time);
+        Logger.info("processed simulation observation : " + i + ", " + time);
         i++;
       }
 
@@ -263,12 +264,9 @@ public class Simulation {
         vehicleState.getMovementFilter(), currentLocBelief, currentEdgeTrans, 
         newPathEdge, newPath, vehicleState);
     
-    
-    Logger.info("processed simulation observation :" + thisObs);
-    
     instance.update(newState, thisObs, this.simParameters.isPerformInference());
-    if (this.simParameters.isPerformInference())
-      Logger.info("processed simulation inference :" + thisObs);
+//    if (this.simParameters.isPerformInference())
+//      Logger.info("processed simulation inference :" + thisObs);
     
     return newState;
   }

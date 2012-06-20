@@ -2,6 +2,7 @@ package org.openplans.tools.tracking.impl.util;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
 import org.opentripplanner.graph_builder.impl.map.StreetMatcher;
 import org.opentripplanner.routing.core.RoutingRequest;
@@ -13,6 +14,7 @@ import org.opentripplanner.routing.edgetype.TurnEdge;
 import org.opentripplanner.routing.graph.Edge;
 import org.opentripplanner.routing.graph.Graph;
 import org.opentripplanner.routing.graph.Graph.LoadLevel;
+import org.opentripplanner.routing.graph.Vertex;
 import org.opentripplanner.routing.impl.GraphServiceImpl;
 import org.opentripplanner.routing.impl.StreetVertexIndexServiceImpl;
 import org.opentripplanner.routing.impl.StreetVertexIndexServiceImpl.CandidateEdgeBundle;
@@ -23,7 +25,11 @@ import org.springframework.context.support.GenericApplicationContext;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import com.vividsolutions.jts.geom.Coordinate;
+import com.vividsolutions.jts.geom.Envelope;
+import com.vividsolutions.jts.geom.Geometry;
+import com.vividsolutions.jts.index.strtree.STRtree;
 
 public class OtpGraph {
 
@@ -40,6 +46,29 @@ public class OtpGraph {
       TraverseMode.CAR);
 
   private final StreetMatcher streetMatcher;
+  
+  private STRtree edgeIndex = new STRtree();
+  private STRtree vertexIndex = new STRtree();
+  
+  private void createIndices() {
+
+    for (final Vertex v : graph.getVertices()) {
+
+      final Geometry vertexGeometry = GeoUtils.lonlatToGeometry(v
+          .getCoordinate());
+      final Envelope vertexEnvelope = vertexGeometry.getEnvelopeInternal();
+      vertexIndex.insert(vertexEnvelope, v);
+
+      for (final Edge e : v.getOutgoing()) {
+        if (graph.getIdForEdge(e) != null) {
+          final Geometry geometry = e.getGeometry();
+          final Envelope envelope = geometry.getEnvelopeInternal();
+          edgeIndex.insert(envelope, e);
+        }
+      }
+    }
+  }
+  
 
   public OtpGraph(String path) {
     log.info("Loading OTP graph...");
@@ -59,6 +88,7 @@ public class OtpGraph {
     streetMatcher = new StreetMatcher(graph);
     indexService = new StreetVertexIndexServiceImpl(graph);
     indexService.setup();
+    createIndices();
 
     log.info("Graph loaded..");
   }
@@ -118,6 +148,16 @@ public class OtpGraph {
       return false;
     else
       return true;
+  }
+
+
+  public STRtree getEdgeIndex() {
+    return edgeIndex;
+  }
+
+
+  public STRtree getVertexIndex() {
+    return vertexIndex;
   }
 
 }

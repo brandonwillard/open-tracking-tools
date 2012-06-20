@@ -79,8 +79,7 @@ public class PathSampler {
       vertexEnvelope = vertexGeometry.getEnvelopeInternal();
       vertexIndex.insert(vertexEnvelope, v);
 
-      for (final Edge e : OtpGraph.filterForStreetEdges(v
-          .getOutgoing())) {
+      for (final Edge e : v.getOutgoing()) {
         if (graph.getIdForEdge(e) != null) {
           Envelope envelope;
           final Geometry geometry = e.getGeometry();
