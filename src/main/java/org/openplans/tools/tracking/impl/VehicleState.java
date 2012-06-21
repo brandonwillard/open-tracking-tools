@@ -16,11 +16,11 @@ import jj2000.j2k.NotImplementedError;
 
 import org.apache.commons.lang.builder.CompareToBuilder;
 import org.openplans.tools.tracking.impl.graph.InferredEdge;
-import org.openplans.tools.tracking.impl.graph.InferredGraph;
 import org.openplans.tools.tracking.impl.graph.paths.InferredPath;
 import org.openplans.tools.tracking.impl.graph.paths.PathEdge;
 import org.openplans.tools.tracking.impl.statistics.EdgeTransitionDistributions;
 import org.openplans.tools.tracking.impl.statistics.StandardRoadTrackingFilter;
+import org.openplans.tools.tracking.impl.util.OtpGraph;
 
 import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
@@ -179,7 +179,7 @@ public class VehicleState implements
   private VehicleState parentState = null;
   private final Double distanceFromPreviousState;
 
-  private final InferredGraph graph;
+  private final OtpGraph graph;
 
   // private final int initialHashCode;
   // private final int edgeInitialHashCode;
@@ -189,7 +189,7 @@ public class VehicleState implements
 
   private final InferredPath path;
 
-  public VehicleState(InferredGraph graph,
+  public VehicleState(OtpGraph graph,
     Observation initialObservation, InferredEdge inferredEdge,
     InitialParameters parameters) {
 
@@ -256,7 +256,7 @@ public class VehicleState implements
     // this.obsInitialHashCode = this.observation.hashCode();
   }
 
-  public VehicleState(InferredGraph graph, Observation observation,
+  public VehicleState(OtpGraph graph, Observation observation,
     StandardRoadTrackingFilter filter, MultivariateGaussian belief,
     EdgeTransitionDistributions edgeTransitionDist, PathEdge edge,
     InferredPath path, VehicleState state) {
@@ -409,7 +409,7 @@ public class VehicleState implements
     return edgeTransitionDist;
   }
 
-  public InferredGraph getGraph() {
+  public OtpGraph getGraph() {
     return graph;
   }
 

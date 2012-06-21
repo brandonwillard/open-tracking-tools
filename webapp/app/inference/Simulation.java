@@ -22,7 +22,6 @@ import org.openplans.tools.tracking.impl.TimeOrderException;
 import org.openplans.tools.tracking.impl.VehicleState;
 import org.openplans.tools.tracking.impl.VehicleState.InitialParameters;
 import org.openplans.tools.tracking.impl.graph.InferredEdge;
-import org.openplans.tools.tracking.impl.graph.InferredGraph;
 import org.openplans.tools.tracking.impl.graph.paths.InferredPath;
 import org.openplans.tools.tracking.impl.graph.paths.InferredPathEntry;
 import org.openplans.tools.tracking.impl.graph.paths.PathEdge;
@@ -30,6 +29,7 @@ import org.openplans.tools.tracking.impl.statistics.EdgeTransitionDistributions;
 import org.openplans.tools.tracking.impl.statistics.FilterInformation;
 import org.openplans.tools.tracking.impl.statistics.StandardRoadTrackingFilter;
 import org.openplans.tools.tracking.impl.util.GeoUtils;
+import org.openplans.tools.tracking.impl.util.OtpGraph;
 
 import play.Logger;
 //import org.slf4j.Logger;
@@ -61,7 +61,7 @@ public class Simulation {
 
   private final long seed;
   private final Random rng;
-  private final InferredGraph inferredGraph;
+  private final OtpGraph inferredGraph;
   private final String simulationName;
   private final InitialParameters parameters;
   private InferenceInstance instance;
@@ -118,7 +118,7 @@ public class Simulation {
     this.simParameters = simParameters;
     this.parameters = parameters;
     
-    this.inferredGraph = new InferredGraph(Api.getGraph());
+    this.inferredGraph = Api.getGraph();
     this.simulationName = simulationName;
     
     this.rng = new Random();
@@ -409,7 +409,7 @@ public class Simulation {
     return rng;
   }
 
-  public InferredGraph getInferredGraph() {
+  public OtpGraph getInferredGraph() {
     return inferredGraph;
   }
 

@@ -18,10 +18,10 @@ import org.openplans.tools.tracking.impl.VehicleState;
 import org.openplans.tools.tracking.impl.VehicleStateConditionalParams;
 import org.openplans.tools.tracking.impl.VehicleState.InitialParameters;
 import org.openplans.tools.tracking.impl.graph.InferredEdge;
-import org.openplans.tools.tracking.impl.graph.InferredGraph;
 import org.openplans.tools.tracking.impl.graph.paths.InferredPath;
 import org.openplans.tools.tracking.impl.graph.paths.InferredPathEntry;
 import org.openplans.tools.tracking.impl.graph.paths.PathEdge;
+import org.openplans.tools.tracking.impl.util.OtpGraph;
 import org.opentripplanner.routing.edgetype.StreetEdge;
 import org.opentripplanner.routing.graph.Edge;
 
@@ -64,14 +64,14 @@ public class VehicleTrackingFilterUpdater implements
   private static final long serialVersionUID = 2884138088944317656L;
   private final Observation initialObservation;
 
-  private final InferredGraph inferredGraph;
+  private final OtpGraph inferredGraph;
 
   private final InitialParameters parameters;
 
   private final ThreadLocal<Random> threadRandom;
 
   public VehicleTrackingFilterUpdater(Observation obs,
-    InferredGraph inferredGraph, InitialParameters parameters) {
+		  OtpGraph inferredGraph, InitialParameters parameters) {
     this.initialObservation = obs;
     this.inferredGraph = inferredGraph;
     this.parameters = parameters;
