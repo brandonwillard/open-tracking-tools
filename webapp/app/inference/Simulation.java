@@ -129,8 +129,10 @@ public class Simulation {
     }
     this.rng.setSeed(seed);
     
+    // TODO info level should be a parameter
     this.instance = InferenceService.getOrCreateInferenceInstance(simulationName, true, 
         INFO_LEVEL.DEBUG);
+    
     this.instance.simSeed = seed;
     this.instance.totalRecords = (int)((simParameters.getEndTime().getTime() 
         - simParameters.getStartTime().getTime()) / (simParameters.getFrequency() * 1000d));

@@ -38,20 +38,29 @@ public class InferenceService extends UntypedActor {
     DEBUG
   }
   
-  private static INFO_LEVEL currentLevel = INFO_LEVEL.ALL_RESULTS;
+  private static INFO_LEVEL defaultLevel = INFO_LEVEL.ALL_RESULTS;
 
   public static void clearInferenceData() {
     vehicleToInstance.clear();
   }
   
+  /**
+   * This will process a record for an already existing {@link #InferenceInstance}, or
+   * it will create a new one.
+   * 
+   * @param observation
+   */
   public static void processRecord(Observation observation) {
 
     final InferenceInstance ie = getOrCreateInferenceInstance(observation
-        .getVehicleId(), false, currentLevel);
+        .getVehicleId(), false, defaultLevel);
 
     ie.update(observation);
   }
   
+  /**
+   * See {@link #processRecord}
+   */
   @Override
   public void onReceive(Object location) throws Exception {
     synchronized (this) {
@@ -71,11 +80,12 @@ public class InferenceService extends UntypedActor {
     return ie;
   }
 
-  public static InferenceInstance getOrCreateInferenceInstance(String vehicleId, boolean isSimulation, INFO_LEVEL currentLevel2) {
+  public static InferenceInstance getOrCreateInferenceInstance(String vehicleId, boolean isSimulation, 
+    INFO_LEVEL infoLevel) {
     InferenceInstance ie = vehicleToInstance.get(vehicleId);
 
     if (ie == null) {
-      ie = new InferenceInstance(vehicleId, isSimulation, currentLevel);
+      ie = new InferenceInstance(vehicleId, isSimulation, infoLevel);
       vehicleToInstance.put(vehicleId, ie);
     }
 

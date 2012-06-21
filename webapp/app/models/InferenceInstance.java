@@ -62,7 +62,7 @@ public class InferenceInstance {
   
   private static InferredGraph inferredGraph = new InferredGraph(Api.getGraph());
 
-  public InferenceInstance(String vehicleId, boolean isSimulation, INFO_LEVEL currentLevel) {
+  public InferenceInstance(String vehicleId, boolean isSimulation, INFO_LEVEL infoLevel) {
     this.initialParameters = new InitialParameters(
         VectorFactory.getDefault().createVector2D(VehicleState.getGvariance(), VehicleState.getGvariance()),
         VectorFactory.getDefault().createVector2D(VehicleState.getDvariance(), VehicleState.getVvariance()),
@@ -72,7 +72,7 @@ public class InferenceInstance {
         0l);
     this.vehicleId = vehicleId;
     this.isSimulation = isSimulation;
-    this.infoLevel = currentLevel;
+    this.infoLevel = infoLevel;
   }
   
   public InferenceInstance(String vehicleId, boolean isSimulation, INFO_LEVEL infoLevel, InitialParameters parameters) {
@@ -131,12 +131,12 @@ public class InferenceInstance {
 
     if (filter == null || postBelief == null) {
       filter = new VehicleTrackingFilter(obs, inferredGraph, initialParameters, 
-          infoLevel == INFO_LEVEL.DEBUG);
+          infoLevel.compareTo(INFO_LEVEL.DEBUG) >= 0);
       filter.getRandom().setSeed(simSeed);
       postBelief = filter.createInitialLearnedObject();
     } else {
       filter.update(postBelief, obs);
-      if (infoLevel == INFO_LEVEL.DEBUG) {
+      if (infoLevel.compareTo(INFO_LEVEL.DEBUG) >= 0) {
         final FilterInformation filterInfo = filter.getFilterInformation(obs);
         resampleBelief = filterInfo != null ? 
             filterInfo.getResampleDist() : null;
