@@ -385,17 +385,20 @@ public class StandardRoadTrackingFilter implements
 
     Preconditions.checkArgument(!edge.isEmptyEdge());
 
-    final Entry<LineSegment, Double> segmentDist = getDistanceToStartOfSegment(
+    final Entry<LineSegment, Double> segmentDist = getSegmentAndDistanceToStart(
         edge, belief.getMean().getElement(0));
     final Entry<Matrix, Vector> projPair = StandardRoadTrackingFilter
         .posVelProjectionPair(
             segmentDist.getKey(), segmentDist.getValue());
-    /*
-     * First, we convert to a positive distance traveled.
-     */
+    
+    // TODO FIXME we shouldn't need to do this, this way!
     final Vector truncatedMean = getTruncatedEdgeLocation(
         belief.getMean(), edge);
 
+    /*
+     * We're going all positive here, since we should've been using
+     * the reversed geometry if negative.
+     */
     if (truncatedMean.getElement(0) < 0d) {
       truncatedMean.setElement(
           0, Math.abs(truncatedMean.getElement(0)));
@@ -517,13 +520,14 @@ public class StandardRoadTrackingFilter implements
   }
 
   /**
-   * Returns the distance
+   * Returns the lineSegment in the geometry of the edge and the
+   * distance to the start of the segment on the entire path.
    * 
    * @param edge
    * @param distanceAlong
    * @return
    */
-  public static Entry<LineSegment, Double> getDistanceToStartOfSegment(
+  public static Entry<LineSegment, Double> getSegmentAndDistanceToStart(
     PathEdge edge, double distanceAlong) {
     final boolean isNegative = distanceAlong < 0d;
     final Geometry geometry;
@@ -592,21 +596,24 @@ public class StandardRoadTrackingFilter implements
     return serialVersionUID;
   }
 
+  // TODO FIXME get rid of this nonsense!
   public static Vector getTruncatedEdgeLocation(Vector mean,
     PathEdge edge) {
     Preconditions.checkArgument(mean.getDimensionality() == 2);
 
     final Vector truncatedMean = mean.clone();
-    final double totalPathDistance = Math.abs(edge
-        .getDistToStartOfEdge()) + edge.getInferredEdge().getLength();
 
-    final double sign = Math.signum(mean.getElement(0));
+    final double direction = mean.getElement(0) >= 0d ? 1d : -1d;
+    
+    final double totalPathDistance = Math.abs(edge
+        .getDistToStartOfEdge()) + direction * edge.getInferredEdge().getLength();
+    
     final double distance = Math.abs(mean.getElement(0));
 
     if (distance > totalPathDistance) {
-      truncatedMean.setElement(0, sign * totalPathDistance);
+      truncatedMean.setElement(0, direction * totalPathDistance);
     } else if (distance < Math.abs(edge.getDistToStartOfEdge())) {
-      truncatedMean.setElement(0, sign * edge.getDistToStartOfEdge());
+      truncatedMean.setElement(0, direction * edge.getDistToStartOfEdge());
     }
     return truncatedMean;
   }
@@ -641,6 +648,7 @@ public class StandardRoadTrackingFilter implements
   }
 
   /**
+   * TODO FIXME associate these values with segments?
    * Returns the matrix and offset vector for projection onto the given edge.
    * distEnd is the distance from the start of the path to the end of the given
    * edge. NOTE: These results are only in the positive direction. Convert on

@@ -97,7 +97,7 @@ public class PathEdge implements Comparable<PathEdge> {
   }
   
   public double marginalPredictiveLogLikelihood(
-    MultivariateGaussian beliefPrediction) {
+    MultivariateGaussian beliefPrediction, double direction) {
     Preconditions.checkArgument(beliefPrediction
         .getInputDimensionality() == 2);
     final Matrix Or = StandardRoadTrackingFilter.getOr();
@@ -106,7 +106,7 @@ public class PathEdge implements Comparable<PathEdge> {
         .times(Or.transpose()).getElement(0, 0));
     final double mean = Or.times(beliefPrediction.getMean())
         .getElement(0);
-    final double endDist = edge.getLength() + this.distToStartOfEdge;
+    final double endDist = direction * edge.getLength() + this.distToStartOfEdge;
     // FIXME use actual log calculations
     final double result = UnivariateGaussian.CDF.evaluate(
         endDist, mean, variance)
@@ -142,10 +142,10 @@ public class PathEdge implements Comparable<PathEdge> {
      * The mean can be the center-length of the geometry, or something more
      * specific, like the snapped location!
      */
-    final boolean isPositive = belief.getMean().getElement(0) >= 0d;
+    final double direction = belief.getMean().getElement(0) >= 0d ? 1d : -1d;
 
-    final double mean = (distToStartOfEdge + (isPositive ? 1d : -1d)
-        * edge.getLength()) / 2d;
+    final double mean = (distToStartOfEdge + (distToStartOfEdge + direction
+        * edge.getLength())) / 2d;
 
     // final LocationIndexedLine locIdxLine = isPositive ?
     // edge.getPosLocationIndexedLine()

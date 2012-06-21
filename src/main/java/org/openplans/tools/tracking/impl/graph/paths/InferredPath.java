@@ -16,6 +16,7 @@ import org.opentripplanner.routing.graph.Edge;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
@@ -37,12 +38,18 @@ public class InferredPath implements Comparable<InferredPath> {
    */
   private InferredEdge startEdge;
   private InferredEdge endEdge;
+  
+  /*
+   * Note: single edges are considered forward
+   */
+  private Boolean isBackward = null;
 
   private static InferredPath emptyPath = new InferredPath();
 
   private InferredPath() {
     this.edges = ImmutableList.of(PathEdge.getEmptyPathEdge());
     this.totalPathDistance = null;
+    this.isBackward = null;
   }
 
   private InferredPath(ImmutableList<PathEdge> edges) {
@@ -50,20 +57,46 @@ public class InferredPath implements Comparable<InferredPath> {
     this.edges = edges;
 
     PathEdge lastEdge = null;
+    // TODO remove debug?
+    double absTotalDistance = 0d;
     for (final PathEdge edge : edges) {
       if (!edge.isEmptyEdge()) {
+        if (lastEdge != null
+            && !lastEdge.isEmptyEdge()) {
+          if (lastEdge.getInferredEdge().getStartVertex()
+              .equals(edge.getInferredEdge().getEndVertex())) {
+            isBackward = Boolean.TRUE;
+          } else {
+            isBackward = Boolean.FALSE;
+          }
+        } else {
+          isBackward = Boolean.FALSE;
+        }
+        
         lastEdge = edge;
+        absTotalDistance += edge.getInferredEdge().getLength();
       }
       edgeIds.add(edge.getInferredEdge().getEdgeId());
     }
+    
+    final double direction = isBackward ? -1d : 1d;
     this.totalPathDistance = lastEdge.getDistToStartOfEdge()
-        + lastEdge.getInferredEdge().getLength();
+        + direction * lastEdge.getInferredEdge().getLength();
+    Preconditions.checkArgument(Math.abs(totalPathDistance) == absTotalDistance);
   }
 
   private InferredPath(InferredEdge inferredEdge) {
     Preconditions.checkArgument(!inferredEdge.isEmptyEdge());
     this.edges = ImmutableList.of(PathEdge.getEdge(inferredEdge, 0d));
     this.totalPathDistance = inferredEdge.getLength();
+    this.isBackward = Boolean.FALSE;
+  }
+
+  public InferredPath(PathEdge edge) {
+    Preconditions.checkArgument(!edge.isEmptyEdge());
+    this.edges = ImmutableList.of(edge);
+    this.totalPathDistance = edge.getInferredEdge().getLength();
+    this.isBackward = Boolean.FALSE;
   }
 
   @Override
@@ -105,20 +138,21 @@ public class InferredPath implements Comparable<InferredPath> {
    * @param distance
    * @return
    */
-  public PathEdge getEdgeAtDistance(double distance) {
-    Preconditions.checkArgument(this != emptyPath);
-    Preconditions.checkArgument(distance >= 0d);
-    // TODO pre-compute/improve this
-    for (final PathEdge edge : this.edges) {
-      if (edge.getDistToStartOfEdge() <= distance
-          && distance < edge.getDistToStartOfEdge()
-              + edge.getInferredEdge().getLength()) {
-        return edge;
-      }
-    }
-
-    return null;
-  }
+//  public PathEdge getEdgeAtDistance(double distance) {
+//    Preconditions.checkArgument(this != emptyPath);
+//    Preconditions.checkArgument(distance >= 0d);
+//    // TODO pre-compute/improve this
+//    for (final PathEdge edge : this.edges) {
+//      if (edge.getDistToStartOfEdge() <= distance
+//          && distance < edge.getDistToStartOfEdge()
+//              // FIXME if you're going to use this, set the direction! 
+//              + edge.getInferredEdge().getLength()) {
+//        return edge;
+//      }
+//    }
+//
+//    return null;
+//  }
 
   public ImmutableList<PathEdge> getEdges() {
     return edges;
@@ -145,6 +179,8 @@ public class InferredPath implements Comparable<InferredPath> {
 
     filter.predict(beliefPrediction, this.getEdges().get(0), 
         PathEdge.getEdge(state.getInferredEdge()));
+    
+    final double direction = beliefPrediction.getMean().getElement(0) >= 0d ? 1d : -1d;
     PathEdge prevEdge = PathEdge.getEdge(state.getInferredEdge());
     double pathLogLik = Double.NEGATIVE_INFINITY;
     
@@ -166,7 +202,7 @@ public class InferredPath implements Comparable<InferredPath> {
       } else {
         edge.predict(edgeBelief, obs);
         edgePredMarginalLogLik = edge
-            .marginalPredictiveLogLikelihood(beliefPrediction);
+            .marginalPredictiveLogLikelihood(beliefPrediction, direction);
       }
 
       final double edgePredTransLogLik = state
@@ -234,6 +270,8 @@ public class InferredPath implements Comparable<InferredPath> {
   }
 
   public static InferredPath getInferredPath(List<PathEdge> edges) {
+    if (edges.size() == 1)
+      return new InferredPath(Iterables.getOnlyElement(edges));
     return new InferredPath(ImmutableList.copyOf(edges));
   }
 
@@ -241,7 +279,7 @@ public class InferredPath implements Comparable<InferredPath> {
     if (pathEdge.isEmptyEdge())
       return emptyPath;
     else
-      return new InferredPath(ImmutableList.of(pathEdge));
+      return new InferredPath(pathEdge);
   }
 
   public void setStartEdge(InferredEdge startEdge) {
@@ -258,6 +296,14 @@ public class InferredPath implements Comparable<InferredPath> {
 
   public InferredEdge getStartEdge() {
     return startEdge;
+  }
+
+  public Boolean getIsBackward() {
+    return isBackward;
+  }
+
+  public void setIsBackward(Boolean isBackward) {
+    this.isBackward = isBackward;
   }
 
 }
