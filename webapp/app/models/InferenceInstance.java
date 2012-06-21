@@ -1,6 +1,7 @@
 package models;
 
 import inference.InferenceResultRecord;
+import inference.InferenceService.INFO_LEVEL;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -56,12 +57,12 @@ public class InferenceInstance {
 
   public int totalRecords = 0;
 
-  private final boolean isDebug;
+  private final INFO_LEVEL infoLevel;
 
   
   private static InferredGraph inferredGraph = new InferredGraph(Api.getGraph());
 
-  public InferenceInstance(String vehicleId, boolean isSimulation, boolean isDebug) {
+  public InferenceInstance(String vehicleId, boolean isSimulation, INFO_LEVEL currentLevel) {
     this.initialParameters = new InitialParameters(
         VectorFactory.getDefault().createVector2D(VehicleState.getGvariance(), VehicleState.getGvariance()),
         VectorFactory.getDefault().createVector2D(VehicleState.getDvariance(), VehicleState.getVvariance()),
@@ -71,15 +72,15 @@ public class InferenceInstance {
         0l);
     this.vehicleId = vehicleId;
     this.isSimulation = isSimulation;
-    this.isDebug = isDebug;
+    this.infoLevel = currentLevel;
   }
   
-  public InferenceInstance(String vehicleId, boolean isSimulation, boolean isDebug, InitialParameters parameters) {
+  public InferenceInstance(String vehicleId, boolean isSimulation, INFO_LEVEL infoLevel, InitialParameters parameters) {
     this.initialParameters = parameters;
     this.vehicleId = vehicleId;
     this.isSimulation = isSimulation;
     this.simSeed = parameters.getSeed();
-    this.isDebug = isDebug;
+    this.infoLevel = infoLevel;
   }
 
   public VehicleState getBestState() {
@@ -101,7 +102,7 @@ public class InferenceInstance {
         .createInferenceResultRecord(obs, this, actualState, postBelief.getMaxValueKey(), 
             postBelief.clone(), resampleBelief != null ? resampleBelief.clone() : null);
 
-    if (!isDebug)
+    if (infoLevel == INFO_LEVEL.SINGLE_RESULT && !this.resultRecords.isEmpty())
       this.resultRecords.pop();
       
     this.resultRecords.add(result);
@@ -120,7 +121,7 @@ public class InferenceInstance {
     final InferenceResultRecord infResult = InferenceResultRecord
         .createInferenceResultRecord(obs, this);
 
-    if (!isDebug && !this.resultRecords.isEmpty())
+    if (infoLevel == INFO_LEVEL.SINGLE_RESULT && !this.resultRecords.isEmpty())
       this.resultRecords.pop();
       
     this.resultRecords.add(infResult);
@@ -129,12 +130,13 @@ public class InferenceInstance {
   private void updateFilter(Observation obs) {
 
     if (filter == null || postBelief == null) {
-      filter = new VehicleTrackingFilter(obs, inferredGraph, initialParameters, isDebug);
+      filter = new VehicleTrackingFilter(obs, inferredGraph, initialParameters, 
+          infoLevel == INFO_LEVEL.DEBUG);
       filter.getRandom().setSeed(simSeed);
       postBelief = filter.createInitialLearnedObject();
     } else {
       filter.update(postBelief, obs);
-      if (isDebug) {
+      if (infoLevel == INFO_LEVEL.DEBUG) {
         final FilterInformation filterInfo = filter.getFilterInformation(obs);
         resampleBelief = filterInfo != null ? 
             filterInfo.getResampleDist() : null;
@@ -173,8 +175,8 @@ public class InferenceInstance {
     return inferredGraph;
   }
 
-  public boolean isDebug() {
-    return isDebug;
+  public INFO_LEVEL getInfoLevel() {
+    return infoLevel;
   }
 
   public List<InferenceResultRecord> getResultRecords() {

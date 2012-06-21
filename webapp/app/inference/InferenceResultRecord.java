@@ -11,6 +11,7 @@ import gov.sandia.cognition.statistics.DataDistribution;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 
 import inference.InferenceResultRecord.ResultSet.EvaluatedPathInfo;
+import inference.InferenceService.INFO_LEVEL;
 
 import java.util.Collections;
 import java.util.Date;
@@ -254,8 +255,10 @@ public class InferenceResultRecord {
     Observation observation, InferenceInstance inferenceInstance) {
     return createInferenceResultRecord(
         observation, inferenceInstance, null, inferenceInstance.getBestState(), 
-        inferenceInstance.isDebug() ? inferenceInstance.getPostBelief() : null,
-        inferenceInstance.isDebug() ? inferenceInstance.getResampleBelief() : null);
+        inferenceInstance.getInfoLevel().compareTo(INFO_LEVEL.DEBUG) >= 0 
+          ? inferenceInstance.getPostBelief() : null,
+        inferenceInstance.getInfoLevel().compareTo(INFO_LEVEL.DEBUG) >= 0 
+          ? inferenceInstance.getResampleBelief() : null);
   }
 
   public static InferenceResultRecord createInferenceResultRecord(

@@ -32,11 +32,13 @@ public class InferenceService extends UntypedActor {
   private static final Map<String, InferenceInstance> vehicleToInstance = Maps
       .newConcurrentMap();
 
-  /**
-   * This constant determines whether to collect debug information 
-   * for new inference instances created on the fly.
-   */
-  private static final boolean DEBUG_DEFAULT = false;
+  public enum INFO_LEVEL {
+    SINGLE_RESULT,
+    ALL_RESULTS, 
+    DEBUG
+  }
+  
+  private static INFO_LEVEL currentLevel = INFO_LEVEL.ALL_RESULTS;
 
   public static void clearInferenceData() {
     vehicleToInstance.clear();
@@ -45,7 +47,7 @@ public class InferenceService extends UntypedActor {
   public static void processRecord(Observation observation) {
 
     final InferenceInstance ie = getOrCreateInferenceInstance(observation
-        .getVehicleId(), false, DEBUG_DEFAULT);
+        .getVehicleId(), false, currentLevel);
 
     ie.update(observation);
   }
@@ -69,11 +71,11 @@ public class InferenceService extends UntypedActor {
     return ie;
   }
 
-  public static InferenceInstance getOrCreateInferenceInstance(String vehicleId, boolean isSimulation, boolean isDebug) {
+  public static InferenceInstance getOrCreateInferenceInstance(String vehicleId, boolean isSimulation, INFO_LEVEL currentLevel2) {
     InferenceInstance ie = vehicleToInstance.get(vehicleId);
 
     if (ie == null) {
-      ie = new InferenceInstance(vehicleId, isSimulation, isDebug);
+      ie = new InferenceInstance(vehicleId, isSimulation, currentLevel);
       vehicleToInstance.put(vehicleId, ie);
     }
 

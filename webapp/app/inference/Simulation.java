@@ -8,6 +8,8 @@ import gov.sandia.cognition.math.matrix.mtj.decomposition.CholeskyDecompositionM
 import gov.sandia.cognition.statistics.DataDistribution;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 
+import inference.InferenceService.INFO_LEVEL;
+
 import java.util.Date;
 import java.util.List;
 import java.util.Random;
@@ -127,7 +129,8 @@ public class Simulation {
     }
     this.rng.setSeed(seed);
     
-    this.instance = InferenceService.getOrCreateInferenceInstance(simulationName, true, true);
+    this.instance = InferenceService.getOrCreateInferenceInstance(simulationName, true, 
+        INFO_LEVEL.DEBUG);
     this.instance.simSeed = seed;
     this.instance.totalRecords = (int)((simParameters.getEndTime().getTime() 
         - simParameters.getStartTime().getTime()) / (simParameters.getFrequency() * 1000d));
