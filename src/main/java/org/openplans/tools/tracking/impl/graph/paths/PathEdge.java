@@ -101,9 +101,9 @@ public class PathEdge implements Comparable<PathEdge> {
     Preconditions.checkArgument(beliefPrediction
         .getInputDimensionality() == 2);
     final Matrix Or = StandardRoadTrackingFilter.getOr();
-    final double variance = Math.sqrt(Or
+    final double variance = Or
         .times(beliefPrediction.getCovariance())
-        .times(Or.transpose()).getElement(0, 0));
+        .times(Or.transpose()).getElement(0, 0);
     final double mean = Or.times(beliefPrediction.getMean())
         .getElement(0);
     final double endDist = direction * edge.getLength() + this.distToStartOfEdge;
