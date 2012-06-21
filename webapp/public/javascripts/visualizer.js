@@ -97,7 +97,10 @@ $(document).ready(function() {
 function addEdge() {
 
   var id = jQuery('#edge_id').val();
-  drawEdge(id, null, EdgeType.ADDED);
+  var edges = id.split(',');
+  $.each(edges, function(index, value) {
+    drawEdge(value, null, EdgeType.ADDED);
+  });
   map.invalidateSize();
 }
 
@@ -145,10 +148,10 @@ function drawProjectedCoords(x, y, popupMessage, pan) {
 function addCoordinates() {
 
   var coordString = jQuery('#coordinate_data').val();
-  var coordSplit = coordString.split(",", 2);
+  var coordSplit = coordString.split(/(\d+\.?\d*)\D(\d+\.?\d*)/g, 3);
 
-  if (coordSplit.length == 2) {
-    var coordGetString = "x=" + coordSplit[0] + "&y=" + coordSplit[1];
+  if (coordSplit.length == 3) {
+    var coordGetString = "x=" + coordSplit[1] + "&y=" + coordSplit[2];
 
     $.get(coordUrl + coordGetString, function(data) {
 
@@ -860,7 +863,12 @@ function renderPath(pathSegmentIds, pathDirection, edgeType) {
   for ( var j in segmentIds) {
     var segmentInfo = segmentIds[j];
     if (segmentInfo.length == 2 && segmentInfo[0] > -1) {
-      justIds.push(segmentInfo[0]);
+      
+      if (j > 0 && j % 5 == 0) {
+        justIds.push('<br>' + segmentInfo[0]);
+      } else {
+        justIds.push(segmentInfo[0]);
+      }
       $.ajax({
         url : '/api/segment?segmentId=' + segmentInfo[0],
         dataType : 'json',
