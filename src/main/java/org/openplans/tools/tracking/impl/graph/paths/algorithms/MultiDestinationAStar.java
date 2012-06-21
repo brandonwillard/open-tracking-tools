@@ -1,14 +1,18 @@
 package org.openplans.tools.tracking.impl.graph.paths.algorithms;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.opentripplanner.common.geometry.DistanceLibrary;
 import org.opentripplanner.routing.algorithm.GenericAStar;
+import org.opentripplanner.routing.algorithm.TraverseVisitor;
 import org.opentripplanner.routing.algorithm.strategies.RemainingWeightHeuristic;
 import org.opentripplanner.routing.algorithm.strategies.SearchTerminationStrategy;
 import org.opentripplanner.routing.algorithm.strategies.SkipTraverseResultStrategy;
 import org.opentripplanner.routing.core.RoutingRequest;
 import org.opentripplanner.routing.core.State;
+import org.opentripplanner.routing.core.TraverseMode;
 import org.opentripplanner.routing.graph.Edge;
 import org.opentripplanner.routing.graph.Graph;
 import org.opentripplanner.routing.graph.Vertex;
@@ -19,22 +23,22 @@ import com.vividsolutions.jts.geom.Coordinate;
 
 public class MultiDestinationAStar implements
     SearchTerminationStrategy, RemainingWeightHeuristic,
-    SkipTraverseResultStrategy {
+    SkipTraverseResultStrategy, TraverseVisitor {
   private static final long serialVersionUID = 1L;
 
   double MAX_SPEED = 27.0; // ~60 mph
 
-  private final List<Edge> end;
+  private final HashSet<Edge> end;
   private final Coordinate center;
   private final double radius;
   private final Graph graph;
 
   private final Edge start;
 
-  public MultiDestinationAStar(Graph graph, List<Edge> end,
+  public MultiDestinationAStar(Graph graph, Set<Edge> endEdges,
     Coordinate center, double radius, Edge start) {
     this.graph = graph;
-    this.end = end;
+    this.end = new HashSet<Edge>(endEdges);
     this.center = center;
     this.radius = radius;
     this.start = start;
@@ -43,10 +47,10 @@ public class MultiDestinationAStar implements
   @Override
   public double computeForwardWeight(State s, Vertex target) {
     final Vertex v = s.getVertex();
-    final double distance = DistanceLibrary.fastDistance(
-        v.getCoordinate(), center)
-        - radius;
+    double distance = DistanceLibrary.fastDistance(
+        v.getCoordinate(), center) - radius;
 
+    if (distance < 0) distance = 0;
     return distance / MAX_SPEED;
   }
 
@@ -65,8 +69,9 @@ public class MultiDestinationAStar implements
     final GenericAStar astar = new GenericAStar();
     astar.setSearchTerminationStrategy(this);
     astar.setSkipTraverseResultStrategy(this);
+    astar.setTraverseVisitor(this);
     
-    final RoutingRequest req = new RoutingRequest();
+    final RoutingRequest req = new RoutingRequest(TraverseMode.CAR);
     req.setArriveBy(arriveBy);
     
     final Vertex startVertex = arriveBy ? start.getToVertex() : start.getFromVertex();
@@ -98,7 +103,6 @@ public class MultiDestinationAStar implements
   public boolean shouldSearchContinue(Vertex origin, Vertex target,
     State current, ShortestPathTree spt,
     RoutingRequest traverseOptions) {
-    end.remove(current.getBackEdge());
     return end.size() != 0;
   }
 
@@ -111,5 +115,20 @@ public class MultiDestinationAStar implements
       return true;
     }
     return false;
+  }
+
+  @Override
+  public void visitEdge(Edge edge, State state) {
+	  end.remove(edge);
+  }
+
+  @Override
+  public void visitVertex(State state) {
+	  // nothing
+  }
+
+  @Override
+  public void visitEnqueue(State state) {
+	// nothing
   }
 }

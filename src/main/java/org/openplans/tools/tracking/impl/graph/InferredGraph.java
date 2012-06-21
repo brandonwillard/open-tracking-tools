@@ -15,6 +15,8 @@ import org.openplans.tools.tracking.impl.graph.paths.algorithms.MultiDestination
 import org.openplans.tools.tracking.impl.statistics.StandardRoadTrackingFilter;
 import org.openplans.tools.tracking.impl.util.GeoUtils;
 import org.openplans.tools.tracking.impl.util.OtpGraph;
+import org.opentripplanner.routing.core.RoutingRequest;
+import org.opentripplanner.routing.core.TraverseMode;
 import org.opentripplanner.routing.edgetype.StreetEdge;
 import org.opentripplanner.routing.graph.Edge;
 import org.opentripplanner.routing.graph.Graph;
@@ -233,25 +235,27 @@ public class InferredGraph {
     toEnv.expandBy(GeoUtils
         .getMetersInAngleDegrees(obsStdDevDistance));
 
+    final RoutingRequest options = new RoutingRequest(TraverseMode.CAR);
     for (final Object obj : this.narratedGraph.getEdgeIndex().query(
         toEnv)) {
       final Edge edge = (Edge) obj;
-      endEdges.add(edge);
+      if (((StreetEdge) edge).canTraverse(options)) {
+    	endEdges.add(edge);
+      }
     }
 
-    final List<Edge> endEdgeList = Lists.newArrayList(endEdges);
     for (final Edge startEdge : startEdges) {
       final MultiDestinationAStar forwardAStar = new MultiDestinationAStar(
-          this.graph, endEdgeList, toCoord, obsStdDevDistance,
+          this.graph, endEdges, toCoord, obsStdDevDistance,
           startEdge);
       final MultiDestinationAStar backwardAStar = new MultiDestinationAStar(
-          this.graph, endEdgeList, toCoord, obsStdDevDistance,
+          this.graph, endEdges, toCoord, obsStdDevDistance,
           startEdge);
 
       final ShortestPathTree spt1 = forwardAStar.getSPT(false);
       final ShortestPathTree spt2 = backwardAStar.getSPT(true);
 
-      for (final Edge endEdge : endEdgeList) {
+      for (final Edge endEdge : endEdges) {
         final GraphPath forwardPath = spt1.getPath(
             endEdge.getToVertex(), false);
         if (forwardPath != null) {
