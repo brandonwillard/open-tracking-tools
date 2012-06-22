@@ -33,7 +33,7 @@ public class InferredEdge implements
   private final double length;
   private final NormalInverseGammaDistribution velocityPrecisionDist;
   private final UnivariateGaussianMeanVarianceBayesianEstimator velocityEstimator;
-  private final InferredGraph graph;
+  private final OtpGraph graph;
 
   private final Edge edge;
 
@@ -81,8 +81,8 @@ public class InferredEdge implements
     this.negLengthLocationMap = null;
   }
 
-  InferredEdge(Edge edge, Integer edgeId,
-    InferredGraph graph) {
+  public InferredEdge(Edge edge, Integer edgeId,
+    OtpGraph graph) {
     this.graph = graph;
     this.edgeId = edgeId;
     this.edge = edge;
@@ -216,7 +216,7 @@ public class InferredEdge implements
     return endVertex;
   }
 
-  public InferredGraph getGraph() {
+  public OtpGraph getGraph() {
     return graph;
   }
 
@@ -230,7 +230,6 @@ public class InferredEdge implements
   public List<InferredEdge> getIncomingTransferableEdges() {
 
     final List<InferredEdge> result = Lists.newArrayList();
-    this.graph.getNarratedGraph();
     for (final Edge edge : OtpGraph
         .filterForStreetEdges(this.startVertex.getIncoming())) {
       if (graph.getGraph().getIdForEdge(edge) != null)

@@ -17,10 +17,10 @@ import org.openplans.tools.tracking.impl.Observation;
 import org.openplans.tools.tracking.impl.VehicleState;
 import org.openplans.tools.tracking.impl.VehicleState.InitialParameters;
 import org.openplans.tools.tracking.impl.graph.InferredEdge;
-import org.openplans.tools.tracking.impl.graph.InferredGraph;
 import org.openplans.tools.tracking.impl.graph.paths.InferredPath;
 import org.openplans.tools.tracking.impl.graph.paths.InferredPathEntry;
 import org.openplans.tools.tracking.impl.graph.paths.PathEdge;
+import org.openplans.tools.tracking.impl.util.OtpGraph;
 
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Lists;
@@ -37,7 +37,7 @@ public class VehicleTrackingFilter extends
    * Populate this when you want a generalized graph. TODO Otherwise, one is
    * created for each particle.
    */
-  private final InferredGraph inferredGraph;
+  private final OtpGraph inferredGraph;
 
   private double prevTime = 0;
 
@@ -51,7 +51,7 @@ public class VehicleTrackingFilter extends
   private final Observation initialObservation;
 
   public VehicleTrackingFilter(Observation obs,
-    InferredGraph inferredGraph, InitialParameters parameters,
+		  OtpGraph inferredGraph, InitialParameters parameters,
     boolean isDebug) {
     this.isDebug = isDebug;
     this.setNumParticles(50);

@@ -15,7 +15,7 @@ import java.util.Random;
 
 import org.apache.commons.lang.builder.CompareToBuilder;
 import org.openplans.tools.tracking.impl.graph.InferredEdge;
-import org.openplans.tools.tracking.impl.graph.InferredGraph;
+import org.openplans.tools.tracking.impl.util.OtpGraph;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
@@ -54,7 +54,7 @@ public class EdgeTransitionDistributions extends
   MultinomialBayesianEstimator edgeMotionTransEstimator = new MultinomialBayesianEstimator(
       freeMotionTransPrior, freeMotionTransProbPrior);
 
-  private final InferredGraph graph;
+  private final OtpGraph graph;
 
   private static final Vector stateOffToOff = VectorFactory
       .getDefault().copyValues(1d, 0d);
@@ -66,7 +66,7 @@ public class EdgeTransitionDistributions extends
   private static final Vector stateOnToOff = VectorFactory
       .getDefault().copyValues(0d, 1d);
 
-  public EdgeTransitionDistributions(InferredGraph graph,
+  public EdgeTransitionDistributions(OtpGraph graph,
     Vector edgeMotionPriorParams, Vector freeMotionPriorParams) {
     this.graph = graph;
     this.freeMotionTransProbPrior = new DirichletDistribution(

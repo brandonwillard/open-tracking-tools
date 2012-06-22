@@ -11,10 +11,10 @@ import java.util.List;
 import org.openplans.tools.tracking.impl.Observation;
 import org.openplans.tools.tracking.impl.VehicleState;
 import org.openplans.tools.tracking.impl.VehicleState.InitialParameters;
-import org.openplans.tools.tracking.impl.graph.InferredGraph;
 import org.openplans.tools.tracking.impl.statistics.FilterInformation;
 import org.openplans.tools.tracking.impl.statistics.Standard2DTrackingFilter;
 import org.openplans.tools.tracking.impl.statistics.VehicleTrackingFilter;
+import org.openplans.tools.tracking.impl.util.OtpGraph;
 
 import gov.sandia.cognition.math.UnivariateStatisticsUtil;
 import gov.sandia.cognition.math.matrix.Matrix;
@@ -60,7 +60,7 @@ public class InferenceInstance {
   private final INFO_LEVEL infoLevel;
 
   
-  private static InferredGraph inferredGraph = new InferredGraph(Api.getGraph());
+  private static OtpGraph inferredGraph = Api.getGraph();
 
   public InferenceInstance(String vehicleId, boolean isSimulation, INFO_LEVEL infoLevel) {
     this.initialParameters = new InitialParameters(
@@ -171,7 +171,7 @@ public class InferenceInstance {
     return totalRecords;
   }
 
-  public static InferredGraph getInferredGraph() {
+  public static OtpGraph getInferredGraph() {
     return inferredGraph;
   }
 
