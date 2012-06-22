@@ -213,7 +213,7 @@ function playData() {
   $("#play").hide();
   $("#pause").show();
 
-  interval = setInterval(moveMarker, 1.5 * 1000);
+  interval = setInterval(moveMarker, 0.8 * 1000);
 }
 
 function pauseData() {
