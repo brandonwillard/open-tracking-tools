@@ -148,10 +148,10 @@ function drawProjectedCoords(x, y, popupMessage, pan) {
 function addCoordinates() {
 
   var coordString = jQuery('#coordinate_data').val();
-  var coordSplit = coordString.split(/(\d+\.?\d*)\D(\d+\.?\d*)/g, 3);
+  var coordSplit = coordString.split(",");
 
-  if (coordSplit.length == 3) {
-    var coordGetString = "x=" + coordSplit[1] + "&y=" + coordSplit[2];
+  if (coordSplit.length == 2) {
+    var coordGetString = "x=" + coordSplit[0] + "&y=" + coordSplit[1];
 
     $.get(coordUrl + coordGetString, function(data) {
 

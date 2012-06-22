@@ -14,6 +14,8 @@ import gov.sandia.cognition.util.CloneableSerializable;
 
 import java.util.Map.Entry;
 
+import javax.crypto.spec.PSource;
+
 import org.openplans.tools.tracking.impl.graph.paths.PathEdge;
 import org.openplans.tools.tracking.impl.util.GeoUtils;
 
@@ -391,21 +393,27 @@ public class StandardRoadTrackingFilter implements
         .posVelProjectionPair(
             segmentDist.getKey(), segmentDist.getValue());
     
-    // TODO FIXME we shouldn't need to do this, this way!
-    final Vector truncatedMean = getTruncatedEdgeLocation(
-        belief.getMean(), edge);
-
-    /*
-     * We're going all positive here, since we should've been using
-     * the reversed geometry if negative.
-     */
-    if (truncatedMean.getElement(0) < 0d) {
-      truncatedMean.setElement(
-          0, Math.abs(truncatedMean.getElement(0)));
+    
+    final Vector positiveMean;
+    if (belief.getMean().getElement(0) < 0d) {
+      /*
+       * We're going all positive here, since we should've been using
+       * the reversed geometry if negative.
+       * So we need to find the positive distance for this segment.
+       */
+      final Vector posMeanTmp = belief.getMean().clone();
+      final double totalPathDistanceToEdge = Math.abs(edge
+          .getDistToStartOfEdge() - edge.getInferredEdge().getLength());
+      
+      final double distance = totalPathDistanceToEdge + belief.getMean().getElement(0);
+      posMeanTmp.setElement(0, distance);
+      positiveMean = posMeanTmp;
+    } else {
+      positiveMean = belief.getMean();
     }
 
     final Matrix C = belief.getCovariance();
-    final Vector projMean = projPair.getKey().times(truncatedMean)
+    final Vector projMean = projPair.getKey().times(positiveMean)
         .plus(projPair.getValue());
     final Matrix projCov = projPair.getKey().times(C)
         .times(projPair.getKey().transpose());
@@ -594,28 +602,6 @@ public class StandardRoadTrackingFilter implements
 
   public static long getSerialversionuid() {
     return serialVersionUID;
-  }
-
-  // TODO FIXME get rid of this nonsense!
-  public static Vector getTruncatedEdgeLocation(Vector mean,
-    PathEdge edge) {
-    Preconditions.checkArgument(mean.getDimensionality() == 2);
-
-    final Vector truncatedMean = mean.clone();
-
-    final double direction = mean.getElement(0) >= 0d ? 1d : -1d;
-    
-    final double totalPathDistance = Math.abs(edge
-        .getDistToStartOfEdge()) + direction * edge.getInferredEdge().getLength();
-    
-    final double distance = Math.abs(mean.getElement(0));
-
-    if (distance > totalPathDistance) {
-      truncatedMean.setElement(0, direction * totalPathDistance);
-    } else if (distance < Math.abs(edge.getDistToStartOfEdge())) {
-      truncatedMean.setElement(0, direction * edge.getDistToStartOfEdge());
-    }
-    return truncatedMean;
   }
 
   public static Matrix getU() {

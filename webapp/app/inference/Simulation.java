@@ -65,6 +65,7 @@ public class Simulation {
   private final String simulationName;
   private final InitialParameters parameters;
   private InferenceInstance instance;
+  private int recordsProcessed = 0;
 
   public static class SimulationParameters {
     
@@ -182,12 +183,11 @@ public class Simulation {
           initialObs, currentInferredEdge, parameters);
 
       long time = this.simParameters.getStartTime().getTime();
-      int i = 0;
       while (time < this.simParameters.getEndTime().getTime()) {
         time += this.simParameters.getFrequency() * 1000;
         vehicleState = sampleState(vehicleState, time);
-        Logger.info("processed simulation observation : " + i + ", " + time);
-        i++;
+        Logger.info("processed simulation observation : " + recordsProcessed + ", " + time);
+        recordsProcessed++;
       }
 
     } catch (final NumberFormatException e) {
