@@ -218,6 +218,8 @@ public class VehicleTrackingFilter extends
                   sampledBelief.getMean().getElement(1));
         }
 
+        if (edge.equals(sampledEdge))
+          break;
         prevEdge = edge.getInferredEdge();
       }
 
