@@ -106,13 +106,16 @@ public class PathEdge implements Comparable<PathEdge> {
         .times(Or.transpose()).getElement(0, 0);
     final double mean = Or.times(beliefPrediction.getMean())
         .getElement(0);
-    final double endDist = direction * edge.getLength() + this.distToStartOfEdge;
+    final double distToEndOfEdge = direction * edge.getLength() + this.distToStartOfEdge;
+    final double startDistance = direction > 0d ? this.distToStartOfEdge : distToEndOfEdge; 
+    final double endDistance = direction > 0d ? distToEndOfEdge : this.distToStartOfEdge;
     // FIXME use actual log calculations
-    final double result = UnivariateGaussian.CDF.evaluate(
-        endDist, mean, variance)
+    final double result = Math.log(UnivariateGaussian.CDF.evaluate(
+        endDistance, mean, variance)
         - UnivariateGaussian.CDF.evaluate(
-            this.distToStartOfEdge, mean, variance);
-    return Math.log(result);
+            startDistance, mean, variance));
+    
+    return result;
   }
 
   /**

@@ -131,11 +131,11 @@ public class VehicleTrackingFilter extends
         totalLogLik = LogMath.add(
             totalLogLik, infPath.getTotalLogLikelihood());
         stateToPaths.put(
-            state, new DefaultWeightedValue<InferredPathEntry>(
+            state, new WrappedWeightedValue<InferredPathEntry>(
                 infPath, infPath.getTotalLogLikelihood()));
       }
 
-      resampler.add(new DefaultWeightedValue<VehicleState>(
+      resampler.add(new WrappedWeightedValue<VehicleState>(
           state, totalLogLik));
     }
 

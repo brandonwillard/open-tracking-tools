@@ -12,6 +12,7 @@ import org.openplans.tools.tracking.impl.Observation;
 import org.openplans.tools.tracking.impl.VehicleState;
 import org.openplans.tools.tracking.impl.graph.InferredEdge;
 import org.openplans.tools.tracking.impl.statistics.StandardRoadTrackingFilter;
+import org.openplans.tools.tracking.impl.statistics.WrappedWeightedValue;
 import org.opentripplanner.routing.graph.Edge;
 
 import com.google.common.base.Preconditions;
@@ -221,7 +222,7 @@ public class InferredPath implements Comparable<InferredPath> {
        * We're only going to deal with the terminating edge for now.
        */
       edgeToPredictiveBeliefAndLogLikelihood.put(
-          edge, new DefaultWeightedValue<MultivariateGaussian>(
+          edge, new WrappedWeightedValue<MultivariateGaussian>(
               edgeBelief.clone(), localLogLik));
 
       /*
