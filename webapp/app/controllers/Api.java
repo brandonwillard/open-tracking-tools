@@ -153,7 +153,7 @@ public class Api extends Controller {
     if (segmentId == null)
       badRequest();
 
-    final Edge e = graph.getGraph().getEdgeById(segmentId);
+    final Edge e = graph.getBaseGraph().getEdgeById(segmentId);
 
     if (e != null) {
 

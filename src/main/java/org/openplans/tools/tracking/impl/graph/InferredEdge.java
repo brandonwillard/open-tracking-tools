@@ -11,6 +11,7 @@ import org.apache.commons.lang.builder.CompareToBuilder;
 import org.openplans.tools.tracking.impl.graph.InferredEdge;
 import org.openplans.tools.tracking.impl.util.GeoUtils;
 import org.openplans.tools.tracking.impl.util.OtpGraph;
+import org.opentripplanner.routing.edgetype.TurnEdge;
 import org.opentripplanner.routing.graph.Edge;
 import org.opentripplanner.routing.graph.Vertex;
 
@@ -83,6 +84,9 @@ public class InferredEdge implements
 
   public InferredEdge(Edge edge, Integer edgeId,
     OtpGraph graph) {
+	  if (edge instanceof TurnEdge || edge == null) {
+		  System.out.println("wrong");
+	  }
     this.graph = graph;
     this.edgeId = edgeId;
     this.edge = edge;
@@ -232,7 +236,7 @@ public class InferredEdge implements
     final List<InferredEdge> result = Lists.newArrayList();
     for (final Edge edge : OtpGraph
         .filterForStreetEdges(this.startVertex.getIncoming())) {
-      if (graph.getGraph().getIdForEdge(edge) != null)
+      if (graph.getBaseGraph().getIdForEdge(edge) != null)
         result.add(graph.getInferredEdge(edge));
     }
 

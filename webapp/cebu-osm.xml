@@ -4,10 +4,6 @@
     xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-2.5.xsd
            http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-2.5.xsd">
 
-    <!-- <bean id="graphBundle" class="org.opentripplanner.model.GraphBundle">
-        <property name="path" value="/home/bwillard/openplans/OpenTripPlanner/cebu-osm-bundle" />
-    </bean> -->
-
     <bean id="osmBuilder" class="org.opentripplanner.graph_builder.impl.osm.OpenStreetMapGraphBuilderImpl">
         <property name="provider">
             	
@@ -36,11 +32,15 @@
         <property name="customNamer">
           <bean class="org.opentripplanner.graph_builder.impl.osm.PortlandCustomNamer" />
         </property>
+        <property name="edgeFactory">
+          <bean class="org.openplans.tools.tracking.graph_builder.PlainStreetEdgeFactory" />
+        </property>
     </bean>
 
 
     <bean id="checkGeometry" class="org.opentripplanner.graph_builder.impl.CheckGeometryGraphBuilderImpl" />
-    <bean id="optimizeTransit" class="org.opentripplanner.graph_builder.impl.OptimizeTransitGraphBuilderImpl" />
+
+    <bean id="reconstruct" class="org.openplans.tools.tracking.impl.graph.ReconstructOriginalGraph" />
 
     <bean id="graphBuilderTask" class="org.opentripplanner.graph_builder.GraphBuilderTask">
 	<!--property name="modes">
@@ -68,6 +68,7 @@
                 <!-- GTFS comes before OSM, because we use the loaded set of stops to determine our OSM coverage -->
                 <ref bean="osmBuilder" />
                 <ref bean="checkGeometry" />
+                <ref bean="reconstruct" />
             </list>
         </property>
     </bean>

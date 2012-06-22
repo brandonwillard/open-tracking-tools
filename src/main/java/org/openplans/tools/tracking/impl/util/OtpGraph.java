@@ -3,15 +3,15 @@ package org.openplans.tools.tracking.impl.util;
 import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.openplans.tools.tracking.graph_builder.PlainStreetEdgeWithOSMData;
 import org.openplans.tools.tracking.graph_builder.TurnVertexWithOSMData;
 import org.openplans.tools.tracking.impl.VehicleState;
+import org.openplans.tools.tracking.impl.graph.BaseGraph;
 import org.openplans.tools.tracking.impl.graph.InferredEdge;
 import org.openplans.tools.tracking.impl.graph.paths.InferredPath;
 import org.openplans.tools.tracking.impl.graph.paths.PathEdge;
@@ -20,6 +20,7 @@ import org.openplans.tools.tracking.impl.statistics.StandardRoadTrackingFilter;
 import org.opentripplanner.routing.core.RoutingRequest;
 import org.opentripplanner.routing.core.TraverseMode;
 import org.opentripplanner.routing.edgetype.StreetEdge;
+import org.opentripplanner.routing.edgetype.TurnEdge;
 import org.opentripplanner.routing.graph.Edge;
 import org.opentripplanner.routing.graph.Graph;
 import org.opentripplanner.routing.graph.Graph.LoadLevel;
@@ -54,15 +55,24 @@ public class OtpGraph {
 
   private final GraphServiceImpl gs;
 
+	/**
+	 * This is the edge-based graph used in routing; neither it nor any edges
+	 * form it should ever be used outside of this class.
+	 */
   private final Graph turnGraph;
+	/**
+	 * This is the original (intersection-and-street-segment) graph, used for
+	 * all inference tasks other than routing.
+	 */
   private final Graph baseGraph;
 
   private final StreetVertexIndexServiceImpl indexService;
 
   private final static RoutingRequest defaultOptions = new RoutingRequest(
       TraverseMode.CAR);  
-  private STRtree edgeIndex = new STRtree();
-  private STRtree vertexIndex = new STRtree();
+  private STRtree turnEdgeIndex = new STRtree();
+  private STRtree baseEdgeIndex = new STRtree();
+  private STRtree turnVertexIndex = new STRtree();
   
   private static class PathKey {
 
@@ -214,17 +224,18 @@ public class OtpGraph {
 	      });
 
 
-  private void createIndices() {
+  private void createIndices(Graph graph, STRtree edgeIndex, STRtree vertexIndex) {
 
-    for (final Vertex v : turnGraph.getVertices()) {
-
-      final Geometry vertexGeometry = GeoUtils.lonlatToGeometry(v
-          .getCoordinate());
-      final Envelope vertexEnvelope = vertexGeometry.getEnvelopeInternal();
-      vertexIndex.insert(vertexEnvelope, v);
+    for (final Vertex v : graph.getVertices()) {
+      if (vertexIndex != null) {
+        final Geometry vertexGeometry = GeoUtils.lonlatToGeometry(v
+            .getCoordinate());
+        final Envelope vertexEnvelope = vertexGeometry.getEnvelopeInternal();
+        vertexIndex.insert(vertexEnvelope, v);
+      }
 
       for (final Edge e : v.getOutgoing()) {
-        if (turnGraph.getIdForEdge(e) != null) {
+        if (graph.getIdForEdge(e) != null) {
           final Geometry geometry = e.getGeometry();
           final Envelope envelope = geometry.getEnvelopeInternal();
           edgeIndex.insert(envelope, e);
@@ -248,18 +259,18 @@ public class OtpGraph {
     gs.refreshGraphs();
 
     turnGraph = gs.getGraph();
-    //baseGraph = turnGraph.getService(BaseGraph.class).getBaseGraph();
-    baseGraph = null;
+    baseGraph = turnGraph.getService(BaseGraph.class).getBaseGraph();
 
-    indexService = new StreetVertexIndexServiceImpl(turnGraph);
+    indexService = new StreetVertexIndexServiceImpl(baseGraph);
     indexService.setup();
-    createIndices();
+    createIndices(baseGraph, baseEdgeIndex, null);
+    createIndices(turnGraph, turnEdgeIndex, turnVertexIndex);
 
     log.info("Graph loaded..");
   }
 
-  public Graph getGraph() {
-    return turnGraph;
+  public Graph getBaseGraph() {
+    return baseGraph;
   }
 
   public GraphServiceImpl getGs() {
@@ -276,7 +287,7 @@ public class OtpGraph {
 
 
   public int getVertexCount() {
-    return turnGraph.getVertices().size();
+    return baseGraph.getVertices().size();
   }
 
   public List<StreetEdge> snapToGraph(Coordinate toCoords) {
@@ -312,16 +323,6 @@ public class OtpGraph {
       return true;
   }
 
-
-  public STRtree getEdgeIndex() {
-    return edgeIndex;
-  }
-
-
-  public STRtree getVertexIndex() {
-    return vertexIndex;
-  }
-
   private Set<InferredPath> computePaths(PathKey key) {
 
     /*
@@ -339,16 +340,19 @@ public class OtpGraph {
         .getState().getBelief().getCovariance().normFrobenius());
     if (!currentEdge.isEmptyEdge()) {
 
-      startEdges.add(currentEdge.getEdge());
-
+      PlainStreetEdgeWithOSMData edge = (PlainStreetEdgeWithOSMData) currentEdge.getEdge();
+      for (Edge outgoing : edge.getTurnVertex().getOutgoing()) {
+        startEdges.add(outgoing);
+      }
     } else {
       final Coordinate fromCoord = GeoUtils.reverseCoordinates(key
           .getStartCoord());
       final Envelope fromEnv = new Envelope(fromCoord);
       fromEnv.expandBy(GeoUtils
           .getMetersInAngleDegrees(stateStdDevDistance));
-      for (final Object obj : getEdgeIndex().query(
-          fromEnv)) {
+
+      for (final Object obj : turnEdgeIndex.query(fromEnv)) {
+    	//FIXME STRTree queries are not exact; we may wish to limit this list
         final Edge edge = (Edge) obj;
         startEdges.add(edge);
       }
@@ -363,21 +367,19 @@ public class OtpGraph {
         .getMetersInAngleDegrees(obsStdDevDistance));
 
     final RoutingRequest options = new RoutingRequest(TraverseMode.CAR);
-    for (final Object obj : getEdgeIndex().query(
+    for (final Object obj : turnEdgeIndex.query(
         toEnv)) {
       final Edge edge = (Edge) obj;
       if (((StreetEdge) edge).canTraverse(options)) {
-    	endEdges.add(edge);
+    	  endEdges.add(edge);
       }
     }
 
     for (final Edge startEdge : startEdges) {
       final MultiDestinationAStar forwardAStar = new MultiDestinationAStar(
-    		  turnGraph, endEdges, toCoord, obsStdDevDistance,
-          startEdge);
+    		  turnGraph, endEdges, toCoord, obsStdDevDistance, startEdge);
       final MultiDestinationAStar backwardAStar = new MultiDestinationAStar(
-    		  turnGraph, endEdges, toCoord, obsStdDevDistance,
-          startEdge);
+    		  turnGraph, endEdges, toCoord, obsStdDevDistance, startEdge);
 
       final ShortestPathTree spt1 = forwardAStar.getSPT(false);
       final ShortestPathTree spt2 = backwardAStar.getSPT(true);
@@ -387,7 +389,7 @@ public class OtpGraph {
             endEdge.getToVertex(), false);
         if (forwardPath != null) {
           final InferredPath forwardResult = copyAStarResults(
-              forwardPath, startEdge, false);
+              forwardPath, getBaseEdge(startEdge), false);
           if (forwardResult != null) {
             paths.add(forwardResult);
             // for debugging
@@ -412,8 +414,18 @@ public class OtpGraph {
 
     return paths;
   }
+  
+  private Edge getBaseEdge(Edge edge) {
+	if (edge instanceof TurnEdge) {
+       TurnVertexWithOSMData base = (TurnVertexWithOSMData) edge
+    	             	.getFromVertex();
+       edge = base.getOriginal();
+	}
+	return edge;
+  }
 
-  private InferredPath copyAStarResults(GraphPath gpath,
+
+private InferredPath copyAStarResults(GraphPath gpath,
     Edge startEdge, boolean isReverse) {
     final double direction = isReverse ? -1d : 1d;
     double pathDist = 0d;
@@ -436,10 +448,11 @@ public class OtpGraph {
   }
 
   private PathEdge getValidPathEdge(Edge edge, double pathDist, double direction, List<PathEdge> path) {
+    edge = getBaseEdge(edge);
     if (OtpGraph.isStreetEdge(edge)
         && edge.getGeometry() != null
         && edge.getDistance() > 0d
-        && turnGraph.getIdForEdge(edge) != null
+        && baseGraph.getIdForEdge(edge) != null
         && !edge.equals(Iterables.getLast(path, null))) {
 
       return PathEdge.getEdge(this.getInferredEdge(edge), pathDist);
@@ -454,7 +467,7 @@ public class OtpGraph {
         if (streetEdge.getGeometry() != null
             && !streetEdge.equals(Iterables.getLast(path, null))
             && streetEdge.getDistance() > 0d
-            && turnGraph.getIdForEdge(streetEdge) != null) {
+            && baseGraph.getIdForEdge(streetEdge) != null) {
 
           /*
            * Find a valid street edge to work with
@@ -467,9 +480,10 @@ public class OtpGraph {
     return null;
   }
   
+  //unused
   public InferredEdge getEdge(int id) {
 
-    final Edge edge = turnGraph.getEdgeById(id);
+    final Edge edge = baseGraph.getEdgeById(id);
     final VertexPair key = new VertexPair(
         edge.getFromVertex(), edge.getToVertex());
     InferredEdge edgeInfo = edgeToInfo.get(key);
@@ -483,13 +497,14 @@ public class OtpGraph {
   }
 
   public InferredEdge getInferredEdge(Edge edge) {
+	edge = getBaseEdge(edge);
 
     final VertexPair key = new VertexPair(
         edge.getFromVertex(), edge.getToVertex());
     InferredEdge edgeInfo = edgeToInfo.get(key);
 
     if (edgeInfo == null) {
-      final Integer edgeId = turnGraph.getIdForEdge(edge);
+      final Integer edgeId = baseGraph.getIdForEdge(edge);
       edgeInfo = new InferredEdge(edge, edgeId, this);
       edgeToInfo.put(key, edgeInfo);
     }
@@ -511,7 +526,7 @@ public class OtpGraph {
     toEnv.expandBy(GeoUtils.getMetersInAngleDegrees(varDistance));
 
     final List<StreetEdge> streetEdges = Lists.newArrayList();
-    for (final Object obj : edgeIndex.query(
+    for (final Object obj : baseEdgeIndex.query(
         toEnv)) {
       final Edge edge = (Edge) obj;
       streetEdges.add((StreetEdge) edge);

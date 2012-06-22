@@ -26,7 +26,7 @@ public class PlainStreetEdgeWithOSMData extends PlainStreetEdge {
 
   private final long toNode;
 
-  private final ArrayList<TurnVertexWithOSMData> turnVertices = new ArrayList<TurnVertexWithOSMData>();
+  private TurnVertexWithOSMData turnVertex;
 
   public PlainStreetEdgeWithOSMData(long way, long fromNode,
     long toNode, IntersectionVertex startEndpoint,
@@ -53,7 +53,7 @@ public class PlainStreetEdgeWithOSMData extends PlainStreetEdge {
     tv.setBogusName(hasBogusName());
     tv.setNoThruTraffic(isNoThruTraffic());
     tv.setStairs(isStairs());
-    turnVertices.add(tv);
+    turnVertex = tv;
     return tv;
   }
 
@@ -65,8 +65,8 @@ public class PlainStreetEdgeWithOSMData extends PlainStreetEdge {
     return toNode;
   }
 
-  public Collection<TurnVertexWithOSMData> getTurnVertices() {
-    return turnVertices;
+  public TurnVertexWithOSMData getTurnVertex() {
+    return turnVertex;
   }
 
   public long getWay() {
