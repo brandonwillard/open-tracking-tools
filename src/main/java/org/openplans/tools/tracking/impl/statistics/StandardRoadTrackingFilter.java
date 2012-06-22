@@ -394,6 +394,8 @@ public class StandardRoadTrackingFilter implements
             segmentDist.getKey(), segmentDist.getValue());
     
     
+    final double totalPathDistanceToEdge = Math.abs(edge
+        .getDistToStartOfEdge()) + edge.getInferredEdge().getLength();
     final Vector positiveMean;
     if (belief.getMean().getElement(0) < 0d) {
       /*
@@ -402,14 +404,21 @@ public class StandardRoadTrackingFilter implements
        * So we need to find the positive distance for this segment.
        */
       final Vector posMeanTmp = belief.getMean().clone();
-      final double totalPathDistanceToEdge = Math.abs(edge
-          .getDistToStartOfEdge() - edge.getInferredEdge().getLength());
       
       final double distance = totalPathDistanceToEdge + belief.getMean().getElement(0);
       posMeanTmp.setElement(0, distance);
       positiveMean = posMeanTmp;
     } else {
       positiveMean = belief.getMean();
+    }
+    
+    /*
+     * Truncate, to keep it on the edge.
+     */
+    if (positiveMean.getElement(0) > totalPathDistanceToEdge) {
+      positiveMean.setElement(0, totalPathDistanceToEdge);
+    } else if (positiveMean.getElement(0) < Math.abs(edge.getDistToStartOfEdge())) {
+      positiveMean.setElement(0, Math.abs(edge.getDistToStartOfEdge()));
     }
 
     final Matrix C = belief.getCovariance();
