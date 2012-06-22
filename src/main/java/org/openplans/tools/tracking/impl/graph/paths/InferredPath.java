@@ -81,11 +81,9 @@ public class InferredPath implements Comparable<InferredPath> {
     }
     
     final double direction = isBackward ? -1d : 1d;
-    this.totalPathDistance = lastEdge.getDistToStartOfEdge()
-        + direction * lastEdge.getInferredEdge().getLength();
-    if (Math.abs(totalPathDistance) != absTotalDistance) {
-    	System.out.println("HERE");
-    }
+    this.totalPathDistance = direction * absTotalDistance;
+//        lastEdge.getDistToStartOfEdge()
+//        + direction * lastEdge.getInferredEdge().getLength();
     Preconditions.checkArgument(Math.abs(totalPathDistance) == absTotalDistance);
   }
 

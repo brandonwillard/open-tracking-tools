@@ -313,17 +313,21 @@ public class Simulation {
       } else {
         if (totalDistToTravel == null) {
           transferEdges.add(currentEdge.getInferredEdge());
-        } else if (belief.getMean().getElement(0) < 0d) {
-          transferEdges.addAll(currentEdge.getInferredEdge()
-              .getIncomingTransferableEdges());
-        } else if (belief.getMean().getElement(0) > 0d) {
-          transferEdges.addAll(currentEdge.getInferredEdge()
-              .getOutgoingTransferableEdges());
         } else {
-          transferEdges.addAll(currentEdge.getInferredEdge()
-              .getIncomingTransferableEdges());
-          transferEdges.addAll(currentEdge.getInferredEdge()
-              .getOutgoingTransferableEdges());
+          if (belief.getMean().getElement(0) < 0d) {
+            transferEdges.addAll(currentEdge.getInferredEdge()
+                .getIncomingTransferableEdges());
+          } else if (belief.getMean().getElement(0) > 0d) {
+            transferEdges.addAll(currentEdge.getInferredEdge()
+                .getOutgoingTransferableEdges());
+          } else {
+            transferEdges.addAll(currentEdge.getInferredEdge()
+                .getIncomingTransferableEdges());
+            transferEdges.addAll(currentEdge.getInferredEdge()
+                .getOutgoingTransferableEdges());
+          }
+          // Make sure we don't move back and forth
+          transferEdges.remove(currentEdge.getInferredEdge());
         }
       }
 
