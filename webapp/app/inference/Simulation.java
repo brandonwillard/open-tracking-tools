@@ -217,16 +217,14 @@ public class Simulation {
     return thisStateSample;
   }
 
-  public Vector sampleObservation(VehicleState vehicleState, PathEdge edge) {
+  public Vector sampleObservation(MultivariateGaussian velLocBelief, Matrix obsCov, PathEdge edge) {
 
-    final MultivariateGaussian gbelief = vehicleState.getBelief().clone();
+    final MultivariateGaussian gbelief = velLocBelief.clone();
     StandardRoadTrackingFilter.convertToGroundBelief(gbelief, edge);
     final Vector gMean = StandardRoadTrackingFilter.getOg().times(
         gbelief.getMean());
-    final Matrix gCov = vehicleState.getMovementFilter().getGroundFilter()
-        .getMeasurementCovariance();
     final Matrix covSqrt = CholeskyDecompositionMTJ.create(
-        DenseMatrixFactoryMTJ.INSTANCE.copyMatrix(gCov)).getR();
+        DenseMatrixFactoryMTJ.INSTANCE.copyMatrix(obsCov)).getR();
     final Vector thisStateSample = MultivariateGaussian.sample(gMean, covSqrt,
         rng);
     return thisStateSample;
@@ -254,7 +252,9 @@ public class Simulation {
     /*
      * Sample from the state and observation noise
      */
-    final Vector thisLoc = sampleObservation(vehicleState, newPathEdge);
+    final Matrix gCov = vehicleState.getMovementFilter().getGroundFilter()
+        .getMeasurementCovariance();
+    final Vector thisLoc = sampleObservation(currentLocBelief, gCov, newPathEdge);
     final Coordinate obsCoord = GeoUtils.convertToLatLon(thisLoc);
     Observation thisObs;
     try {
@@ -346,6 +346,7 @@ public class Simulation {
         }
       }
 
+      double direction = belief.getMean().getElement(0) >= 0d ? 1d : -1d;
       final PathEdge sampledPathEdge = PathEdge.getEdge(sampledEdge,
           distTraveled);
 
@@ -359,22 +360,16 @@ public class Simulation {
           StandardRoadTrackingFilter.invertProjection(belief, sampledPathEdge);
         }
 
-        final double currentLoc = belief.getMean().getElement(0);
         movementFilter.predict(belief, sampledPathEdge, null);
-        /*
-         * Adjust by the current location and sample
-         */
-        belief.getMean().setElement(0,
-            belief.getMean().getElement(0) + currentLoc);
 
         final Vector transStateSample = sampleMovementBelief(belief.getMean(), 
             movementFilter);
         belief.setMean(transStateSample);
         
         totalDistToTravel = belief.getMean().getElement(0);
+        direction = belief.getMean().getElement(0) >= 0d ? 1d : -1d;
       }
 
-      final double direction = belief.getMean().getElement(0) >= 0d ? 1d : -1d;
 
       if (sampledPathEdge == null) {
         /*-

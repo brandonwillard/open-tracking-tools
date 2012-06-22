@@ -91,6 +91,7 @@ public class InferredPath implements Comparable<InferredPath> {
     this.edges = ImmutableList.of(PathEdge.getEdge(inferredEdge, 0d));
     this.totalPathDistance = inferredEdge.getLength();
     this.isBackward = Boolean.FALSE;
+    this.edgeIds.add(inferredEdge.getEdgeId());
   }
 
   public InferredPath(PathEdge edge) {
@@ -98,6 +99,7 @@ public class InferredPath implements Comparable<InferredPath> {
     this.edges = ImmutableList.of(edge);
     this.totalPathDistance = edge.getInferredEdge().getLength();
     this.isBackward = Boolean.FALSE;
+    this.edgeIds.add(edge.getInferredEdge().getEdgeId());
   }
 
   @Override
