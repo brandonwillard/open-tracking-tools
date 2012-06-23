@@ -38,16 +38,10 @@ public class InferredEdge implements
 
   private final Edge edge;
 
-  private final Geometry posGeometry;
-  private final LocationIndexedLine posLocationIndexedLine;
-  private final LengthIndexedLine posLengthIndexedLine;
-  private final LengthLocationMap posLengthLocationMap;
-
-  // FIXME remove this negative junk; use turns.
-  private final Geometry negGeometry;
-  private final LocationIndexedLine negLocationIndexedLine;
-  private final LengthIndexedLine negLengthIndexedLine;
-  private final LengthLocationMap negLengthLocationMap;
+  private final Geometry geometry;
+  private final LocationIndexedLine locationIndexedLine;
+  private final LengthIndexedLine lengthIndexedLine;
+  private final LengthLocationMap lengthLocationMap;
 
   /*
    * This is the empty edge, which stands for free movement
@@ -71,15 +65,10 @@ public class InferredEdge implements
 
     this.edge = null;
 
-    this.posGeometry = null;
-    this.posLocationIndexedLine = null;
-    this.posLengthIndexedLine = null;
-    this.posLengthLocationMap = null;
-
-    this.negGeometry = null;
-    this.negLocationIndexedLine = null;
-    this.negLengthIndexedLine = null;
-    this.negLengthLocationMap = null;
+    this.geometry = null;
+    this.locationIndexedLine = null;
+    this.lengthIndexedLine = null;
+    this.lengthLocationMap = null;
   }
 
   public InferredEdge(Edge edge, Integer edgeId,
@@ -95,24 +84,18 @@ public class InferredEdge implements
      * Warning: this geometry is in lon/lat and may contain more than one
      * straight line.
      */
-    this.posGeometry = edge.getGeometry();
-    this.negGeometry = edge.getGeometry().reverse();
+    this.geometry = edge.getGeometry();
 
-    this.posLocationIndexedLine = new LocationIndexedLine(
-        posGeometry);
-    this.posLengthIndexedLine = new LengthIndexedLine(posGeometry);
-    this.posLengthLocationMap = new LengthLocationMap(posGeometry);
-
-    this.negLocationIndexedLine = new LocationIndexedLine(
-        negGeometry);
-    this.negLengthIndexedLine = new LengthIndexedLine(negGeometry);
-    this.negLengthLocationMap = new LengthLocationMap(negGeometry);
+    this.locationIndexedLine = new LocationIndexedLine(
+        geometry);
+    this.lengthIndexedLine = new LengthIndexedLine(geometry);
+    this.lengthLocationMap = new LengthLocationMap(geometry);
 
     this.startVertex = edge.getFromVertex();
     this.endVertex = edge.getToVertex();
 
-    final Coordinate startPoint = this.posLocationIndexedLine
-        .extractPoint(this.posLocationIndexedLine.getStartIndex());
+    final Coordinate startPoint = this.locationIndexedLine
+        .extractPoint(this.locationIndexedLine.getStartIndex());
     /*
      * We need to flip these coords around to get lat/lon.
      */
@@ -122,14 +105,14 @@ public class InferredEdge implements
     this.startPoint = VectorFactory.getDefault().createVector2D(
         startPointCoord.x, startPointCoord.y);
 
-    final Coordinate endPoint = this.posLocationIndexedLine
-        .extractPoint(this.posLocationIndexedLine.getEndIndex());
+    final Coordinate endPoint = this.locationIndexedLine
+        .extractPoint(this.locationIndexedLine.getEndIndex());
     final Coordinate endPointCoord = GeoUtils
         .convertToEuclidean(new Coordinate(endPoint.y, endPoint.x));
     this.endPoint = VectorFactory.getDefault().createVector2D(
         endPointCoord.x, endPointCoord.y);
 
-    this.length = GeoUtils.getAngleDegreesInMeters(posGeometry
+    this.length = GeoUtils.getAngleDegreesInMeters(geometry
         .getLength());
 
     this.velocityPrecisionDist =
@@ -183,7 +166,7 @@ public class InferredEdge implements
   }
 
   public Coordinate getCenterPointCoord() {
-    return this.posGeometry.getCentroid().getCoordinate();
+    return this.geometry.getCentroid().getCoordinate();
   }
   
   public boolean isEmptyEdge() {
@@ -195,9 +178,9 @@ public class InferredEdge implements
       return null;
     final Coordinate revObsPoint = new Coordinate(
         obsPoint.getElement(1), obsPoint.getElement(0));
-    final LinearLocation here = posLocationIndexedLine
+    final LinearLocation here = locationIndexedLine
         .project(revObsPoint);
-    final Coordinate pointOnLine = posLocationIndexedLine
+    final Coordinate pointOnLine = locationIndexedLine
         .extractPoint(here);
     final Coordinate revOnLine = new Coordinate(
         pointOnLine.y, pointOnLine.x);
@@ -247,22 +230,6 @@ public class InferredEdge implements
     return length;
   }
 
-  public Geometry getNegGeometry() {
-    return negGeometry;
-  }
-
-  public LengthIndexedLine getNegLengthIndexedLine() {
-    return negLengthIndexedLine;
-  }
-
-  public LengthLocationMap getNegLengthLocationMap() {
-    return negLengthLocationMap;
-  }
-
-  public LocationIndexedLine getNegLocationIndexedLine() {
-    return negLocationIndexedLine;
-  }
-
   /**
    * This returns a list of edges that are outgoing, wrt the direction of this
    * edge, and that are reachable from this edge (e.g. not one way against the
@@ -291,9 +258,9 @@ public class InferredEdge implements
       return null;
     final Coordinate revObsPoint = new Coordinate(
         obsPoint.y, obsPoint.x);
-    final LinearLocation here = posLocationIndexedLine
+    final LinearLocation here = locationIndexedLine
         .project(revObsPoint);
-    final Coordinate pointOnLine = posLocationIndexedLine
+    final Coordinate pointOnLine = locationIndexedLine
         .extractPoint(here);
     final Coordinate revOnLine = new Coordinate(
         pointOnLine.y, pointOnLine.x);
@@ -303,20 +270,20 @@ public class InferredEdge implements
         projPointOnLine.x, projPointOnLine.y);
   }
 
-  public Geometry getPosGeometry() {
-    return posGeometry;
+  public Geometry getGeometry() {
+    return geometry;
   }
 
-  public LengthIndexedLine getPosLengthIndexedLine() {
-    return posLengthIndexedLine;
+  public LengthIndexedLine getLengthIndexedLine() {
+    return lengthIndexedLine;
   }
 
-  public LengthLocationMap getPosLengthLocationMap() {
-    return posLengthLocationMap;
+  public LengthLocationMap getLengthLocationMap() {
+    return lengthLocationMap;
   }
 
-  public LocationIndexedLine getPosLocationIndexedLine() {
-    return posLocationIndexedLine;
+  public LocationIndexedLine getLocationIndexedLine() {
+    return locationIndexedLine;
   }
 
   public Vector getStartPoint() {

@@ -37,6 +37,7 @@ import play.Logger;
 
 import akka.actor.UntypedActor;
 
+import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
@@ -301,9 +302,7 @@ public class Simulation {
     Double totalDistToTravel = null;
     while (totalDistToTravel == null ||
     // the following case is when we're truly on the edge
-        Math.abs(totalDistToTravel) >= Math.abs(currentEdge
-            .getDistToStartOfEdge())
-            + currentEdge.getInferredEdge().getLength()) {
+        Math.abs(totalDistToTravel) > Math.abs(distTraveled)) {
 
       final List<InferredEdge> transferEdges = Lists.newArrayList();
       if (currentEdge.getInferredEdge() == InferredEdge.getEmptyEdge()) {
@@ -348,33 +347,12 @@ public class Simulation {
           currentPath.add(PathEdge.getEmptyPathEdge());
           return InferredPath.getInferredPath(currentPath);
         }
-      }
+      } 
 
       double direction = belief.getMean().getElement(0) >= 0d ? 1d : -1d;
       final PathEdge sampledPathEdge = PathEdge.getEdge(sampledEdge,
           distTraveled);
-
-      if (totalDistToTravel == null) {
-        /*
-         * Predict the movement, i.e. distance and direction to travel. The mean
-         * of this belief should be set to the true value, so the prediction is
-         * exact.
-         */
-        if (belief.getInputDimensionality() == 4) {
-          StandardRoadTrackingFilter.invertProjection(belief, sampledPathEdge);
-        }
-
-        movementFilter.predict(belief, sampledPathEdge, null);
-
-        final Vector transStateSample = sampleMovementBelief(belief.getMean(), 
-            movementFilter);
-        belief.setMean(transStateSample);
-        
-        totalDistToTravel = belief.getMean().getElement(0);
-        direction = belief.getMean().getElement(0) >= 0d ? 1d : -1d;
-      }
-
-
+      
       if (sampledPathEdge == null) {
         /*-
          * We have nowhere else to go, but we're not moving off of an edge, so 
@@ -383,15 +361,68 @@ public class Simulation {
         belief.getMean().setElement(0,
             direction * currentEdge.getInferredEdge().getLength());
         belief.getMean().setElement(1, 0d);
-
         break;
-
       }
 
-      /*
-       * Continue along edges
-       */
-      distTraveled += direction * sampledPathEdge.getInferredEdge().getLength();
+      if (totalDistToTravel == null) {
+        /*
+         * Predict the movement, i.e. distance and direction to travel. The mean
+         * of this belief should be set to the true value, so the prediction is
+         * exact.
+         */
+        
+        /*
+         * Since we might be just transferring onto an edge, check
+         * first.
+         */
+        final PathEdge initialEdge = startEdge.isEmptyEdge() ? 
+            sampledPathEdge : startEdge;
+        
+        if (belief.getInputDimensionality() == 4) {
+          StandardRoadTrackingFilter.invertProjection(belief, initialEdge);
+        }
+
+        final double previousLocation = belief.getMean().getElement(0);
+        movementFilter.predict(belief, initialEdge, null);
+
+        final Vector transStateSample = sampleMovementBelief(belief.getMean(), 
+            movementFilter);
+        belief.setMean(transStateSample);
+        
+        totalDistToTravel = belief.getMean().getElement(0) - previousLocation;
+        
+        /*
+         * Now we assume that we've already moved along this edge as far as we
+         * can.  Note that the 0 location is the start of this edge, and
+         * that we assume the previous belief's loc was starting relative to this
+         * edge.
+         */
+        final double locJustTraveled = previousLocation + totalDistToTravel;
+        
+        double remainingDistanceOnThisEdge = 0d;
+        if (locJustTraveled < 0d && previousLocation > 0d) {
+         remainingDistanceOnThisEdge = -previousLocation;
+        } else if (locJustTraveled > initialEdge.getInferredEdge().getLength()
+            && previousLocation > 0d) {
+          remainingDistanceOnThisEdge = initialEdge.getInferredEdge().getLength() 
+              - previousLocation;
+        } else if (locJustTraveled > 0d && previousLocation < 0d) {
+          remainingDistanceOnThisEdge = Math.abs(previousLocation);
+        } else if (locJustTraveled < -initialEdge.getInferredEdge().getLength()
+            && previousLocation < 0d) {
+          remainingDistanceOnThisEdge = -initialEdge.getInferredEdge().getLength() 
+              + previousLocation;
+        }
+        distTraveled += remainingDistanceOnThisEdge;
+        
+      } else {
+        /*
+         * Continue along edges
+         */
+        distTraveled += direction * sampledPathEdge.getInferredEdge().getLength();
+      }
+
+
       currentEdge = sampledPathEdge;
       currentPath.add(sampledPathEdge);
 

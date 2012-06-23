@@ -389,13 +389,14 @@ public class StandardRoadTrackingFilter implements
 
     final Entry<LineSegment, Double> segmentDist = getSegmentAndDistanceToStart(
         edge, belief.getMean().getElement(0));
+    final double absTotalPathDistanceToStartOfSegment = Math.abs(segmentDist.getValue());
+    final double absTotalPathDistanceToEndOfSegment = absTotalPathDistanceToStartOfSegment
+        + GeoUtils.getAngleDegreesInMeters(segmentDist.getKey().getLength());
     final Entry<Matrix, Vector> projPair = StandardRoadTrackingFilter
         .posVelProjectionPair(
-            segmentDist.getKey(), segmentDist.getValue());
+            segmentDist.getKey(), absTotalPathDistanceToStartOfSegment);
     
     
-    final double totalPathDistanceToEdge = Math.abs(edge
-        .getDistToStartOfEdge()) + edge.getInferredEdge().getLength();
     final Vector positiveMean;
     if (belief.getMean().getElement(0) < 0d) {
       /*
@@ -405,7 +406,8 @@ public class StandardRoadTrackingFilter implements
        */
       final Vector posMeanTmp = belief.getMean().clone();
       
-      final double distance = totalPathDistanceToEdge + belief.getMean().getElement(0);
+      final double distance = Math.abs(edge.getDistToStartOfEdge())
+          + edge.getInferredEdge().getLength() + belief.getMean().getElement(0);
       posMeanTmp.setElement(0, distance);
       positiveMean = posMeanTmp;
     } else {
@@ -415,10 +417,10 @@ public class StandardRoadTrackingFilter implements
     /*
      * Truncate, to keep it on the edge.
      */
-    if (positiveMean.getElement(0) > totalPathDistanceToEdge) {
-      positiveMean.setElement(0, totalPathDistanceToEdge);
-    } else if (positiveMean.getElement(0) < Math.abs(edge.getDistToStartOfEdge())) {
-      positiveMean.setElement(0, Math.abs(edge.getDistToStartOfEdge()));
+    if (positiveMean.getElement(0) > absTotalPathDistanceToEndOfSegment) {
+      positiveMean.setElement(0, absTotalPathDistanceToEndOfSegment);
+    } else if (positiveMean.getElement(0) < absTotalPathDistanceToStartOfSegment) {
+      positiveMean.setElement(0, absTotalPathDistanceToStartOfSegment);
     }
 
     final Matrix C = belief.getCovariance();
@@ -455,13 +457,13 @@ public class StandardRoadTrackingFilter implements
     final Coordinate latlonCurrentPos = GeoUtils.convertToLatLon(Og
         .times(m));
     final LinearLocation lineLocation = edge.getInferredEdge()
-        .getPosLocationIndexedLine()
+        .getLocationIndexedLine()
         .project(GeoUtils.reverseCoordinates(latlonCurrentPos));
     final LineSegment lineSegment = lineLocation.getSegment(edge
-        .getInferredEdge().getPosGeometry());
+        .getInferredEdge().getGeometry());
     final double distanceToStartOfSegmentOnGeometry = GeoUtils
         .getAngleDegreesInMeters(edge.getInferredEdge()
-            .getPosLengthIndexedLine().indexOf(lineSegment.p0));
+            .getLengthIndexedLine().indexOf(lineSegment.p0));
     final double distanceToStartOfSegmentOnPath = distanceToStartOfSegmentOnGeometry
         + edge.getDistToStartOfEdge();
     final Entry<Matrix, Vector> projPair = StandardRoadTrackingFilter
@@ -538,7 +540,10 @@ public class StandardRoadTrackingFilter implements
 
   /**
    * Returns the lineSegment in the geometry of the edge and the
-   * distance to the start of the segment on the entire path.
+   * distance-to-start of the segment on the entire path.
+   * The line segment is in the direction of the edge's geometry,
+   * and the distance-to-start has the same sign as the
+   * direction of movement.
    * 
    * @param edge
    * @param distanceAlong
@@ -546,31 +551,32 @@ public class StandardRoadTrackingFilter implements
    */
   public static Entry<LineSegment, Double> getSegmentAndDistanceToStart(
     PathEdge edge, double distanceAlong) {
-    final boolean isNegative = distanceAlong < 0d;
-    final Geometry geometry;
-    final LengthIndexedLine lengthIdxLine;
-    if (isNegative) {
-      geometry = edge.getInferredEdge().getNegGeometry();
-      lengthIdxLine = edge.getInferredEdge()
-          .getNegLengthIndexedLine();
-    } else {
-      geometry = edge.getInferredEdge().getPosGeometry();
-      lengthIdxLine = edge.getInferredEdge()
-          .getPosLengthIndexedLine();
-    }
+    final Geometry geometry = edge.getInferredEdge().getGeometry();
+    final LengthIndexedLine lengthIdxLine = edge.getInferredEdge()
+        .getLengthIndexedLine();
 
-    final double distAlongGeometry = Math.abs(distanceAlong
-        - edge.getDistToStartOfEdge());
+    final double direction = distanceAlong >= 0d ? 1d : -1d;
+    final double distAlongGeometry = distanceAlong
+        - edge.getDistToStartOfEdge();
     final LinearLocation lineLocation = LengthLocationMap
         .getLocation(
             geometry,
             GeoUtils.getMetersInAngleDegrees(distAlongGeometry));
     final LineSegment lineSegment = lineLocation.getSegment(geometry);
-    final double distanceToStartOfSegmentOnGeometry = GeoUtils
-        .getAngleDegreesInMeters(lengthIdxLine
-            .indexOf(lineSegment.p0));
-    final double distanceToStartOfSegmentOnPath = distanceToStartOfSegmentOnGeometry
-        + Math.abs(edge.getDistToStartOfEdge());
+    final Coordinate startOfSegmentCoord = direction < 0d ? lineSegment.p1 : lineSegment.p0;  
+    final double positiveDistToStartOfSegmentOnGeometry = lengthIdxLine
+            .indexOf(startOfSegmentCoord);
+            
+    double distanceToStartOfSegmentOnPath;
+    if (direction < 0d) {
+      distanceToStartOfSegmentOnPath = geometry.getLength() 
+          - positiveDistToStartOfSegmentOnGeometry;
+    } else {
+      distanceToStartOfSegmentOnPath = positiveDistToStartOfSegmentOnGeometry;
+    }
+    distanceToStartOfSegmentOnPath = GeoUtils
+        .getAngleDegreesInMeters(distanceToStartOfSegmentOnPath) 
+        + edge.getDistToStartOfEdge();
 
     return Maps.immutableEntry(
         lineSegment, distanceToStartOfSegmentOnPath);

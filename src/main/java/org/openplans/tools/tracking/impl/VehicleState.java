@@ -273,7 +273,6 @@ public class VehicleState implements
     this.observation = observation;
     this.movementFilter = filter;
     this.belief = belief.clone();
-    this.initialBelief = belief.clone();
     this.graph = graph;
     this.path = path;
     /*
@@ -281,11 +280,17 @@ public class VehicleState implements
      * where we'll need to reset the distance measures
      */
     this.distanceFromPreviousState = edge.getDistToStartOfEdge();
-    if (this.belief.getInputDimensionality() == 2)
+    if (this.belief.getInputDimensionality() == 2) {
       this.belief.getMean().setElement(
           0,
           this.belief.getMean().getElement(0)
               - edge.getDistToStartOfEdge());
+    }
+    /*
+     * This has to come after the adjustment 
+     */
+    this.initialBelief = this.belief.clone();
+    
     this.edgeTransitionDist = edgeTransitionDist;
     this.edge = edge.getInferredEdge();
 
@@ -304,6 +309,7 @@ public class VehicleState implements
       timeDiff = 30d;
     }
     this.movementFilter.setCurrentTimeDiff(timeDiff);
+    
 
     // DEBUG
     // this.initialHashCode = this.hashCode();
