@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Set;
 
 import org.opentripplanner.common.geometry.DistanceLibrary;
+import org.opentripplanner.common.geometry.SphericalDistanceLibrary;
 import org.opentripplanner.routing.algorithm.GenericAStar;
 import org.opentripplanner.routing.algorithm.TraverseVisitor;
 import org.opentripplanner.routing.algorithm.strategies.RemainingWeightHeuristic;
@@ -35,6 +36,8 @@ public class MultiDestinationAStar implements
 
   private final Edge start;
 
+  private final DistanceLibrary distanceLibrary = SphericalDistanceLibrary.getInstance();
+
   public MultiDestinationAStar(Graph graph, Set<Edge> endEdges,
     Coordinate center, double radius, Edge start) {
     this.graph = graph;
@@ -47,7 +50,7 @@ public class MultiDestinationAStar implements
   @Override
   public double computeForwardWeight(State s, Vertex target) {
     final Vertex v = s.getVertex();
-    double distance = DistanceLibrary.fastDistance(
+    double distance = distanceLibrary.fastDistance(
         v.getCoordinate(), center) - radius;
 
     if (distance < 0) distance = 0;
