@@ -213,4 +213,17 @@ public class GeoUtils {
   public static Vector getVector(Coordinate coord) {
     return VectorFactory.getDefault().createVector2D(coord.x, coord.y);
   }
+
+  public static Coordinate convertToLonLat(Coordinate xy) {
+    final Coordinate converted = new Coordinate();
+    try {
+      JTS.transform(xy, converted, getCRSTransform().inverse());
+    } catch (final NoninvertibleTransformException e) {
+      e.printStackTrace();
+    } catch (final TransformException e) {
+      e.printStackTrace();
+    }
+
+    return new Coordinate(converted.x, converted.y);
+  }
 }

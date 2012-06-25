@@ -333,7 +333,7 @@ public class OtpGraph {
      */
     final InferredEdge currentEdge = key.getState().getInferredEdge();
 
-    final Coordinate toCoord = GeoUtils.reverseCoordinates(key
+    final Coordinate toCoord = GeoUtils.convertToLonLat(key
         .getEndCoord());
     final Set<InferredPath> paths = Sets.newHashSet(InferredPath
         .getEmptyPath());
@@ -347,7 +347,7 @@ public class OtpGraph {
         startEdges.add(outgoing);
       }
     } else {
-      final Coordinate fromCoord = GeoUtils.reverseCoordinates(key
+      final Coordinate fromCoord = GeoUtils.convertToLonLat(key
           .getStartCoord());
       final Envelope fromEnv = new Envelope(fromCoord);
       fromEnv.expandBy(GeoUtils
