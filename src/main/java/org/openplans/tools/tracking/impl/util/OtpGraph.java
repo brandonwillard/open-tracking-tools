@@ -4,6 +4,7 @@ import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -219,7 +220,7 @@ public class OtpGraph {
 	      .build(new CacheLoader<PathKey, Set<InferredPath>>() {
 	        @Override
 	        public Set<InferredPath> load(PathKey key) {
-	          return computePaths(key);
+	          return computeUniquePaths(key);
 	        }
 	      });
 
@@ -414,8 +415,52 @@ public class OtpGraph {
 
     return paths;
   }
+
+  private Set<InferredPath> computeUniquePaths(PathKey key) {
+    Set<InferredPath> paths = computePaths(key);
+    makeUnique(paths);
+    return paths;
+  }
   
-  private Edge getBaseEdge(Edge edge) {
+  /**
+   * Assume that paths are a subset of a shortest path tree.  Remove
+   * all paths that are either duplicates or are subpaths of a longer path.
+   * @param paths
+   */
+  public static void makeUnique(Set<InferredPath> paths) {
+    PathTree tree = new PathTree();
+
+    HashSet<InferredPath> toRemove = new HashSet<InferredPath> ();
+    for (InferredPath path : paths) {
+      PathTree cur = tree;
+      for (PathEdge edge : path.getEdges()) {
+        cur = cur.apply(edge, path);
+        if (cur.isLeaf()) {
+          //we are visiting a node that was previously a leaf.  It is no longer a leaf
+          //and the paths that had previously visited it should be removed.
+		  cur.isLeaf = false;
+		  toRemove.addAll(cur.paths);
+		  assert (cur.paths.size() == 1);
+		  cur.removePath(cur.paths.get(0));
+		}
+        cur.paths.add(path);
+      }
+      if (!cur.isLeaf) {
+        //either this is a true internal node
+        //or this is the first time we have visited it
+        if (cur.children.size() == 0) {
+          cur.isLeaf = true;
+        } else {
+          toRemove.add(path);
+          cur.removePath(path);
+        }
+      }
+    }
+    paths.removeAll(toRemove);
+  }
+
+
+private Edge getBaseEdge(Edge edge) {
 	if (edge instanceof TurnEdge) {
        TurnVertexWithOSMData base = (TurnVertexWithOSMData) edge
     	             	.getFromVertex();
