@@ -12,11 +12,13 @@ import org.openplans.tools.tracking.graph_builder.PlainStreetEdgeWithOSMData;
 import org.openplans.tools.tracking.graph_builder.TurnVertexWithOSMData;
 import org.openplans.tools.tracking.impl.VehicleState;
 import org.openplans.tools.tracking.impl.graph.BaseGraph;
+import org.openplans.tools.tracking.impl.graph.CartesianDistanceLibrary;
 import org.openplans.tools.tracking.impl.graph.InferredEdge;
 import org.openplans.tools.tracking.impl.graph.paths.InferredPath;
 import org.openplans.tools.tracking.impl.graph.paths.PathEdge;
 import org.openplans.tools.tracking.impl.graph.paths.algorithms.MultiDestinationAStar;
 import org.openplans.tools.tracking.impl.statistics.StandardRoadTrackingFilter;
+import org.opentripplanner.common.geometry.DistanceLibrary;
 import org.opentripplanner.routing.core.RoutingRequest;
 import org.opentripplanner.routing.core.TraverseMode;
 import org.opentripplanner.routing.edgetype.StreetEdge;
@@ -73,7 +75,8 @@ public class OtpGraph {
   private STRtree turnEdgeIndex = new STRtree();
   private STRtree baseEdgeIndex = new STRtree();
   private STRtree turnVertexIndex = new STRtree();
-  
+  private DistanceLibrary distanceLibrary = new CartesianDistanceLibrary();
+
   private static class PathKey {
 
 	    private final VehicleState state;
@@ -261,8 +264,7 @@ public class OtpGraph {
     turnGraph = gs.getGraph();
     baseGraph = turnGraph.getService(BaseGraph.class).getBaseGraph();
 
-    indexService = new StreetVertexIndexServiceImpl(baseGraph);
-    indexService.setup();
+    indexService = new StreetVertexIndexServiceImpl(baseGraph, distanceLibrary);
     createIndices(baseGraph, baseEdgeIndex, null);
     createIndices(turnGraph, turnEdgeIndex, turnVertexIndex);
 

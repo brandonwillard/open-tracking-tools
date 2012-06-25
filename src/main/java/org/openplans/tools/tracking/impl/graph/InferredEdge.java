@@ -94,21 +94,14 @@ public class InferredEdge implements
     this.startVertex = edge.getFromVertex();
     this.endVertex = edge.getToVertex();
 
-    final Coordinate startPoint = this.locationIndexedLine
+    final Coordinate startPointCoord = this.locationIndexedLine
         .extractPoint(this.locationIndexedLine.getStartIndex());
-    /*
-     * We need to flip these coords around to get lat/lon.
-     */
-    final Coordinate startPointCoord = GeoUtils
-        .convertToEuclidean(new Coordinate(
-            startPoint.y, startPoint.x));
+
     this.startPoint = VectorFactory.getDefault().createVector2D(
         startPointCoord.x, startPointCoord.y);
 
-    final Coordinate endPoint = this.locationIndexedLine
+    final Coordinate endPointCoord = this.locationIndexedLine
         .extractPoint(this.locationIndexedLine.getEndIndex());
-    final Coordinate endPointCoord = GeoUtils
-        .convertToEuclidean(new Coordinate(endPoint.y, endPoint.x));
     this.endPoint = VectorFactory.getDefault().createVector2D(
         endPointCoord.x, endPointCoord.y);
 

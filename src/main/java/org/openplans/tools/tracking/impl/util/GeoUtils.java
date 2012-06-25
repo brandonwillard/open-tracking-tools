@@ -209,4 +209,8 @@ public class GeoUtils {
   public static Coordinate reverseCoordinates(Coordinate startCoord) {
     return new Coordinate(startCoord.y, startCoord.x);
   }
+
+  public static Vector getVector(Coordinate coord) {
+    return VectorFactory.getDefault().createVector2D(coord.x, coord.y);
+  }
 }

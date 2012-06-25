@@ -22,8 +22,8 @@ import java.util.Map.Entry;
 import java.util.Set;
 
 import org.openplans.tools.tracking.impl.util.GeoUtils;
-import org.openplans.tools.tracking.impl.util.OtpGraph;
 import org.opentripplanner.common.geometry.DistanceLibrary;
+import org.opentripplanner.common.geometry.SphericalDistanceLibrary;
 import org.opentripplanner.common.pqueue.BinHeap;
 import org.opentripplanner.graph_builder.impl.map.EndMatchState;
 import org.opentripplanner.graph_builder.impl.map.MatchState;
@@ -53,6 +53,9 @@ public class PathSampler {
 
   private final STRtree edgeIndex;
   private final STRtree vertexIndex;
+
+  /** Change this if PathSampler is changed to use base graph */
+  private DistanceLibrary distanceLibrary = SphericalDistanceLibrary.getInstance();
 
   public PathSampler(Graph graph) {
     this.graph = graph;
@@ -134,7 +137,7 @@ public class PathSampler {
     final LinearLocation initialLocation = indexedEdge
         .project(routeStartCoordinate);
 
-    final double error = DistanceLibrary.fastDistance(
+    final double error = distanceLibrary.fastDistance(
         initialLocation.getCoordinate(edgeGeometry),
         routeStartCoordinate);
     final MatchState startState = new MidblockMatchState(
@@ -218,7 +221,7 @@ public class PathSampler {
       final LinearLocation initialLocation = indexedEdge
           .project(routeStartCoordinate);
 
-      final double error = DistanceLibrary.fastDistance(
+      final double error = distanceLibrary.fastDistance(
           initialLocation.getCoordinate(edgeGeometry),
           routeStartCoordinate);
       final MatchState state = new MidblockMatchState(
