@@ -60,16 +60,14 @@ public class ReprojectCoords implements GraphBuilder {
 				final Coordinate converted = new Coordinate();
 
 				// reversed coord
-				Coordinate latlon = new Coordinate(abv.getY(), abv.getX());
-				JTS.transform(latlon, converted, getCRSTransform());
+				JTS.transform(abv.getCoordinate(), converted, getCRSTransform());
 				xfield.set(abv, converted.x);
 				yfield.set(abv, converted.y);
 				for (Edge e : v.getOutgoing()) {
 					Coordinate[] coordinates = e.getGeometry().getCoordinates().clone();
 					for (int i = 0; i < coordinates.length; ++i) {
 						Coordinate c = coordinates[i];
-						latlon = new Coordinate(c.y, c.x);
-						JTS.transform(latlon, converted, getCRSTransform());
+						JTS.transform(c, converted, getCRSTransform());
 						coordinates[i] = (Coordinate) converted.clone();
 					}
 					GeometryFactory geomFactory = GeometryUtils.getGeometryFactory();
