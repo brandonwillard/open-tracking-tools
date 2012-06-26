@@ -65,7 +65,7 @@ public class ReprojectCoords implements GraphBuilder {
 				xfield.set(abv, converted.x);
 				yfield.set(abv, converted.y);
 				for (Edge e : v.getOutgoing()) {
-					Coordinate[] coordinates = e.getGeometry().getCoordinates();
+					Coordinate[] coordinates = e.getGeometry().getCoordinates().clone();
 					for (int i = 0; i < coordinates.length; ++i) {
 						Coordinate c = coordinates[i];
 						latlon = new Coordinate(c.y, c.x);
