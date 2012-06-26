@@ -42,6 +42,8 @@
 
     <bean id="reconstruct" class="org.openplans.tools.tracking.impl.graph.ReconstructOriginalGraph" />
 
+    <bean id="reproject" class="org.openplans.tools.tracking.impl.graph.ReprojectCoords" />
+
     <bean id="graphBuilderTask" class="org.opentripplanner.graph_builder.GraphBuilderTask">
 	<!--property name="modes">
           <list>
@@ -69,6 +71,7 @@
                 <ref bean="osmBuilder" />
                 <ref bean="checkGeometry" />
                 <ref bean="reconstruct" />
+                <ref bean="reproject" />
             </list>
         </property>
     </bean>

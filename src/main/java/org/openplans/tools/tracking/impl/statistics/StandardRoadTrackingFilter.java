@@ -454,11 +454,10 @@ public class StandardRoadTrackingFilter implements
     /*
      * We snap to the line and find the segment of interest.
      */
-    final Coordinate latlonCurrentPos = GeoUtils.convertToLatLon(Og
-        .times(m));
+    final Coordinate currentPos = GeoUtils.makeCoordinate(Og.times(m));
     final LinearLocation lineLocation = edge.getInferredEdge()
         .getLocationIndexedLine()
-        .project(GeoUtils.reverseCoordinates(latlonCurrentPos));
+        .project(currentPos);
     final LineSegment lineSegment = lineLocation.getSegment(edge
         .getInferredEdge().getGeometry());
     final double distanceToStartOfSegmentOnGeometry = GeoUtils

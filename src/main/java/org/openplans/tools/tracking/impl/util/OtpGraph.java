@@ -68,7 +68,8 @@ public class OtpGraph {
 	 */
   private final Graph baseGraph;
 
-  private final StreetVertexIndexServiceImpl indexService;
+  //base index service is in projected coords
+  private final StreetVertexIndexServiceImpl baseIndexService;
 
   private final static RoutingRequest defaultOptions = new RoutingRequest(
       TraverseMode.CAR);  
@@ -231,9 +232,7 @@ public class OtpGraph {
 
     for (final Vertex v : graph.getVertices()) {
       if (vertexIndex != null) {
-        final Geometry vertexGeometry = GeoUtils.lonlatToGeometry(v
-            .getCoordinate());
-        final Envelope vertexEnvelope = vertexGeometry.getEnvelopeInternal();
+        final Envelope vertexEnvelope = new Envelope(v.getCoordinate());
         vertexIndex.insert(vertexEnvelope, v);
       }
 
@@ -264,7 +263,7 @@ public class OtpGraph {
     turnGraph = gs.getGraph();
     baseGraph = turnGraph.getService(BaseGraph.class).getBaseGraph();
 
-    indexService = new StreetVertexIndexServiceImpl(baseGraph, distanceLibrary);
+    baseIndexService = new StreetVertexIndexServiceImpl(baseGraph, distanceLibrary);
     createIndices(baseGraph, baseEdgeIndex, null);
     createIndices(turnGraph, turnEdgeIndex, turnVertexIndex);
 
@@ -280,7 +279,7 @@ public class OtpGraph {
   }
 
   public StreetVertexIndexServiceImpl getIndexService() {
-    return indexService;
+    return baseIndexService;
   }
 
   public RoutingRequest getOptions() {
@@ -300,7 +299,7 @@ public class OtpGraph {
     /*
      * XXX: indexService uses lon/lat
      */
-    final CandidateEdgeBundle edgeBundle = indexService
+    final CandidateEdgeBundle edgeBundle = baseIndexService
         .getClosestEdges(
             new Coordinate(toCoords.y, toCoords.x), options, null,
             null);
@@ -354,7 +353,7 @@ public class OtpGraph {
           .getMetersInAngleDegrees(stateStdDevDistance));
 
       for (final Object obj : turnEdgeIndex.query(fromEnv)) {
-    	//FIXME STRTree queries are not exact; we may wish to limit this list
+        //FIXME STRTree queries are not exact; we may wish to limit this list
         final Edge edge = (Edge) obj;
         startEdges.add(edge);
       }
@@ -544,8 +543,8 @@ private InferredPath copyAStarResults(GraphPath gpath,
    */
   public Set<InferredEdge> getNearbyEdges(Vector mean) {
     final Set<InferredEdge> results = Sets.newHashSet();
-    final Coordinate latlon = GeoUtils.convertToLatLon(mean);
-    final List<StreetEdge> snappedEdges = snapToGraph(latlon);
+    final Coordinate coord = GeoUtils.makeCoordinate(mean);
+    final List<StreetEdge> snappedEdges = snapToGraph(coord);
     for (final Edge edge : snappedEdges) {
       results.add(getInferredEdge(edge));
     }
@@ -560,8 +559,8 @@ private InferredPath copyAStarResults(GraphPath gpath,
     if (!fromState.getInferredEdge().isEmptyEdge()) {
       fromCoord = fromState.getInferredEdge().getCenterPointCoord();
     } else {
-      fromCoord = GeoUtils.convertToLatLon(fromState
-          .getMeanLocation());
+      Vector meanLocation = fromState.getMeanLocation();
+      fromCoord = new Coordinate(meanLocation.getElement(0), meanLocation.getElement(1));
     }
 
     final Set<InferredPath> paths = Sets.newHashSet();

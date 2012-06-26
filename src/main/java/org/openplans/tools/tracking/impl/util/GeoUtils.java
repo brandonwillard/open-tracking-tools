@@ -132,6 +132,10 @@ public class GeoUtils {
         vec.getElement(0), vec.getElement(1)));
   }
 
+  public static Coordinate makeCoordinate(Vector vec) {
+    return new Coordinate(vec.getElement(0), vec.getElement(1));
+  }
+
   public static Coordinate convertToLonLat(Vector vec) {
     final Coordinate converted = new Coordinate();
     try {

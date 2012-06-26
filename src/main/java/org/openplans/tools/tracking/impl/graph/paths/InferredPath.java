@@ -214,11 +214,13 @@ public class InferredPath implements Comparable<InferredPath> {
 
       final double localPosVelPredLogLik = filter.logLikelihood(
           obs.getProjectedPoint(), edgeBelief, edge);
-
+      
+      Preconditions.checkArgument(!Double.isNaN(edgePredMarginalLogLik));
+      Preconditions.checkArgument(!Double.isNaN(edgePredTransLogLik));
+      Preconditions.checkArgument(!Double.isNaN(localPosVelPredLogLik));
+      
       final double localLogLik = edgePredMarginalLogLik
           + edgePredTransLogLik + localPosVelPredLogLik;
-
-      Preconditions.checkArgument(!Double.isNaN(localLogLik));
 
       /*
        * We're only going to deal with the terminating edge for now.

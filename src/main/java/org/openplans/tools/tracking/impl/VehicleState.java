@@ -228,7 +228,7 @@ public class VehicleState implements
           .createInitialLearnedObject();
 
       final Vector loc = inferredEdge
-          .getPointOnEdge(initialObservation.getObsCoords());
+          .getPointOnEdge(initialObservation.getObsPoint());
       belief
           .setMean(VectorFactory.getDefault()
               .copyArray(

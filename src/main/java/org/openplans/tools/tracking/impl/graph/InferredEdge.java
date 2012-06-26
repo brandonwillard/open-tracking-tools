@@ -31,7 +31,6 @@ public class InferredEdge implements
   private final Vertex endVertex;
   private final Vector endPoint;
   private final Vector startPoint;
-  private final double length;
   private final NormalInverseGammaDistribution velocityPrecisionDist;
   private final UnivariateGaussianMeanVarianceBayesianEstimator velocityEstimator;
   private final OtpGraph graph;
@@ -56,7 +55,6 @@ public class InferredEdge implements
     this.edgeId = null;
     this.endPoint = null;
     this.startPoint = null;
-    this.length = 0;
     this.velocityEstimator = null;
     this.velocityPrecisionDist = null;
     this.startVertex = null;
@@ -104,9 +102,6 @@ public class InferredEdge implements
         .extractPoint(this.locationIndexedLine.getEndIndex());
     this.endPoint = VectorFactory.getDefault().createVector2D(
         endPointCoord.x, endPointCoord.y);
-
-    this.length = GeoUtils.getAngleDegreesInMeters(geometry
-        .getLength());
 
     this.velocityPrecisionDist =
     // ~4.4 m/s, std. dev ~ 30 m/s, Gamma with exp. value = 30 m/s
@@ -220,7 +215,10 @@ public class InferredEdge implements
   }
 
   public double getLength() {
-    return length;
+    if (edge == null) {
+      return 0;
+    }
+    return edge.getDistance();
   }
 
   /**
@@ -312,7 +310,7 @@ public class InferredEdge implements
       return "InferredEdge [empty edge]";
     else
       return "InferredEdge [edgeId=" + edgeId + ", length="
-          + length + "]";
+          + getLength() + "]";
   }
 
 }

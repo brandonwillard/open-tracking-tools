@@ -20,6 +20,12 @@ import org.codehaus.jackson.JsonProcessingException;
 import org.codehaus.jackson.map.JsonSerializer;
 import org.codehaus.jackson.map.SerializerProvider;
 import org.geotools.geojson.geom.GeometryJSON;
+import org.geotools.geometry.jts.JTS;
+import org.opengis.geometry.MismatchedDimensionException;
+import org.opengis.referencing.operation.MathTransform;
+import org.opengis.referencing.operation.NoninvertibleTransformException;
+import org.opengis.referencing.operation.TransformException;
+import org.openplans.tools.tracking.impl.util.GeoUtils;
 
 import com.vividsolutions.jts.geom.Geometry;
 
@@ -30,8 +36,19 @@ public class GeoJSONSerializer extends JsonSerializer<Geometry> {
             throws IOException, JsonProcessingException {
         
         GeometryJSON json = new GeometryJSON();
-       
-        jgen.writeRawValue(json.toString(value));
+        MathTransform transform;
+        try {
+          transform = GeoUtils.getCRSTransform().inverse();
+          Geometry transformed = JTS.transform(value, transform);
+          jgen.writeRawValue(json.toString(transformed));
+
+        } catch (NoninvertibleTransformException e) {
+          throw new RuntimeException(e);
+        } catch (MismatchedDimensionException e) {
+          throw new RuntimeException(e);
+        } catch (TransformException e) {
+          throw new RuntimeException(e);
+        }
     }
 
     @Override

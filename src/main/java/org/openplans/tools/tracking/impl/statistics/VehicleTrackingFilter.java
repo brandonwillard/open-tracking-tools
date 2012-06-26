@@ -116,7 +116,7 @@ public class VehicleTrackingFilter extends
     for (final VehicleState state : target.getDomain()) {
 
       final Set<InferredPath> instStateTransitions = inferredGraph
-          .getPaths(state, obs.getObsCoords());
+          .getPaths(state, obs.getObsPoint());
 
       state.getMovementFilter().setCurrentTimeDiff(timeDiff);
       double totalLogLik = Double.NEGATIVE_INFINITY;
