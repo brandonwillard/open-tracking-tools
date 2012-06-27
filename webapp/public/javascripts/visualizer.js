@@ -247,6 +247,22 @@ function moveMarker() {
     i++;
 }
 
+function convertToLatLon(projectedCoords) {
+  var latlon = null;
+  var coordGetString = "x=" + projectedCoords.x  + "&y=" + projectedCoords.y ;
+  $.ajax({
+    url : coordUrl + coordGetString,
+    dataType : 'json',
+    async : false,
+    success : function(data) {
+
+      lat = data['x'];
+      lon = data['y'];
+      latlon = new L.LatLng(parseFloat(lat), parseFloat(lon));
+    }});
+  return latlon;
+}
+
 function drawResults(mean, major, minor, pointType) {
 
   var color;
@@ -269,12 +285,12 @@ function drawResults(mean, major, minor, pointType) {
     fill = true;
     groupType = actualGroup;
   }
-
-  var meanCoords = new L.LatLng(parseFloat(mean.x), parseFloat(mean.y));
+  
+  var meanCoords = convertToLatLon(mean);
 
   if (major && minor) {
-    var majorAxis = new L.Polyline([ meanCoords,
-        new L.LatLng(parseFloat(major.x), parseFloat(major.y)) ], {
+    var majorLatLon = convertToLatLon(major);
+    var majorAxis = new L.Polyline([ meanCoords, majorLatLon], {
       fill : true,
       color : '#c00'
     });
@@ -282,8 +298,8 @@ function drawResults(mean, major, minor, pointType) {
     pointsGroup.addLayer(majorAxis);
     groupType.addLayer(majorAxis);
 
-    var minorAxis = new L.Polyline([ meanCoords,
-        new L.LatLng(parseFloat(minor.x), parseFloat(minor.y)) ], {
+    var minorLatLon = convertToLatLon(minor);
+    var minorAxis = new L.Polyline([ meanCoords, minorLatLon ], {
       fill : true,
       color : '#c0c'
     });
@@ -688,7 +704,7 @@ function createHoverPointLink(linkName, loc) {
     var localLoc = $(this).data("loc");
     var marker = this.marker;
     if (marker == null) {
-      marker = drawCoords(localLoc.x, localLoc.y, null, false);
+      marker = drawProjectedCoords(localLoc.x, localLoc.y, null, false);
       this.marker = marker;
     } else {
       pointsGroup.addLayer(marker);

@@ -101,7 +101,7 @@ public class Observation implements Comparable<Observation> {
     return heading;
   }
 
-  public Coordinate getObsCoords() {
+  public Coordinate getObsCoordsLatLon() {
     return obsCoords;
   }
 

@@ -22,7 +22,6 @@ import java.util.Map.Entry;
 import java.util.Set;
 
 import org.openplans.tools.tracking.impl.util.GeoUtils;
-import org.openplans.tools.tracking.impl.util.OtpGraph;
 import org.opentripplanner.common.geometry.DistanceLibrary;
 import org.opentripplanner.common.geometry.SphericalDistanceLibrary;
 import org.opentripplanner.common.pqueue.BinHeap;
@@ -47,14 +46,14 @@ import com.vividsolutions.jts.linearref.LocationIndexedLine;
 public class PathSampler {
   private static final Logger log = LoggerFactory
       .getLogger(PathSampler.class);
-  private static final double DEFAULT_DISTANCE_THRESHOLD = GeoUtils
-      .getMetersInAngleDegrees(100); // 0.002;
+  private static final double DEFAULT_DISTANCE_THRESHOLD = 100d; // 0.002;
 
   private final Graph graph;
 
   private final STRtree edgeIndex;
   private final STRtree vertexIndex;
   
+  /** Change this if PathSampler is changed to use base graph */
   private final DistanceLibrary distanceLibrary = SphericalDistanceLibrary.getInstance();
 
   public PathSampler(Graph graph) {

@@ -132,6 +132,10 @@ public class GeoUtils {
         vec.getElement(0), vec.getElement(1)));
   }
 
+  public static Coordinate makeCoordinate(Vector vec) {
+    return new Coordinate(vec.getElement(0), vec.getElement(1));
+  }
+
   public static Coordinate convertToLonLat(Vector vec) {
     final Coordinate converted = new Coordinate();
     try {
@@ -208,5 +212,22 @@ public class GeoUtils {
 
   public static Coordinate reverseCoordinates(Coordinate startCoord) {
     return new Coordinate(startCoord.y, startCoord.x);
+  }
+
+  public static Vector getVector(Coordinate coord) {
+    return VectorFactory.getDefault().createVector2D(coord.x, coord.y);
+  }
+
+  public static Coordinate convertToLonLat(Coordinate xy) {
+    final Coordinate converted = new Coordinate();
+    try {
+      JTS.transform(xy, converted, getCRSTransform().inverse());
+    } catch (final NoninvertibleTransformException e) {
+      e.printStackTrace();
+    } catch (final TransformException e) {
+      e.printStackTrace();
+    }
+
+    return new Coordinate(converted.x, converted.y);
   }
 }

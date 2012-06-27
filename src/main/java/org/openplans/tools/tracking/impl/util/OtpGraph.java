@@ -13,11 +13,13 @@ import org.openplans.tools.tracking.graph_builder.PlainStreetEdgeWithOSMData;
 import org.openplans.tools.tracking.graph_builder.TurnVertexWithOSMData;
 import org.openplans.tools.tracking.impl.VehicleState;
 import org.openplans.tools.tracking.impl.graph.BaseGraph;
+import org.openplans.tools.tracking.impl.graph.CartesianDistanceLibrary;
 import org.openplans.tools.tracking.impl.graph.InferredEdge;
 import org.openplans.tools.tracking.impl.graph.paths.InferredPath;
 import org.openplans.tools.tracking.impl.graph.paths.PathEdge;
 import org.openplans.tools.tracking.impl.graph.paths.algorithms.MultiDestinationAStar;
 import org.openplans.tools.tracking.impl.statistics.StandardRoadTrackingFilter;
+import org.opentripplanner.common.geometry.DistanceLibrary;
 import org.opentripplanner.routing.core.RoutingRequest;
 import org.opentripplanner.routing.core.TraverseMode;
 import org.opentripplanner.routing.edgetype.StreetEdge;
@@ -61,20 +63,23 @@ public class OtpGraph {
 	 * form it should ever be used outside of this class.
 	 */
   private final Graph turnGraph;
+  
 	/**
 	 * This is the original (intersection-and-street-segment) graph, used for
 	 * all inference tasks other than routing.
 	 */
   private final Graph baseGraph;
 
-  private final StreetVertexIndexServiceImpl indexService;
+  //base index service is in projected coords
+  private final StreetVertexIndexServiceImpl baseIndexService;
 
   private final static RoutingRequest defaultOptions = new RoutingRequest(
       TraverseMode.CAR);  
   private STRtree turnEdgeIndex = new STRtree();
   private STRtree baseEdgeIndex = new STRtree();
   private STRtree turnVertexIndex = new STRtree();
-  
+  private DistanceLibrary distanceLibrary = new CartesianDistanceLibrary();
+
   private static class PathKey {
 
 	    private final VehicleState state;
@@ -229,9 +234,7 @@ public class OtpGraph {
 
     for (final Vertex v : graph.getVertices()) {
       if (vertexIndex != null) {
-        final Geometry vertexGeometry = GeoUtils.lonlatToGeometry(v
-            .getCoordinate());
-        final Envelope vertexEnvelope = vertexGeometry.getEnvelopeInternal();
+        final Envelope vertexEnvelope = new Envelope(v.getCoordinate());
         vertexIndex.insert(vertexEnvelope, v);
       }
 
@@ -262,8 +265,7 @@ public class OtpGraph {
     turnGraph = gs.getGraph();
     baseGraph = turnGraph.getService(BaseGraph.class).getBaseGraph();
 
-    indexService = new StreetVertexIndexServiceImpl(baseGraph);
-    indexService.setup();
+    baseIndexService = new StreetVertexIndexServiceImpl(baseGraph, distanceLibrary);
     createIndices(baseGraph, baseEdgeIndex, null);
     createIndices(turnGraph, turnEdgeIndex, turnVertexIndex);
 
@@ -279,7 +281,7 @@ public class OtpGraph {
   }
 
   public StreetVertexIndexServiceImpl getIndexService() {
-    return indexService;
+    return baseIndexService;
   }
 
   public RoutingRequest getOptions() {
@@ -296,12 +298,9 @@ public class OtpGraph {
     Preconditions.checkNotNull(toCoords);
 
     final RoutingRequest options = OtpGraph.defaultOptions;
-    /*
-     * XXX: indexService uses lon/lat
-     */
-    final CandidateEdgeBundle edgeBundle = indexService
+    final CandidateEdgeBundle edgeBundle = baseIndexService
         .getClosestEdges(
-            new Coordinate(toCoords.y, toCoords.x), options, null,
+            toCoords, options, null,
             null);
     return edgeBundle.toEdgeList();
   }
@@ -332,13 +331,16 @@ public class OtpGraph {
      */
     final InferredEdge currentEdge = key.getState().getInferredEdge();
 
-    final Coordinate toCoord = GeoUtils.reverseCoordinates(key
-        .getEndCoord());
+    final Coordinate toCoord = key.getEndCoord();
+    final Coordinate fromCoord = key.getStartCoord();
+    
     final Set<InferredPath> paths = Sets.newHashSet(InferredPath
         .getEmptyPath());
     final Set<Edge> startEdges = Sets.newHashSet();
     final double stateStdDevDistance = 1.98d * Math.sqrt(key
         .getState().getBelief().getCovariance().normFrobenius());
+    final RoutingRequest options = new RoutingRequest(TraverseMode.CAR);
+    
     if (!currentEdge.isEmptyEdge()) {
 
       PlainStreetEdgeWithOSMData edge = (PlainStreetEdgeWithOSMData) currentEdge.getEdge();
@@ -346,33 +348,23 @@ public class OtpGraph {
         startEdges.add(outgoing);
       }
     } else {
-      final Coordinate fromCoord = GeoUtils.reverseCoordinates(key
-          .getStartCoord());
-      final Envelope fromEnv = new Envelope(fromCoord);
-      fromEnv.expandBy(GeoUtils
-          .getMetersInAngleDegrees(stateStdDevDistance));
-
-      for (final Object obj : turnEdgeIndex.query(fromEnv)) {
-    	//FIXME STRTree queries are not exact; we may wish to limit this list
-        final Edge edge = (Edge) obj;
-        startEdges.add(edge);
+      for (final Object obj : getNearbyEdges(fromCoord, stateStdDevDistance)) {
+        final PlainStreetEdgeWithOSMData edge = (PlainStreetEdgeWithOSMData) obj;
+        if (((StreetEdge) edge).canTraverse(options)) {
+      	 startEdges.addAll(edge.getTurnVertex().getOutgoing());
+        }
       }
     }
 
     final Set<Edge> endEdges = Sets.newHashSet();
 
-    final Envelope toEnv = new Envelope(toCoord);
     final double obsStdDevDistance = 1.98d * Math.sqrt(key.getState()
         .getMovementFilter().getObsVariance().normFrobenius());
-    toEnv.expandBy(GeoUtils
-        .getMetersInAngleDegrees(obsStdDevDistance));
 
-    final RoutingRequest options = new RoutingRequest(TraverseMode.CAR);
-    for (final Object obj : turnEdgeIndex.query(
-        toEnv)) {
-      final Edge edge = (Edge) obj;
+    for (final Object obj : getNearbyEdges(toCoord, obsStdDevDistance)) {
+      final PlainStreetEdgeWithOSMData edge = (PlainStreetEdgeWithOSMData) obj;
       if (((StreetEdge) edge).canTraverse(options)) {
-    	  endEdges.add(edge);
+    	  endEdges.addAll(edge.getTurnVertex().getOutgoing());
       }
     }
 
@@ -564,11 +556,10 @@ private InferredPath copyAStarResults(GraphPath gpath,
         .getInputDimensionality() == 4);
 
     final Envelope toEnv = new Envelope(
-        GeoUtils.convertToLonLat(StandardRoadTrackingFilter.getOg()
-            .times(initialBelief.getMean())));
+        GeoUtils.makeCoordinate(StandardRoadTrackingFilter.getOg().times(initialBelief.getMean())));
     final double varDistance = 1.98d * Math.sqrt(trackingFilter
         .getObsVariance().normFrobenius());
-    toEnv.expandBy(GeoUtils.getMetersInAngleDegrees(varDistance));
+    toEnv.expandBy(varDistance);
 
     final List<StreetEdge> streetEdges = Lists.newArrayList();
     for (final Object obj : baseEdgeIndex.query(
@@ -578,6 +569,11 @@ private InferredPath copyAStarResults(GraphPath gpath,
     }
     return streetEdges;
   }
+  
+  public Set<StreetEdge> getNearbyEdges(Vector loc, double radius) {
+    Preconditions.checkArgument(loc.getDimensionality() == 2);
+    return getNearbyEdges(GeoUtils.makeCoordinate(loc), radius);
+  }
 
   /**
    * Get nearby street edges from a projected point.
@@ -585,14 +581,17 @@ private InferredPath copyAStarResults(GraphPath gpath,
    * @param mean
    * @return
    */
-  public Set<InferredEdge> getNearbyEdges(Vector mean) {
-    final Set<InferredEdge> results = Sets.newHashSet();
-    final Coordinate latlon = GeoUtils.convertToLatLon(mean);
-    final List<StreetEdge> snappedEdges = snapToGraph(latlon);
-    for (final Edge edge : snappedEdges) {
-      results.add(getInferredEdge(edge));
+  public Set<StreetEdge> getNearbyEdges(Coordinate loc, double radius) {
+
+    final Envelope toEnv = new Envelope(loc);
+    toEnv.expandBy(radius);
+    final Set<StreetEdge> streetEdges = Sets.newHashSet();
+    final RoutingRequest options = new RoutingRequest(TraverseMode.CAR);
+    for (final Object obj : baseEdgeIndex.query(toEnv)) {
+      if (((StreetEdge) obj).canTraverse(options))
+        streetEdges.add((StreetEdge)obj);
     }
-    return results;
+    return streetEdges;
   }
 
   public Set<InferredPath> getPaths(VehicleState fromState,
@@ -603,8 +602,8 @@ private InferredPath copyAStarResults(GraphPath gpath,
     if (!fromState.getInferredEdge().isEmptyEdge()) {
       fromCoord = fromState.getInferredEdge().getCenterPointCoord();
     } else {
-      fromCoord = GeoUtils.convertToLatLon(fromState
-          .getMeanLocation());
+      Vector meanLocation = fromState.getMeanLocation();
+      fromCoord = new Coordinate(meanLocation.getElement(0), meanLocation.getElement(1));
     }
 
     final Set<InferredPath> paths = Sets.newHashSet();

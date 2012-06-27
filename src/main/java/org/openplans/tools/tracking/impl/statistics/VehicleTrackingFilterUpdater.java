@@ -135,7 +135,7 @@ public class VehicleTrackingFilterUpdater implements
 
         final VehicleState state = new VehicleState(
             this.inferredGraph, initialObservation,
-            pathEdge.getInferredEdge(), parameters);
+            pathEdge.getInferredEdge(), parameters, this.threadRandom.get());
 
         final VehicleStateConditionalParams edgeLoc = new VehicleStateConditionalParams(
             pathEdge, initialObservation.getProjectedPoint());
@@ -151,7 +151,7 @@ public class VehicleTrackingFilterUpdater implements
      */
     final VehicleState state = new VehicleState(
         this.inferredGraph, initialObservation,
-        InferredEdge.getEmptyEdge(), parameters);
+        InferredEdge.getEmptyEdge(), parameters, this.threadRandom.get());
 
     final double lik = state.getProbabilityFunction().evaluate(
         new VehicleStateConditionalParams(initialObservation

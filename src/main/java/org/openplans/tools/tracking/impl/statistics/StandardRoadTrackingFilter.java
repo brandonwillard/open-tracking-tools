@@ -6,6 +6,8 @@ import gov.sandia.cognition.math.matrix.MatrixFactory;
 import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.math.matrix.VectorFactory;
 import gov.sandia.cognition.math.matrix.mtj.DenseMatrix;
+import gov.sandia.cognition.math.matrix.mtj.DenseMatrixFactoryMTJ;
+import gov.sandia.cognition.math.matrix.mtj.decomposition.CholeskyDecompositionMTJ;
 import gov.sandia.cognition.math.matrix.mtj.decomposition.EigenDecompositionRightMTJ;
 import gov.sandia.cognition.math.signals.LinearDynamicalSystem;
 import gov.sandia.cognition.statistics.bayesian.KalmanFilter;
@@ -13,6 +15,7 @@ import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 import gov.sandia.cognition.util.CloneableSerializable;
 
 import java.util.Map.Entry;
+import java.util.Random;
 
 import javax.crypto.spec.PSource;
 
@@ -172,6 +175,12 @@ public class StandardRoadTrackingFilter implements
     return currentTimeDiff;
   }
 
+  public double getObservationErrorAbsRadius() {
+    final double varDistance = 1.98d * Math.sqrt(this
+        .getObsVariance().normFrobenius());  
+    return varDistance;
+  }
+  
   public KalmanFilter getGroundFilter() {
     return groundFilter;
   }
@@ -360,7 +369,27 @@ public class StandardRoadTrackingFilter implements
     this.prevTimeDiff = this.currentTimeDiff;
     this.currentTimeDiff = currentTimeDiff;
   }
+  
+  /**
+   * Use this sampling method to beat the inherent degeneracy of our state
+   * covariance.
+   * 
+   * @param vehicleState
+   * @return
+   */
+  public Vector sampleStateBelief(Vector mean, Random rng) {
+    final boolean isRoad = mean.getDimensionality() == 2;
+    final Matrix Q = isRoad ? this.getQr() : this.getQg();
 
+    final Matrix covSqrt = CholeskyDecompositionMTJ.create(
+        DenseMatrixFactoryMTJ.INSTANCE.copyMatrix(Q)).getR();
+    Vector underlyingSample = MultivariateGaussian.sample(VectorFactory
+        .getDefault().createVector(2), covSqrt, rng);
+    final Matrix Gamma = this.getCovarianceFactor(isRoad);
+    Vector thisStateSample = Gamma.times(underlyingSample).plus(mean);
+    return thisStateSample;
+  }
+  
   @Override
   public String toString() {
     return "StandardRoadTrackingFilter ["
@@ -418,7 +447,7 @@ public class StandardRoadTrackingFilter implements
         edge, positiveMean.getElement(0));
     final double absTotalPathDistanceToStartOfSegment = Math.abs(segmentDist.getValue());
     final double absTotalPathDistanceToEndOfSegment = absTotalPathDistanceToStartOfSegment
-        + GeoUtils.getAngleDegreesInMeters(segmentDist.getKey().getLength());
+        + segmentDist.getKey().getLength();
     final Entry<Matrix, Vector> projPair = StandardRoadTrackingFilter
         .posVelProjectionPair(
             segmentDist.getKey(), absTotalPathDistanceToStartOfSegment);
@@ -465,17 +494,14 @@ public class StandardRoadTrackingFilter implements
     /*
      * We snap to the line and find the segment of interest.
      */
-    final Coordinate latlonCurrentPos = GeoUtils.convertToLatLon(Og
-        .times(m));
+    final Coordinate currentPos = GeoUtils.makeCoordinate(Og.times(m));
     final LocationIndexedLine locIndex = new LocationIndexedLine(path.getGeometry());
-    final LinearLocation lineLocation = locIndex.project(
-        GeoUtils.reverseCoordinates(latlonCurrentPos));
+    final LinearLocation lineLocation = locIndex.project(currentPos);
     
     // TODO necessary?
-    final Vector pointOnLine = GeoUtils.getEuclideanVectorFromLatLon(
-        GeoUtils.reverseCoordinates(lineLocation.getCoordinate(path.getGeometry())));
-    m.setElement(0, pointOnLine.getElement(0));
-    m.setElement(2, pointOnLine.getElement(1));
+    final Coordinate pointOnLine = lineLocation.getCoordinate(path.getGeometry());
+    m.setElement(0, pointOnLine.x);
+    m.setElement(2, pointOnLine.y);
     
     /*
      * Get the segment we're projected onto, and the distance offset
@@ -483,8 +509,7 @@ public class StandardRoadTrackingFilter implements
      */
     final LineSegment lineSegment = lineLocation.getSegment(path.getGeometry());
     final LengthIndexedLine lengthIndex = new LengthIndexedLine(path.getGeometry());
-    final double distanceToStartOfSegmentOnGeometry = GeoUtils
-        .getAngleDegreesInMeters(lengthIndex.indexOf(lineSegment.p0));
+    final double distanceToStartOfSegmentOnGeometry = lengthIndex.indexOf(lineSegment.p0);
     
     
     final Entry<Matrix, Vector> projPair = StandardRoadTrackingFilter
@@ -586,9 +611,7 @@ public class StandardRoadTrackingFilter implements
     final double distAlongGeometry = distanceAlong
         - edge.getDistToStartOfEdge();
     final LinearLocation lineLocation = LengthLocationMap
-        .getLocation(
-            geometry,
-            GeoUtils.getMetersInAngleDegrees(distAlongGeometry));
+        .getLocation(geometry, distAlongGeometry);
     final LineSegment lineSegment = lineLocation.getSegment(geometry);
     final Coordinate startOfSegmentCoord = direction < 0d ? lineSegment.p1 : lineSegment.p0;  
     final double positiveDistToStartOfSegmentOnGeometry = lengthIdxLine
@@ -601,8 +624,7 @@ public class StandardRoadTrackingFilter implements
     } else {
       distanceToStartOfSegmentOnPath = positiveDistToStartOfSegmentOnGeometry;
     }
-    distanceToStartOfSegmentOnPath = GeoUtils
-        .getAngleDegreesInMeters(distanceToStartOfSegmentOnPath) 
+    distanceToStartOfSegmentOnPath = distanceToStartOfSegmentOnPath
         + edge.getDistToStartOfEdge();
 
     return Maps.immutableEntry(
@@ -684,10 +706,8 @@ public class StandardRoadTrackingFilter implements
   static private Entry<Matrix, Vector> posVelProjectionPair(
     LineSegment lineSegment, double distToStartOfLine) {
 
-    final Vector start = GeoUtils.getEuclideanVectorFromLatLon(GeoUtils
-        .reverseCoordinates(lineSegment.p0));
-    final Vector end = GeoUtils.getEuclideanVectorFromLatLon(GeoUtils
-        .reverseCoordinates(lineSegment.p1));
+    final Vector start = GeoUtils.getVector(lineSegment.p0);
+    final Vector end = GeoUtils.getVector(lineSegment.p1);
 
     final double length = start.euclideanDistance(end);
 
@@ -741,9 +761,8 @@ public class StandardRoadTrackingFilter implements
           0, desiredDirection * edge.getInferredEdge().getLength() 
             + normalizedEdgeLoc);
     }
-    assert (Math.abs(mean.getElement(0))
-        <= edge.getInferredEdge().getLength()
-          + Math.abs(edge.getDistToStartOfEdge()) + 1e-5);
+
+    assert Double.compare(Math.abs(mean.getElement(0)), edge.getInferredEdge().getLength() + 1) <= 0; 
     
   }
 

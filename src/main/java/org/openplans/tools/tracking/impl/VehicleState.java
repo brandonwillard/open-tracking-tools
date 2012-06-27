@@ -192,7 +192,7 @@ public class VehicleState implements
 
   public VehicleState(OtpGraph graph,
     Observation initialObservation, InferredEdge inferredEdge,
-    InitialParameters parameters) {
+    InitialParameters parameters, Random rng) {
 
     Preconditions.checkNotNull(initialObservation);
     Preconditions.checkNotNull(inferredEdge);
@@ -218,10 +218,12 @@ public class VehicleState implements
           .createInitialLearnedObject();
       final Vector xyPoint = initialObservation.getProjectedPoint();
       
-      // FIXME this creates a state vector with 0 velocity.
-      belief.setMean(VectorFactory.getDefault().copyArray(
-          new double[] { xyPoint.getElement(0), 0d,
-              xyPoint.getElement(1), 0d }));
+      /*
+       * Sample the velocity
+       */
+      belief.setMean(this.movementFilter.sampleStateBelief(belief.getMean(), rng));
+      belief.getMean().setElement(0, xyPoint.getElement(0));
+      belief.getMean().setElement(2, xyPoint.getElement(1));
 
     } else {
       /*
@@ -230,20 +232,20 @@ public class VehicleState implements
       this.belief = movementFilter.getRoadFilter()
           .createInitialLearnedObject();
 
-      final Vector loc = inferredEdge
-          .getPointOnEdge(initialObservation.getObsCoords());
+      final Vector loc = inferredEdge.getPointOnEdge(initialObservation.getObsPoint());
+
+      /*
+       * Sample the velocity
+       */
+      belief.setMean(this.movementFilter.sampleStateBelief(belief.getMean(), rng));
+      belief.getMean().setElement(0, 
+          inferredEdge.getStartPoint().euclideanDistance(loc));
       
-      // FIXME this creates a state vector with 0 velocity.
-      belief
-          .setMean(VectorFactory.getDefault()
-              .copyArray(
-                  new double[] {
-                      inferredEdge.getStartPoint().euclideanDistance(
-                          loc), 0d }));
+      assert Double.compare(Math.abs(this.belief.getMean().getElement(0)), inferredEdge.getLength()) <= 0; 
     }
 
-    this.initialBelief = belief.clone();
     this.edge = inferredEdge;
+    this.initialBelief = belief.clone();
     this.path = InferredPath.getInferredPath(this.edge);
     this.observation = initialObservation;
     this.graph = graph;
@@ -333,7 +335,9 @@ public class VehicleState implements
             0, desiredDirection * edge.getLength() + 
             normalizedEdgeLoc);
       }
-      assert Math.abs(this.belief.getMean().getElement(0)) <= edge.getLength() + 1e-5;
+      
+      assert Double.compare(Math.abs(this.belief.getMean().getElement(0)), edge.getLength()) <= 0; 
+      
     } else {
       this.edge = InferredEdge.getEmptyEdge();
       this.distanceFromPreviousState = null;

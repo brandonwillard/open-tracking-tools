@@ -32,6 +32,7 @@ import org.openplans.tools.tracking.impl.statistics.FilterInformation;
 import org.openplans.tools.tracking.impl.statistics.StandardRoadTrackingFilter;
 import org.openplans.tools.tracking.impl.util.GeoUtils;
 import org.openplans.tools.tracking.impl.util.OtpGraph;
+import org.opentripplanner.routing.edgetype.StreetEdge;
 
 import play.Logger;
 //import org.slf4j.Logger;
@@ -162,10 +163,11 @@ public class Simulation {
         return;
       }
 
-      inferredGraph.getNearbyEdges(initialObs.getProjectedPoint());
       final List<InferredEdge> edges = Lists.newArrayList(InferredEdge
           .getEmptyEdge());
-      edges.addAll(this.inferredGraph.getNearbyEdges(initialObs.getProjectedPoint()));
+      for (StreetEdge edge : this.inferredGraph.getNearbyEdges(initialObs.getProjectedPoint(), 25d)) {
+        edges.add(this.inferredGraph.getInferredEdge(edge));
+      }
       Set<InferredPathEntry> evaluatedPaths = Sets.newHashSet();
       final InferredEdge currentInferredEdge = edges.get(rng.nextInt(edges
           .size()));
@@ -184,7 +186,7 @@ public class Simulation {
       }
 
       VehicleState vehicleState = new VehicleState(this.inferredGraph,
-          initialObs, currentInferredEdge, parameters);
+          initialObs, currentInferredEdge, parameters, rng);
 
       long time = this.simParameters.getStartTime().getTime();
       while (time < this.simParameters.getEndTime().getTime()
@@ -317,7 +319,10 @@ public class Simulation {
       if (currentEdge.getInferredEdge() == InferredEdge.getEmptyEdge()) {
         final Vector projLocation = StandardRoadTrackingFilter.getOg().times(
             newBelief.getMean());
-        transferEdges.addAll(this.inferredGraph.getNearbyEdges(projLocation));
+        for (StreetEdge edge : this.inferredGraph.getNearbyEdges(projLocation, 
+            movementFilter.getObservationErrorAbsRadius())) {
+          transferEdges.add(this.inferredGraph.getInferredEdge(edge));
+        }
       } else {
         if (totalDistToTravel == null) {
           transferEdges.add(startEdge.getInferredEdge());

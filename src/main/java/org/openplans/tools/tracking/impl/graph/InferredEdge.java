@@ -31,7 +31,6 @@ public class InferredEdge implements
   private final Vertex endVertex;
   private final Vector endPoint;
   private final Vector startPoint;
-  private final double length;
   private final NormalInverseGammaDistribution velocityPrecisionDist;
   private final UnivariateGaussianMeanVarianceBayesianEstimator velocityEstimator;
   private final OtpGraph graph;
@@ -56,7 +55,6 @@ public class InferredEdge implements
     this.edgeId = null;
     this.endPoint = null;
     this.startPoint = null;
-    this.length = 0;
     this.velocityEstimator = null;
     this.velocityPrecisionDist = null;
     this.startVertex = null;
@@ -94,26 +92,16 @@ public class InferredEdge implements
     this.startVertex = edge.getFromVertex();
     this.endVertex = edge.getToVertex();
 
-    final Coordinate startPoint = this.locationIndexedLine
+    final Coordinate startPointCoord = this.locationIndexedLine
         .extractPoint(this.locationIndexedLine.getStartIndex());
-    /*
-     * We need to flip these coords around to get lat/lon.
-     */
-    final Coordinate startPointCoord = GeoUtils
-        .convertToEuclidean(new Coordinate(
-            startPoint.y, startPoint.x));
+
     this.startPoint = VectorFactory.getDefault().createVector2D(
         startPointCoord.x, startPointCoord.y);
 
-    final Coordinate endPoint = this.locationIndexedLine
+    final Coordinate endPointCoord = this.locationIndexedLine
         .extractPoint(this.locationIndexedLine.getEndIndex());
-    final Coordinate endPointCoord = GeoUtils
-        .convertToEuclidean(new Coordinate(endPoint.y, endPoint.x));
     this.endPoint = VectorFactory.getDefault().createVector2D(
         endPointCoord.x, endPointCoord.y);
-
-    this.length = GeoUtils.getAngleDegreesInMeters(geometry
-        .getLength());
 
     this.velocityPrecisionDist =
     // ~4.4 m/s, std. dev ~ 30 m/s, Gamma with exp. value = 30 m/s
@@ -227,7 +215,10 @@ public class InferredEdge implements
   }
 
   public double getLength() {
-    return length;
+    if (edge == null) {
+      return 0;
+    }
+    return edge.getDistance();
   }
 
   /**
@@ -256,18 +247,12 @@ public class InferredEdge implements
   public Vector getPointOnEdge(Coordinate obsPoint) {
     if (this == InferredEdge.emptyEdge)
       return null;
-    final Coordinate revObsPoint = new Coordinate(
-        obsPoint.y, obsPoint.x);
     final LinearLocation here = locationIndexedLine
-        .project(revObsPoint);
+        .project(obsPoint);
     final Coordinate pointOnLine = locationIndexedLine
         .extractPoint(here);
-    final Coordinate revOnLine = new Coordinate(
-        pointOnLine.y, pointOnLine.x);
-    final Coordinate projPointOnLine = GeoUtils
-        .convertToEuclidean(revOnLine);
     return VectorFactory.getDefault().createVector2D(
-        projPointOnLine.x, projPointOnLine.y);
+        pointOnLine.x, pointOnLine.y);
   }
 
   public Geometry getGeometry() {
@@ -319,7 +304,7 @@ public class InferredEdge implements
       return "InferredEdge [empty edge]";
     else
       return "InferredEdge [edgeId=" + edgeId + ", length="
-          + length + "]";
+          + getLength() + "]";
   }
 
 }

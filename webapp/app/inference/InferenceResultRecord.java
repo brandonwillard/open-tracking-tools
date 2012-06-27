@@ -283,7 +283,7 @@ public class InferenceResultRecord {
      */
     return new InferenceResultRecord(
         observation.getTimestamp().getTime(),
-        observation.getObsCoords(), actualResults, infResults, 
+        observation.getObsCoordsLatLon(), actualResults, infResults, 
         postDist != null ? postDist.clone() : null,
         priorDist != null ? priorDist.clone() : null   );
     
@@ -347,11 +347,9 @@ public class InferenceResultRecord {
       minorAxis = mean;
     }
 
-    final Coordinate meanCoords = GeoUtils.convertToLatLon(mean);
-    final Coordinate majorAxisCoords = GeoUtils
-        .convertToLatLon(majorAxis);
-    final Coordinate minorAxisCoords = GeoUtils
-        .convertToLatLon(minorAxis);
+    final Coordinate meanCoords = GeoUtils.makeCoordinate(mean);
+    final Coordinate majorAxisCoords = GeoUtils.makeCoordinate(majorAxis);
+    final Coordinate minorAxisCoords = GeoUtils.makeCoordinate(minorAxis);
 
     final List<Double[]> pathSegmentIds = Lists.newArrayList();
     Double pathDirection = null;

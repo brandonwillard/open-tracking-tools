@@ -128,7 +128,8 @@ public class PathEdge implements Comparable<PathEdge> {
       return "PathEdge [empty edge]";
     else
       return "PathEdge [edge=" + edge.getEdgeId()
-          + ", distToStartOfEdge=" + distToStartOfEdge + "]";
+          + " (" + (long)edge.getLength() + ")"
+          + ", distToStart=" + distToStartOfEdge.longValue() + "]";
   }
 
   public static PathEdge getEdge(InferredEdge infEdge) {

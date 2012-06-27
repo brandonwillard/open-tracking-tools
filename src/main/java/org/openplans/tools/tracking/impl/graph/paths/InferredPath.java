@@ -18,7 +18,6 @@ import org.openplans.tools.tracking.impl.VehicleState;
 import org.openplans.tools.tracking.impl.graph.InferredEdge;
 import org.openplans.tools.tracking.impl.statistics.StandardRoadTrackingFilter;
 import org.openplans.tools.tracking.impl.statistics.WrappedWeightedValue;
-import org.opentripplanner.routing.graph.Edge;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableCollection;
@@ -256,6 +255,10 @@ public class InferredPath implements Comparable<InferredPath> {
   
         final double localPosVelPredLogLik = filter.logLikelihood(
             obs.getProjectedPoint(), locationPrediction, edge);
+        
+        assert !Double.isNaN(edgePredMarginalLogLik);
+        assert !Double.isNaN(edgePredTransLogLik);
+        assert !Double.isNaN(localPosVelPredLogLik);
   
         localLogLik = edgePredMarginalLogLik
             + edgePredTransLogLik + localPosVelPredLogLik;
