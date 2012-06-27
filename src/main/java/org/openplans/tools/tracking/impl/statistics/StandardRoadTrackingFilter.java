@@ -511,7 +511,6 @@ public class StandardRoadTrackingFilter implements
     final LengthIndexedLine lengthIndex = new LengthIndexedLine(path.getGeometry());
     final double distanceToStartOfSegmentOnGeometry = lengthIndex.indexOf(lineSegment.p0);
     
-    
     final Entry<Matrix, Vector> projPair = StandardRoadTrackingFilter
         .posVelProjectionPair(
             lineSegment, distanceToStartOfSegmentOnGeometry);
@@ -611,7 +610,9 @@ public class StandardRoadTrackingFilter implements
     final double distAlongGeometry = distanceAlong
         - edge.getDistToStartOfEdge();
     final LinearLocation lineLocation = LengthLocationMap
-        .getLocation(geometry, distAlongGeometry);
+        .getLocation(
+            geometry,
+            distAlongGeometry);
     final LineSegment lineSegment = lineLocation.getSegment(geometry);
     final Coordinate startOfSegmentCoord = direction < 0d ? lineSegment.p1 : lineSegment.p0;  
     final double positiveDistToStartOfSegmentOnGeometry = lengthIdxLine
@@ -624,7 +625,7 @@ public class StandardRoadTrackingFilter implements
     } else {
       distanceToStartOfSegmentOnPath = positiveDistToStartOfSegmentOnGeometry;
     }
-    distanceToStartOfSegmentOnPath = distanceToStartOfSegmentOnPath
+    distanceToStartOfSegmentOnPath = distanceToStartOfSegmentOnPath 
         + edge.getDistToStartOfEdge();
 
     return Maps.immutableEntry(
