@@ -151,10 +151,6 @@ public class GeoUtils {
     return converted;
   }
 
-  public static double getAngleDegreesInMeters(double angularUnits) {
-    return angularUnits * (Math.PI / 180d) * 6378137d;
-  }
-
   public static Object getCoordinates(Vector meanLocation) {
     return new Coordinate(
         meanLocation.getElement(0), meanLocation.getElement(1));

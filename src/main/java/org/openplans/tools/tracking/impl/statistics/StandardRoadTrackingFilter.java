@@ -391,7 +391,7 @@ public class StandardRoadTrackingFilter implements
         edge, belief.getMean().getElement(0));
     final double absTotalPathDistanceToStartOfSegment = Math.abs(segmentDist.getValue());
     final double absTotalPathDistanceToEndOfSegment = absTotalPathDistanceToStartOfSegment
-        + GeoUtils.getAngleDegreesInMeters(segmentDist.getKey().getLength());
+        + segmentDist.getKey().getLength();
     final Entry<Matrix, Vector> projPair = StandardRoadTrackingFilter
         .posVelProjectionPair(
             segmentDist.getKey(), absTotalPathDistanceToStartOfSegment);
@@ -460,9 +460,8 @@ public class StandardRoadTrackingFilter implements
         .project(currentPos);
     final LineSegment lineSegment = lineLocation.getSegment(edge
         .getInferredEdge().getGeometry());
-    final double distanceToStartOfSegmentOnGeometry = GeoUtils
-        .getAngleDegreesInMeters(edge.getInferredEdge()
-            .getLengthIndexedLine().indexOf(lineSegment.p0));
+    final double distanceToStartOfSegmentOnGeometry = edge.getInferredEdge()
+            .getLengthIndexedLine().indexOf(lineSegment.p0);
     final double distanceToStartOfSegmentOnPath = distanceToStartOfSegmentOnGeometry
         + edge.getDistToStartOfEdge();
     final Entry<Matrix, Vector> projPair = StandardRoadTrackingFilter
@@ -573,8 +572,7 @@ public class StandardRoadTrackingFilter implements
     } else {
       distanceToStartOfSegmentOnPath = positiveDistToStartOfSegmentOnGeometry;
     }
-    distanceToStartOfSegmentOnPath = GeoUtils
-        .getAngleDegreesInMeters(distanceToStartOfSegmentOnPath) 
+    distanceToStartOfSegmentOnPath = distanceToStartOfSegmentOnPath 
         + edge.getDistToStartOfEdge();
 
     return Maps.immutableEntry(
