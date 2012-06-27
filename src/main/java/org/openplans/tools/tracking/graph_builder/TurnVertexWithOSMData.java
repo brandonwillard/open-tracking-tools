@@ -6,6 +6,7 @@ import org.opentripplanner.routing.edgetype.StreetEdge;
 import org.opentripplanner.routing.edgetype.TurnEdge;
 import org.opentripplanner.routing.graph.Graph;
 import org.opentripplanner.routing.patch.Alert;
+import org.opentripplanner.routing.vertextype.StreetVertex;
 import org.opentripplanner.routing.vertextype.TurnVertex;
 
 import com.vividsolutions.jts.geom.LineString;
@@ -49,7 +50,10 @@ public class TurnVertexWithOSMData extends TurnVertex {
     return way;
   }
 
-  public TurnEdge makeTurnEdge(TurnVertex out) {
+  public TurnEdge makeTurnEdge(StreetVertex out) {
+    if (out instanceof TurnVertex) {
+      return new SimpleTurnEdge(this, (TurnVertex) out);
+    }
     return new SimpleTurnEdge(this, out);
   }
 
