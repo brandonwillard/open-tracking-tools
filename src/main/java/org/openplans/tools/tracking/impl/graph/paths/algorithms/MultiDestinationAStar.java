@@ -27,6 +27,8 @@ public class MultiDestinationAStar implements
     SkipTraverseResultStrategy, TraverseVisitor {
   private static final long serialVersionUID = 1L;
 
+  private static final double MAX_DISTANCE = 1000d;
+
   double MAX_SPEED = 27.0; // ~60 mph
 
   private final HashSet<Edge> end;
@@ -106,6 +108,9 @@ public class MultiDestinationAStar implements
   public boolean shouldSearchContinue(Vertex origin, Vertex target,
     State current, ShortestPathTree spt,
     RoutingRequest traverseOptions) {
+    final double traveledDistance = current.getWeight() * MAX_SPEED;
+    if (traveledDistance > MAX_DISTANCE)
+      return false;
     return end.size() != 0;
   }
 

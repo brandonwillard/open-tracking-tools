@@ -339,7 +339,6 @@ public class OtpGraph {
     final Set<Edge> startEdges = Sets.newHashSet();
     final double stateStdDevDistance = 1.98d * Math.sqrt(key
         .getState().getBelief().getCovariance().normFrobenius());
-    final RoutingRequest options = new RoutingRequest(TraverseMode.CAR);
     
     if (!currentEdge.isEmptyEdge()) {
 
@@ -350,9 +349,7 @@ public class OtpGraph {
     } else {
       for (final Object obj : getNearbyEdges(fromCoord, stateStdDevDistance)) {
         final PlainStreetEdgeWithOSMData edge = (PlainStreetEdgeWithOSMData) obj;
-        if (((StreetEdge) edge).canTraverse(options)) {
-      	 startEdges.addAll(edge.getTurnVertex().getOutgoing());
-        }
+      	startEdges.addAll(edge.getTurnVertex().getOutgoing());
       }
     }
 
@@ -363,9 +360,7 @@ public class OtpGraph {
 
     for (final Object obj : getNearbyEdges(toCoord, obsStdDevDistance)) {
       final PlainStreetEdgeWithOSMData edge = (PlainStreetEdgeWithOSMData) obj;
-      if (((StreetEdge) edge).canTraverse(options)) {
-    	  endEdges.addAll(edge.getTurnVertex().getOutgoing());
-      }
+  	  endEdges.addAll(edge.getTurnVertex().getOutgoing());
     }
 
     for (final Edge startEdge : startEdges) {
@@ -586,9 +581,8 @@ private InferredPath copyAStarResults(GraphPath gpath,
     final Envelope toEnv = new Envelope(loc);
     toEnv.expandBy(radius);
     final Set<StreetEdge> streetEdges = Sets.newHashSet();
-    final RoutingRequest options = new RoutingRequest(TraverseMode.CAR);
     for (final Object obj : baseEdgeIndex.query(toEnv)) {
-      if (((StreetEdge) obj).canTraverse(options))
+      if (((StreetEdge) obj).canTraverse(defaultOptions))
         streetEdges.add((StreetEdge)obj);
     }
     return streetEdges;
