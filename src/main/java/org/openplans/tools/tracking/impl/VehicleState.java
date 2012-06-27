@@ -292,49 +292,15 @@ public class VehicleState implements
        */
       final double distPosition = this.belief.getMean().getElement(0);
       PathEdge pathEdge = path.getEdgeForDistance(distPosition, true);
-      if (pathEdge == null) {
-        /*
-         * Sometimes the distance-based position is outside
-         * of the path's bounds.  Determine which side it's closest
-         * to.
-         */
-        if (path.isBackward()) {
-          if (distPosition < path.getTotalPathDistance()) {
-            this.belief.getMean().setElement(0, path.getTotalPathDistance());
-            pathEdge = Iterables.getLast(path.getEdges());
-          } else {
-            this.belief.getMean().setElement(0, 0d);
-            pathEdge = Iterables.getFirst(path.getEdges(), null);
-          }
-        } else {
-          if (distPosition > path.getTotalPathDistance()) {
-            this.belief.getMean().setElement(0, path.getTotalPathDistance());
-            pathEdge = Iterables.getLast(path.getEdges());
-          } else {
-            this.belief.getMean().setElement(0, 0d);
-            pathEdge = Iterables.getFirst(path.getEdges(), null);
-          }
-        }
-      }
       this.edge = pathEdge.getInferredEdge();
       this.distanceFromPreviousState = pathEdge.getDistToStartOfEdge();
       
       /*
        * We normalized the position relative to the direction of motion.
        */
-      final double normalizedEdgeLoc = this.belief.getMean().getElement(0)
-              - pathEdge.getDistToStartOfEdge();
-      
-      final double desiredDirection = Math.signum(this.belief.getMean().getElement(1));
-      if (desiredDirection == 0d
-          || Math.signum(normalizedEdgeLoc) == desiredDirection) {
-        this.belief.getMean().setElement(
-            0, normalizedEdgeLoc);
-      } else {
-        this.belief.getMean().setElement(
-            0, desiredDirection * edge.getLength() + 
-            normalizedEdgeLoc);
-      }
+      final double currentLoc = this.belief.getMean().getElement(0);
+      this.belief.getMean().setElement(0, currentLoc - pathEdge.getDistToStartOfEdge());
+      StandardRoadTrackingFilter.normalizeBelief(this.belief.getMean(), PathEdge.getEdge(this.edge));
       
       assert Double.compare(Math.abs(this.belief.getMean().getElement(0)), edge.getLength()) <= 0; 
       

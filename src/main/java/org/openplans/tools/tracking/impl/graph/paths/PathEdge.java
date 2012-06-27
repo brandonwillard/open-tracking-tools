@@ -102,20 +102,21 @@ public class PathEdge implements Comparable<PathEdge> {
   /**
    * Based on the path that this edge is contained in, determine if the
    * given distance is on this edge.
+   * We allow 0 and +- the edge length to qualify for being on the edge.
    * @param distance
    * @return
    */
   public boolean isOnEdge(double distance) {
     if (distToStartOfEdge < 0d) {
-      if (distance > -edge.getLength() + distToStartOfEdge 
+      if (distance >= -edge.getLength() + distToStartOfEdge 
           && distance <= distToStartOfEdge)
         return true;
     } else if (distToStartOfEdge > 0d){
-      if (distance < edge.getLength() + distToStartOfEdge 
+      if (distance <= edge.getLength() + distToStartOfEdge 
           && distance >= distToStartOfEdge)
         return true;
     } else {
-      if (Math.abs(distance) < edge.getLength() + Math.abs(distToStartOfEdge)
+      if (Math.abs(distance) <= edge.getLength() + Math.abs(distToStartOfEdge)
           && Math.abs(distance) >= Math.abs(distToStartOfEdge))
         return true;
     }

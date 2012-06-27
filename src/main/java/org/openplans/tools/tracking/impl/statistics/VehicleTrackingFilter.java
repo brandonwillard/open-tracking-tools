@@ -1,8 +1,11 @@
 package org.openplans.tools.tracking.impl.statistics;
 
+import gov.sandia.cognition.collection.ScalarMap.Entry;
 import gov.sandia.cognition.math.LogMath;
+import gov.sandia.cognition.math.MutableDouble;
 import gov.sandia.cognition.statistics.DataDistribution;
 import gov.sandia.cognition.statistics.bayesian.AbstractParticleFilter;
+import gov.sandia.cognition.statistics.distribution.DefaultDataDistribution;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 import gov.sandia.cognition.util.DefaultWeightedValue;
 
@@ -23,6 +26,7 @@ import org.openplans.tools.tracking.impl.graph.paths.PathEdge;
 import org.openplans.tools.tracking.impl.util.OtpGraph;
 
 import com.google.common.collect.HashMultimap;
+import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Multimap;
@@ -96,13 +100,11 @@ public class VehicleTrackingFilter extends
   public void update(DataDistribution<VehicleState> target,
     Observation obs) {
 
-    final double timeDiff = prevTime == 0 ? 0 : (obs.getTimestamp()
+    final double timeDiff = prevTime == 0 ? 1d : (obs.getTimestamp()
         .getTime() - prevTime) / 1000;
-    prevTime = obs.getTimestamp().getTime();
 
     if (timeDiff <= 0)
       return;
-    // Preconditions.checkArgument(timeDiff > 0, "timeDiff=" + timeDiff);
 
     final Multimap<VehicleState, WrappedWeightedValue<InferredPathEntry>> stateToPaths = HashMultimap
         .create();
@@ -159,11 +161,11 @@ public class VehicleTrackingFilter extends
     final ArrayList<? extends VehicleState> smoothedStates = resampleDist
         .sample(rng, getNumParticles());
 
-    target.clear();
     if (isDebug)
       this.filterInfo.put(obs, new FilterInformation(
           evaluatedPaths, resampleDist));
 
+    final DataDistribution<VehicleState> posteriorDist = new DefaultDataDistribution<VehicleState>();
     /*
      * Propagate states
      */
@@ -243,6 +245,9 @@ public class VehicleTrackingFilter extends
               prevEdge, edge.getInferredEdge());
 
         if (!edge.isEmptyEdge()) {
+          /*
+           * Note: the edge velocities ARE directional!
+           */
           edge
               .getInferredEdge()
               .getVelocityEstimator()
@@ -260,9 +265,15 @@ public class VehicleTrackingFilter extends
           this.inferredGraph, obs, updatedFilter, sampledBelief,
           updatedEdgeTransDist, sampledPathEntry.getPath(), state);
 
-      target.set(newTransState, 1d / smoothedStates.size());
+      posteriorDist.set(newTransState, 1d/numParticles);
 
     }
+    
+    target.clear();
+    for (Entry<VehicleState> entry : posteriorDist.entrySet()) {
+      target.set(entry.getKey(), entry.getValue());
+    }
+    prevTime = obs.getTimestamp().getTime();
   }
 
 }

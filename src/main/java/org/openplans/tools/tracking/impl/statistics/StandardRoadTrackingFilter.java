@@ -737,10 +737,9 @@ public class StandardRoadTrackingFilter implements
    * re-adjust locally when path directions don't line up.
    */
   public static void normalizeBelief(Vector mean, PathEdge edge) {
-
-    final double normalizedEdgeLoc = mean.getElement(0)
-            - edge.getDistToStartOfEdge();
     
+//    assert edge.getDistToStartOfEdge() == 0d;
+
     final double desiredDirection;
     if (edge.getDistToStartOfEdge() == 0d) {
       desiredDirection = Math.signum(mean.getElement(1));
@@ -754,17 +753,17 @@ public class StandardRoadTrackingFilter implements
       desiredDirection = Math.signum(edge.getDistToStartOfEdge());
     }
     
-    if (Math.signum(normalizedEdgeLoc) == desiredDirection) {
-      mean.setElement(
-          0, normalizedEdgeLoc);
-    } else {
-      mean.setElement(
-          0, desiredDirection * edge.getInferredEdge().getLength() 
-            + normalizedEdgeLoc);
-    }
-
-    assert Double.compare(Math.abs(mean.getElement(0)), edge.getInferredEdge().getLength() + 1) <= 0; 
     
+    if (Math.signum(mean.getElement(0)) != desiredDirection) {
+      final double totalLength = desiredDirection * edge.getInferredEdge().getLength()
+          + edge.getDistToStartOfEdge();
+      final double newLocation = totalLength + mean.getElement(0);
+      
+      assert Double.compare(Math.abs(newLocation), Math.abs(totalLength) + 1) <= 0; 
+      assert edge.isOnEdge(newLocation);
+      
+      mean.setElement(0, newLocation);
+    }
   }
 
 }

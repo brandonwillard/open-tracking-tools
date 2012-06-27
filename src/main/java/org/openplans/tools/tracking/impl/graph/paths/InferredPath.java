@@ -263,8 +263,6 @@ public class InferredPath implements Comparable<InferredPath> {
         localLogLik = edgePredMarginalLogLik
             + edgePredTransLogLik + localPosVelPredLogLik;
   
-        Preconditions.checkArgument(!Double.isNaN(localLogLik));
-  
         /*
          * We're only going to deal with the terminating edge for now.
          */
