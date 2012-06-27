@@ -3,6 +3,7 @@ package org.openplans.tools.tracking.graph_builder;
 import java.util.Set;
 
 import org.opentripplanner.routing.edgetype.StreetEdge;
+import org.opentripplanner.routing.edgetype.TurnEdge;
 import org.opentripplanner.routing.graph.Graph;
 import org.opentripplanner.routing.patch.Alert;
 import org.opentripplanner.routing.vertextype.TurnVertex;
@@ -46,6 +47,10 @@ public class TurnVertexWithOSMData extends TurnVertex {
 
   public long getWay() {
     return way;
+  }
+
+  public TurnEdge makeTurnEdge(TurnVertex out) {
+    return new SimpleTurnEdge(this, out);
   }
 
 }
