@@ -7,6 +7,7 @@ import inference.InferenceService;
 
 import java.io.IOException;
 import java.text.SimpleDateFormat;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
@@ -93,7 +94,7 @@ public class Api extends Controller {
     if (instance == null)
       renderJSON(jsonMapper.writeValueAsString(null));
 
-    final List<InferenceResultRecord> results = instance
+    final Collection<InferenceResultRecord> results = instance
         .getResultRecords();
     if (results.isEmpty())
       renderJSON(jsonMapper.writeValueAsString(null));
@@ -118,7 +119,7 @@ public class Api extends Controller {
     if (instance == null)
       renderJSON(jsonMapper.writeValueAsString(null));
 
-    final List<InferenceResultRecord> results = instance
+    final Collection<InferenceResultRecord> results = instance
         .getResultRecords();
     if (results.isEmpty())
       renderJSON(jsonMapper.writeValueAsString(null));
@@ -175,7 +176,7 @@ public class Api extends Controller {
     if (instance == null)
       renderJSON(jsonMapper.writeValueAsString(null));
 
-    final List<InferenceResultRecord> resultRecords = instance
+    final Collection<InferenceResultRecord> resultRecords = instance
         .getResultRecords();
     if (resultRecords.isEmpty())
       renderJSON(jsonMapper.writeValueAsString(null));
@@ -287,7 +288,7 @@ public class Api extends Controller {
     if (instance == null)
       renderJSON(jsonMapper.writeValueAsString(null));
 
-    final List<InferenceResultRecord> resultRecords = instance
+    final Collection<InferenceResultRecord> resultRecords = instance
         .getResultRecords();
     if (resultRecords.isEmpty())
       renderJSON(jsonMapper.writeValueAsString(null));

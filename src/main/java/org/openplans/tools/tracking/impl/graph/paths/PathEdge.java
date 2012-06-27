@@ -95,78 +95,31 @@ public class PathEdge implements Comparable<PathEdge> {
   public boolean isEmptyEdge() {
     return this == emptyPathEdge;
   }
+
+
+
   
-  public double marginalPredictiveLogLikelihood(
-    MultivariateGaussian beliefPrediction, double direction) {
-    Preconditions.checkArgument(beliefPrediction
-        .getInputDimensionality() == 2);
-    final Matrix Or = StandardRoadTrackingFilter.getOr();
-    final double variance = Or
-        .times(beliefPrediction.getCovariance())
-        .times(Or.transpose()).getElement(0, 0);
-    final double mean = Or.times(beliefPrediction.getMean())
-        .getElement(0);
-    final double distToEndOfEdge = direction * edge.getLength() + this.distToStartOfEdge;
-    final double startDistance = direction > 0d ? this.distToStartOfEdge : distToEndOfEdge; 
-    final double endDistance = direction > 0d ? distToEndOfEdge : this.distToStartOfEdge;
-    // FIXME use actual log calculations
-    final double result = Math.log(UnivariateGaussian.CDF.evaluate(
-        endDistance, mean, variance)
-        - UnivariateGaussian.CDF.evaluate(
-            startDistance, mean, variance));
-    
-    return result;
-  }
-
   /**
-   * This method truncates the given belief over the interval defined by this
-   * edge.
-   * 
-   * @param belief
+   * Based on the path that this edge is contained in, determine if the
+   * given distance is on this edge.
+   * @param distance
+   * @return
    */
-  public void predict(MultivariateGaussian belief, Observation obs) {
-
-    StandardRoadTrackingFilter.convertToRoadBelief(belief, this);
-
-    /*-
-     * TODO really, this should just be the truncated/conditional
-     * mean and covariance for the given interval/edge
-     */
-    final Matrix Or = StandardRoadTrackingFilter.getOr();
-    final double S = Or.times(belief.getCovariance())
-        .times(Or.transpose()).getElement(0, 0)
-        // + 1d;
-        + Math.pow(edge.getLength() / Math.sqrt(12), 2);
-    final Matrix W = belief.getCovariance().times(Or.transpose())
-        .scale(1 / S);
-    final Matrix R = belief.getCovariance().minus(
-        W.times(W.transpose()).scale(S));
-    /*
-     * The mean can be the center-length of the geometry, or something more
-     * specific, like the snapped location!
-     */
-    final double direction = belief.getMean().getElement(0) >= 0d ? 1d : -1d;
-
-    final double mean = (distToStartOfEdge + (distToStartOfEdge + direction
-        * edge.getLength())) / 2d;
-
-    // final LocationIndexedLine locIdxLine = isPositive ?
-    // edge.getPosLocationIndexedLine()
-    // : edge.getNegLocationIndexedLine();
-    // final LinearLocation loc = locIdxLine.project(
-    // GeoUtils.reverseCoordinates(obs.getObsCoords()));
-    // final LengthLocationMap lengthLocLine = isPositive ?
-    // edge.getPosLengthLocationMap()
-    // : edge.getNegLengthLocationMap();
-    // final double mean = (isPositive ? 1d : -1d)
-    // * GeoUtils.getAngleDegreesInMeters(lengthLocLine.getLength(loc)) +
-    // this.getDistToStartOfEdge();
-
-    final double e = mean - Or.times(belief.getMean()).getElement(0);
-    final Vector a = belief.getMean().plus(W.getColumn(0).scale(e));
-
-    belief.setMean(a);
-    belief.setCovariance(R);
+  public boolean isOnEdge(double distance) {
+    if (distToStartOfEdge < 0d) {
+      if (distance > -edge.getLength() + distToStartOfEdge 
+          && distance <= distToStartOfEdge)
+        return true;
+    } else if (distToStartOfEdge > 0d){
+      if (distance < edge.getLength() + distToStartOfEdge 
+          && distance >= distToStartOfEdge)
+        return true;
+    } else {
+      if (Math.abs(distance) < edge.getLength() + Math.abs(distToStartOfEdge)
+          && Math.abs(distance) >= Math.abs(distToStartOfEdge))
+        return true;
+    }
+    return false;
   }
 
   @Override

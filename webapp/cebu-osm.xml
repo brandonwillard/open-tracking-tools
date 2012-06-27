@@ -62,7 +62,7 @@
         <property name="contractionFactor" value="0.995" /-->
     <!--<property name="graphBundle" ref="graphBundle" /> -->
 
-        <property name="path" value="/home/bwillard/openplans/OpenTripPlanner/cebu-osm-bundle" />
+    <property name="path" value="/home/bwillard/openplans/openplans-tracking-tools/webapp" />
         <property name="graphBuilders">
             <list>
                 <!-- GTFS comes before OSM, because we use the loaded set of stops to determine our OSM coverage -->

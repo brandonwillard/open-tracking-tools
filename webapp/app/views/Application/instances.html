@@ -49,7 +49,7 @@
 	    Duration (secs)<br>
 	 	<input name="frequency_str" type="text" value="30"/> 
 	    Observation Frequency (secs)<br>
-	 	<input name="obs_variance_pair" type="text" value="625, 625"/> 
+	 	<input name="obs_variance_pair" type="text" value="100, 100"/> 
 	    Observation Variance (x,y) in meters<br>
 	 	<input name="road_state_variance_pair" type="text" value="0.000625, 0.000625"/> 
 	    On-road State Variance (errors due to acceleration, (dist,velocity))<br>
@@ -59,7 +59,7 @@
 	    Off- to off-road, off- to on-road weights (unnormalized)<br>
 	 	<input name="on_prob_pair" type="text" value="1, 0.05"/>
 	    On- to on-road, on- to off-road weights (unnormalized)<br>
-	 	<input name="performInference" id="performInference" type="checkbox" value="true"/>
+	 	<input name="performInference" id="performInference" type="checkbox" value="true" checked="checked"/>
 	    <label for="performInference">Perform inference for this simulation</label><br>
 	  <input type="submit" value="Simulate">
 	#{/form}

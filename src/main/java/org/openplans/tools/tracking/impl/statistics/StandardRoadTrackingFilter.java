@@ -16,6 +16,7 @@ import java.util.Map.Entry;
 
 import javax.crypto.spec.PSource;
 
+import org.openplans.tools.tracking.impl.graph.paths.InferredPath;
 import org.openplans.tools.tracking.impl.graph.paths.PathEdge;
 import org.openplans.tools.tracking.impl.util.GeoUtils;
 
@@ -27,6 +28,7 @@ import com.vividsolutions.jts.geom.LineSegment;
 import com.vividsolutions.jts.linearref.LengthIndexedLine;
 import com.vividsolutions.jts.linearref.LengthLocationMap;
 import com.vividsolutions.jts.linearref.LinearLocation;
+import com.vividsolutions.jts.linearref.LocationIndexedLine;
 
 public class StandardRoadTrackingFilter implements
     CloneableSerializable {
@@ -182,7 +184,7 @@ public class StandardRoadTrackingFilter implements
     final MultivariateGaussian belief, PathEdge edge) {
     final MultivariateGaussian projBelief = belief.clone();
     if (projBelief.getInputDimensionality() == 2) {
-      invertProjection(projBelief, edge);
+      convertToGroundBelief(projBelief, edge);
     }
 
     final Matrix Q = Og.times(projBelief.getCovariance()).times(
@@ -235,7 +237,7 @@ public class StandardRoadTrackingFilter implements
     MultivariateGaussian belief, PathEdge edge) {
     final MultivariateGaussian projBelief = belief.clone();
     if (projBelief.getInputDimensionality() == 2) {
-      invertProjection(projBelief, edge);
+      convertToGroundBelief(projBelief, edge);
     }
 
     final Matrix Q = Og.times(projBelief.getCovariance()).times(
@@ -257,14 +259,15 @@ public class StandardRoadTrackingFilter implements
    * @param edge
    */
   public void measure(MultivariateGaussian belief,
-    Vector observation, PathEdge edge) {
+    Vector observation, InferredPath path) {
 
     if (belief.getInputDimensionality() == 2) {
       /*
        * Convert road-coordinates prior predictive to ground-coordinates
        */
       final MultivariateGaussian updatedBelief = belief.clone();
-      invertProjection(updatedBelief, edge);
+      final PathEdge startEdge = path.getEdgeForDistance(belief.getMean().getElement(0), true);
+      convertToGroundBelief(updatedBelief, startEdge);
 
       /*
        * Perform Kalman update
@@ -284,7 +287,7 @@ public class StandardRoadTrackingFilter implements
       /*
        * Convert back to road-coordinates
        */
-      invertProjection(updatedBelief, edge);
+      convertToRoadBelief(updatedBelief, path);
       belief.setMean(updatedBelief.getMean());
       belief.setCovariance(updatedBelief.getCovariance());
     } else {
@@ -331,9 +334,11 @@ public class StandardRoadTrackingFilter implements
          * the edge
          * 
          */
-        invertProjection(belief, edge);
+        convertToRoadBelief(belief, InferredPath.getInferredPath(edge));
+        StandardRoadTrackingFilter.normalizeBelief(belief.getMean(), edge);
         roadFilter.predict(belief);
       } else {
+        StandardRoadTrackingFilter.normalizeBelief(belief.getMean(), edge);
         roadFilter.predict(belief);
       }
     }
@@ -358,9 +363,9 @@ public class StandardRoadTrackingFilter implements
 
   @Override
   public String toString() {
-    return "StandardRoadTrackingFilter [groundModel=" + groundModel
-        + ", groundFilter=" + groundFilter.getModelCovariance()
-        + ", roadModel=" + roadModel + ", roadFilter="
+    return "StandardRoadTrackingFilter ["
+        + "groundFilterCov=" + groundFilter.getModelCovariance()
+        + ", roadFilterCov="
         + roadFilter.getModelCovariance() + ", onRoadStateVariance="
         + onRoadStateVariance + ", offRoadStateVariance="
         + offRoadStateVariance + ", obsVariance=" + obsVariance
@@ -379,6 +384,11 @@ public class StandardRoadTrackingFilter implements
 
   public static void convertToGroundBelief(
     MultivariateGaussian belief, PathEdge edge) {
+    convertToGroundBelief(belief, edge, false);
+  }
+  
+  public static void convertToGroundBelief(
+    MultivariateGaussian belief, PathEdge edge, boolean allowExtensions) {
     Preconditions.checkArgument(belief.getInputDimensionality() == 2
         || belief.getInputDimensionality() == 4);
 
@@ -387,8 +397,25 @@ public class StandardRoadTrackingFilter implements
 
     Preconditions.checkArgument(!edge.isEmptyEdge());
 
+    final Vector positiveMean;
+    if (belief.getMean().getElement(0) < 0d) {
+      /*
+       * We're going all positive here, since we should've been using
+       * the reversed geometry if negative.
+       */
+      final Vector posMeanTmp = belief.getMean().clone();
+      
+      final double adjNegLocation = belief.getMean().getElement(0) - edge.getDistToStartOfEdge();
+      final double posLocation = edge.getInferredEdge().getLength() + adjNegLocation 
+          + Math.abs(edge.getDistToStartOfEdge());
+      posMeanTmp.setElement(0, posLocation);
+      positiveMean = posMeanTmp;
+    } else {
+      positiveMean = belief.getMean().clone();
+    }
+    
     final Entry<LineSegment, Double> segmentDist = getSegmentAndDistanceToStart(
-        edge, belief.getMean().getElement(0));
+        edge, positiveMean.getElement(0));
     final double absTotalPathDistanceToStartOfSegment = Math.abs(segmentDist.getValue());
     final double absTotalPathDistanceToEndOfSegment = absTotalPathDistanceToStartOfSegment
         + GeoUtils.getAngleDegreesInMeters(segmentDist.getKey().getLength());
@@ -396,31 +423,18 @@ public class StandardRoadTrackingFilter implements
         .posVelProjectionPair(
             segmentDist.getKey(), absTotalPathDistanceToStartOfSegment);
     
-    
-    final Vector positiveMean;
-    if (belief.getMean().getElement(0) < 0d) {
-      /*
-       * We're going all positive here, since we should've been using
-       * the reversed geometry if negative.
-       * So we need to find the positive distance for this segment.
-       */
-      final Vector posMeanTmp = belief.getMean().clone();
+    if (!allowExtensions) {
+  //    assert (Math.abs(belief.getMean().getElement(0)) <= absTotalPathDistanceToEndOfSegment 
+  //        && Math.abs(belief.getMean().getElement(0)) >= absTotalPathDistanceToStartOfSegment);
       
-      final double distance = Math.abs(edge.getDistToStartOfEdge())
-          + edge.getInferredEdge().getLength() + belief.getMean().getElement(0);
-      posMeanTmp.setElement(0, distance);
-      positiveMean = posMeanTmp;
-    } else {
-      positiveMean = belief.getMean();
-    }
-    
-    /*
-     * Truncate, to keep it on the edge.
-     */
-    if (positiveMean.getElement(0) > absTotalPathDistanceToEndOfSegment) {
-      positiveMean.setElement(0, absTotalPathDistanceToEndOfSegment);
-    } else if (positiveMean.getElement(0) < absTotalPathDistanceToStartOfSegment) {
-      positiveMean.setElement(0, absTotalPathDistanceToStartOfSegment);
+      /*
+       * Truncate, to keep it on the edge.
+       */
+      if (positiveMean.getElement(0) > absTotalPathDistanceToEndOfSegment) {
+        positiveMean.setElement(0, absTotalPathDistanceToEndOfSegment);
+      } else if (positiveMean.getElement(0) < absTotalPathDistanceToStartOfSegment) {
+        positiveMean.setElement(0, absTotalPathDistanceToStartOfSegment);
+      }
     }
 
     final Matrix C = belief.getCovariance();
@@ -429,24 +443,21 @@ public class StandardRoadTrackingFilter implements
     final Matrix projCov = projPair.getKey().times(C)
         .times(projPair.getKey().transpose());
 
-    // MultivariateGaussian testD = new MultivariateGaussian(projMean, projCov);
-    // convertToRoadBelief(testD, edge);
-    // Preconditions.checkArgument(testD.getMean().euclideanDistance(belief.getMean())
-    // < 5d);
-
     belief.setMean(projMean);
     belief.setCovariance(projCov);
   }
 
   public static void convertToRoadBelief(MultivariateGaussian belief,
-    PathEdge edge) {
+    InferredPath path) {
+    
+    // TODO FIXME XXX make sure this works with the direction of motion.
     Preconditions.checkArgument(belief.getInputDimensionality() == 2
         || belief.getInputDimensionality() == 4);
 
     if (belief.getInputDimensionality() == 2)
       return;
 
-    Preconditions.checkArgument(!edge.isEmptyEdge());
+    Preconditions.checkArgument(!path.isEmptyPath());
 
     final Vector m = belief.getMean().clone();
     final Matrix C = belief.getCovariance().clone();
@@ -456,22 +467,38 @@ public class StandardRoadTrackingFilter implements
      */
     final Coordinate latlonCurrentPos = GeoUtils.convertToLatLon(Og
         .times(m));
-    final LinearLocation lineLocation = edge.getInferredEdge()
-        .getLocationIndexedLine()
-        .project(GeoUtils.reverseCoordinates(latlonCurrentPos));
-    final LineSegment lineSegment = lineLocation.getSegment(edge
-        .getInferredEdge().getGeometry());
+    final LocationIndexedLine locIndex = new LocationIndexedLine(path.getGeometry());
+    final LinearLocation lineLocation = locIndex.project(
+        GeoUtils.reverseCoordinates(latlonCurrentPos));
+    
+    // TODO necessary?
+    final Vector pointOnLine = GeoUtils.getEuclideanVectorFromLatLon(
+        GeoUtils.reverseCoordinates(lineLocation.getCoordinate(path.getGeometry())));
+    m.setElement(0, pointOnLine.getElement(0));
+    m.setElement(2, pointOnLine.getElement(1));
+    
+    /*
+     * Get the segment we're projected onto, and the distance offset
+     * of the path.
+     */
+    final LineSegment lineSegment = lineLocation.getSegment(path.getGeometry());
+    final LengthIndexedLine lengthIndex = new LengthIndexedLine(path.getGeometry());
     final double distanceToStartOfSegmentOnGeometry = GeoUtils
-        .getAngleDegreesInMeters(edge.getInferredEdge()
-            .getLengthIndexedLine().indexOf(lineSegment.p0));
-    final double distanceToStartOfSegmentOnPath = distanceToStartOfSegmentOnGeometry
-        + edge.getDistToStartOfEdge();
+        .getAngleDegreesInMeters(lengthIndex.indexOf(lineSegment.p0));
+    
+    
     final Entry<Matrix, Vector> projPair = StandardRoadTrackingFilter
         .posVelProjectionPair(
-            lineSegment, distanceToStartOfSegmentOnPath);
+            lineSegment, distanceToStartOfSegmentOnGeometry);
 
     final Vector projMean = projPair.getKey().transpose()
         .times(m.minus(projPair.getValue()));
+    
+    if (path.isBackward())
+      projMean.setElement(0, -1d * projMean.getElement(0));
+    
+    normalizeBelief(projMean, path.getEdgeForDistance(projMean.getElement(0), true));
+    
     final Matrix projCov = projPair.getKey().transpose().times(C)
         .times(projPair.getKey());
 
@@ -628,9 +655,8 @@ public class StandardRoadTrackingFilter implements
   }
 
   public static void invertProjection(MultivariateGaussian dist,
-    PathEdge edge) {
-    Preconditions.checkNotNull(edge);
-    Preconditions.checkArgument(!edge.isEmptyEdge());
+    InferredPath path) {
+    Preconditions.checkArgument(!path.isEmptyPath());
     Preconditions.checkArgument(dist.getInputDimensionality() == 2
         || dist.getInputDimensionality() == 4);
 
@@ -638,12 +664,12 @@ public class StandardRoadTrackingFilter implements
       /*
        * Convert to ground-coordinates
        */
-      convertToGroundBelief(dist, edge);
+      convertToGroundBelief(dist, path.getEdgeForDistance(dist.getMean().getElement(0), true));
     } else {
       /*
        * Convert to road-coordinates
        */
-      convertToRoadBelief(dist, edge);
+      convertToRoadBelief(dist, path);
 
     }
   }
@@ -677,6 +703,48 @@ public class StandardRoadTrackingFilter implements
     final Vector a = s1.stack(zeros2D);
 
     return Maps.immutableEntry(U.times(P), U.times(a));
+  }
+  
+  /**
+   * Note: it's very important that the position be "normalized" relative
+   * to the edge w.r.t. the velocity.  That way, when we predict the next
+   * location, the start position isn't relative to the wrong end of the
+   * edge, biasing our measurements by the length of the edge in the wrong
+   * direction.  E.g. {35, -1} -> {-5, -1} for 30sec time diff., then 
+   * relative to the origin edge we will mistakenly evaluate a loop-around.
+   * Later, when evaluating likelihoods on paths/path-edges, we'll need to
+   * re-adjust locally when path directions don't line up.
+   */
+  public static void normalizeBelief(Vector mean, PathEdge edge) {
+
+    final double normalizedEdgeLoc = mean.getElement(0)
+            - edge.getDistToStartOfEdge();
+    
+    final double desiredDirection;
+    if (edge.getDistToStartOfEdge() == 0d) {
+      desiredDirection = Math.signum(mean.getElement(1));
+      /*
+       * When the velocity is zero there's not way to normalize, other
+       * than pure convention.
+       */
+      if (desiredDirection == 0d)
+        return;
+    } else {
+      desiredDirection = Math.signum(edge.getDistToStartOfEdge());
+    }
+    
+    if (Math.signum(normalizedEdgeLoc) == desiredDirection) {
+      mean.setElement(
+          0, normalizedEdgeLoc);
+    } else {
+      mean.setElement(
+          0, desiredDirection * edge.getInferredEdge().getLength() 
+            + normalizedEdgeLoc);
+    }
+    assert (Math.abs(mean.getElement(0))
+        <= edge.getInferredEdge().getLength()
+          + Math.abs(edge.getDistToStartOfEdge()) + 1e-5);
+    
   }
 
 }

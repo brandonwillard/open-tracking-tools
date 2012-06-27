@@ -7,6 +7,8 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 import org.openplans.tools.tracking.impl.Observation;
 import org.openplans.tools.tracking.impl.VehicleState;
@@ -47,7 +49,7 @@ public class InferenceInstance {
   
   private VehicleTrackingFilter filter;
   
-  private final LinkedList<InferenceResultRecord> resultRecords = Lists.newLinkedList();
+  private final Queue<InferenceResultRecord> resultRecords = new ConcurrentLinkedQueue<InferenceResultRecord>();
 
   private DataDistribution<VehicleState> postBelief;
   private DataDistribution<VehicleState> resampleBelief;
@@ -103,7 +105,7 @@ public class InferenceInstance {
             postBelief.clone(), resampleBelief != null ? resampleBelief.clone() : null);
 
     if (infoLevel == INFO_LEVEL.SINGLE_RESULT && !this.resultRecords.isEmpty())
-      this.resultRecords.pop();
+      this.resultRecords.poll();
       
     this.resultRecords.add(result);
   }
@@ -122,7 +124,7 @@ public class InferenceInstance {
         .createInferenceResultRecord(obs, this);
 
     if (infoLevel == INFO_LEVEL.SINGLE_RESULT && !this.resultRecords.isEmpty())
-      this.resultRecords.pop();
+      this.resultRecords.poll();
       
     this.resultRecords.add(infResult);
   }
@@ -179,8 +181,8 @@ public class InferenceInstance {
     return infoLevel;
   }
 
-  public List<InferenceResultRecord> getResultRecords() {
-    return Collections.unmodifiableList(this.resultRecords);
+  public Collection<InferenceResultRecord> getResultRecords() {
+    return Collections.unmodifiableCollection(this.resultRecords);
   }
 
   public DataDistribution<VehicleState> getPostBelief() {

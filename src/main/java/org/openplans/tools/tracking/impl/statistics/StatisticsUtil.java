@@ -3,24 +3,27 @@ package org.openplans.tools.tracking.impl.statistics;
 import gov.sandia.cognition.math.LogMath;
 import gov.sandia.cognition.statistics.DataDistribution;
 import gov.sandia.cognition.statistics.distribution.DefaultDataDistribution;
+import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 import gov.sandia.cognition.util.DefaultWeightedValue;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
+import org.openplans.tools.tracking.impl.graph.paths.PathEdge;
+
 import com.google.common.collect.Lists;
 
 public class StatisticsUtil {
 
   public static <SupportType extends Comparable> DataDistribution<SupportType> getLogNormalizedDistribution(
-    List<DefaultWeightedValue<SupportType>> collection) {
+    List<WrappedWeightedValue<SupportType>> map) {
 
     /*-
      * Normalize to avoid zero probs.
      */
     double totalLikelihood = Double.NEGATIVE_INFINITY;
-    for (final DefaultWeightedValue<SupportType> weight : collection) {
+    for (final WrappedWeightedValue<SupportType> weight : map) {
       totalLikelihood = LogMath.add(
           weight.getWeight(), totalLikelihood);
     }
@@ -44,7 +47,7 @@ public class StatisticsUtil {
     //
     // });
 
-    for (final DefaultWeightedValue<SupportType> entry : collection) {
+    for (final WrappedWeightedValue<SupportType> entry : map) {
       if (entry.getWeight() == Double.NEGATIVE_INFINITY
           || totalLikelihood == Double.NEGATIVE_INFINITY)
         continue;
@@ -56,13 +59,13 @@ public class StatisticsUtil {
   }
 
   public static <DistributionType, SupportType extends Comparable> DataDistribution<SupportType> getLogNormalizedDistribution(
-    Map<SupportType, DefaultWeightedValue<DistributionType>> map) {
+    Map<SupportType, WrappedWeightedValue<DistributionType>> map) {
 
     /*-
      * Normalize to avoid zero probs.
      */
     double totalLikelihood = Double.NEGATIVE_INFINITY;
-    for (final DefaultWeightedValue<DistributionType> weight : map
+    for (final WrappedWeightedValue<DistributionType> weight : map
         .values()) {
       totalLikelihood = LogMath.add(
           weight.getWeight(), totalLikelihood);
@@ -74,7 +77,7 @@ public class StatisticsUtil {
     /*
      * Sort before putting in the data distribution
      */
-    final List<Entry<SupportType, DefaultWeightedValue<DistributionType>>> entryList = Lists
+    final List<Entry<SupportType, WrappedWeightedValue<DistributionType>>> entryList = Lists
         .newArrayList(map.entrySet());
     // Collections.sort(entryList, new Comparator<Entry<SupportType,
     // DefaultWeightedValue<DistributionType>>> () {
@@ -89,7 +92,7 @@ public class StatisticsUtil {
     // });
 
     final DataDistribution<SupportType> result = new DefaultDataDistribution<SupportType>();
-    for (final Entry<SupportType, DefaultWeightedValue<DistributionType>> entry : entryList) {
+    for (final Entry<SupportType, WrappedWeightedValue<DistributionType>> entry : entryList) {
       if (entry.getValue().getWeight() == Double.NEGATIVE_INFINITY)
         continue;
       final double weight = entry.getValue().getWeight()

@@ -104,14 +104,14 @@ public class VehicleTrackingFilter extends
       return;
     // Preconditions.checkArgument(timeDiff > 0, "timeDiff=" + timeDiff);
 
-    final Multimap<VehicleState, DefaultWeightedValue<InferredPathEntry>> stateToPaths = HashMultimap
+    final Multimap<VehicleState, WrappedWeightedValue<InferredPathEntry>> stateToPaths = HashMultimap
         .create();
     final Set<InferredPath> evaluatedPaths = Sets.newHashSet();
 
     /*
      * Resample based on predictive likelihood to get a smoothed sample
      */
-    final List<DefaultWeightedValue<VehicleState>> resampler = Lists
+    final List<WrappedWeightedValue<VehicleState>> resampler = Lists
         .newArrayList();
     for (final VehicleState state : target.getDomain()) {
 
@@ -121,9 +121,19 @@ public class VehicleTrackingFilter extends
       state.getMovementFilter().setCurrentTimeDiff(timeDiff);
       double totalLogLik = Double.NEGATIVE_INFINITY;
 
+      /*
+       * Create one table to hold all pathEdges to their
+       * likelihoods.  That way we can check for dups from
+       * overlapping paths.
+       * TODO determine if sharing this map between states is useful.
+       */
+      final Map<PathEdge, WrappedWeightedValue<MultivariateGaussian>> edgeToPreBeliefAndLogLik = 
+          Maps.newHashMap();
+
       for (final InferredPath path : instStateTransitions) {
         final InferredPathEntry infPath = path
-            .getPredictiveLogLikelihood(obs, state);
+            .getPredictiveLogLikelihood(obs, state, 
+                edgeToPreBeliefAndLogLik);
 
         if (isDebug)
           evaluatedPaths.add(path);
@@ -143,6 +153,8 @@ public class VehicleTrackingFilter extends
 
     final DataDistribution<VehicleState> resampleDist = StatisticsUtil
         .getLogNormalizedDistribution(resampler);
+    
+    // TODO low-variance sampling?
     @SuppressWarnings("unchecked")
     final ArrayList<? extends VehicleState> smoothedStates = resampleDist
         .sample(rng, getNumParticles());
@@ -175,13 +187,19 @@ public class VehicleTrackingFilter extends
        */
 
       /*
-       * Sample the edge we're on.
+       * This is a bit confusing, so really try to understand this:
+       * The edge we're about to sample is not necessarily the edge that our filtering
+       * says we should be on.  The edges, in this case, only correspond to stretches of
+       * length-locations that were evaluated.  The posterior/filtering result that we
+       * obtain from these edges will adjust our previous length-location relative to how good
+       * it would've/could've been to be on each edge.  Essentially, this is kind of like saying
+       * that we have to walk to that better edge relative to how fast we are, not simply teleport.
        */
       final PathEdge sampledEdge;
       if (sampledPathEntry.getPath().getEdges().size() > 1) {
         final DataDistribution<PathEdge> pathEdgeDist = StatisticsUtil
             .getLogNormalizedDistribution(sampledPathEntry
-                .getEdgeToPredictiveBelief());
+                .getWeightedPathEdges());
         sampledEdge = pathEdgeDist.sample(rng);
       } else {
         sampledEdge = sampledPathEntry.getPath().getEdges().get(0);
@@ -196,8 +214,23 @@ public class VehicleTrackingFilter extends
        */
       final StandardRoadTrackingFilter updatedFilter = sampledPathEntry
           .getFilter().clone();
-      updatedFilter.measure(
-          sampledBelief, obs.getProjectedPoint(), sampledEdge);
+      
+      
+      final PathEdge actualPosteriorEdge;
+      if (!sampledPathEntry.getPath().isEmptyPath()) {
+//        final PathEdge actualPriorEdge = sampledPathEntry.getPath().getEdgeForDistance(
+//            sampledBelief.getMean().getElement(0));
+        updatedFilter.measure(
+            sampledBelief, obs.getProjectedPoint(), sampledPathEntry.getPath());
+        
+        actualPosteriorEdge = sampledPathEntry.getPath().getEdgeForDistance(
+            sampledBelief.getMean().getElement(0), true);
+      } else {
+        updatedFilter.measure(
+            sampledBelief, obs.getProjectedPoint(), sampledPathEntry.getPath());
+        actualPosteriorEdge = sampledEdge;
+      }
+      
 
       InferredEdge prevEdge = sampledPathEntry.getPath().getEdges()
           .get(0).getInferredEdge();
@@ -218,15 +251,14 @@ public class VehicleTrackingFilter extends
                   sampledBelief.getMean().getElement(1));
         }
 
-        if (edge.equals(sampledEdge))
+        if (edge.equals(actualPosteriorEdge))
           break;
         prevEdge = edge.getInferredEdge();
       }
 
       final VehicleState newTransState = new VehicleState(
           this.inferredGraph, obs, updatedFilter, sampledBelief,
-          updatedEdgeTransDist, sampledEdge,
-          sampledPathEntry.getPath(), state);
+          updatedEdgeTransDist, sampledPathEntry.getPath(), state);
 
       target.set(newTransState, 1d / smoothedStates.size());
 
