@@ -559,7 +559,7 @@ public class StandardRoadTrackingFilter implements
     final LinearLocation lineLocation = LengthLocationMap
         .getLocation(
             geometry,
-            GeoUtils.getMetersInAngleDegrees(distAlongGeometry));
+            distAlongGeometry);
     final LineSegment lineSegment = lineLocation.getSegment(geometry);
     final Coordinate startOfSegmentCoord = direction < 0d ? lineSegment.p1 : lineSegment.p0;  
     final double positiveDistToStartOfSegmentOnGeometry = lengthIdxLine

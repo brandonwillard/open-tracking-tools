@@ -569,7 +569,7 @@ private InferredPath copyAStarResults(GraphPath gpath,
             .times(initialBelief.getMean())));
     final double varDistance = 1.98d * Math.sqrt(trackingFilter
         .getObsVariance().normFrobenius());
-    toEnv.expandBy(GeoUtils.getMetersInAngleDegrees(varDistance));
+    toEnv.expandBy(varDistance);
 
     final List<StreetEdge> streetEdges = Lists.newArrayList();
     for (final Object obj : baseEdgeIndex.query(
