@@ -17,6 +17,7 @@ import org.openplans.tools.tracking.impl.Observation;
 import org.openplans.tools.tracking.impl.VehicleState;
 import org.openplans.tools.tracking.impl.graph.InferredEdge;
 import org.openplans.tools.tracking.impl.statistics.StandardRoadTrackingFilter;
+import org.openplans.tools.tracking.impl.statistics.StatisticsUtil;
 import org.openplans.tools.tracking.impl.statistics.WrappedWeightedValue;
 
 import com.google.common.base.Preconditions;
@@ -364,9 +365,9 @@ public class InferredPath implements Comparable<InferredPath> {
     Preconditions.checkArgument(beliefPrediction
         .getInputDimensionality() == 2);
     final Matrix Or = StandardRoadTrackingFilter.getOr();
-    final double variance = Or
+    final double stdDev = Math.sqrt(Or
         .times(beliefPrediction.getCovariance())
-        .times(Or.transpose()).getElement(0, 0);
+        .times(Or.transpose()).getElement(0, 0));
     final double mean = Or.times(beliefPrediction.getMean())
         .getElement(0);
     final double direction = Math.signum(totalPathDistance);
@@ -375,10 +376,10 @@ public class InferredPath implements Comparable<InferredPath> {
     final double endDistance = direction > 0d ? distToEndOfEdge : edge.getDistToStartOfEdge();
     
     // FIXME use actual log calculations
-    final double result = Math.log(UnivariateGaussian.CDF.evaluate(
-        endDistance, mean, variance)
-        - UnivariateGaussian.CDF.evaluate(
-            startDistance, mean, variance));
+    final double result = LogMath.subtract(StatisticsUtil.normalCdf(
+        endDistance, mean, stdDev, true)
+        , StatisticsUtil.normalCdf(
+            startDistance, mean, stdDev, true));
     
     return result;
   }
