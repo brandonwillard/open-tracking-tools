@@ -604,7 +604,8 @@ private InferredPath copyAStarResults(GraphPath gpath,
     final Set<InferredPath> paths = Sets.newHashSet();
     final PathKey startEndEntry = new PathKey(
         fromState, fromCoord, toCoord, 0d);
-    paths.addAll(pathsCache.getUnchecked(startEndEntry));
+//    paths.addAll(pathsCache.getUnchecked(startEndEntry));
+    paths.addAll(computePaths(startEndEntry));
     return paths;
   }
 
