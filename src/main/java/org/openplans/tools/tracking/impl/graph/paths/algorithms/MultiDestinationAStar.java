@@ -20,6 +20,7 @@ import org.opentripplanner.routing.graph.Vertex;
 import org.opentripplanner.routing.spt.ShortestPathTree;
 import org.opentripplanner.routing.vertextype.IntersectionVertex;
 
+import com.google.common.base.Preconditions;
 import com.vividsolutions.jts.geom.Coordinate;
 
 public class MultiDestinationAStar implements
@@ -27,7 +28,7 @@ public class MultiDestinationAStar implements
     SkipTraverseResultStrategy, TraverseVisitor {
   private static final long serialVersionUID = 1L;
 
-  private static final double MAX_DISTANCE = 1000d;
+  private static final double MAX_DISTANCE_SPEED = 53.6448; // ~120 mph
 
   double MAX_SPEED = 27.0; // ~60 mph
 
@@ -40,8 +41,13 @@ public class MultiDestinationAStar implements
 
   private final DistanceLibrary distanceLibrary = SphericalDistanceLibrary.getInstance();
 
+  private final double maxDistance;
+
   public MultiDestinationAStar(Graph graph, Set<Edge> endEdges,
-    Coordinate center, double radius, Edge start) {
+    Coordinate center, double radius, Edge start, double timeDelta) {
+    Preconditions.checkArgument(timeDelta > 0d);
+    Preconditions.checkArgument(radius > 0d);
+    this.maxDistance = timeDelta * MAX_DISTANCE_SPEED;
     this.graph = graph;
     this.end = new HashSet<Edge>(endEdges);
     this.center = center;
@@ -109,7 +115,7 @@ public class MultiDestinationAStar implements
     State current, ShortestPathTree spt,
     RoutingRequest traverseOptions) {
     final double traveledDistance = current.getWeight() * MAX_SPEED;
-    if (traveledDistance > MAX_DISTANCE)
+    if (Math.abs(traveledDistance) >= this.maxDistance)
       return false;
     return end.size() != 0;
   }

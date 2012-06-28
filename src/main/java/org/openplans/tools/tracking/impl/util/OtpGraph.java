@@ -363,11 +363,12 @@ public class OtpGraph {
   	  endEdges.addAll(edge.getTurnVertex().getOutgoing());
     }
 
+    final double timeDiff = key.getState().getMovementFilter().getCurrentTimeDiff();
     for (final Edge startEdge : startEdges) {
       final MultiDestinationAStar forwardAStar = new MultiDestinationAStar(
-    		  turnGraph, endEdges, toCoord, obsStdDevDistance, startEdge);
+    		  turnGraph, endEdges, toCoord, obsStdDevDistance, startEdge, timeDiff);
       final MultiDestinationAStar backwardAStar = new MultiDestinationAStar(
-    		  turnGraph, endEdges, toCoord, obsStdDevDistance, startEdge);
+    		  turnGraph, endEdges, toCoord, obsStdDevDistance, startEdge, timeDiff);
 
       final ShortestPathTree spt1 = forwardAStar.getSPT(false);
       final ShortestPathTree spt2 = backwardAStar.getSPT(true);
