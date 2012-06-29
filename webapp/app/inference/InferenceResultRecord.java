@@ -167,7 +167,19 @@ public class InferenceResultRecord {
 
     @JsonSerialize
     public List<Double[]> getPathSegmentIds() {
-      return pathSegmentIds;
+      /*
+       * We need to restrict the full path to
+       * what was actually traveled.
+       */
+      List<Double[]> actualPath = Lists.newArrayList();
+      for (Double[] entry : pathSegmentIds) {
+        actualPath.add(entry);
+        Integer currentId = state.getInferredEdge().getEdgeId();
+        if (currentId != null 
+            && entry[0] == currentId.doubleValue())
+          break;
+      }
+      return actualPath;
     }
 
     @JsonIgnore
