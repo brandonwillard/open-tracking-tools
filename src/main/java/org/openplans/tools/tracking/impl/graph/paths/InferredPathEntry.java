@@ -1,43 +1,48 @@
 package org.openplans.tools.tracking.impl.graph.paths;
 
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
-import gov.sandia.cognition.util.DefaultWeightedValue;
+import gov.sandia.cognition.util.Pair;
 
 import java.util.List;
 import java.util.Map;
 
+import org.openplans.tools.tracking.impl.graph.paths.InferredPath.EdgePredictiveResults;
 import org.openplans.tools.tracking.impl.statistics.StandardRoadTrackingFilter;
 import org.openplans.tools.tracking.impl.statistics.WrappedWeightedValue;
 
 import com.google.common.base.Objects;
+import com.google.common.base.Preconditions;
 import com.google.common.collect.ComparisonChain;
 
 public class InferredPathEntry implements
     Comparable<InferredPathEntry> {
-  
+
   private final StandardRoadTrackingFilter filter;
-  
+
   /*
    * This maps edge's to their conditional prior predictive location/velocity states.
    */
-  private final Map<PathEdge, WrappedWeightedValue<MultivariateGaussian>> edgeToPredictiveBelief;
-  
+  private final Map<Pair<PathEdge, Boolean>, EdgePredictiveResults> edgeToPredictiveBelief;
+
   private final InferredPath path;
-  
+
   private final double totalLogLikelihood;
-  
+
   /*
    * This distribution is the prior predictive on the location/velocity states.
    */
   private final MultivariateGaussian beliefPrediction;
 
-  private List<WrappedWeightedValue<PathEdge>> weightedPathEdges;
+  private final List<WrappedWeightedValue<PathEdge>> weightedPathEdges;
 
   public InferredPathEntry(
-    InferredPath path, MultivariateGaussian beliefPrediction, 
-    Map<PathEdge, WrappedWeightedValue<MultivariateGaussian>> edgeToPreBeliefAndLogLik,
-    StandardRoadTrackingFilter filter, List<WrappedWeightedValue<PathEdge>> weightedPathEdges, 
+    InferredPath path,
+    MultivariateGaussian beliefPrediction,
+    Map<Pair<PathEdge, Boolean>, EdgePredictiveResults> edgeToPreBeliefAndLogLik,
+    StandardRoadTrackingFilter filter,
+    List<WrappedWeightedValue<PathEdge>> weightedPathEdges,
     double totalLogLikelihood) {
+    Preconditions.checkArgument(!Double.isNaN(totalLogLikelihood));
     this.beliefPrediction = beliefPrediction;
     this.totalLogLikelihood = totalLogLikelihood;
     this.path = path;
@@ -63,7 +68,11 @@ public class InferredPathEntry implements
     return false;
   }
 
-  public Map<PathEdge, WrappedWeightedValue<MultivariateGaussian>> getEdgeToPredictiveBelief() {
+  public MultivariateGaussian getBeliefPrediction() {
+    return beliefPrediction;
+  }
+
+  public Map<Pair<PathEdge, Boolean>, EdgePredictiveResults> getEdgeToPredictiveBelief() {
     return edgeToPredictiveBelief;
   }
 
@@ -79,6 +88,10 @@ public class InferredPathEntry implements
     return totalLogLikelihood;
   }
 
+  public List<WrappedWeightedValue<PathEdge>> getWeightedPathEdges() {
+    return this.weightedPathEdges;
+  }
+
   @Override
   public int hashCode() {
     return Objects.hashCode(super.hashCode(), path);
@@ -88,14 +101,6 @@ public class InferredPathEntry implements
   public String toString() {
     return "InferredPathEntry [path=" + path
         + ", totalLogLikelihood=" + totalLogLikelihood + "]";
-  }
-
-  public MultivariateGaussian getBeliefPrediction() {
-    return beliefPrediction;
-  }
-
-  public List<WrappedWeightedValue<PathEdge>> getWeightedPathEdges() {
-    return this.weightedPathEdges;
   }
 
 }

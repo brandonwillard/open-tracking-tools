@@ -1,7 +1,6 @@
 package org.openplans.tools.tracking.impl.graph.paths.algorithms;
 
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
 import org.opentripplanner.common.geometry.DistanceLibrary;
@@ -28,8 +27,6 @@ public class MultiDestinationAStar implements
     SkipTraverseResultStrategy, TraverseVisitor {
   private static final long serialVersionUID = 1L;
 
-  private static final double MAX_DISTANCE_SPEED = 53.6448; // ~120 mph
-
   double MAX_SPEED = 27.0; // ~60 mph
 
   private final HashSet<Edge> end;
@@ -39,15 +36,17 @@ public class MultiDestinationAStar implements
 
   private final Edge start;
 
-  private final DistanceLibrary distanceLibrary = SphericalDistanceLibrary.getInstance();
+  private final DistanceLibrary distanceLibrary = SphericalDistanceLibrary
+      .getInstance();
 
   private final double maxDistance;
 
   public MultiDestinationAStar(Graph graph, Set<Edge> endEdges,
-    Coordinate center, double radius, Edge start, double timeDelta) {
-    Preconditions.checkArgument(timeDelta > 0d);
+    Coordinate center, double radius, Edge start,
+    double distanceUpperLimit) {
+    Preconditions.checkArgument(distanceUpperLimit > 0d);
     Preconditions.checkArgument(radius > 0d);
-    this.maxDistance = timeDelta * MAX_DISTANCE_SPEED;
+    this.maxDistance = distanceUpperLimit;
     this.graph = graph;
     this.end = new HashSet<Edge>(endEdges);
     this.center = center;
@@ -61,7 +60,8 @@ public class MultiDestinationAStar implements
     double distance = distanceLibrary.fastDistance(
         v.getCoordinate(), center) + radius;
 
-    if (distance < 0) distance = 0;
+    if (distance < 0)
+      distance = 0;
     return distance / MAX_SPEED;
   }
 
@@ -81,26 +81,27 @@ public class MultiDestinationAStar implements
     astar.setSearchTerminationStrategy(this);
     astar.setSkipTraverseResultStrategy(this);
     astar.setTraverseVisitor(this);
-    
+
     final RoutingRequest req = new RoutingRequest(TraverseMode.CAR);
     req.setArriveBy(arriveBy);
-    
-    final Vertex startVertex = arriveBy ? start.getToVertex() : start.getFromVertex();
+
+    final Vertex startVertex = arriveBy ? start.getToVertex() : start
+        .getFromVertex();
     final String bogusName = "bogus" + Thread.currentThread().getId();
-    final Vertex bogus = new IntersectionVertex(graph, bogusName, 
-        startVertex.getCoordinate(), bogusName);
-    
+    final Vertex bogus = new IntersectionVertex(
+        graph, bogusName, startVertex.getCoordinate(), bogusName);
+
     if (!arriveBy) {
       req.setRoutingContext(graph, startVertex, bogus);
     } else {
       req.setRoutingContext(graph, bogus, startVertex);
     }
     req.rctx.remainingWeightHeuristic = this;
-    
+
     final ShortestPathTree result = astar.getShortestPathTree(req);
     graph.removeVertex(bogus);
     req.cleanup();
-    
+
     return result;
 
   }
@@ -133,16 +134,16 @@ public class MultiDestinationAStar implements
 
   @Override
   public void visitEdge(Edge edge, State state) {
-	  end.remove(edge);
-  }
-
-  @Override
-  public void visitVertex(State state) {
-	  // nothing
+    end.remove(edge);
   }
 
   @Override
   public void visitEnqueue(State state) {
-	// nothing
+    // nothing
+  }
+
+  @Override
+  public void visitVertex(State state) {
+    // nothing
   }
 }

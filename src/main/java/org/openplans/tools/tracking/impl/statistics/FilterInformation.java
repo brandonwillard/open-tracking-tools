@@ -2,7 +2,6 @@ package org.openplans.tools.tracking.impl.statistics;
 
 import gov.sandia.cognition.statistics.DataDistribution;
 
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Set;
 
@@ -17,11 +16,10 @@ public class FilterInformation {
   private final DataDistribution<VehicleState> resampleDist;
 
   @SuppressWarnings("unchecked")
-  public FilterInformation(
-    Set<InferredPath> evaluatedPaths,
+  public FilterInformation(Set<InferredPath> evaluatedPaths,
     DataDistribution<VehicleState> resampleDist) {
-    this.evaluatedPaths = (Set<InferredPath>)
-        Objects.firstNonNull(evaluatedPaths, Collections.emptySet());
+    this.evaluatedPaths = (Set<InferredPath>) Objects.firstNonNull(
+        evaluatedPaths, Collections.emptySet());
     this.resampleDist = resampleDist;
   }
 

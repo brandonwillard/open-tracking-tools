@@ -10,37 +10,42 @@ import org.opentripplanner.routing.vertextype.TurnVertex;
 
 public class SimpleTurnEdge extends TurnEdge {
 
-  public SimpleTurnEdge(TurnVertex fromv, StreetVertex tov) {
-    super(fromv, tov);
-  }
-  
-  @Override
-  public State traverse(State s0) {
-    RoutingRequest options = s0.getOptions();
-    if (turnRestricted(s0, options) && !options.getModes().contains(TraverseMode.WALK)) {
-      return null;
-    }
-    TraverseMode traverseMode = s0.getNonTransitMode(options);
-    if (!((TurnVertex) fromv).canTraverse(options, traverseMode)) {
-      return null;
-    }
-
-    StateEditor s1 = s0.edit(this);
-
-    double speed = options.getSpeed(s0.getNonTransitMode(options));
-    double time = (((TurnVertex) fromv).getEffectiveLength(traverseMode) + turnCost / 20.0) / speed;
-    double weight = ((TurnVertex) fromv).computeWeight(s0, options, time);
-    s1.incrementWalkDistance(((TurnVertex) fromv).getLength());
-    s1.incrementTimeInSeconds((int) Math.ceil(time));
-    s1.incrementWeight(weight);
-    if (s1.weHaveWalkedTooFar(options))
-        return null;
-
-    return s1.makeState();
-  }
   /**
    * 
    */
   private static final long serialVersionUID = 1291375770696761996L;
+
+  public SimpleTurnEdge(TurnVertex fromv, StreetVertex tov) {
+    super(fromv, tov);
+  }
+
+  @Override
+  public State traverse(State s0) {
+    final RoutingRequest options = s0.getOptions();
+    if (turnRestricted(s0, options)
+        && !options.getModes().contains(TraverseMode.WALK)) {
+      return null;
+    }
+    final TraverseMode traverseMode = s0.getNonTransitMode(options);
+    if (!((TurnVertex) fromv).canTraverse(options, traverseMode)) {
+      return null;
+    }
+
+    final StateEditor s1 = s0.edit(this);
+
+    final double speed = options.getSpeed(s0
+        .getNonTransitMode(options));
+    final double time = (((TurnVertex) fromv)
+        .getEffectiveLength(traverseMode) + turnCost / 20.0) / speed;
+    final double weight = ((TurnVertex) fromv).computeWeight(
+        s0, options, time);
+    s1.incrementWalkDistance(((TurnVertex) fromv).getLength());
+    s1.incrementTimeInSeconds((int) Math.ceil(time));
+    s1.incrementWeight(weight);
+    if (s1.weHaveWalkedTooFar(options))
+      return null;
+
+    return s1.makeState();
+  }
 
 }

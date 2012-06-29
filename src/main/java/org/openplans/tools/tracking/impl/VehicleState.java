@@ -24,7 +24,6 @@ import org.openplans.tools.tracking.impl.util.OtpGraph;
 
 import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
-import com.google.common.collect.Iterables;
 
 /**
  * This class represents the state of a vehicle, which is made up of the
@@ -190,9 +189,9 @@ public class VehicleState implements
 
   private final InferredPath path;
 
-  public VehicleState(OtpGraph graph,
-    Observation initialObservation, InferredEdge inferredEdge,
-    InitialParameters parameters, Random rng) {
+  public VehicleState(OtpGraph graph, Observation initialObservation,
+    InferredEdge inferredEdge, InitialParameters parameters,
+    Random rng) {
 
     Preconditions.checkNotNull(initialObservation);
     Preconditions.checkNotNull(inferredEdge);
@@ -217,11 +216,12 @@ public class VehicleState implements
       this.belief = movementFilter.getGroundFilter()
           .createInitialLearnedObject();
       final Vector xyPoint = initialObservation.getProjectedPoint();
-      
+
       /*
        * Sample the velocity
        */
-      belief.setMean(this.movementFilter.sampleStateBelief(belief.getMean(), rng));
+      belief.setMean(this.movementFilter.sampleStateBelief(
+          belief.getMean(), rng));
       belief.getMean().setElement(0, xyPoint.getElement(0));
       belief.getMean().setElement(2, xyPoint.getElement(1));
 
@@ -232,16 +232,20 @@ public class VehicleState implements
       this.belief = movementFilter.getRoadFilter()
           .createInitialLearnedObject();
 
-      final Vector loc = inferredEdge.getPointOnEdge(initialObservation.getObsPoint());
+      final double lengthLocation = inferredEdge
+          .getLengthIndexedLine().project(
+              initialObservation.getObsPoint());
 
       /*
        * Sample the velocity
        */
-      belief.setMean(this.movementFilter.sampleStateBelief(belief.getMean(), rng));
-      belief.getMean().setElement(0, 
-          inferredEdge.getStartPoint().euclideanDistance(loc));
-      
-      assert Double.compare(Math.abs(this.belief.getMean().getElement(0)), inferredEdge.getLength()) <= 0; 
+      belief.setMean(this.movementFilter.sampleStateBelief(
+          belief.getMean(), rng));
+      belief.getMean().setElement(0, lengthLocation);
+
+      assert Double.compare(
+          Math.abs(this.belief.getMean().getElement(0)),
+          inferredEdge.getLength()) <= 0;
     }
 
     this.edge = inferredEdge;
@@ -269,7 +273,8 @@ public class VehicleState implements
     InferredPath path, VehicleState state) {
 
     Preconditions
-        .checkArgument(!(belief.getInputDimensionality() == 2 && path.isEmptyPath()));
+        .checkArgument(!(belief.getInputDimensionality() == 2 && path
+            .isEmptyPath()));
     Preconditions.checkNotNull(state);
     Preconditions.checkNotNull(graph);
     Preconditions.checkNotNull(observation);
@@ -291,29 +296,35 @@ public class VehicleState implements
        * that the filtered location will end up on the same edge.
        */
       final double distPosition = this.belief.getMean().getElement(0);
-      PathEdge pathEdge = path.getEdgeForDistance(distPosition, true);
+      final PathEdge pathEdge = path.getEdgeForDistance(
+          distPosition, true);
       this.edge = pathEdge.getInferredEdge();
-      this.distanceFromPreviousState = pathEdge.getDistToStartOfEdge();
-      
+      this.distanceFromPreviousState = pathEdge
+          .getDistToStartOfEdge();
+
       /*
        * We normalized the position relative to the direction of motion.
        */
       final double currentLoc = this.belief.getMean().getElement(0);
-      this.belief.getMean().setElement(0, currentLoc - pathEdge.getDistToStartOfEdge());
-      StandardRoadTrackingFilter.normalizeBelief(this.belief.getMean(), PathEdge.getEdge(this.edge));
-      
-      assert Double.compare(Math.abs(this.belief.getMean().getElement(0)), edge.getLength()) <= 0; 
-      
+      this.belief.getMean().setElement(
+          0, currentLoc - pathEdge.getDistToStartOfEdge());
+      StandardRoadTrackingFilter.normalizeBelief(
+          this.belief.getMean(), PathEdge.getEdge(this.edge));
+
+      assert Double.compare(
+          Math.abs(this.belief.getMean().getElement(0)),
+          edge.getLength() + 0.9) <= 0;
+
     } else {
       this.edge = InferredEdge.getEmptyEdge();
       this.distanceFromPreviousState = null;
     }
-    
+
     /*
      * This has to come after the adjustment 
      */
     this.initialBelief = this.belief.clone();
-    
+
     this.edgeTransitionDist = edgeTransitionDist;
 
     this.parentState = state;
@@ -331,7 +342,6 @@ public class VehicleState implements
       timeDiff = 30d;
     }
     this.movementFilter.setCurrentTimeDiff(timeDiff);
-    
 
     // DEBUG
     // this.initialHashCode = this.hashCode();

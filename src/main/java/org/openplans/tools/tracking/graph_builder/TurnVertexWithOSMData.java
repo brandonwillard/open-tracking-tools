@@ -50,9 +50,10 @@ public class TurnVertexWithOSMData extends TurnVertex {
     return way;
   }
 
+  @Override
   public TurnEdge makeTurnEdge(StreetVertex out) {
     if (out instanceof TurnVertex) {
-      return new SimpleTurnEdge(this, (TurnVertex) out);
+      return new SimpleTurnEdge(this, out);
     }
     return new SimpleTurnEdge(this, out);
   }

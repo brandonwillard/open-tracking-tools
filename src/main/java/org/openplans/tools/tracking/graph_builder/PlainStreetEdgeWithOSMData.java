@@ -1,8 +1,5 @@
 package org.openplans.tools.tracking.graph_builder;
 
-import java.util.ArrayList;
-import java.util.Collection;
-
 import org.opentripplanner.routing.edgetype.PlainStreetEdge;
 import org.opentripplanner.routing.edgetype.StreetTraversalPermission;
 import org.opentripplanner.routing.graph.Graph;

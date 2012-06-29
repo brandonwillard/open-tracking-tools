@@ -2,24 +2,22 @@ package async;
 
 import gov.sandia.cognition.math.MutableDouble;
 import gov.sandia.cognition.math.RingAccumulator;
-import gov.sandia.cognition.math.RingAverager;
 import inference.InferenceService;
 
 import java.io.File;
 import java.io.FileReader;
 import java.text.ParseException;
-import java.util.concurrent.TimeUnit;
 
 import org.opengis.referencing.operation.TransformException;
 import org.openplans.tools.tracking.impl.Observation;
 import org.openplans.tools.tracking.impl.TimeOrderException;
 
-import com.google.common.base.Stopwatch;
-
 import akka.actor.UntypedActor;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
 import au.com.bytecode.opencsv.CSVReader;
+
+import com.google.common.base.Stopwatch;
 
 public class CsvUploadActor extends UntypedActor {
   LoggingAdapter log = Logging.getLogger(getContext().system(), this);
@@ -43,7 +41,7 @@ public class CsvUploadActor extends UntypedActor {
       InferenceService.remove("trace-" + line[3]);
       Observation.remove("trace-" + line[3]);
 
-      RingAccumulator<MutableDouble> averager = new RingAccumulator<MutableDouble>();
+      final RingAccumulator<MutableDouble> averager = new RingAccumulator<MutableDouble>();
       int i = 0;
       do {
         final Stopwatch watch = new Stopwatch();
@@ -63,9 +61,10 @@ public class CsvUploadActor extends UntypedActor {
         }
         watch.stop();
         averager.accumulate(new MutableDouble(watch.elapsedMillis()));
-        
+
         if (i % 20 == 0)
-          log.info(" record/sec = " + averager.getMean().value / 1000d);
+          log.info("avg. secs per record = " + averager.getMean().value
+              / 1000d);
 
         i++;
       } while ((line = gps_reader.readNext()) != null);

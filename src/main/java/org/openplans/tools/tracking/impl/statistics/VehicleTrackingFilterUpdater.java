@@ -13,10 +13,11 @@ import java.util.Set;
 
 import jj2000.j2k.NotImplementedError;
 
+import org.apache.commons.lang.NotImplementedException;
 import org.openplans.tools.tracking.impl.Observation;
 import org.openplans.tools.tracking.impl.VehicleState;
-import org.openplans.tools.tracking.impl.VehicleStateConditionalParams;
 import org.openplans.tools.tracking.impl.VehicleState.InitialParameters;
+import org.openplans.tools.tracking.impl.VehicleStateConditionalParams;
 import org.openplans.tools.tracking.impl.graph.InferredEdge;
 import org.openplans.tools.tracking.impl.graph.paths.InferredPath;
 import org.openplans.tools.tracking.impl.graph.paths.InferredPathEntry;
@@ -71,7 +72,7 @@ public class VehicleTrackingFilterUpdater implements
   private final ThreadLocal<Random> threadRandom;
 
   public VehicleTrackingFilterUpdater(Observation obs,
-		  OtpGraph inferredGraph, InitialParameters parameters) {
+    OtpGraph inferredGraph, InitialParameters parameters) {
     this.initialObservation = obs;
     this.inferredGraph = inferredGraph;
     this.parameters = parameters;
@@ -89,10 +90,11 @@ public class VehicleTrackingFilterUpdater implements
   @Override
   public double computeLogLikelihood(VehicleState particle,
     Observation observation) {
-    return particle.getProbabilityFunction().logEvaluate(
-        new VehicleStateConditionalParams(PathEdge.getEdge(
-            particle.getInferredEdge(), 0d), observation
-            .getProjectedPoint(), 0d));
+    throw new NotImplementedException();
+    //    return particle.getProbabilityFunction().logEvaluate(
+    //        new VehicleStateConditionalParams(PathEdge.getEdge(
+    //            particle.getInferredEdge(), 0d), observation
+    //            .getProjectedPoint(), 0d));
   }
 
   @Override
@@ -135,7 +137,8 @@ public class VehicleTrackingFilterUpdater implements
 
         final VehicleState state = new VehicleState(
             this.inferredGraph, initialObservation,
-            pathEdge.getInferredEdge(), parameters, this.threadRandom.get());
+            pathEdge.getInferredEdge(), parameters,
+            this.threadRandom.get());
 
         final VehicleStateConditionalParams edgeLoc = new VehicleStateConditionalParams(
             pathEdge, initialObservation.getProjectedPoint());
@@ -151,7 +154,8 @@ public class VehicleTrackingFilterUpdater implements
      */
     final VehicleState state = new VehicleState(
         this.inferredGraph, initialObservation,
-        InferredEdge.getEmptyEdge(), parameters, this.threadRandom.get());
+        InferredEdge.getEmptyEdge(), parameters,
+        this.threadRandom.get());
 
     final double lik = state.getProbabilityFunction().evaluate(
         new VehicleStateConditionalParams(initialObservation

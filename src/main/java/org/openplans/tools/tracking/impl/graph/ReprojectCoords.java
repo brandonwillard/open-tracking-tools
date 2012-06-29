@@ -42,9 +42,9 @@ public class ReprojectCoords implements GraphBuilder {
       yfield.setAccessible(true);
       geomfield = PlainStreetEdge.class.getDeclaredField("geometry");
       geomfield.setAccessible(true);
-    } catch (SecurityException e) {
+    } catch (final SecurityException e) {
       throw new RuntimeException(e);
-    } catch (NoSuchFieldException e) {
+    } catch (final NoSuchFieldException e) {
       throw new RuntimeException(e);
     }
 
@@ -52,19 +52,19 @@ public class ReprojectCoords implements GraphBuilder {
     graph = graph.getService(BaseGraph.class).getBaseGraph();
     graph
         .setVertexComparatorFactory(new SimpleVertexComparatorFactory());
-    MathTransform transform = getCRSTransform();
+    final MathTransform transform = getCRSTransform();
     try {
-      for (Vertex v : graph.getVertices()) {
-        AbstractVertex abv = ((AbstractVertex) v);
+      for (final Vertex v : graph.getVertices()) {
+        final AbstractVertex abv = ((AbstractVertex) v);
         final Coordinate converted = new Coordinate();
 
         // reversed coord
         JTS.transform(abv.getCoordinate(), converted, transform);
         xfield.set(abv, converted.x);
         yfield.set(abv, converted.y);
-        for (Edge e : v.getOutgoing()) {
-          Geometry orig = e.getGeometry();
-          Geometry geom = JTS.transform(orig, transform);
+        for (final Edge e : v.getOutgoing()) {
+          final Geometry orig = e.getGeometry();
+          final Geometry geom = JTS.transform(orig, transform);
           geomfield.set(e, geom);
         }
       }
@@ -72,16 +72,16 @@ public class ReprojectCoords implements GraphBuilder {
       throw new RuntimeException(e);
     } catch (final TransformException e) {
       throw new RuntimeException(e);
-    } catch (IllegalArgumentException e) {
+    } catch (final IllegalArgumentException e) {
       throw new RuntimeException(e);
-    } catch (IllegalAccessException e) {
+    } catch (final IllegalAccessException e) {
       throw new RuntimeException(e);
     }
   }
 
   @Override
-  public List<String> provides() {
-    return Arrays.asList("reprojected");
+  public void checkInputs() {
+    // nothing to do
   }
 
   @Override
@@ -90,8 +90,8 @@ public class ReprojectCoords implements GraphBuilder {
   }
 
   @Override
-  public void checkInputs() {
-    // nothing to do
+  public List<String> provides() {
+    return Arrays.asList("reprojected");
   }
 
 }

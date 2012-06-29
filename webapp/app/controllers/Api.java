@@ -18,7 +18,6 @@ import org.codehaus.jackson.map.JsonMappingException;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.openplans.tools.tracking.impl.Observation;
 import org.openplans.tools.tracking.impl.VehicleState;
-import org.openplans.tools.tracking.impl.statistics.FilterInformation;
 import org.openplans.tools.tracking.impl.util.GeoUtils;
 import org.openplans.tools.tracking.impl.util.OtpGraph;
 import org.opentripplanner.routing.graph.Edge;
@@ -61,6 +60,30 @@ public class Api extends Controller {
     renderJSON(jsonMapper.writeValueAsString(coords));
   }
 
+  public static void evaluatedPaths(String vehicleId, int recordNumber)
+      throws JsonGenerationException, JsonMappingException,
+      IOException {
+    final InferenceInstance instance = InferenceService
+        .getInferenceInstance(vehicleId);
+    if (instance == null)
+      renderJSON(jsonMapper.writeValueAsString(null));
+
+    final Collection<InferenceResultRecord> results = instance
+        .getResultRecords();
+    if (results.isEmpty())
+      renderJSON(jsonMapper.writeValueAsString(null));
+
+    final InferenceResultRecord tmpResult = Iterables.get(
+        results, recordNumber, null);
+
+    if (tmpResult == null)
+      error(vehicleId + " result record " + recordNumber
+          + " is out-of-bounds");
+
+    renderJSON(jsonMapper.writeValueAsString(tmpResult
+        .getInfResults().createEvaluatedPaths()));
+  }
+
   public static OtpGraph getGraph() {
     return graph;
   }
@@ -86,30 +109,6 @@ public class Api extends Controller {
     }
   }
 
-  public static void evaluatedPaths(String vehicleId,
-    int recordNumber) throws JsonGenerationException,
-      JsonMappingException, IOException {
-    final InferenceInstance instance = InferenceService
-        .getInferenceInstance(vehicleId);
-    if (instance == null)
-      renderJSON(jsonMapper.writeValueAsString(null));
-
-    final Collection<InferenceResultRecord> results = instance
-        .getResultRecords();
-    if (results.isEmpty())
-      renderJSON(jsonMapper.writeValueAsString(null));
-
-    final InferenceResultRecord tmpResult = Iterables.get(
-        results, recordNumber, null);
-
-    if (tmpResult == null)
-      error(vehicleId + " result record " + recordNumber
-          + " is out-of-bounds");
-    
-    renderJSON(jsonMapper.writeValueAsString(
-        tmpResult.getInfResults().createEvaluatedPaths()));
-  }
-  
   public static void particleDetails(String vehicleId,
     int recordNumber) throws JsonGenerationException,
       JsonMappingException, IOException {

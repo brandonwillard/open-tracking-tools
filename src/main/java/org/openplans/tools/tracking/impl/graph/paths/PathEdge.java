@@ -1,14 +1,6 @@
 package org.openplans.tools.tracking.impl.graph.paths;
 
-import org.openplans.tools.tracking.impl.Observation;
 import org.openplans.tools.tracking.impl.graph.InferredEdge;
-import org.openplans.tools.tracking.impl.statistics.StandardRoadTrackingFilter;
-
-import gov.sandia.cognition.math.matrix.Matrix;
-import gov.sandia.cognition.math.matrix.Vector;
-import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
-import gov.sandia.cognition.statistics.distribution.UnivariateGaussian;
-
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ComparisonChain;
@@ -96,27 +88,26 @@ public class PathEdge implements Comparable<PathEdge> {
     return this == emptyPathEdge;
   }
 
-
-
-  
   /**
-   * Based on the path that this edge is contained in, determine if the
-   * given distance is on this edge.
-   * We allow 0 and +- the edge length to qualify for being on the edge.
+   * Based on the path that this edge is contained in, determine if the given
+   * distance is on this edge. We allow 0 and +- the edge length to qualify for
+   * being on the edge.
+   * 
    * @param distance
    * @return
    */
   public boolean isOnEdge(double distance) {
     if (distToStartOfEdge < 0d) {
-      if (distance >= -edge.getLength() + distToStartOfEdge 
+      if (distance >= -edge.getLength() + distToStartOfEdge
           && distance <= distToStartOfEdge)
         return true;
-    } else if (distToStartOfEdge > 0d){
-      if (distance <= edge.getLength() + distToStartOfEdge 
+    } else if (distToStartOfEdge > 0d) {
+      if (distance <= edge.getLength() + distToStartOfEdge
           && distance >= distToStartOfEdge)
         return true;
     } else {
-      if (Math.abs(distance) <= edge.getLength() + Math.abs(distToStartOfEdge)
+      if (Math.abs(distance) <= edge.getLength()
+          + Math.abs(distToStartOfEdge)
           && Math.abs(distance) >= Math.abs(distToStartOfEdge))
         return true;
     }
@@ -128,9 +119,9 @@ public class PathEdge implements Comparable<PathEdge> {
     if (this == emptyPathEdge)
       return "PathEdge [empty edge]";
     else
-      return "PathEdge [edge=" + edge.getEdgeId()
-          + " (" + (long)edge.getLength() + ")"
-          + ", distToStart=" + distToStartOfEdge.longValue() + "]";
+      return "PathEdge [edge=" + edge.getEdgeId() + " ("
+          + (long) edge.getLength() + ")" + ", distToStart="
+          + distToStartOfEdge.longValue() + "]";
   }
 
   public static PathEdge getEdge(InferredEdge infEdge) {

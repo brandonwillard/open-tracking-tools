@@ -132,8 +132,17 @@ public class GeoUtils {
         vec.getElement(0), vec.getElement(1)));
   }
 
-  public static Coordinate makeCoordinate(Vector vec) {
-    return new Coordinate(vec.getElement(0), vec.getElement(1));
+  public static Coordinate convertToLonLat(Coordinate xy) {
+    final Coordinate converted = new Coordinate();
+    try {
+      JTS.transform(xy, converted, getCRSTransform().inverse());
+    } catch (final NoninvertibleTransformException e) {
+      e.printStackTrace();
+    } catch (final TransformException e) {
+      e.printStackTrace();
+    }
+
+    return new Coordinate(converted.x, converted.y);
   }
 
   public static Coordinate convertToLonLat(Vector vec) {
@@ -160,7 +169,8 @@ public class GeoUtils {
     return geoData.get().getTransform();
   }
 
-  public static Vector getEuclideanVectorFromLatLon(Coordinate coordinate) {
+  public static Vector getEuclideanVectorFromLatLon(
+    Coordinate coordinate) {
     final Coordinate resCoord = convertToEuclidean(coordinate);
     return VectorFactory.getDefault().createVector2D(
         resCoord.x, resCoord.y);
@@ -176,6 +186,11 @@ public class GeoUtils {
 
   public static CoordinateReferenceSystem getProjCRS() {
     return geoData.get().getProjCRS();
+  }
+
+  public static Vector getVector(Coordinate coord) {
+    return VectorFactory.getDefault()
+        .createVector2D(coord.x, coord.y);
   }
 
   public static boolean isInLatLonCoords(Coordinate rawCoords) {
@@ -206,24 +221,11 @@ public class GeoUtils {
             .getDirectPosition());
   }
 
+  public static Coordinate makeCoordinate(Vector vec) {
+    return new Coordinate(vec.getElement(0), vec.getElement(1));
+  }
+
   public static Coordinate reverseCoordinates(Coordinate startCoord) {
     return new Coordinate(startCoord.y, startCoord.x);
-  }
-
-  public static Vector getVector(Coordinate coord) {
-    return VectorFactory.getDefault().createVector2D(coord.x, coord.y);
-  }
-
-  public static Coordinate convertToLonLat(Coordinate xy) {
-    final Coordinate converted = new Coordinate();
-    try {
-      JTS.transform(xy, converted, getCRSTransform().inverse());
-    } catch (final NoninvertibleTransformException e) {
-      e.printStackTrace();
-    } catch (final TransformException e) {
-      e.printStackTrace();
-    }
-
-    return new Coordinate(converted.x, converted.y);
   }
 }

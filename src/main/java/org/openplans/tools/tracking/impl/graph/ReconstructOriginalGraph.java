@@ -12,36 +12,37 @@ import org.opentripplanner.routing.graph.Vertex;
 
 public class ReconstructOriginalGraph implements GraphBuilder {
 
-	@Override
-	public void buildGraph(Graph graph, HashMap<Class<?>, Object> extra) {
-		Graph original = new Graph();
-		for (Vertex v : graph.getVertices()) {
-			if (!(v instanceof TurnVertexWithOSMData)) continue;
-			TurnVertexWithOSMData tv = (TurnVertexWithOSMData) v;
-			StreetEdge originalEdge = tv.getOriginal();
-			Vertex fv = originalEdge.getFromVertex();
-			if (original.getVertex(fv.getLabel()) == null) {
-				original.addVertex(fv);
-			}
-		}
-		
-		BaseGraph base = new BaseGraph(original);
-		graph.putService(BaseGraph.class, base);
-	}
+  @Override
+  public void buildGraph(Graph graph, HashMap<Class<?>, Object> extra) {
+    final Graph original = new Graph();
+    for (final Vertex v : graph.getVertices()) {
+      if (!(v instanceof TurnVertexWithOSMData))
+        continue;
+      final TurnVertexWithOSMData tv = (TurnVertexWithOSMData) v;
+      final StreetEdge originalEdge = tv.getOriginal();
+      final Vertex fv = originalEdge.getFromVertex();
+      if (original.getVertex(fv.getLabel()) == null) {
+        original.addVertex(fv);
+      }
+    }
 
-	@Override
-	public List<String> provides() {
-		return Arrays.asList("original");
-	}
+    final BaseGraph base = new BaseGraph(original);
+    graph.putService(BaseGraph.class, base);
+  }
 
-	@Override
-	public List<String> getPrerequisites() {
-		return Arrays.asList("streets");
-	}
+  @Override
+  public void checkInputs() {
+    //nothing to do
+  }
 
-	@Override
-	public void checkInputs() {
-		//nothing to do
-	}
+  @Override
+  public List<String> getPrerequisites() {
+    return Arrays.asList("streets");
+  }
+
+  @Override
+  public List<String> provides() {
+    return Arrays.asList("original");
+  }
 
 }

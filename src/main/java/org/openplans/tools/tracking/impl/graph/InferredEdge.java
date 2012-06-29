@@ -8,8 +8,6 @@ import gov.sandia.cognition.statistics.distribution.NormalInverseGammaDistributi
 import java.util.List;
 
 import org.apache.commons.lang.builder.CompareToBuilder;
-import org.openplans.tools.tracking.impl.graph.InferredEdge;
-import org.openplans.tools.tracking.impl.util.GeoUtils;
 import org.openplans.tools.tracking.impl.util.OtpGraph;
 import org.opentripplanner.routing.edgetype.TurnEdge;
 import org.opentripplanner.routing.graph.Edge;
@@ -23,8 +21,7 @@ import com.vividsolutions.jts.linearref.LengthLocationMap;
 import com.vividsolutions.jts.linearref.LinearLocation;
 import com.vividsolutions.jts.linearref.LocationIndexedLine;
 
-public class InferredEdge implements
-    Comparable<InferredEdge> {
+public class InferredEdge implements Comparable<InferredEdge> {
 
   private final Integer edgeId;
   private final Vertex startVertex;
@@ -47,10 +44,6 @@ public class InferredEdge implements
    */
   private final static InferredEdge emptyEdge = new InferredEdge();
 
-  public static InferredEdge getEmptyEdge() {
-    return InferredEdge.emptyEdge;
-  }
-
   private InferredEdge() {
     this.edgeId = null;
     this.endPoint = null;
@@ -69,11 +62,10 @@ public class InferredEdge implements
     this.lengthLocationMap = null;
   }
 
-  public InferredEdge(Edge edge, Integer edgeId,
-    OtpGraph graph) {
-	  if (edge instanceof TurnEdge || edge == null) {
-		  System.out.println("wrong");
-	  }
+  public InferredEdge(Edge edge, Integer edgeId, OtpGraph graph) {
+    if (edge instanceof TurnEdge || edge == null) {
+      System.out.println("wrong");
+    }
     this.graph = graph;
     this.edgeId = edgeId;
     this.edge = edge;
@@ -84,8 +76,7 @@ public class InferredEdge implements
      */
     this.geometry = edge.getGeometry();
 
-    this.locationIndexedLine = new LocationIndexedLine(
-        geometry);
+    this.locationIndexedLine = new LocationIndexedLine(geometry);
     this.lengthIndexedLine = new LengthIndexedLine(geometry);
     this.lengthLocationMap = new LengthLocationMap(geometry);
 
@@ -156,10 +147,6 @@ public class InferredEdge implements
   public Coordinate getCenterPointCoord() {
     return this.geometry.getCentroid().getCoordinate();
   }
-  
-  public boolean isEmptyEdge() {
-    return this == emptyEdge;
-  }
 
   public Coordinate getCoordOnEdge(Vector obsPoint) {
     if (this == InferredEdge.emptyEdge)
@@ -191,6 +178,10 @@ public class InferredEdge implements
     return endVertex;
   }
 
+  public Geometry getGeometry() {
+    return geometry;
+  }
+
   public OtpGraph getGraph() {
     return graph;
   }
@@ -218,7 +209,19 @@ public class InferredEdge implements
     if (edge == null) {
       return 0;
     }
-    return edge.getDistance();
+    return geometry.getLength();
+  }
+
+  public LengthIndexedLine getLengthIndexedLine() {
+    return lengthIndexedLine;
+  }
+
+  public LengthLocationMap getLengthLocationMap() {
+    return lengthLocationMap;
+  }
+
+  public LocationIndexedLine getLocationIndexedLine() {
+    return locationIndexedLine;
   }
 
   /**
@@ -247,28 +250,11 @@ public class InferredEdge implements
   public Vector getPointOnEdge(Coordinate obsPoint) {
     if (this == InferredEdge.emptyEdge)
       return null;
-    final LinearLocation here = locationIndexedLine
-        .project(obsPoint);
+    final LinearLocation here = locationIndexedLine.project(obsPoint);
     final Coordinate pointOnLine = locationIndexedLine
         .extractPoint(here);
     return VectorFactory.getDefault().createVector2D(
         pointOnLine.x, pointOnLine.y);
-  }
-
-  public Geometry getGeometry() {
-    return geometry;
-  }
-
-  public LengthIndexedLine getLengthIndexedLine() {
-    return lengthIndexedLine;
-  }
-
-  public LengthLocationMap getLengthLocationMap() {
-    return lengthLocationMap;
-  }
-
-  public LocationIndexedLine getLocationIndexedLine() {
-    return locationIndexedLine;
   }
 
   public Vector getStartPoint() {
@@ -298,6 +284,10 @@ public class InferredEdge implements
     return result;
   }
 
+  public boolean isEmptyEdge() {
+    return this == emptyEdge;
+  }
+
   @Override
   public String toString() {
     if (this == emptyEdge)
@@ -305,6 +295,10 @@ public class InferredEdge implements
     else
       return "InferredEdge [edgeId=" + edgeId + ", length="
           + getLength() + "]";
+  }
+
+  public static InferredEdge getEmptyEdge() {
+    return InferredEdge.emptyEdge;
   }
 
 }

@@ -188,10 +188,9 @@ public class Observation implements Comparable<Observation> {
        */
       if (time.getTime() <= prevObs.getTimestamp().getTime())
         throw new TimeOrderException();
-      
+
       recordNumber = prevObs.getRecordNumber() + 1;
       prevObs.reset();
-
 
     } else {
       recordNumber = 0;

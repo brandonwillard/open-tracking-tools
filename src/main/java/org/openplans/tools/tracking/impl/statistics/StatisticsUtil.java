@@ -69,6 +69,7 @@ public class StatisticsUtil {
     for (final WrappedWeightedValue<SupportType> weight : map) {
       totalLikelihood = LogMath.add(
           weight.getWeight(), totalLikelihood);
+      assert !Double.isNaN(totalLikelihood);
     }
 
     if (totalLikelihood == Double.NEGATIVE_INFINITY)
