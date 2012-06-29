@@ -1,14 +1,20 @@
 package async;
 
+import gov.sandia.cognition.math.MutableDouble;
+import gov.sandia.cognition.math.RingAccumulator;
+import gov.sandia.cognition.math.RingAverager;
 import inference.InferenceService;
 
 import java.io.File;
 import java.io.FileReader;
 import java.text.ParseException;
+import java.util.concurrent.TimeUnit;
 
 import org.opengis.referencing.operation.TransformException;
 import org.openplans.tools.tracking.impl.Observation;
 import org.openplans.tools.tracking.impl.TimeOrderException;
+
+import com.google.common.base.Stopwatch;
 
 import akka.actor.UntypedActor;
 import akka.event.Logging;
@@ -37,7 +43,11 @@ public class CsvUploadActor extends UntypedActor {
       InferenceService.remove("trace-" + line[3]);
       Observation.remove("trace-" + line[3]);
 
+      RingAccumulator<MutableDouble> averager = new RingAccumulator<MutableDouble>();
+      int i = 0;
       do {
+        final Stopwatch watch = new Stopwatch();
+        watch.start();
         try {
           traceLocation(
               ((File) csvFile).getName(), "trace-" + line[3],
@@ -51,7 +61,13 @@ public class CsvUploadActor extends UntypedActor {
           e.printStackTrace();
           break;
         }
+        watch.stop();
+        averager.accumulate(new MutableDouble(watch.elapsedMillis()));
+        
+        if (i % 20 == 0)
+          log.info(" record/sec = " + averager.getMean().value / 1000d);
 
+        i++;
       } while ((line = gps_reader.readNext()) != null);
 
       log.info("finished processing " + ((File) csvFile).getName());
