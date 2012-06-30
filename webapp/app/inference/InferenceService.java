@@ -50,7 +50,7 @@ public class InferenceService extends UntypedActor {
   private static final Map<String, InferenceInstance> vehicleToInstance = Maps
       .newConcurrentMap();
 
-  private static INFO_LEVEL defaultLevel = INFO_LEVEL.ALL_RESULTS;
+  public static INFO_LEVEL defaultInfoLevel = INFO_LEVEL.ALL_RESULTS;
 
   /**
    * See {@link #processRecord}
@@ -122,7 +122,7 @@ public class InferenceService extends UntypedActor {
   public static void processRecord(Observation observation) {
 
     final InferenceInstance ie = getOrCreateInferenceInstance(
-        observation.getVehicleId(), false, defaultLevel);
+        observation.getVehicleId(), false, defaultInfoLevel);
 
     executor.execute(new UpdateRunnable(observation, ie));
   }
@@ -137,12 +137,13 @@ public class InferenceService extends UntypedActor {
   }
 
   public static void processRecords(
-    List<Observation> observations) throws InterruptedException {
+    List<Observation> observations, INFO_LEVEL level) 
+        throws InterruptedException {
     
     List<Callable<Object>> tasks = Lists.newArrayList();    
     for(Observation obs : observations) {
       final InferenceInstance ie = getOrCreateInferenceInstance(
-          obs.getVehicleId(), false, defaultLevel);
+          obs.getVehicleId(), false, level);
       tasks.add(Executors.callable(new UpdateRunnable(obs, ie)));
     }
 

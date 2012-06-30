@@ -280,8 +280,9 @@ public class InferenceResultRecord {
         inferenceInstance,
         null,
         inferenceInstance.getBestState(),
-        inferenceInstance.getInfoLevel().compareTo(INFO_LEVEL.DEBUG) >= 0 ? inferenceInstance
-            .getPostBelief() : null,
+        inferenceInstance.getPostBelief().clone(),
+//        inferenceInstance.getInfoLevel().compareTo(INFO_LEVEL.DEBUG) >= 0 ? inferenceInstance
+//            .getPostBelief() : null,
         inferenceInstance.getInfoLevel().compareTo(INFO_LEVEL.DEBUG) >= 0 ? inferenceInstance
             .getResampleBelief() : null);
   }

@@ -224,6 +224,10 @@ public class Simulation {
             + recordsProcessed + ", " + time);
         recordsProcessed++;
       }
+      
+      if (recordsProcessed > 0)
+        Logger.info("avg. secs per record = " + instance.getAverager().getMean().value
+            / 1000d);
 
     } catch (final NumberFormatException e) {
       e.printStackTrace();
@@ -318,9 +322,6 @@ public class Simulation {
     //    if (this.simParameters.isPerformInference())
     //      Logger.info("processed simulation inference :" + thisObs);
 
-    if (recordsProcessed > 0 && recordsProcessed % 20 == 0)
-      Logger.info("avg. secs per record = " + instance.getAverager().getMean().value
-          / 1000d);
 
     return newState;
   }

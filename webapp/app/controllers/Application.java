@@ -21,6 +21,7 @@ import akka.actor.ActorRef;
 import akka.actor.ActorSystem;
 import akka.actor.Props;
 import async.CsvUploadActor;
+import async.CsvUploadActor.TraceParameters;
 
 import com.vividsolutions.jts.geom.Coordinate;
 
@@ -123,12 +124,14 @@ public class Application extends Controller {
     instances();
   }
 
-  public static void uploadHandler(File csv) {
+  public static void uploadHandler(File csv, String debugEnabled) {
 
     if (csv != null) {
+      final boolean debug_enabled = Boolean.parseBoolean(debugEnabled);
       final File dest = new File("/tmp/upload.csv");
       csv.renameTo(dest);
-      csvActor.tell(dest);
+      TraceParameters params = new TraceParameters(dest, debug_enabled);
+      csvActor.tell(params);
     }
 
     instances();

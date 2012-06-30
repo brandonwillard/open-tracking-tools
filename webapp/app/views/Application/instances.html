@@ -43,6 +43,9 @@
 <div id="upload" style="padding: 2px; border: 1px solid black">
 
 	 #{form @Application.uploadHandler(), enctype:'multipart/form-data'}
+   
+	 	<input name="debugEnabled" id="debugEnabled" type="checkbox" value="true"/>
+	    <label for="enableDebug">Enable debug for this trace</label><br>
 	 				<input name="csv" type="file"/>
 	                <input type="submit"/>
 	 #{/form}
