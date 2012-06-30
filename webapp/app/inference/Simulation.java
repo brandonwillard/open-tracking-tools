@@ -107,7 +107,6 @@ public class Simulation {
   private final String simulationName;
   private final InitialParameters parameters;
   private final InferenceInstance instance;
-  private final RingAccumulator<MutableDouble> averager = new RingAccumulator<MutableDouble>();
 
   private int recordsProcessed = 0;
 
@@ -314,17 +313,13 @@ public class Simulation {
         vehicleState.getMovementFilter(), currentLocBelief,
         currentEdgeTrans, newPath, vehicleState);
 
-    final Stopwatch watch = new Stopwatch();
-    watch.start();
     instance.update(
         newState, thisObs, this.simParameters.isPerformInference());
     //    if (this.simParameters.isPerformInference())
     //      Logger.info("processed simulation inference :" + thisObs);
-    watch.stop();
-    averager.accumulate(new MutableDouble(watch.elapsedMillis()));
 
-    if (recordsProcessed % 20 == 0)
-      Logger.info("avg. secs per record = " + averager.getMean().value
+    if (recordsProcessed > 0 && recordsProcessed % 20 == 0)
+      Logger.info("avg. secs per record = " + instance.getAverager().getMean().value
           / 1000d);
 
     return newState;

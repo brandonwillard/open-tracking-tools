@@ -1,5 +1,7 @@
 package models;
 
+import gov.sandia.cognition.math.MutableDouble;
+import gov.sandia.cognition.math.RingAccumulator;
 import gov.sandia.cognition.math.matrix.VectorFactory;
 import gov.sandia.cognition.statistics.DataDistribution;
 import inference.InferenceResultRecord;
@@ -10,12 +12,15 @@ import java.util.Collections;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
+import org.apache.log4j.Logger;
 import org.openplans.tools.tracking.impl.Observation;
 import org.openplans.tools.tracking.impl.VehicleState;
 import org.openplans.tools.tracking.impl.VehicleState.InitialParameters;
 import org.openplans.tools.tracking.impl.statistics.FilterInformation;
 import org.openplans.tools.tracking.impl.statistics.VehicleTrackingFilter;
 import org.openplans.tools.tracking.impl.util.OtpGraph;
+
+import com.google.common.base.Stopwatch;
 
 import controllers.Api;
 
@@ -27,6 +32,7 @@ import controllers.Api;
  */
 public class InferenceInstance {
 
+  final Logger log = Logger.getLogger(InferenceInstance.class);
   final public String vehicleId;
 
   public int recordsProcessed = 0;
@@ -124,12 +130,9 @@ public class InferenceInstance {
     return isSimulation;
   }
 
-  /**
-   * Update the tracking filter and the graph's edge-velocity distributions.
-   * 
-   * @param record
-   */
-  public void update(Observation obs) {
+  private final RingAccumulator<MutableDouble> averager = new RingAccumulator<MutableDouble>();
+  
+  synchronized public void update(Observation obs) {
 
     updateFilter(obs);
     this.recordsProcessed++;
@@ -147,8 +150,9 @@ public class InferenceInstance {
   public void update(VehicleState actualState, Observation obs,
     boolean performInference) {
 
-    if (performInference)
+    if (performInference) {
       updateFilter(obs);
+    }
 
     this.recordsProcessed++;
 
@@ -165,8 +169,11 @@ public class InferenceInstance {
     this.resultRecords.add(result);
   }
 
-  private void updateFilter(Observation obs) {
+  synchronized private void updateFilter(Observation obs) {
 
+    final Stopwatch watch = new Stopwatch();
+    watch.start();
+    
     if (filter == null || postBelief == null) {
       filter = new VehicleTrackingFilter(
           obs, inferredGraph, initialParameters,
@@ -182,13 +189,24 @@ public class InferenceInstance {
             .getResampleDist() : null;
       }
     }
+    
+    watch.stop();
+    averager.accumulate(new MutableDouble(watch.elapsedMillis()));
 
+    if (recordsProcessed > 0 && recordsProcessed % 20 == 0)
+      log.info("avg. secs per record = " + this.getAverager().getMean().value
+          / 1000d);
+    
     if (postBelief != null)
       this.bestState = postBelief.getMaxValueKey();
   }
 
   public static OtpGraph getInferredGraph() {
     return inferredGraph;
+  }
+
+  public RingAccumulator<MutableDouble> getAverager() {
+    return averager;
   }
 
 }

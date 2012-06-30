@@ -6,9 +6,21 @@
    	
    	#{list items:instances, as:'instance'}
         <li>
-            vehicleId: ${instance.vehicleId}<br>
-            recordsProcessed: ${instance.recordsProcessed}/${instance.totalRecords}<br>
-            seed: ${instance.simSeed}<br>
+            vehicleId: ${instance.vehicleId}, 
+            recordsProcessed: ${instance.recordsProcessed}
+            #{if instance.totalRecords > 0}/${instance.totalRecords}
+            #{/if}<br>
+            isSimulation: ${instance.isSimulation}
+            <br>
+            Initial Parameters:
+            <ul>
+              <li> obsVariance: ${instance.initialParameters.obsVariance} </li>
+              <li> onRoadStateVariance: ${instance.initialParameters.onRoadStateVariance} </li>
+              <li> offRoadStateVariance: ${instance.initialParameters.offRoadStateVariance} </li>
+              <li> offTransitionProbs: ${instance.initialParameters.offTransitionProbs} </li>
+              <li> onTransitionProbs: ${instance.initialParameters.onTransitionProbs} </li>
+              <li> seed: ${instance.simSeed} </li>
+             </ul>
             
             #{form @Application.removeInferenceInstance(), method:'GET', id:'deleteForm'}
 	              <input type="hidden" name="name" value="${instance.vehicleId}"/>	

@@ -219,7 +219,7 @@ public class OtpGraph {
   private final DistanceLibrary distanceLibrary = new CartesianDistanceLibrary();
 
   private final Map<VertexPair, InferredEdge> edgeToInfo = Maps
-      .newHashMap();
+      .newConcurrentMap();
 
   private final LoadingCache<PathKey, Set<InferredPath>> pathsCache = CacheBuilder
       .newBuilder().maximumSize(1000)
