@@ -325,9 +325,9 @@ public class OtpGraph {
           if (forwardResult != null) {
             paths.add(forwardResult);
             // for debugging
-            forwardResult.setStartEdge(this
+            forwardResult.setStartSearchEdge(this
                 .getInferredEdge(startEdge));
-            forwardResult.setEndEdge(this.getInferredEdge(endEdge));
+            forwardResult.setEndSearchEdge(this.getInferredEdge(endEdge));
           }
         }
 
@@ -340,10 +340,10 @@ public class OtpGraph {
             if (backwardResult != null) {
               paths.add(backwardResult);
               // for debugging
-              backwardResult.setStartEdge(this
+              backwardResult.setStartSearchEdge(this
                   .getInferredEdge(startEdge));
               backwardResult
-                  .setEndEdge(this.getInferredEdge(endEdge));
+                  .setEndSearchEdge(this.getInferredEdge(endEdge));
             }
           }
         }

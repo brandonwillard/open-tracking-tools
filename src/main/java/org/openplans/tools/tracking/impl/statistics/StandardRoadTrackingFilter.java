@@ -17,6 +17,8 @@ import gov.sandia.cognition.util.CloneableSerializable;
 import java.util.Map.Entry;
 import java.util.Random;
 
+import javax.crypto.spec.PSource;
+
 import org.openplans.tools.tracking.impl.graph.InferredEdge;
 import org.openplans.tools.tracking.impl.graph.paths.InferredPath;
 import org.openplans.tools.tracking.impl.graph.paths.PathEdge;
@@ -458,7 +460,14 @@ public class StandardRoadTrackingFilter implements
       positiveMean = posMeanTmp;
     } else {
       positiveMean = belief.getMean().clone();
+      
+      assert edge.getDistToStartOfEdge() >= 0d;
+      
+      positiveMean.setElement(0, positiveMean.getElement(0) - edge.getDistToStartOfEdge());
     }
+    
+    assert positiveMean.getElement(0) >= 0d 
+        && (allowExtensions || positiveMean.getElement(0) <= edge.getInferredEdge().getLength() + 1e-4);
 
     final Entry<LineSegment, Double> segmentDist = getSegmentAndDistanceToStart(
         edge.getInferredEdge(), positiveMean.getElement(0));

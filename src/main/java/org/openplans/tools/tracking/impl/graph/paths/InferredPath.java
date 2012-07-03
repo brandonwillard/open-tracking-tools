@@ -18,6 +18,7 @@ import org.openplans.tools.tracking.impl.graph.InferredEdge;
 import org.openplans.tools.tracking.impl.statistics.StandardRoadTrackingFilter;
 import org.openplans.tools.tracking.impl.statistics.StatisticsUtil;
 import org.openplans.tools.tracking.impl.statistics.WrappedWeightedValue;
+import org.opentripplanner.common.geometry.GeometryUtils;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
@@ -26,6 +27,9 @@ import com.google.common.collect.Lists;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryCollection;
 import com.vividsolutions.jts.geom.GeometryFactory;
+import com.vividsolutions.jts.linearref.LengthIndexedLine;
+import com.vividsolutions.jts.linearref.LengthLocationMap;
+import com.vividsolutions.jts.linearref.LinearLocation;
 
 /**
  * Inferred paths are collections of PathEdges that track the distance traveled
@@ -61,12 +65,14 @@ public class InferredPath implements Comparable<InferredPath> {
   private final Double totalPathDistance;
 
   public List<Integer> edgeIds = Lists.newArrayList();
+  
   /*
    * These are the edges used in path finding.
    */
-  private InferredEdge startEdge;
+  private InferredEdge startSearchEdge;
 
-  private InferredEdge endEdge;
+  private InferredEdge endSearchEdge;
+  
   /*
    * Note: single edges are considered forward
    */
@@ -181,18 +187,32 @@ public class InferredPath implements Comparable<InferredPath> {
     return true;
   }
 
+  public boolean isOnPath(double distance) {
+    final double direction = Math.signum(totalPathDistance);
+    if (direction * distance > Math.abs(totalPathDistance)) {
+      return false;
+    } else if (direction * distance < 0d) {
+      return false;
+    }
+    
+    return true;
+  }
+  
   public PathEdge getEdgeForDistance(double distance, boolean clamp) {
     final double direction = Math.signum(totalPathDistance);
     if (direction * distance > Math.abs(totalPathDistance)) {
-      return Iterables.getLast(edges);
+      return clamp ? Iterables.getLast(edges) : null;
     } else if (direction * distance < 0d) {
-      return Iterables.getFirst(edges, null);
+      return clamp ? Iterables.getFirst(edges, null) : null;
     }
 
     for (final PathEdge edge : edges) {
       if (edge.isOnEdge(distance))
         return edge;
     }
+    
+    assert false;
+    
     return null;
   }
 
@@ -223,7 +243,7 @@ public class InferredPath implements Comparable<InferredPath> {
   }
 
   public InferredEdge getEndEdge() {
-    return endEdge;
+    return endSearchEdge;
   }
 
   public Geometry getGeometry() {
@@ -299,10 +319,15 @@ public class InferredPath implements Comparable<InferredPath> {
            * to the considered edge). 
            * This being the case, we must find out exactly which edge it is on so
            * that we can compute the ground location properly.
-           * TODO FIXME we should use the path geometry, and perhaps clamp the input.
            */
           edgeOfLocPrediction = this.getEdgeForDistance(
-              locationPrediction.getMean().getElement(0), true);
+              locationPrediction.getMean().getElement(0), false);
+          
+          /*
+           * If the result is not on the path, then skip this edge
+           */
+          if (edgeOfLocPrediction == null)
+            continue;
         }
 
         final double edgePredTransLogLik = state
@@ -370,7 +395,7 @@ public class InferredPath implements Comparable<InferredPath> {
   }
 
   public InferredEdge getStartEdge() {
-    return startEdge;
+    return startSearchEdge;
   }
 
   public Double getTotalPathDistance() {
@@ -502,16 +527,16 @@ public class InferredPath implements Comparable<InferredPath> {
     belief.setCovariance(R);
   }
 
-  public void setEndEdge(InferredEdge endEdge) {
-    this.endEdge = endEdge;
+  public void setEndSearchEdge(InferredEdge endEdge) {
+    this.endSearchEdge = endEdge;
   }
 
   public void setIsBackward(Boolean isBackward) {
     this.isBackward = isBackward;
   }
 
-  public void setStartEdge(InferredEdge startEdge) {
-    this.startEdge = startEdge;
+  public void setStartSearchEdge(InferredEdge startEdge) {
+    this.startSearchEdge = startEdge;
   }
 
   @Override

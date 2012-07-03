@@ -276,7 +276,6 @@ public class Simulation {
 
     vehicleState.getMovementFilter().setCurrentTimeDiff(
         this.simParameters.getFrequency());
-    vehicleState.getBelief().clone();
     final MultivariateGaussian currentLocBelief = vehicleState
         .getBelief();
     final EdgeTransitionDistributions currentEdgeTrans = vehicleState
@@ -490,7 +489,7 @@ public class Simulation {
         direction = totalDistToTravel >= 0d ? 1d : -1d;
         final double l = previousLocation < 0d ? L + previousLocation
             : previousLocation;
-        final double r = totalDistToTravel >= 0d ? L - l : l;
+        final double r = Math.abs(totalDistToTravel >= 0d ? L - l : l);
         if (r < Math.abs(totalDistToTravel)) {
           distTraveled += r * Math.signum(totalDistToTravel);
         } else {

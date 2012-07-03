@@ -242,6 +242,9 @@ public class VehicleState implements
       belief.setMean(this.movementFilter.sampleStateBelief(
           belief.getMean(), rng));
       belief.getMean().setElement(0, lengthLocation);
+      
+      StandardRoadTrackingFilter.normalizeBelief(
+          this.belief.getMean(), PathEdge.getEdge(inferredEdge));
 
       assert Double.compare(
           Math.abs(this.belief.getMean().getElement(0)),
