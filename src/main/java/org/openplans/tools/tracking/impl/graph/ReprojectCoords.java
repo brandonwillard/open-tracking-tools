@@ -3,6 +3,7 @@ package org.openplans.tools.tracking.impl.graph;
 import static org.openplans.tools.tracking.impl.util.GeoUtils.getCRSTransform;
 
 import java.lang.reflect.Field;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -62,10 +63,19 @@ public class ReprojectCoords implements GraphBuilder {
         JTS.transform(abv.getCoordinate(), converted, transform);
         xfield.set(abv, converted.x);
         yfield.set(abv, converted.y);
+        ArrayList<Edge> toRemove = new ArrayList<Edge>();
         for (final Edge e : v.getOutgoing()) {
           final Geometry orig = e.getGeometry();
+          if (orig == null) {
+              toRemove.add(e);
+              continue;
+          }
           final Geometry geom = JTS.transform(orig, transform);
           geomfield.set(e, geom);
+        }
+        for (final Edge e: toRemove) {
+          v.removeOutgoing(e);
+          e.getToVertex().removeIncoming(e);
         }
       }
     } catch (final NoninvertibleTransformException e) {
