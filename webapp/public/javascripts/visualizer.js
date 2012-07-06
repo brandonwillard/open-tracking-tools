@@ -38,9 +38,6 @@ var lines = null;
 
 var i = 0;
 
-var marker1 = null;
-var marker2 = null;
-
 var interval = null;
 var paths = null;
 
@@ -74,8 +71,15 @@ $(document).ready(function() {
 
   $("#controls").hide();
   $("#pause").hide();
-
+  
+  /*
+   * Set default open tab
+   */
+  var index = $('#filterControls li a').index($('a[href="#tabs-2"]').get(0));
+  $('#filterControls').tabs({selected: index});
+  
   $("#loadDataLink").click(loadData);
+  showParticlesMeans();
   $("#next").click(nextPoint);
   $("#prev").click(prevPoint);
   $("#play").click(playData);
@@ -91,8 +95,27 @@ $(document).ready(function() {
 
   $("#addCoordinates").click(addCoordinates);
   $("#addEdge").click(addEdge);
+  
 
 });
+
+function showParticlesMeans() {
+  $("#postParticleMeans").hover(function() {
+    var markers = $(this).data("particleMeans");
+    if (markers) {
+      pointsGroup.addLayer(markers);
+      addedGroup.addLayer(markers);
+      map.invalidateSize();
+    }
+  }, function() {
+    var markers = $(this).data("particleMeans");
+    if (markers) {
+      pointsGroup.removeLayer(markers);
+      addedGroup.removeLayer(markers);
+      map.invalidateSize();
+    }
+  });
+}
 
 function addEdge() {
 
@@ -104,7 +127,7 @@ function addEdge() {
   map.invalidateSize();
 }
 
-function drawCoords(lat, lon, popupMessage, pan) {
+function drawCoords(lat, lon, popupMessage, pan, justMarker) {
   var latlng = new L.LatLng(parseFloat(lat), parseFloat(lon));
   marker = new L.Circle(latlng, 10, {
     color : '#0c0',
@@ -112,7 +135,10 @@ function drawCoords(lat, lon, popupMessage, pan) {
     lon : parseFloat(lon),
     weight : 1
   });
-  $(this).data('marker', marker);
+  if (justMarker)
+    return marker;
+  
+//  $(this).data('marker', marker);
   pointsGroup.addLayer(marker);
   addedGroup.addLayer(marker);
   if (popupMessage != null)
@@ -520,17 +546,29 @@ function renderParticles(isPrior) {
             recordNumber : i,
             particleNumber : -1,
             withParent : true,
-            isPrior : !isPrior
+            isPrior : isPrior
           },
           function(data) {
 
             
             var particleList = null;
-            if (isPrior) {
+            var particleMeansDiv = null;
+            var particleParentMeansDiv = null;
+            if (!isPrior) {
               particleList = jQuery("#posteriorParticles");
+              particleMeansDiv = jQuery("#postParticleMeans");
+              particleParentMeansDiv = jQuery("#postParticleParentMeans");
             } else {
               particleList = jQuery("#priorParticles");
+              particleMeansDiv = jQuery("#priorParticleMeans");
+              particleParentMeansDiv = jQuery("#priorParticleParentMeans");
             }
+            
+            var particleMeans = new L.LayerGroup();
+            particleMeansDiv.data("particleMeans", particleMeans);
+              
+            var particleParentMeans = new L.LayerGroup();
+            particleParentMeansDiv.data("particleParentMeans", particleParentMeans);
             
             particleList.empty();
             
@@ -544,7 +582,7 @@ function renderParticles(isPrior) {
                     function(_, particleData) {
 
                       var particleMeanLoc = particleData.particle.infResults.meanCoords;
-                      var locLinkName = 'particle' + particleNumber + '_mean';
+                      var locLinkName = 'particle' + particleNumber + '_mean' + isPrior;
                       var coordPair = particleMeanLoc.x + ','
                           + particleMeanLoc.y;
                       var locLink = '<a name="'
@@ -558,7 +596,7 @@ function renderParticles(isPrior) {
                       if (edgeId != null) {
                         edgeDesc = edgeId;
                       }
-                      var edgeLinkName = 'particle' + particleNumber + '_edge';
+                      var edgeLinkName = 'particle' + particleNumber + '_edge' + isPrior;
                       var edgeLink = '<a name="'
                           + edgeLinkName
                           + '" title="'
@@ -590,7 +628,9 @@ function renderParticles(isPrior) {
                         }
                       });
 
-                      createHoverPointLink(locLinkName, particleMeanLoc);
+                      var particleMeanLatLon = convertToLatLon(particleMeanLoc);
+                      createHoverPointLink(locLinkName, particleMeanLatLon);
+                      particleMeans.addLayer(drawCoords(particleMeanLatLon.lat, particleMeanLatLon.lng, null, null, true));
 
                       var subList = jQuery('<ul><li><div class="subinfo"></div></li></ul>');
                       var collapsedDiv = subList.find(".subinfo");
@@ -623,7 +663,7 @@ function renderParticles(isPrior) {
                           parentEdgeDesc = parentEdgeId;
                         }
                         var parentEdgeLinkName = 'parent_particle'
-                            + particleNumber + '_edge';
+                            + particleNumber + '_edge' + isPrior;
                         var parentEdgeLink = '<a name="'
                             + parentEdgeLinkName
                             + '" title="'
@@ -633,7 +673,7 @@ function renderParticles(isPrior) {
 
                         var parentParticleMeanLoc = particleData.parent.infResults.meanCoords;
                         var parentLocLinkName = 'parent_particle'
-                            + particleNumber + '_mean';
+                            + particleNumber + '_mean' + isPrior;
                         var parentCoordPair = parentParticleMeanLoc.x + ','
                             + parentParticleMeanLoc.y;
                         var parentLocLink = '<a name="'
@@ -656,8 +696,10 @@ function renderParticles(isPrior) {
                           parentList.append('<li>path=' + parentPathName + '</li>');
                         }
                         
-                        createHoverPointLink(parentLocLinkName,
-                            parentParticleMeanLoc);
+                        var parentMeanLatLon = convertToLatLon(parentParticleMeanLoc);
+                        createHoverPointLink(parentLocLinkName,parentMeanLatLon);
+                        particleParentMeans.addLayer(drawCoords(parentMeanLatLon.lat, parentMeanLatLon.lng, null, null, true));
+                        
 
                         if (parentEdgeId != null) {
                           createHoverLineLink(parentEdgeLinkName, parentEdgeId);
@@ -696,15 +738,15 @@ function createHoverLineLink(linkName, edgeId) {
   });
 }
 
-function createHoverPointLink(linkName, loc) {
+function createHoverPointLink(linkName, latlon) {
   var locLinkJName = 'a[name=' + linkName + ']';
-  $(locLinkJName).data("loc", loc);
+  $(locLinkJName).data("loc", latlon);
   $(locLinkJName).hover(function() {
 
     var localLoc = $(this).data("loc");
     var marker = this.marker;
     if (marker == null) {
-      marker = drawProjectedCoords(localLoc.x, localLoc.y, null, false);
+      marker = drawCoords(localLoc.lat, localLoc.lng, null, false);
       this.marker = marker;
     } else {
       pointsGroup.addLayer(marker);

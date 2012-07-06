@@ -22,6 +22,7 @@ import org.openplans.tools.tracking.impl.statistics.StandardRoadTrackingFilter;
 import org.opentripplanner.common.geometry.DistanceLibrary;
 import org.opentripplanner.routing.core.RoutingRequest;
 import org.opentripplanner.routing.core.TraverseMode;
+import org.opentripplanner.routing.edgetype.PlainStreetEdge;
 import org.opentripplanner.routing.edgetype.StreetEdge;
 import org.opentripplanner.routing.edgetype.TurnEdge;
 import org.opentripplanner.routing.graph.Edge;
@@ -526,9 +527,9 @@ public class OtpGraph {
     return paths;
   }
 
-  private PathEdge getValidPathEdge(Edge edge, double pathDist,
+  private PathEdge getValidPathEdge(Edge originalEdge, double pathDist,
     double direction, List<PathEdge> path) {
-    edge = getBaseEdge(edge);
+    final Edge edge = getBaseEdge(originalEdge);
     if (OtpGraph.isStreetEdge(edge) && edge.getGeometry() != null
         && edge.getDistance() > 0d
         && baseGraph.getIdForEdge(edge) != null
