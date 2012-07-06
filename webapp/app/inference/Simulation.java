@@ -205,7 +205,7 @@ public class Simulation {
         if (edge == currentInferredEdge) {
         }
         evaluatedPaths.add(new InferredPathEntry(
-            thisPath, null, null, null, null,
+            thisPath, null, null, null,
             Double.NEGATIVE_INFINITY));
       }
 

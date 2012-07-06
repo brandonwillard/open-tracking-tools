@@ -28,22 +28,15 @@ public class InferredPathEntry implements
 
   private final double totalLogLikelihood;
 
-  /*
-   * This distribution is the prior predictive on the location/velocity states.
-   */
-  private final MultivariateGaussian beliefPrediction;
-
   private final List<WrappedWeightedValue<PathEdge>> weightedPathEdges;
 
   public InferredPathEntry(
     InferredPath path,
-    MultivariateGaussian beliefPrediction,
     Map<Pair<PathEdge, Boolean>, EdgePredictiveResults> edgeToPreBeliefAndLogLik,
     StandardRoadTrackingFilter filter,
     List<WrappedWeightedValue<PathEdge>> weightedPathEdges,
     double totalLogLikelihood) {
     Preconditions.checkArgument(!Double.isNaN(totalLogLikelihood));
-    this.beliefPrediction = beliefPrediction;
     this.totalLogLikelihood = totalLogLikelihood;
     this.path = path;
     this.filter = filter;
@@ -66,10 +59,6 @@ public class InferredPathEntry implements
       return Objects.equal(this.path, that.path);
     }
     return false;
-  }
-
-  public MultivariateGaussian getBeliefPrediction() {
-    return beliefPrediction;
   }
 
   public Map<Pair<PathEdge, Boolean>, EdgePredictiveResults> getEdgeToPredictiveBelief() {

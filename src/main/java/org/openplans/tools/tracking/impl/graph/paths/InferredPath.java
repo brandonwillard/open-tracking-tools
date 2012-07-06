@@ -247,6 +247,29 @@ public class InferredPath implements Comparable<InferredPath> {
     return this.geometry;
   }
 
+  private MultivariateGaussian calcBeliefPrediction(VehicleState state) {
+    /*-
+     * A prior predictive is created for every path, since, in some instances,
+     * we need to project onto an edge and then predict movement.
+     */
+    final MultivariateGaussian beliefPrediction = state.getBelief()
+        .clone();
+    final StandardRoadTrackingFilter filter = state
+        .getMovementFilter();
+
+    filter.predict(
+        beliefPrediction, this.getEdges().get(0),
+        PathEdge.getEdge(state.getInferredEdge()));
+    
+    /*
+     * Convert to this path's direction
+     */
+    this.normalizeToPath(beliefPrediction);
+
+    return beliefPrediction;
+    
+  }
+  
   /**
    * XXX: the state must have a prior predictive mean.
    * 
@@ -259,28 +282,15 @@ public class InferredPath implements Comparable<InferredPath> {
     Observation obs,
     VehicleState state,
     Map<Pair<PathEdge, Boolean>, EdgePredictiveResults> edgeToPreBeliefAndLogLik) {
-
-    /*-
-     * A prior predictive is created for every path, since, in some instances,
-     * we need to project onto an edge and then predict movement.
-     */
-    final MultivariateGaussian beliefPrediction = state.getBelief()
-        .clone();
-    final StandardRoadTrackingFilter filter = state
-        .getMovementFilter();
-    PathEdge prevEdge = PathEdge.getEdge(state.getInferredEdge());
-
-    this.edges.get(0);
-
-    filter.predict(
-        beliefPrediction, this.getEdges().get(0),
-        PathEdge.getEdge(state.getInferredEdge()));
     
     /*
-     * Convert to this path's direction
+     * Lazily load this so we don't repeat work for dups.
      */
-    this.normalizeToPath(beliefPrediction);
-
+    MultivariateGaussian beliefPrediction = null;
+    PathEdge prevEdge = PathEdge.getEdge(state.getInferredEdge());
+    final StandardRoadTrackingFilter filter = state
+        .getMovementFilter();
+    
     double pathLogLik = Double.NEGATIVE_INFINITY;
     double edgePredMarginalTotalLik = Double.NEGATIVE_INFINITY;
 
@@ -303,6 +313,10 @@ public class InferredPath implements Comparable<InferredPath> {
         /*
          * If we're going off-road, then pass the edge we used to be on.
          */
+        if (beliefPrediction == null) {
+          beliefPrediction = this.calcBeliefPrediction(state);
+        }
+        
         final MultivariateGaussian locationPrediction = beliefPrediction
             .clone();
         if (edge.isEmptyEdge()) {
@@ -392,7 +406,7 @@ public class InferredPath implements Comparable<InferredPath> {
     assert !Double.isNaN(pathLogLik);
 
     return new InferredPathEntry(
-        this, beliefPrediction, edgeToPreBeliefAndLogLik, filter,
+        this, edgeToPreBeliefAndLogLik, filter,
         weightedPathEdges, pathLogLik);
   }
 

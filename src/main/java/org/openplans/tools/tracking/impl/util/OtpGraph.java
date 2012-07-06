@@ -279,7 +279,8 @@ public class OtpGraph {
       }
     } else {
       final double stateStdDevDistance = 1.98d * Math.sqrt(key
-          .getState().getBelief().getCovariance().normFrobenius());
+          .getState().getBelief().getCovariance().normFrobenius()
+          / Math.sqrt(key.getState().getBelief().getInputDimensionality()));
       for (final Object obj : getNearbyEdges(
           fromCoord, stateStdDevDistance)) {
         final PlainStreetEdgeWithOSMData edge = (PlainStreetEdgeWithOSMData) obj;
@@ -289,8 +290,9 @@ public class OtpGraph {
 
     final Set<Edge> endEdges = Sets.newHashSet();
 
-    final double obsStdDevDistance = 1.98d * Math.sqrt(key.getState()
-        .getMovementFilter().getObsVariance().normFrobenius());
+    final double obsStdDevDistance = key.getState().getMovementFilter().getObservationErrorAbsRadius();
+//        1.98d * Math.sqrt(key.getState()
+//        .getMovementFilter().getObsVariance().normFrobenius()/Math.sqrt(2));
 
     for (final Object obj : getNearbyEdges(toCoord, obsStdDevDistance)) {
       final PlainStreetEdgeWithOSMData edge = (PlainStreetEdgeWithOSMData) obj;
@@ -485,8 +487,10 @@ public class OtpGraph {
     final Envelope toEnv = new Envelope(
         GeoUtils.makeCoordinate(StandardRoadTrackingFilter.getOg()
             .times(initialBelief.getMean())));
-    final double varDistance = 1.98d * Math.sqrt(trackingFilter
-        .getObsVariance().normFrobenius());
+    final double varDistance = trackingFilter.getObservationErrorAbsRadius();
+//        1.98d * Math.sqrt(trackingFilter
+//        .getObsVariance().normFrobenius()
+//        / Math.sqrt(initialBelief.getInputDimensionality()));
     toEnv.expandBy(varDistance);
 
     final List<StreetEdge> streetEdges = Lists.newArrayList();

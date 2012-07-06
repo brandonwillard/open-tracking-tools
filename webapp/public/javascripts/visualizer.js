@@ -14,7 +14,7 @@
 
 var dataUrl = "/api/traces?vehicleId=";
 var coordUrl = "/api/convertToLatLon?";
-var startLatLng = new L.LatLng(10.3181373, 123.8956844); // Portland OR
+var startLatLng = new L.LatLng(10.3181373, 123.8956844); 
 
 var map;
 
@@ -258,33 +258,23 @@ function moveMarker() {
   if (!done)
     i++;
 }
-// Xian 1980 / Gauss-Kruger zone 21
-Proj4js.defs["EPSG:4499"] = "+proj=tmerc +lat_0=0 +lon_0=123 +k=1 +x_0=21500000 +y_0=0 +a=6378140 +b=6356755.288157528 +units=m +no_defs";
+
+/*
+ * Xian 1980 / Gauss-Kruger zone 21
+ * EPSG:2335  isn't saved locally.  if we omit this, then there will be
+ * an error followed by a query that should obtain this information.
+ * TODO what about different zones?  how will they be detected/handled?
+ */
+Proj4js.defs["EPSG:2335"] = "+proj=tmerc +lat_0=0 +lon_0=123 +k=1 +x_0=21500000 +y_0=0 +a=6378140 +b=6356755.288157528 +units=m +no_defs";
 
 var dest = new Proj4js.Proj("EPSG:4326");
-var source = new Proj4js.Proj("EPSG:4499");
+var source = new Proj4js.Proj("EPSG:2335");
 
 function convertToLatLon(srcPoint) {
   var point = new Proj4js.Point(srcPoint.x, srcPoint.y);
   Proj4js.transform(source, dest, point);  
   return new L.LatLng(point.y, point.x);
 }
-
-//function convertToLatLon(projectedCoords) {
-//  var latlon = null;
-//  var coordGetString = "x=" + projectedCoords.x  + "&y=" + projectedCoords.y ;
-//  $.ajax({
-//    url : coordUrl + coordGetString,
-//    dataType : 'json',
-//    async : false,
-//    success : function(data) {
-//
-//      lat = data['x'];
-//      lon = data['y'];
-//      latlon = new L.LatLng(parseFloat(lat), parseFloat(lon));
-//    }});
-//  return latlon;
-//}
 
 function drawResults(mean, major, minor, pointType) {
 
@@ -420,6 +410,7 @@ function drawEdge(id, velocity, edgeType) {
     url : '/api/segment?segmentId=' + id,
     dataType : 'json',
     async : false,
+    cache : true,
     success : function(data) {
 
       var avg_velocity = Math.abs(velocity);
@@ -928,6 +919,7 @@ function renderPath(pathSegmentIds, pathDirection, edgeType) {
         url : '/api/segment?segmentId=' + segmentInfo[0],
         dataType : 'json',
         async : false,
+        cache : true,
         success : function(data) {
           for ( var k in data.geom.coordinates) {
             latLngs.push(new L.LatLng(data.geom.coordinates[k][1],

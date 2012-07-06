@@ -202,7 +202,7 @@ public class StandardRoadTrackingFilter implements
 
   public double getObservationErrorAbsRadius() {
     final double varDistance = 1.98d * Math.sqrt(this
-        .getObsVariance().normFrobenius());
+        .getObsVariance().normFrobenius() / Math.sqrt(2));
     return varDistance;
   }
 

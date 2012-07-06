@@ -133,7 +133,7 @@ public class VehicleTrackingFilterUpdater implements
         final InferredPath path = InferredPath
             .getInferredPath(pathEdge);
         evaluatedPaths.add(new InferredPathEntry(
-            path, null, null, null, null, Double.NEGATIVE_INFINITY));
+            path, null, null, null, Double.NEGATIVE_INFINITY));
 
         final VehicleState state = new VehicleState(
             this.inferredGraph, initialObservation,
