@@ -1,13 +1,17 @@
 package org.openplans.tools.tracking.impl.statistics;
 
 import gov.sandia.cognition.math.LogMath;
+import gov.sandia.cognition.math.matrix.Matrix;
+import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.statistics.DataDistribution;
 import gov.sandia.cognition.statistics.distribution.DefaultDataDistribution;
+import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
+import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 
 public class StatisticsUtil {
@@ -321,4 +325,16 @@ public class StatisticsUtil {
     return p;
 
   }
+  
+  public static double logEvaluateNormal(Vector input, Vector mean, Matrix cov) {
+    Preconditions.checkArgument(input.getDimensionality() == mean.getDimensionality());
+    final int k = mean.getDimensionality();
+    final double logLeadingCoefficient =
+        (-0.5*k*MultivariateGaussian.LOG_TWO_PI) + (-0.5*cov.logDeterminant().getRealPart()); 
+    
+    Vector delta = input.minus(mean);
+    double zsquared = delta.times(cov.inverse()).dotProduct(delta);
+    return logLeadingCoefficient - 0.5*zsquared; 
+  }
+  
 }

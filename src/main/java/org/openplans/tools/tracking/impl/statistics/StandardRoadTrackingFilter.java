@@ -254,9 +254,7 @@ public class StandardRoadTrackingFilter implements
         Og.transpose());
     Q.plusEquals(this.groundFilter.getMeasurementCovariance());
 
-    final MultivariateGaussian.PDF pdf = new MultivariateGaussian.PDF(
-        Og.times(projBelief.getMean()), Q);
-    final double result = pdf.logEvaluate(obs);
+    final double result = StatisticsUtil.logEvaluateNormal(obs, Og.times(projBelief.getMean()), Q);
     return result;
   }
 
