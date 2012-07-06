@@ -150,22 +150,8 @@ function drawCoords(lat, lon, popupMessage, pan, justMarker) {
 }
 
 function drawProjectedCoords(x, y, popupMessage, pan) {
-  var coordGetString = "x=" + x + "&y=" + y;
-  var marker = null;
-  $.ajax({
-    url : coordUrl + coordGetString,
-    dataType : 'json',
-    async : false,
-    success : function(data) {
-
-      lat = data['x'];
-      lon = data['y'];
-
-      marker = drawCoords(lat, lon, popupMessage, pan);
-
-    }
-  });
-
+  var latLon = convertToLatLon(new Proj4js.Point(x, y));
+  var marker = drawCoords(latLon.lat, latLon.lng, popupMessage, pan);
   map.invalidateSize();
 
   return marker;
@@ -272,22 +258,33 @@ function moveMarker() {
   if (!done)
     i++;
 }
+// Xian 1980 / Gauss-Kruger zone 21
+Proj4js.defs["EPSG:4499"] = "+proj=tmerc +lat_0=0 +lon_0=123 +k=1 +x_0=21500000 +y_0=0 +a=6378140 +b=6356755.288157528 +units=m +no_defs";
 
-function convertToLatLon(projectedCoords) {
-  var latlon = null;
-  var coordGetString = "x=" + projectedCoords.x  + "&y=" + projectedCoords.y ;
-  $.ajax({
-    url : coordUrl + coordGetString,
-    dataType : 'json',
-    async : false,
-    success : function(data) {
+var dest = new Proj4js.Proj("EPSG:4326");
+var source = new Proj4js.Proj("EPSG:4499");
 
-      lat = data['x'];
-      lon = data['y'];
-      latlon = new L.LatLng(parseFloat(lat), parseFloat(lon));
-    }});
-  return latlon;
+function convertToLatLon(srcPoint) {
+  var point = new Proj4js.Point(srcPoint.x, srcPoint.y);
+  Proj4js.transform(source, dest, point);  
+  return new L.LatLng(point.y, point.x);
 }
+
+//function convertToLatLon(projectedCoords) {
+//  var latlon = null;
+//  var coordGetString = "x=" + projectedCoords.x  + "&y=" + projectedCoords.y ;
+//  $.ajax({
+//    url : coordUrl + coordGetString,
+//    dataType : 'json',
+//    async : false,
+//    success : function(data) {
+//
+//      lat = data['x'];
+//      lon = data['y'];
+//      latlon = new L.LatLng(parseFloat(lat), parseFloat(lon));
+//    }});
+//  return latlon;
+//}
 
 function drawResults(mean, major, minor, pointType) {
 
