@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.netlib.blas.BLAS;
 import org.openplans.tools.tracking.graph_builder.PlainStreetEdgeWithOSMData;
 import org.openplans.tools.tracking.graph_builder.TurnVertexWithOSMData;
 import org.openplans.tools.tracking.impl.VehicleState;
@@ -234,7 +235,7 @@ public class OtpGraph {
 
   public OtpGraph(String path) {
     log.info("Loading OTP graph...");
-
+    log.info("Using BLAS: " + BLAS.getInstance().getClass().getName());
     gs = new GraphServiceImpl();
     gs.setLoadLevel(LoadLevel.DEBUG);
 
