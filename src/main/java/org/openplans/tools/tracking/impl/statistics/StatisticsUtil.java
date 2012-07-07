@@ -3,6 +3,9 @@ package org.openplans.tools.tracking.impl.statistics;
 import gov.sandia.cognition.math.LogMath;
 import gov.sandia.cognition.math.matrix.Matrix;
 import gov.sandia.cognition.math.matrix.Vector;
+import gov.sandia.cognition.math.matrix.VectorFactory;
+import gov.sandia.cognition.math.matrix.mtj.AbstractMTJMatrix;
+import gov.sandia.cognition.math.matrix.mtj.AbstractMTJVector;
 import gov.sandia.cognition.statistics.DataDistribution;
 import gov.sandia.cognition.statistics.distribution.DefaultDataDistribution;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
@@ -10,6 +13,9 @@ import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+
+import no.uib.cipr.matrix.DenseMatrix;
+import no.uib.cipr.matrix.DenseVector;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
@@ -333,7 +339,13 @@ public class StatisticsUtil {
         (-0.5*k*MultivariateGaussian.LOG_TWO_PI) + (-0.5*cov.logDeterminant().getRealPart()); 
     
     Vector delta = input.minus(mean);
-    double zsquared = delta.times(cov.inverse()).dotProduct(delta);
+//    double zsquared = delta.times(cov.inverse()).dotProduct(delta);
+//    Vector b = VectorFactory.getDenseDefault().createVector(cov.getNumRows());
+    final DenseVector b = new DenseVector(cov.getNumRows());
+    final DenseVector d = new DenseVector(((gov.sandia.cognition.math.matrix.mtj.DenseVector)delta).getArray());
+    ((AbstractMTJMatrix)cov).getInternalMatrix().transSolve(d, b);
+    final double zsquared = b.dot(d);
+    
     return logLeadingCoefficient - 0.5*zsquared; 
   }
   
