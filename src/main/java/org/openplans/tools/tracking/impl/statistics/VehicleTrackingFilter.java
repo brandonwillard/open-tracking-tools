@@ -261,7 +261,7 @@ public class VehicleTrackingFilter extends
               .getVelocityEstimator()
               .update(
                   edge.getInferredEdge().getVelocityPrecisionDist(),
-                  sampledBelief.getMean().getElement(1));
+                  Math.abs(sampledBelief.getMean().getElement(1)));
         }
 
         if (edge.equals(actualPosteriorEdge))
