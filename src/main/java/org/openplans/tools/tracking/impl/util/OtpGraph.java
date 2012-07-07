@@ -3,6 +3,7 @@ package org.openplans.tools.tracking.impl.util;
 import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
@@ -459,6 +460,11 @@ public class OtpGraph {
 
     return edgeInfo;
   }
+  
+  
+  public Collection<InferredEdge> getInferredEdges() {
+	  	return edgeToInfo.values();
+	  }
 
   /**
    * Get nearby street edges from a projected point.
