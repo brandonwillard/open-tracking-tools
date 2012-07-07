@@ -339,10 +339,8 @@ public class StatisticsUtil {
         (-0.5*k*MultivariateGaussian.LOG_TWO_PI) + (-0.5*cov.logDeterminant().getRealPart()); 
     
     Vector delta = input.minus(mean);
-//    double zsquared = delta.times(cov.inverse()).dotProduct(delta);
-//    Vector b = VectorFactory.getDenseDefault().createVector(cov.getNumRows());
     final DenseVector b = new DenseVector(cov.getNumRows());
-    final DenseVector d = new DenseVector(((gov.sandia.cognition.math.matrix.mtj.DenseVector)delta).getArray());
+    final DenseVector d = new DenseVector(((gov.sandia.cognition.math.matrix.mtj.DenseVector)delta).getArray(), false);
     ((AbstractMTJMatrix)cov).getInternalMatrix().transSolve(d, b);
     final double zsquared = b.dot(d);
     
