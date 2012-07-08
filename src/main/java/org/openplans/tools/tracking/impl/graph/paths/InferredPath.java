@@ -7,7 +7,6 @@ import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 import gov.sandia.cognition.util.DefaultPair;
 import gov.sandia.cognition.util.Pair;
 
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
@@ -19,21 +18,12 @@ import org.openplans.tools.tracking.impl.graph.InferredEdge;
 import org.openplans.tools.tracking.impl.statistics.StandardRoadTrackingFilter;
 import org.openplans.tools.tracking.impl.statistics.StatisticsUtil;
 import org.openplans.tools.tracking.impl.statistics.WrappedWeightedValue;
-import org.opentripplanner.common.geometry.GeometryUtils;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
-import com.google.common.collect.Iterators;
 import com.google.common.collect.Lists;
-import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
-import com.vividsolutions.jts.geom.GeometryCollection;
-import com.vividsolutions.jts.geom.GeometryFactory;
-import com.vividsolutions.jts.linearref.LengthIndexedLine;
-import com.vividsolutions.jts.linearref.LengthLocationMap;
-import com.vividsolutions.jts.linearref.LinearLocation;
-import com.vividsolutions.jts.operation.linemerge.LineMerger;
 
 /**
  * Inferred paths are collections of PathEdges that track the distance traveled
@@ -69,14 +59,14 @@ public class InferredPath implements Comparable<InferredPath> {
   private final Double totalPathDistance;
 
   public List<Integer> edgeIds = Lists.newArrayList();
-  
+
   /*
    * These are the edges used in path finding.
    */
   private InferredEdge startSearchEdge;
 
   private InferredEdge endSearchEdge;
-  
+
   /*
    * Note: single edges are considered forward
    */
@@ -100,7 +90,7 @@ public class InferredPath implements Comparable<InferredPath> {
     this.isBackward = isBackward;
 
     PathEdge lastEdge = null;
-//    double absTotalDistance = 0d;
+    //    double absTotalDistance = 0d;
     final List<Geometry> geometries = Lists.newArrayList();
     for (final PathEdge edge : edges) {
 
@@ -115,11 +105,12 @@ public class InferredPath implements Comparable<InferredPath> {
               .equals(edge.getInferredEdge().getStartVertex()));
 
         }
-        
-        geometries.add(isBackward ? edge.getInferredEdge().getGeometry().reverse()
-            : edge.getInferredEdge().getGeometry());
-        
-//        absTotalDistance += edge.getInferredEdge().getLength();
+
+        geometries.add(isBackward ? edge.getInferredEdge()
+            .getGeometry().reverse() : edge.getInferredEdge()
+            .getGeometry());
+
+        //        absTotalDistance += edge.getInferredEdge().getLength();
         edgeIds.add(edge.getInferredEdge().getEdgeId());
       }
 
@@ -127,7 +118,8 @@ public class InferredPath implements Comparable<InferredPath> {
     }
 
     if (edges.size() > 1) {
-      this.geometry = JTSFactoryFinder.getGeometryFactory().buildGeometry(geometries);
+      this.geometry = JTSFactoryFinder.getGeometryFactory()
+          .buildGeometry(geometries);
     } else {
       this.geometry = edges.get(0).getInferredEdge().getGeometry();
     }
@@ -153,6 +145,29 @@ public class InferredPath implements Comparable<InferredPath> {
     this.isBackward = Boolean.FALSE;
     this.edgeIds.add(edge.getInferredEdge().getEdgeId());
     this.geometry = edge.getInferredEdge().getGeometry();
+  }
+
+  private MultivariateGaussian calcBeliefPrediction(VehicleState state) {
+    /*-
+     * A prior predictive is created for every path, since, in some instances,
+     * we need to project onto an edge and then predict movement.
+     */
+    final MultivariateGaussian beliefPrediction = state.getBelief()
+        .clone();
+    final StandardRoadTrackingFilter filter = state
+        .getMovementFilter();
+
+    filter.predict(
+        beliefPrediction, this.getEdges().get(0),
+        PathEdge.getEdge(state.getInferredEdge()));
+
+    /*
+     * Convert to this path's direction
+     */
+    this.normalizeToPath(beliefPrediction);
+
+    return beliefPrediction;
+
   }
 
   @Override
@@ -184,17 +199,6 @@ public class InferredPath implements Comparable<InferredPath> {
     return true;
   }
 
-  public boolean isOnPath(double distance) {
-    final double direction = Math.signum(totalPathDistance);
-    if (direction * distance > Math.abs(totalPathDistance)) {
-      return false;
-    } else if (direction * distance < 0d) {
-      return false;
-    }
-    
-    return true;
-  }
-  
   public PathEdge getEdgeForDistance(double distance, boolean clamp) {
     final double direction = Math.signum(totalPathDistance);
     if (direction * distance > Math.abs(totalPathDistance)) {
@@ -207,9 +211,9 @@ public class InferredPath implements Comparable<InferredPath> {
       if (edge.isOnEdge(distance))
         return edge;
     }
-    
+
     assert false;
-    
+
     return null;
   }
 
@@ -247,29 +251,6 @@ public class InferredPath implements Comparable<InferredPath> {
     return this.geometry;
   }
 
-  private MultivariateGaussian calcBeliefPrediction(VehicleState state) {
-    /*-
-     * A prior predictive is created for every path, since, in some instances,
-     * we need to project onto an edge and then predict movement.
-     */
-    final MultivariateGaussian beliefPrediction = state.getBelief()
-        .clone();
-    final StandardRoadTrackingFilter filter = state
-        .getMovementFilter();
-
-    filter.predict(
-        beliefPrediction, this.getEdges().get(0),
-        PathEdge.getEdge(state.getInferredEdge()));
-    
-    /*
-     * Convert to this path's direction
-     */
-    this.normalizeToPath(beliefPrediction);
-
-    return beliefPrediction;
-    
-  }
-  
   /**
    * XXX: the state must have a prior predictive mean.
    * 
@@ -282,7 +263,7 @@ public class InferredPath implements Comparable<InferredPath> {
     Observation obs,
     VehicleState state,
     Map<Pair<PathEdge, Boolean>, EdgePredictiveResults> edgeToPreBeliefAndLogLik) {
-    
+
     /*
      * Lazily load this so we don't repeat work for dups.
      */
@@ -290,7 +271,7 @@ public class InferredPath implements Comparable<InferredPath> {
     PathEdge prevEdge = PathEdge.getEdge(state.getInferredEdge());
     final StandardRoadTrackingFilter filter = state
         .getMovementFilter();
-    
+
     double pathLogLik = Double.NEGATIVE_INFINITY;
     double edgePredMarginalTotalLik = Double.NEGATIVE_INFINITY;
 
@@ -316,7 +297,7 @@ public class InferredPath implements Comparable<InferredPath> {
         if (beliefPrediction == null) {
           beliefPrediction = this.calcBeliefPrediction(state);
         }
-        
+
         final MultivariateGaussian locationPrediction = beliefPrediction
             .clone();
         if (edge.isEmptyEdge()) {
@@ -338,7 +319,7 @@ public class InferredPath implements Comparable<InferredPath> {
            */
           edgeOfLocPrediction = this.getEdgeForDistance(
               locationPrediction.getMean().getElement(0), false);
-          
+
           /*
            * If the result is not on the path, then skip this edge
            */
@@ -406,27 +387,8 @@ public class InferredPath implements Comparable<InferredPath> {
     assert !Double.isNaN(pathLogLik);
 
     return new InferredPathEntry(
-        this, edgeToPreBeliefAndLogLik, filter,
-        weightedPathEdges, pathLogLik);
-  }
-
-  /**
-   * Converts location component of the mean to a location on this path,
-   * if any.
-   * For example, negative positions on the current edge are turned into
-   * positive positions, and if they extend past the edge in the negative
-   * direction, then the remaining negative distance is used.
-   * @param beliefPrediction
-   */
-  private void normalizeToPath(MultivariateGaussian beliefPrediction) {
-    final double currentLocation = beliefPrediction.getMean().getElement(0);
-    if (isBackward == Boolean.TRUE && currentLocation > 0d) {
-      final double newLocation = currentLocation - edges.get(0).getInferredEdge().getLength();
-      beliefPrediction.getMean().setElement(0, newLocation);
-    } else if (isBackward == Boolean.FALSE && currentLocation < 0d) {
-      final double newLocation = currentLocation + edges.get(0).getInferredEdge().getLength();
-      beliefPrediction.getMean().setElement(0, newLocation);
-    }
+        this, edgeToPreBeliefAndLogLik, filter, weightedPathEdges,
+        pathLogLik);
   }
 
   public InferredEdge getStartEdge() {
@@ -454,6 +416,17 @@ public class InferredPath implements Comparable<InferredPath> {
     return this == emptyPath;
   }
 
+  public boolean isOnPath(double distance) {
+    final double direction = Math.signum(totalPathDistance);
+    if (direction * distance > Math.abs(totalPathDistance)) {
+      return false;
+    } else if (direction * distance < 0d) {
+      return false;
+    }
+
+    return true;
+  }
+
   public double marginalPredictiveLogLikelihood(PathEdge edge,
     MultivariateGaussian beliefPrediction) {
     Preconditions.checkArgument(beliefPrediction
@@ -479,6 +452,28 @@ public class InferredPath implements Comparable<InferredPath> {
         StatisticsUtil.normalCdf(startDistance, mean, stdDev, true));
 
     return result;
+  }
+
+  /**
+   * Converts location component of the mean to a location on this path, if any.
+   * For example, negative positions on the current edge are turned into
+   * positive positions, and if they extend past the edge in the negative
+   * direction, then the remaining negative distance is used.
+   * 
+   * @param beliefPrediction
+   */
+  private void normalizeToPath(MultivariateGaussian beliefPrediction) {
+    final double currentLocation = beliefPrediction.getMean()
+        .getElement(0);
+    if (isBackward == Boolean.TRUE && currentLocation > 0d) {
+      final double newLocation = currentLocation
+          - edges.get(0).getInferredEdge().getLength();
+      beliefPrediction.getMean().setElement(0, newLocation);
+    } else if (isBackward == Boolean.FALSE && currentLocation < 0d) {
+      final double newLocation = currentLocation
+          + edges.get(0).getInferredEdge().getLength();
+      beliefPrediction.getMean().setElement(0, newLocation);
+    }
   }
 
   /**
@@ -510,21 +505,21 @@ public class InferredPath implements Comparable<InferredPath> {
         W.times(W.transpose()).scale(S));
 
     final double mean;
-//    if (edge.getDistToStartOfEdge() == 0d) {
-//      /*
-//       * When this edge is the entire path, choose the midpoint to be
-//       * the same direction as the movement.
-//       */
-//      final double direction = belief.getMean().getElement(0) >= 0d ? 1d
-//          : -1d;
-//      mean = direction * edge.getInferredEdge().getLength() / 2d;
-//    } else {
-      final double direction = Math.signum(totalPathDistance);
-      mean = (edge.getDistToStartOfEdge() + (edge
-          .getDistToStartOfEdge() + direction
-          * edge.getInferredEdge().getLength())) / 2d;
+    //    if (edge.getDistToStartOfEdge() == 0d) {
+    //      /*
+    //       * When this edge is the entire path, choose the midpoint to be
+    //       * the same direction as the movement.
+    //       */
+    //      final double direction = belief.getMean().getElement(0) >= 0d ? 1d
+    //          : -1d;
+    //      mean = direction * edge.getInferredEdge().getLength() / 2d;
+    //    } else {
+    final double direction = Math.signum(totalPathDistance);
+    mean = (edge.getDistToStartOfEdge() + (edge
+        .getDistToStartOfEdge() + direction
+        * edge.getInferredEdge().getLength())) / 2d;
 
-//    }
+    //    }
 
     /*
      * The mean can be the center-length of the geometry, or something more

@@ -3,7 +3,6 @@ package org.openplans.tools.tracking.impl.util;
 import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
@@ -24,7 +23,6 @@ import org.openplans.tools.tracking.impl.statistics.StandardRoadTrackingFilter;
 import org.opentripplanner.common.geometry.DistanceLibrary;
 import org.opentripplanner.routing.core.RoutingRequest;
 import org.opentripplanner.routing.core.TraverseMode;
-import org.opentripplanner.routing.edgetype.PlainStreetEdge;
 import org.opentripplanner.routing.edgetype.StreetEdge;
 import org.opentripplanner.routing.edgetype.TurnEdge;
 import org.opentripplanner.routing.graph.Edge;
@@ -282,7 +280,8 @@ public class OtpGraph {
     } else {
       final double stateStdDevDistance = 1.98d * Math.sqrt(key
           .getState().getBelief().getCovariance().normFrobenius()
-          / Math.sqrt(key.getState().getBelief().getInputDimensionality()));
+          / Math.sqrt(key.getState().getBelief()
+              .getInputDimensionality()));
       for (final Object obj : getNearbyEdges(
           fromCoord, stateStdDevDistance)) {
         final PlainStreetEdgeWithOSMData edge = (PlainStreetEdgeWithOSMData) obj;
@@ -292,9 +291,10 @@ public class OtpGraph {
 
     final Set<Edge> endEdges = Sets.newHashSet();
 
-    final double obsStdDevDistance = key.getState().getMovementFilter().getObservationErrorAbsRadius();
-//        1.98d * Math.sqrt(key.getState()
-//        .getMovementFilter().getObsVariance().normFrobenius()/Math.sqrt(2));
+    final double obsStdDevDistance = key.getState()
+        .getMovementFilter().getObservationErrorAbsRadius();
+    //        1.98d * Math.sqrt(key.getState()
+    //        .getMovementFilter().getObsVariance().normFrobenius()/Math.sqrt(2));
 
     for (final Object obj : getNearbyEdges(toCoord, obsStdDevDistance)) {
       final PlainStreetEdgeWithOSMData edge = (PlainStreetEdgeWithOSMData) obj;
@@ -332,7 +332,8 @@ public class OtpGraph {
             // for debugging
             forwardResult.setStartSearchEdge(this
                 .getInferredEdge(startEdge));
-            forwardResult.setEndSearchEdge(this.getInferredEdge(endEdge));
+            forwardResult.setEndSearchEdge(this
+                .getInferredEdge(endEdge));
           }
         }
 
@@ -347,8 +348,8 @@ public class OtpGraph {
               // for debugging
               backwardResult.setStartSearchEdge(this
                   .getInferredEdge(startEdge));
-              backwardResult
-                  .setEndSearchEdge(this.getInferredEdge(endEdge));
+              backwardResult.setEndSearchEdge(this
+                  .getInferredEdge(endEdge));
             }
           }
         }
@@ -461,11 +462,10 @@ public class OtpGraph {
 
     return edgeInfo;
   }
-  
-  
+
   public Collection<InferredEdge> getInferredEdges() {
-	  	return edgeToInfo.values();
-	  }
+    return edgeToInfo.values();
+  }
 
   /**
    * Get nearby street edges from a projected point.
@@ -494,10 +494,11 @@ public class OtpGraph {
     final Envelope toEnv = new Envelope(
         GeoUtils.makeCoordinate(StandardRoadTrackingFilter.getOg()
             .times(initialBelief.getMean())));
-    final double varDistance = trackingFilter.getObservationErrorAbsRadius();
-//        1.98d * Math.sqrt(trackingFilter
-//        .getObsVariance().normFrobenius()
-//        / Math.sqrt(initialBelief.getInputDimensionality()));
+    final double varDistance = trackingFilter
+        .getObservationErrorAbsRadius();
+    //        1.98d * Math.sqrt(trackingFilter
+    //        .getObsVariance().normFrobenius()
+    //        / Math.sqrt(initialBelief.getInputDimensionality()));
     toEnv.expandBy(varDistance);
 
     final List<StreetEdge> streetEdges = Lists.newArrayList();
@@ -538,8 +539,8 @@ public class OtpGraph {
     return paths;
   }
 
-  private PathEdge getValidPathEdge(Edge originalEdge, double pathDist,
-    double direction, List<PathEdge> path) {
+  private PathEdge getValidPathEdge(Edge originalEdge,
+    double pathDist, double direction, List<PathEdge> path) {
     final Edge edge = getBaseEdge(originalEdge);
     if (OtpGraph.isStreetEdge(edge) && edge.getGeometry() != null
         && edge.getDistance() > 0d

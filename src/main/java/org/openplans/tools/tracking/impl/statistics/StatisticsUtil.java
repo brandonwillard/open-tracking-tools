@@ -3,9 +3,7 @@ package org.openplans.tools.tracking.impl.statistics;
 import gov.sandia.cognition.math.LogMath;
 import gov.sandia.cognition.math.matrix.Matrix;
 import gov.sandia.cognition.math.matrix.Vector;
-import gov.sandia.cognition.math.matrix.VectorFactory;
 import gov.sandia.cognition.math.matrix.mtj.AbstractMTJMatrix;
-import gov.sandia.cognition.math.matrix.mtj.AbstractMTJVector;
 import gov.sandia.cognition.statistics.DataDistribution;
 import gov.sandia.cognition.statistics.distribution.DefaultDataDistribution;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
@@ -14,8 +12,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import no.uib.cipr.matrix.DenseMatrix;
 import no.uib.cipr.matrix.DenseVector;
+import no.uib.cipr.matrix.UpperSPDDenseMatrix;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
@@ -155,6 +153,28 @@ public class StatisticsUtil {
     }
 
     return result;
+  }
+
+  public static double logEvaluateNormal(Vector input, Vector mean,
+    Matrix cov) {
+    Preconditions.checkArgument(input.getDimensionality() == mean
+        .getDimensionality());
+    final int k = mean.getDimensionality();
+    final double logLeadingCoefficient = (-0.5 * k * MultivariateGaussian.LOG_TWO_PI)
+        + (-0.5 * cov.logDeterminant().getRealPart());
+
+    final Vector delta = input.minus(mean);
+    final DenseVector b = new DenseVector(cov.getNumRows());
+    final DenseVector d = new DenseVector(
+        ((gov.sandia.cognition.math.matrix.mtj.DenseVector) delta)
+            .getArray(),
+        false);
+    final UpperSPDDenseMatrix spd = new UpperSPDDenseMatrix(
+        ((AbstractMTJMatrix) cov).getInternalMatrix(), false);
+    spd.transSolve(d, b);
+    final double zsquared = b.dot(d);
+
+    return logLeadingCoefficient - 0.5 * zsquared;
   }
 
   /**
@@ -331,20 +351,5 @@ public class StatisticsUtil {
     return p;
 
   }
-  
-  public static double logEvaluateNormal(Vector input, Vector mean, Matrix cov) {
-    Preconditions.checkArgument(input.getDimensionality() == mean.getDimensionality());
-    final int k = mean.getDimensionality();
-    final double logLeadingCoefficient =
-        (-0.5*k*MultivariateGaussian.LOG_TWO_PI) + (-0.5*cov.logDeterminant().getRealPart()); 
-    
-    Vector delta = input.minus(mean);
-    final DenseVector b = new DenseVector(cov.getNumRows());
-    final DenseVector d = new DenseVector(((gov.sandia.cognition.math.matrix.mtj.DenseVector)delta).getArray(), false);
-    ((AbstractMTJMatrix)cov).getInternalMatrix().transSolve(d, b);
-    final double zsquared = b.dot(d);
-    
-    return logLeadingCoefficient - 0.5*zsquared; 
-  }
-  
+
 }

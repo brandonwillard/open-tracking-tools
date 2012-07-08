@@ -5,7 +5,6 @@ import gov.sandia.cognition.math.matrix.VectorFactory;
 import gov.sandia.cognition.math.matrix.mtj.DenseVector;
 import gov.sandia.cognition.statistics.ComputableDistribution;
 import gov.sandia.cognition.statistics.ProbabilityFunction;
-import gov.sandia.cognition.statistics.bayesian.KalmanFilter;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 
 import java.util.ArrayList;
@@ -18,6 +17,7 @@ import org.apache.commons.lang.builder.CompareToBuilder;
 import org.openplans.tools.tracking.impl.graph.InferredEdge;
 import org.openplans.tools.tracking.impl.graph.paths.InferredPath;
 import org.openplans.tools.tracking.impl.graph.paths.PathEdge;
+import org.openplans.tools.tracking.impl.statistics.AdjKalmanFilter;
 import org.openplans.tools.tracking.impl.statistics.EdgeTransitionDistributions;
 import org.openplans.tools.tracking.impl.statistics.StandardRoadTrackingFilter;
 import org.openplans.tools.tracking.impl.util.OtpGraph;
@@ -242,7 +242,7 @@ public class VehicleState implements
       belief.setMean(this.movementFilter.sampleStateBelief(
           belief.getMean(), rng));
       belief.getMean().setElement(0, lengthLocation);
-      
+
       StandardRoadTrackingFilter.normalizeBelief(
           this.belief.getMean(), PathEdge.getEdge(inferredEdge));
 
@@ -479,7 +479,7 @@ public class VehicleState implements
     return initialBelief;
   }
 
-  public KalmanFilter getKalmanFilter() {
+  public AdjKalmanFilter getKalmanFilter() {
     return this.belief.getInputDimensionality() == 4 ? this
         .getMovementFilter().getGroundFilter() : this
         .getMovementFilter().getRoadFilter();
@@ -530,8 +530,13 @@ public class VehicleState implements
     return new VehicleState.PDF(this);
   }
 
+  private int hash = 0;
+  
   @Override
   public int hashCode() {
+    if (hash != 0)
+      return hash;
+    
     final int prime = 31;
     int result = 1;
     final DenseVector thisV = (DenseVector) initialBelief
@@ -547,6 +552,7 @@ public class VehicleState implements
             .hashCode());
     result = prime * result
         + ((observation == null) ? 0 : observation.hashCode());
+    hash = result;
     return result;
   }
 

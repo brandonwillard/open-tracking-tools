@@ -63,17 +63,17 @@ public class ReprojectCoords implements GraphBuilder {
         JTS.transform(abv.getCoordinate(), converted, transform);
         xfield.set(abv, converted.x);
         yfield.set(abv, converted.y);
-        ArrayList<Edge> toRemove = new ArrayList<Edge>();
+        final ArrayList<Edge> toRemove = new ArrayList<Edge>();
         for (final Edge e : v.getOutgoing()) {
           final Geometry orig = e.getGeometry();
           if (orig == null) {
-              toRemove.add(e);
-              continue;
+            toRemove.add(e);
+            continue;
           }
           final Geometry geom = JTS.transform(orig, transform);
           geomfield.set(e, geom);
         }
-        for (final Edge e: toRemove) {
+        for (final Edge e : toRemove) {
           v.removeOutgoing(e);
           e.getToVertex().removeIncoming(e);
         }

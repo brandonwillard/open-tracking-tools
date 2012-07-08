@@ -1,6 +1,5 @@
 package org.openplans.tools.tracking.impl.graph.paths;
 
-import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 import gov.sandia.cognition.util.Pair;
 
 import java.util.List;

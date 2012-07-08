@@ -57,6 +57,8 @@ public class InferenceInstance {
 
   private static OtpGraph inferredGraph = Api.getGraph();
 
+  private final RingAccumulator<MutableDouble> averager = new RingAccumulator<MutableDouble>();
+
   public InferenceInstance(String vehicleId, boolean isSimulation,
     INFO_LEVEL infoLevel) {
     this.initialParameters = new InitialParameters(
@@ -80,6 +82,10 @@ public class InferenceInstance {
     this.isSimulation = isSimulation;
     this.simSeed = parameters.getSeed();
     this.infoLevel = infoLevel;
+  }
+
+  public RingAccumulator<MutableDouble> getAverager() {
+    return averager;
   }
 
   public VehicleState getBestState() {
@@ -130,8 +136,6 @@ public class InferenceInstance {
     return isSimulation;
   }
 
-  private final RingAccumulator<MutableDouble> averager = new RingAccumulator<MutableDouble>();
-  
   synchronized public void update(Observation obs) {
 
     updateFilter(obs);
@@ -173,7 +177,7 @@ public class InferenceInstance {
 
     final Stopwatch watch = new Stopwatch();
     watch.start();
-    
+
     if (filter == null || postBelief == null) {
       filter = new VehicleTrackingFilter(
           obs, inferredGraph, initialParameters,
@@ -189,24 +193,20 @@ public class InferenceInstance {
             .getResampleDist() : null;
       }
     }
-    
+
     watch.stop();
     averager.accumulate(new MutableDouble(watch.elapsedMillis()));
 
     if (recordsProcessed > 0 && recordsProcessed % 20 == 0)
-      log.info("avg. secs per record = " + this.getAverager().getMean().value
-          / 1000d);
-    
+      log.info("avg. secs per record = "
+          + this.getAverager().getMean().value / 1000d);
+
     if (postBelief != null)
       this.bestState = postBelief.getMaxValueKey();
   }
 
   public static OtpGraph getInferredGraph() {
     return inferredGraph;
-  }
-
-  public RingAccumulator<MutableDouble> getAverager() {
-    return averager;
   }
 
 }

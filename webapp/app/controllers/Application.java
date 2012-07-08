@@ -127,10 +127,12 @@ public class Application extends Controller {
   public static void uploadHandler(File csv, String debugEnabled) {
 
     if (csv != null) {
-      final boolean debug_enabled = Boolean.parseBoolean(debugEnabled);
+      final boolean debug_enabled = Boolean
+          .parseBoolean(debugEnabled);
       final File dest = new File("/tmp/upload.csv");
       csv.renameTo(dest);
-      TraceParameters params = new TraceParameters(dest, debug_enabled);
+      final TraceParameters params = new TraceParameters(
+          dest, debug_enabled);
       csvActor.tell(params);
     }
 

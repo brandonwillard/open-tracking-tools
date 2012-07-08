@@ -1,7 +1,5 @@
 package inference;
 
-import gov.sandia.cognition.math.MutableDouble;
-import gov.sandia.cognition.math.RingAccumulator;
 import gov.sandia.cognition.math.matrix.Matrix;
 import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.math.matrix.VectorFactory;
@@ -34,7 +32,6 @@ import org.opentripplanner.routing.edgetype.StreetEdge;
 import play.Logger;
 import akka.actor.UntypedActor;
 
-import com.google.common.base.Stopwatch;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
@@ -205,8 +202,7 @@ public class Simulation {
         if (edge == currentInferredEdge) {
         }
         evaluatedPaths.add(new InferredPathEntry(
-            thisPath, null, null, null,
-            Double.NEGATIVE_INFINITY));
+            thisPath, null, null, null, Double.NEGATIVE_INFINITY));
       }
 
       VehicleState vehicleState = new VehicleState(
@@ -214,7 +210,7 @@ public class Simulation {
           parameters, rng);
 
       long time = this.simParameters.getStartTime().getTime();
-      
+
       while (time < this.simParameters.getEndTime().getTime()
       // This check allows us to terminate the simulation after deleting the instance.
           && InferenceService.getInferenceInstance(simulationName) != null) {
@@ -224,10 +220,10 @@ public class Simulation {
             + recordsProcessed + ", " + time);
         recordsProcessed++;
       }
-      
+
       if (recordsProcessed > 0)
-        Logger.info("avg. secs per record = " + instance.getAverager().getMean().value
-            / 1000d);
+        Logger.info("avg. secs per record = "
+            + instance.getAverager().getMean().value / 1000d);
 
     } catch (final NumberFormatException e) {
       e.printStackTrace();
@@ -320,7 +316,6 @@ public class Simulation {
         newState, thisObs, this.simParameters.isPerformInference());
     //    if (this.simParameters.isPerformInference())
     //      Logger.info("processed simulation inference :" + thisObs);
-
 
     return newState;
   }
@@ -489,7 +484,8 @@ public class Simulation {
         direction = totalDistToTravel >= 0d ? 1d : -1d;
         final double l = previousLocation < 0d ? L + previousLocation
             : previousLocation;
-        final double r = Math.abs(totalDistToTravel >= 0d ? L - l : l);
+        final double r = Math
+            .abs(totalDistToTravel >= 0d ? L - l : l);
         if (r < Math.abs(totalDistToTravel)) {
           distTraveled += r * Math.signum(totalDistToTravel);
         } else {

@@ -10,14 +10,11 @@ import gov.sandia.cognition.math.matrix.mtj.DenseMatrixFactoryMTJ;
 import gov.sandia.cognition.math.matrix.mtj.decomposition.CholeskyDecompositionMTJ;
 import gov.sandia.cognition.math.matrix.mtj.decomposition.EigenDecompositionRightMTJ;
 import gov.sandia.cognition.math.signals.LinearDynamicalSystem;
-import gov.sandia.cognition.statistics.bayesian.KalmanFilter;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 import gov.sandia.cognition.util.CloneableSerializable;
 
 import java.util.Map.Entry;
 import java.util.Random;
-
-import javax.crypto.spec.PSource;
 
 import org.openplans.tools.tracking.impl.graph.InferredEdge;
 import org.openplans.tools.tracking.impl.graph.paths.InferredPath;
@@ -46,10 +43,10 @@ public class StandardRoadTrackingFilter implements
    * Motion model of the underlying system.
    */
   private final LinearDynamicalSystem groundModel;
-  private final KalmanFilter groundFilter;
+  private final AdjKalmanFilter groundFilter;
 
   private final LinearDynamicalSystem roadModel;
-  private final KalmanFilter roadFilter;
+  private final AdjKalmanFilter roadFilter;
 
   private final Matrix Qr;
   private final Matrix Qg;
@@ -101,7 +98,7 @@ public class StandardRoadTrackingFilter implements
 
     this.Qr = MatrixFactory.getDefault().createDiagonal(
         onRoadStateVariance);
-    this.roadFilter = new KalmanFilter(
+    this.roadFilter = new AdjKalmanFilter(
         roadModel, createStateCovarianceMatrix(1d, Qr, true),
         this.obsVariance);
 
@@ -122,7 +119,7 @@ public class StandardRoadTrackingFilter implements
 
     this.Qg = MatrixFactory.getDefault().createDiagonal(
         offRoadStateVariance);
-    this.groundFilter = new KalmanFilter(
+    this.groundFilter = new AdjKalmanFilter(
         groundModel, createStateCovarianceMatrix(1d, Qg, false),
         this.obsVariance);
 
@@ -176,7 +173,7 @@ public class StandardRoadTrackingFilter implements
     return currentTimeDiff;
   }
 
-  public KalmanFilter getGroundFilter() {
+  public AdjKalmanFilter getGroundFilter() {
     return groundFilter;
   }
 
@@ -230,7 +227,7 @@ public class StandardRoadTrackingFilter implements
     return Qr;
   }
 
-  public KalmanFilter getRoadFilter() {
+  public AdjKalmanFilter getRoadFilter() {
     return roadFilter;
   }
 
@@ -254,7 +251,8 @@ public class StandardRoadTrackingFilter implements
         Og.transpose());
     Q.plusEquals(this.groundFilter.getMeasurementCovariance());
 
-    final double result = StatisticsUtil.logEvaluateNormal(obs, Og.times(projBelief.getMean()), Q);
+    final double result = StatisticsUtil.logEvaluateNormal(
+        obs, Og.times(projBelief.getMean()), Q);
     return result;
   }
 
@@ -458,14 +456,19 @@ public class StandardRoadTrackingFilter implements
       positiveMean = posMeanTmp;
     } else {
       positiveMean = belief.getMean().clone();
-      
+
       assert edge.getDistToStartOfEdge() >= 0d;
-      
-      positiveMean.setElement(0, positiveMean.getElement(0) - edge.getDistToStartOfEdge());
+
+      positiveMean
+          .setElement(
+              0,
+              positiveMean.getElement(0)
+                  - edge.getDistToStartOfEdge());
     }
-    
-    assert positiveMean.getElement(0) >= 0d 
-        && (allowExtensions || positiveMean.getElement(0) <= edge.getInferredEdge().getLength() + 1e-4);
+
+    assert positiveMean.getElement(0) >= 0d
+        && (allowExtensions || positiveMean.getElement(0) <= edge
+            .getInferredEdge().getLength() + 1e-4);
 
     final Entry<LineSegment, Double> segmentDist = getSegmentAndDistanceToStart(
         edge.getInferredEdge(), positiveMean.getElement(0));
