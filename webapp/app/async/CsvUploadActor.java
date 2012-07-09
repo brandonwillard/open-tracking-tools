@@ -67,28 +67,32 @@ public class CsvUploadActor extends UntypedActor {
 
       final Set<String> vehicleIds = Sets.newHashSet();
       final List<Observation> observations = Lists.newArrayList();
-      do {
-        try {
-          final String vehicleId = "trace-" + line[3];
-          vehicleIds.add(vehicleId);
-
-          final Observation obs = Observation.createObservation(
-              vehicleId, line[1], line[5], line[7], line[10], null,
-              null);
-          observations.add(obs);
-
-        } catch (final TimeOrderException ex) {
-          log.info("bad time order: "
-              + com.google.common.base.Joiner.on(", ").join(line));
-        } catch (final Exception e) {
-          log.error("bad csv line: "
-              + com.google.common.base.Joiner.on(", ").join(line)
-              + "\n Exception:" + e.getMessage()); // bad line
-          e.printStackTrace();
-          break;
-        }
-
-      } while ((line = gps_reader.readNext()) != null);
+      try {
+        do {
+          try {
+            final String vehicleId = "trace-" + line[3];
+            vehicleIds.add(vehicleId);
+  
+            final Observation obs = Observation.createObservation(
+                vehicleId, line[1], line[5], line[7], line[10], null,
+                null);
+            observations.add(obs);
+  
+          } catch (final TimeOrderException ex) {
+            log.info("bad time order: "
+                + com.google.common.base.Joiner.on(", ").join(line));
+          }
+        } while ((line = gps_reader.readNext()) != null);
+      } catch (final Exception e) {
+        log.error("bad csv line: "
+            + com.google.common.base.Joiner.on(", ").join(line)
+            + "\n Exception:" + e.getMessage()); // bad line
+        e.printStackTrace();
+        gps_reader.close();
+        return;
+      }
+      
+      gps_reader.close();
 
       final INFO_LEVEL level = traceParams.isDebugEnabled() ? INFO_LEVEL.DEBUG
           : InferenceService.defaultInfoLevel;
