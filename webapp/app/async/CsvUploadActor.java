@@ -103,8 +103,8 @@ public class CsvUploadActor extends UntypedActor {
         final InferenceInstance ie = InferenceService
             .getInferenceInstance(vehicleId);
         if (ie != null)
-          log.info("avg. secs per record = "
-              + ie.getAverager().getMean().value / 1000d);
+          log.info("avg. records per sec = "
+              + 1000d/ie.getAverager().getMean().value );
 
       }
     }

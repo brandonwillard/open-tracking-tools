@@ -26,6 +26,7 @@ import org.openplans.tools.tracking.impl.graph.paths.PathEdge;
 import org.openplans.tools.tracking.impl.util.OtpGraph;
 
 import com.google.common.collect.HashMultimap;
+import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Multimap;
@@ -131,6 +132,16 @@ public class VehicleTrackingFilter extends
           .newHashMap();
 
       for (final InferredPath path : instStateTransitions) {
+        
+        /*
+         * Make sure that this path is valid for the state.
+         */
+        if (!state.getInferredEdge().isEmptyEdge()
+            && !path.isEmptyPath()
+            && !state.getInferredEdge().equals(
+                Iterables.getFirst(path.getEdges(), null).getInferredEdge()))
+          continue;
+        
         final InferredPathEntry infPath = path
             .getPredictiveLogLikelihood(
                 obs, state, edgeToPreBeliefAndLogLik);
@@ -160,7 +171,6 @@ public class VehicleTrackingFilter extends
         .getLogNormalizedDistribution(resampler);
 
     // TODO low-variance sampling?
-    @SuppressWarnings("unchecked")
     final ArrayList<? extends VehicleState> smoothedStates = resampleDist
         .sample(rng, getNumParticles());
 

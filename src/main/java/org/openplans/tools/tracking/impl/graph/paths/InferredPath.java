@@ -265,6 +265,15 @@ public class InferredPath implements Comparable<InferredPath> {
     Map<Pair<PathEdge, Boolean>, EdgePredictiveResults> edgeToPreBeliefAndLogLik) {
 
     /*
+     * We allow transitions from off-road onto a path, and vice-versa.  
+     * Otherwise, we require that the first edge of the path is the edge of the
+     * current state.
+     */
+    Preconditions.checkArgument(state.getInferredEdge().isEmptyEdge()
+        || this.isEmptyPath()
+        || state.getInferredEdge().equals(
+            Iterables.getFirst(this.getEdges(), null).getInferredEdge()));
+    /*
      * Lazily load this so we don't repeat work for dups.
      */
     MultivariateGaussian beliefPrediction = null;

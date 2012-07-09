@@ -198,8 +198,8 @@ public class InferenceInstance {
     averager.accumulate(new MutableDouble(watch.elapsedMillis()));
 
     if (recordsProcessed > 0 && recordsProcessed % 20 == 0)
-      log.info("avg. secs per record = "
-          + this.getAverager().getMean().value / 1000d);
+      log.info("avg. records per sec = "
+          + 1000d/this.getAverager().getMean().value);
 
     if (postBelief != null)
       this.bestState = postBelief.getMaxValueKey();

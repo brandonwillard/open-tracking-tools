@@ -7,12 +7,15 @@ import gov.sandia.cognition.statistics.distribution.NormalInverseGammaDistributi
 
 import java.util.List;
 
+import javax.annotation.Nonnull;
+
 import org.apache.commons.lang.builder.CompareToBuilder;
 import org.openplans.tools.tracking.impl.util.OtpGraph;
 import org.opentripplanner.routing.edgetype.TurnEdge;
 import org.opentripplanner.routing.graph.Edge;
 import org.opentripplanner.routing.graph.Vertex;
 
+import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
@@ -62,10 +65,13 @@ public class InferredEdge implements Comparable<InferredEdge> {
     this.lengthLocationMap = null;
   }
 
-  public InferredEdge(Edge edge, Integer edgeId, OtpGraph graph) {
-    if (edge instanceof TurnEdge || edge == null) {
-      System.out.println("wrong");
-    }
+  public InferredEdge(@Nonnull Edge edge, @Nonnull Integer edgeId, @Nonnull OtpGraph graph) {
+    Preconditions.checkNotNull(edge);
+    Preconditions.checkNotNull(graph);
+    Preconditions.checkNotNull(edgeId);
+    
+    assert !(edge instanceof TurnEdge || edge == null);
+    
     this.graph = graph;
     this.edgeId = edgeId;
     this.edge = edge;

@@ -222,8 +222,8 @@ public class Simulation {
       }
 
       if (recordsProcessed > 0)
-        Logger.info("avg. secs per record = "
-            + instance.getAverager().getMean().value / 1000d);
+        Logger.info("avg. records per sec = "
+            + 1000d/instance.getAverager().getMean().value);
 
     } catch (final NumberFormatException e) {
       e.printStackTrace();

@@ -610,6 +610,8 @@ public class VehicleState implements
     if (t == null) {
       if (o != null)
         return -1;
+      else
+        return 0;
     } else if (o == null) {
       return 1;
     }

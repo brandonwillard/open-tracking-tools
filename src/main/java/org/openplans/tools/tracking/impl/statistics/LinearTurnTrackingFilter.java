@@ -10,6 +10,8 @@ import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 
 public class LinearTurnTrackingFilter extends AbstractKalmanFilter {
 
+  private static final long serialVersionUID = 8740614889469304458L;
+
   /**
    * Motion model of the underlying system.
    */
