@@ -249,6 +249,10 @@
       <version>2.4</version>
       <type>pom.lastUpdated</type>
     </dependency>
+    <dependency>
+    	<groupId>junit</groupId>
+    	<artifactId>junit</artifactId>
+    </dependency>
   </dependencies>
 
   <dependencyManagement>
