@@ -8,6 +8,7 @@ import inference.InferenceService;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -147,31 +148,40 @@ public class Api extends Controller {
     renderJSON(jsonMapper.writeValueAsString(jsonResults));
   }
 
-  public static void getObservationsForEdge(String vehicleId, String edgeId) throws JsonGenerationException, JsonMappingException, IOException {
-    
+  public static void getObservationsForEdge(Integer edgeId) throws JsonGenerationException, JsonMappingException, IOException {
+    List<Coordinate> observations = Lists.newArrayList();
+    for (InferenceInstance instance : InferenceService.getInferenceInstances()) {
+      observations.addAll(getObservationsForEdgeInternal(instance.getVehicleId(), edgeId));
+    }
+    renderJSON(jsonMapper.writeValueAsString(observations));
+  }
+  
+  private static List<Coordinate> getObservationsForEdgeInternal(String vehicleId, Integer edgeId) {
     final InferenceInstance instance = InferenceService
         .getInferenceInstance(vehicleId);
     if (instance == null)
-      renderJSON(jsonMapper.writeValueAsString(null));
+      return Collections.emptyList();
     
     final Collection<InferenceResultRecord> resultRecords = instance
         .getResultRecords();
     if (resultRecords.isEmpty())
-      renderJSON(jsonMapper.writeValueAsString(null));
+      return Collections.emptyList();
     
     List<Coordinate> observations = Lists.newArrayList();
     for (InferenceResultRecord record : instance.getResultRecords()) {
       if (record.getPostDistribution() == null)
         continue;
-        
-      
       for (VehicleState state : record.getPostDistribution().getDomain()) {
         if (state.getInferredEdge().getEdgeId().equals(edgeId))
           observations.add(state.getObservation().getObsPoint());
       }
     }
     
-    renderJSON(jsonMapper.writeValueAsString(observations));
+    return observations;
+  }
+  
+  public static void getObservationsForEdge(String vehicleId, Integer edgeId) throws JsonGenerationException, JsonMappingException, IOException {
+    renderJSON(jsonMapper.writeValueAsString(getObservationsForEdgeInternal(vehicleId, edgeId)));
   }
   
   public static void getPerformanceResults(String vehicleId) 
