@@ -796,4 +796,26 @@ public class StandardRoadTrackingFilter implements
     return Maps.immutableEntry(U.times(P), U.times(a));
   }
 
+  /**
+   * Use this sampling method to beat the inherent degeneracy of our state
+   * covariance.
+   * 
+   * @param vehicleState
+   * @return
+   */
+  public static Vector sampleMovementBelief(Random rng, Vector mean,
+    StandardRoadTrackingFilter filter) {
+    final boolean isRoad = mean.getDimensionality() == 2;
+    final Matrix Q = isRoad ? filter.getQr() : filter.getQg();
+
+    final Matrix covSqrt = CholeskyDecompositionMTJ.create(
+        DenseMatrixFactoryMTJ.INSTANCE.copyMatrix(Q)).getR();
+    final Vector underlyingSample = MultivariateGaussian.sample(
+        VectorFactory.getDefault().createVector(2), covSqrt, rng);
+    final Matrix Gamma = filter.getCovarianceFactor(isRoad);
+    final Vector thisStateSample = Gamma.times(underlyingSample)
+        .plus(mean);
+    return thisStateSample;
+  }
+
 }

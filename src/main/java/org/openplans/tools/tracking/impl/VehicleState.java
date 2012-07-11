@@ -189,6 +189,8 @@ public class VehicleState implements
 
   private final InferredPath path;
 
+  private int hash = 0;
+
   public VehicleState(OtpGraph graph, Observation initialObservation,
     InferredEdge inferredEdge, InitialParameters parameters,
     Random rng) {
@@ -301,6 +303,9 @@ public class VehicleState implements
       final double distPosition = this.belief.getMean().getElement(0);
       final PathEdge pathEdge = path.getEdgeForDistance(
           distPosition, true);
+      
+      assert !path.isEmptyPath() && !pathEdge.isEmptyEdge();
+      
       this.edge = pathEdge.getInferredEdge();
       this.distanceFromPreviousState = pathEdge
           .getDistToStartOfEdge();
@@ -319,6 +324,7 @@ public class VehicleState implements
           edge.getLength() + 0.9) <= 0;
 
     } else {
+      
       this.edge = InferredEdge.getEmptyEdge();
       this.distanceFromPreviousState = null;
     }
@@ -530,13 +536,11 @@ public class VehicleState implements
     return new VehicleState.PDF(this);
   }
 
-  private int hash = 0;
-  
   @Override
   public int hashCode() {
     if (hash != 0)
       return hash;
-    
+
     final int prime = 31;
     int result = 1;
     final DenseVector thisV = (DenseVector) initialBelief

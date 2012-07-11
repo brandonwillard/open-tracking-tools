@@ -534,9 +534,9 @@ public class OtpGraph {
     final Set<InferredPath> paths = Sets.newHashSet();
     final PathKey startEndEntry = new PathKey(
         fromState, fromCoord, toCoord, 0d);
-    
+
     paths.addAll(pathsCache.getUnchecked(startEndEntry));
-//    paths.addAll(computeUniquePaths(startEndEntry));
+    //    paths.addAll(computeUniquePaths(startEndEntry));
     return paths;
   }
 

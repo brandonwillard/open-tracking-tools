@@ -72,12 +72,12 @@ public class CsvUploadActor extends UntypedActor {
           try {
             final String vehicleId = "trace-" + line[3];
             vehicleIds.add(vehicleId);
-  
+
             final Observation obs = Observation.createObservation(
                 vehicleId, line[1], line[5], line[7], line[10], null,
                 null);
             observations.add(obs);
-  
+
           } catch (final TimeOrderException ex) {
             log.info("bad time order: "
                 + com.google.common.base.Joiner.on(", ").join(line));
@@ -91,7 +91,7 @@ public class CsvUploadActor extends UntypedActor {
         gps_reader.close();
         return;
       }
-      
+
       gps_reader.close();
 
       final INFO_LEVEL level = traceParams.isDebugEnabled() ? INFO_LEVEL.DEBUG
@@ -107,8 +107,8 @@ public class CsvUploadActor extends UntypedActor {
         final InferenceInstance ie = InferenceService
             .getInferenceInstance(vehicleId);
         if (ie != null)
-          log.info("avg. records per sec = "
-              + 1000d/ie.getAverager().getMean().value );
+          log.info("avg. records per sec = " + 1000d
+              / ie.getAverager().getMean().value);
 
       }
     }

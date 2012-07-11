@@ -2,7 +2,6 @@ package inference;
 
 import gov.sandia.cognition.math.matrix.Matrix;
 import gov.sandia.cognition.math.matrix.Vector;
-import gov.sandia.cognition.math.matrix.VectorFactory;
 import gov.sandia.cognition.math.matrix.mtj.DenseMatrixFactoryMTJ;
 import gov.sandia.cognition.math.matrix.mtj.decomposition.CholeskyDecompositionMTJ;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
@@ -222,35 +221,13 @@ public class Simulation {
       }
 
       if (recordsProcessed > 0)
-        Logger.info("avg. records per sec = "
-            + 1000d/instance.getAverager().getMean().value);
+        Logger.info("avg. records per sec = " + 1000d
+            / instance.getAverager().getMean().value);
 
     } catch (final NumberFormatException e) {
       e.printStackTrace();
     }
 
-  }
-
-  /**
-   * Use this sampling method to beat the inherent degeneracy of our state
-   * covariance.
-   * 
-   * @param vehicleState
-   * @return
-   */
-  public Vector sampleMovementBelief(Vector mean,
-    StandardRoadTrackingFilter filter) {
-    final boolean isRoad = mean.getDimensionality() == 2;
-    final Matrix Q = isRoad ? filter.getQr() : filter.getQg();
-
-    final Matrix covSqrt = CholeskyDecompositionMTJ.create(
-        DenseMatrixFactoryMTJ.INSTANCE.copyMatrix(Q)).getR();
-    final Vector underlyingSample = MultivariateGaussian.sample(
-        VectorFactory.getDefault().createVector(2), covSqrt, rng);
-    final Matrix Gamma = filter.getCovarianceFactor(isRoad);
-    final Vector thisStateSample = Gamma.times(underlyingSample)
-        .plus(mean);
-    return thisStateSample;
   }
 
   public Vector sampleObservation(MultivariateGaussian velLocBelief,
@@ -454,8 +431,9 @@ public class Simulation {
         double previousLocation = newBelief.getMean().getElement(0);
         movementFilter.predict(newBelief, initialEdge, initialEdge);
 
-        final Vector transStateSample = sampleMovementBelief(
-            newBelief.getMean(), movementFilter);
+        final Vector transStateSample = StandardRoadTrackingFilter
+            .sampleMovementBelief(
+                rng, newBelief.getMean(), movementFilter);
         newBelief.setMean(transStateSample);
 
         final double newLocation = newBelief.getMean().getElement(0);

@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.openplans</groupId>
   <artifactId>openplans-tracking-tools</artifactId>
@@ -16,22 +17,22 @@
   </scm>
 
   <build>
-<!--     <sourceDirectory>src</sourceDirectory> -->
-  
-<!--     <resources> -->
-<!--       <resource> -->
-<!--         <directory>src/main/resources</directory> -->
-<!--         <filtering>true</filtering> -->
-<!--       </resource> -->
-<!--     </resources> -->
-    
+    <!-- <sourceDirectory>src</sourceDirectory> -->
+
+    <!-- <resources> -->
+    <!-- <resource> -->
+    <!-- <directory>src/main/resources</directory> -->
+    <!-- <filtering>true</filtering> -->
+    <!-- </resource> -->
+    <!-- </resources> -->
+
     <pluginManagement>
       <plugins>
         <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-assembly-plugin</artifactId>
-            <version>2.2</version>
-        </plugin>    
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-assembly-plugin</artifactId>
+          <version>2.2</version>
+        </plugin>
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-compiler-plugin</artifactId>
@@ -50,15 +51,15 @@
           </configuration>
         </plugin>
         <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-jar-plugin</artifactId>
-            <version>2.2</version>
-        </plugin>        
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-jar-plugin</artifactId>
+          <version>2.2</version>
+        </plugin>
         <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-install-plugin</artifactId>
-            <version>2.2</version>
-        </plugin> 
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-install-plugin</artifactId>
+          <version>2.2</version>
+        </plugin>
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-resources-plugin</artifactId>
@@ -74,10 +75,9 @@
           <artifactId>maven-release-plugin</artifactId>
           <version>2.2.2</version>
           <configuration>
-            <!-- by default, release:prepare runs goals 'clean' and 'verify'.
-            Javadoc generation in release:perform requires the new release
-            versions of our artifacts to already be installed in the local 
-            repository. -->
+            <!-- by default, release:prepare runs goals 'clean' and 'verify'. 
+              Javadoc generation in release:perform requires the new release versions of 
+              our artifacts to already be installed in the local repository. -->
             <preparationGoals>clean install</preparationGoals>
           </configuration>
         </plugin>
@@ -87,8 +87,8 @@
           <version>2.12</version>
         </plugin>
         <plugin>
-<!--           m2eclipse lifecycle mapping configuration -->
-<!--           should not affect builds outside IDE -->
+          <!-- m2eclipse lifecycle mapping configuration -->
+          <!-- should not affect builds outside IDE -->
           <groupId>org.eclipse.m2e</groupId>
           <artifactId>lifecycle-mapping</artifactId>
           <version>1.0.0</version>
@@ -106,25 +106,25 @@
                     </goals>
                   </pluginExecutionFilter>
                   <action>
-                    <execute/>
+                    <execute />
                   </action>
                 </pluginExecution>
-               <pluginExecution>
-                 <pluginExecutionFilter>
-                   <groupId>org.apache.maven.plugins</groupId>
-                   <artifactId>maven-jar-plugin</artifactId>
-                   <versionRange>[2.2,)</versionRange>
-                   <goals>
-                     <goal>jar</goal>
-                   </goals>
-                 </pluginExecutionFilter>
-                 <action>
-                   <execute >
-<!--                     <runOnIncremental>false</runOnIncremental> -->
-                   </execute >                
-                 </action>
-               </pluginExecution>
-             </pluginExecutions>
+                <pluginExecution>
+                  <pluginExecutionFilter>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-jar-plugin</artifactId>
+                    <versionRange>[2.2,)</versionRange>
+                    <goals>
+                      <goal>jar</goal>
+                    </goals>
+                  </pluginExecutionFilter>
+                  <action>
+                    <execute>
+                      <!-- <runOnIncremental>false</runOnIncremental> -->
+                    </execute>
+                  </action>
+                </pluginExecution>
+              </pluginExecutions>
             </lifecycleMappingMetadata>
           </configuration>
         </plugin>
@@ -172,7 +172,7 @@
       <groupId>commons-lang</groupId>
       <artifactId>commons-lang</artifactId>
       <version>2.2</version>
-    </dependency>    
+    </dependency>
     <dependency>
       <groupId>org.geotools</groupId>
       <artifactId>gt-geojson</artifactId>
@@ -184,34 +184,34 @@
       <version>${geotools.version}</version>
     </dependency>
     <dependency>
-    	<groupId>javax.ws.rs</groupId>
-    	<artifactId>jsr311-api</artifactId>
+      <groupId>javax.ws.rs</groupId>
+      <artifactId>jsr311-api</artifactId>
       <version>1.1.1</version>
     </dependency>
     <dependency>
-    	<groupId>com.sun.jersey.contribs</groupId>
-    	<artifactId>jersey-spring</artifactId>
-    	<version>1.11</version>
+      <groupId>com.sun.jersey.contribs</groupId>
+      <artifactId>jersey-spring</artifactId>
+      <version>1.11</version>
     </dependency>
     <dependency>
-    	<groupId>org.springframework.security</groupId>
-    	<artifactId>spring-security-core</artifactId>
-    	<version>${spring.version}</version>
+      <groupId>org.springframework.security</groupId>
+      <artifactId>spring-security-core</artifactId>
+      <version>${spring.version}</version>
     </dependency>
     <dependency>
-    	<groupId>org.springframework.security</groupId>
-    	<artifactId>spring-security-web</artifactId>
-    	<version>${spring.version}</version>
+      <groupId>org.springframework.security</groupId>
+      <artifactId>spring-security-web</artifactId>
+      <version>${spring.version}</version>
     </dependency>
     <dependency>
-    	<groupId>org.springframework.security</groupId>
-    	<artifactId>spring-security-config</artifactId>
-    	<version>${spring.version}</version>
+      <groupId>org.springframework.security</groupId>
+      <artifactId>spring-security-config</artifactId>
+      <version>${spring.version}</version>
     </dependency>
     <dependency>
-    	<groupId>org.slf4j</groupId>
-    	<artifactId>slf4j-log4j12</artifactId>
-    	<version>1.5.8</version>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-log4j12</artifactId>
+      <version>1.5.8</version>
     </dependency>
     <dependency>
       <groupId>com.google.guava</groupId>
@@ -219,20 +219,20 @@
       <version>11.0.1</version>
     </dependency>
     <dependency>
-       <groupId>gov.sandia.foundry</groupId>
-        <artifactId>gov-sandia-cognition-common-core</artifactId>
-        <version>3.3.2</version>
-    </dependency> 
+      <groupId>gov.sandia.foundry</groupId>
+      <artifactId>gov-sandia-cognition-common-core</artifactId>
+      <version>3.3.2</version>
+    </dependency>
     <dependency>
       <groupId>gov.sandia.foundry</groupId>
       <artifactId>gov-sandia-cognition-learning-core</artifactId>
       <version>3.3.2</version>
     </dependency>
     <dependency>
-			<groupId>net.sf.opencsv</groupId>
-			<artifactId>opencsv</artifactId>
-			<version>2.0</version>
-	  </dependency>
+      <groupId>net.sf.opencsv</groupId>
+      <artifactId>opencsv</artifactId>
+      <version>2.0</version>
+    </dependency>
     <dependency>
       <groupId>org.opentripplanner</groupId>
       <artifactId>opentripplanner-routing</artifactId>
@@ -250,8 +250,18 @@
       <type>pom.lastUpdated</type>
     </dependency>
     <dependency>
-    	<groupId>junit</groupId>
-    	<artifactId>junit</artifactId>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.codehaus.jackson</groupId>
+      <artifactId>jackson-core-asl</artifactId>
+      <version>1.9.7</version>
+    </dependency>
+    <dependency>
+      <groupId>org.codehaus.jackson</groupId>
+      <artifactId>jackson-mapper-asl</artifactId>
+      <version>1.9.7</version>
     </dependency>
   </dependencies>
 

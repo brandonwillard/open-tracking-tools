@@ -16,8 +16,10 @@ import org.apache.log4j.Logger;
 import org.openplans.tools.tracking.impl.Observation;
 import org.openplans.tools.tracking.impl.VehicleState;
 import org.openplans.tools.tracking.impl.VehicleState.InitialParameters;
+import org.openplans.tools.tracking.impl.VehicleTrackingFilter;
 import org.openplans.tools.tracking.impl.statistics.FilterInformation;
-import org.openplans.tools.tracking.impl.statistics.VehicleTrackingFilter;
+import org.openplans.tools.tracking.impl.statistics.VehicleTrackingBootstrapFilter;
+import org.openplans.tools.tracking.impl.statistics.VehicleTrackingPLFilter;
 import org.openplans.tools.tracking.impl.util.OtpGraph;
 
 import com.google.common.base.Stopwatch;
@@ -41,7 +43,7 @@ public class InferenceInstance {
 
   public final boolean isSimulation;
 
-  private VehicleTrackingFilter filter;
+  private VehicleTrackingFilter<Observation, VehicleState> filter;
 
   private final Queue<InferenceResultRecord> resultRecords = new ConcurrentLinkedQueue<InferenceResultRecord>();
 
@@ -179,9 +181,15 @@ public class InferenceInstance {
     watch.start();
 
     if (filter == null || postBelief == null) {
-      filter = new VehicleTrackingFilter(
+
+//      filter = new VehicleTrackingBootstrapFilter(
+//          obs, inferredGraph, initialParameters,
+//          infoLevel.compareTo(INFO_LEVEL.DEBUG) >= 0);
+
+      filter = new VehicleTrackingPLFilter(
           obs, inferredGraph, initialParameters,
           infoLevel.compareTo(INFO_LEVEL.DEBUG) >= 0);
+
       filter.getRandom().setSeed(simSeed);
       postBelief = filter.createInitialLearnedObject();
     } else {
@@ -198,8 +206,8 @@ public class InferenceInstance {
     averager.accumulate(new MutableDouble(watch.elapsedMillis()));
 
     if (recordsProcessed > 0 && recordsProcessed % 20 == 0)
-      log.info("avg. records per sec = "
-          + 1000d/this.getAverager().getMean().value);
+      log.info("avg. records per sec = " + 1000d
+          / this.getAverager().getMean().value);
 
     if (postBelief != null)
       this.bestState = postBelief.getMaxValueKey();

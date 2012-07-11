@@ -1,22 +1,30 @@
 package org.openplans.tools.tracking.impl.statistics;
 
 import gov.sandia.cognition.math.LogMath;
+import gov.sandia.cognition.math.MutableDouble;
 import gov.sandia.cognition.math.matrix.Matrix;
 import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.math.matrix.mtj.AbstractMTJMatrix;
 import gov.sandia.cognition.statistics.DataDistribution;
+import gov.sandia.cognition.statistics.ProbabilityFunction;
 import gov.sandia.cognition.statistics.distribution.DefaultDataDistribution;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
+import gov.sandia.cognition.util.Weighted;
+import gov.sandia.cognition.util.WeightedValue;
 
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Random;
 
 import no.uib.cipr.matrix.DenseVector;
 import no.uib.cipr.matrix.UpperSPDDenseMatrix;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.HashMultiset;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Multiset;
 
 public class StatisticsUtil {
 
@@ -154,7 +162,58 @@ public class StatisticsUtil {
 
     return result;
   }
+  
+  /**
+   * Low variance sampler. Follows Thrun's example in Probabilistic Robots.
+   */
+  public static <SupportType extends Weighted> Multiset<SupportType> lowVarianceSampler(Random rng,
+      Multiset<SupportType> particles, double M) {
+    Preconditions.checkArgument(particles.size() > 0);
 
+    final Multiset<SupportType> resampled = HashMultiset.create((int) M);
+    final double r = rng.nextDouble() / M;
+    final Iterator<SupportType> pIter = particles.iterator();
+    SupportType p = pIter.next();
+    double c = p.getWeight() - Math.log(particles.count(p));
+    for (int m = 0; m < M; ++m) {
+      final double U = Math.log(r + m / M);
+      while (U > c && pIter.hasNext()) {
+        p = pIter.next();
+        c = LogMath.add(
+            p.getWeight() - Math.log(particles.count(p)), c);
+      }
+      resampled.add(p);
+    }
+
+    return resampled;
+  }
+  
+  /**
+   * Low variance resampler. Follows Thrun's example in Probabilistic Robots.
+   */
+//  public static <SupportType> DataDistribution<SupportType> lowVarianceResampler(
+//      Random rng, DataDistribution<SupportType> particles) {
+//    Preconditions.checkArgument(particles.size() > 0);
+//
+//    final double M = particles.getDomainSize();
+//    final Multiset<SupportType> resampled = HashMultiset.create((int) M);
+//    final double r = rng.nextDouble() / M;
+//    final Iterator<?> pIter = particles.asMap().entrySet().iterator();
+//    SupportType p = (SupportType) pIter.next();
+//    double c = p.getWeight() - Math.log(particles.count(p));
+//    for (int m = 0; m < M; ++m) {
+//      final double U = Math.log(r + m / M);
+//      while (U > c && pIter.hasNext()) {
+//        p = pIter.next();
+//        c = LogMath.add(
+//            p.getWeight() - Math.log(particles.count(p)), c);
+//      }
+//      resampled.add(p);
+//    }
+//
+//    return resampled;
+//  }
+  
   public static double logEvaluateNormal(Vector input, Vector mean,
     Matrix cov) {
     Preconditions.checkArgument(input.getDimensionality() == mean

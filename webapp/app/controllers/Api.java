@@ -1,6 +1,8 @@
 package controllers;
 
 import gov.sandia.cognition.collection.ScalarMap.Entry;
+import gov.sandia.cognition.learning.data.DefaultTargetEstimatePair;
+import gov.sandia.cognition.learning.data.TargetEstimatePair;
 import gov.sandia.cognition.statistics.DataDistribution;
 import inference.InferenceResultRecord;
 import inference.InferenceService;
@@ -19,6 +21,7 @@ import org.codehaus.jackson.map.JsonMappingException;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.openplans.tools.tracking.impl.Observation;
 import org.openplans.tools.tracking.impl.VehicleState;
+import org.openplans.tools.tracking.impl.statistics.VehicleStatePerformanceResult;
 import org.openplans.tools.tracking.impl.statistics.VehicleTrackingPerformanceEvaluator;
 import org.openplans.tools.tracking.impl.util.GeoUtils;
 import org.openplans.tools.tracking.impl.util.OtpGraph;
@@ -90,6 +93,82 @@ public class Api extends Controller {
     return graph;
   }
 
+  public static void getObservationsForEdge(Integer edgeId)
+      throws JsonGenerationException, JsonMappingException,
+      IOException {
+    final List<Coordinate> observations = Lists.newArrayList();
+    for (final InferenceInstance instance : InferenceService
+        .getInferenceInstances()) {
+      observations.addAll(getObservationsForEdgeInternal(
+          instance.getVehicleId(), edgeId));
+    }
+    renderJSON(jsonMapper.writeValueAsString(observations));
+  }
+
+  public static void getObservationsForEdge(String vehicleId,
+    Integer edgeId) throws JsonGenerationException,
+      JsonMappingException, IOException {
+    renderJSON(jsonMapper
+        .writeValueAsString(getObservationsForEdgeInternal(
+            vehicleId, edgeId)));
+  }
+
+  private static List<Coordinate> getObservationsForEdgeInternal(
+    String vehicleId, Integer edgeId) {
+    final InferenceInstance instance = InferenceService
+        .getInferenceInstance(vehicleId);
+    if (instance == null)
+      return Collections.emptyList();
+
+    final Collection<InferenceResultRecord> resultRecords = instance
+        .getResultRecords();
+    if (resultRecords.isEmpty())
+      return Collections.emptyList();
+
+    final List<Coordinate> observations = Lists.newArrayList();
+    for (final InferenceResultRecord record : instance
+        .getResultRecords()) {
+      if (record.getPostDistribution() == null)
+        continue;
+      for (final VehicleState state : record.getPostDistribution()
+          .getDomain()) {
+        if (state.getInferredEdge().getEdgeId().equals(edgeId))
+          observations.add(state.getObservation().getObsPoint());
+      }
+    }
+
+    return observations;
+  }
+
+  public static void getPerformanceResults(String vehicleId)
+      throws JsonGenerationException, JsonMappingException,
+      IOException {
+
+    final InferenceInstance instance = InferenceService
+        .getInferenceInstance(vehicleId);
+    if (instance == null)
+      renderJSON(jsonMapper.writeValueAsString(null));
+
+    final Collection<InferenceResultRecord> resultRecords = instance
+        .getResultRecords();
+    if (resultRecords.isEmpty())
+      renderJSON(jsonMapper.writeValueAsString(null));
+
+    final VehicleTrackingPerformanceEvaluator evaluator = new VehicleTrackingPerformanceEvaluator();
+
+    final List<TargetEstimatePair<VehicleState, DataDistribution<VehicleState>>> pairs = Lists
+        .newArrayList();
+    for (final InferenceResultRecord record : resultRecords) {
+      pairs.add(new DefaultTargetEstimatePair(record
+          .getActualResults().getState(), record
+          .getPostDistribution()));
+    }
+    final VehicleStatePerformanceResult result = evaluator
+        .evaluatePerformance(pairs);
+
+    renderJSON(jsonMapper.writeValueAsString(result));
+  }
+
   public static void location(String vehicleId, String timestamp,
     String latStr, String lonStr, String velocity, String heading,
     String accuracy) {
@@ -148,63 +227,6 @@ public class Api extends Controller {
     renderJSON(jsonMapper.writeValueAsString(jsonResults));
   }
 
-  public static void getObservationsForEdge(Integer edgeId) throws JsonGenerationException, JsonMappingException, IOException {
-    List<Coordinate> observations = Lists.newArrayList();
-    for (InferenceInstance instance : InferenceService.getInferenceInstances()) {
-      observations.addAll(getObservationsForEdgeInternal(instance.getVehicleId(), edgeId));
-    }
-    renderJSON(jsonMapper.writeValueAsString(observations));
-  }
-  
-  private static List<Coordinate> getObservationsForEdgeInternal(String vehicleId, Integer edgeId) {
-    final InferenceInstance instance = InferenceService
-        .getInferenceInstance(vehicleId);
-    if (instance == null)
-      return Collections.emptyList();
-    
-    final Collection<InferenceResultRecord> resultRecords = instance
-        .getResultRecords();
-    if (resultRecords.isEmpty())
-      return Collections.emptyList();
-    
-    List<Coordinate> observations = Lists.newArrayList();
-    for (InferenceResultRecord record : instance.getResultRecords()) {
-      if (record.getPostDistribution() == null)
-        continue;
-      for (VehicleState state : record.getPostDistribution().getDomain()) {
-        if (state.getInferredEdge().getEdgeId().equals(edgeId))
-          observations.add(state.getObservation().getObsPoint());
-      }
-    }
-    
-    return observations;
-  }
-  
-  public static void getObservationsForEdge(String vehicleId, Integer edgeId) throws JsonGenerationException, JsonMappingException, IOException {
-    renderJSON(jsonMapper.writeValueAsString(getObservationsForEdgeInternal(vehicleId, edgeId)));
-  }
-  
-  public static void getPerformanceResults(String vehicleId) 
-      throws JsonGenerationException, JsonMappingException, IOException {
-    
-    final InferenceInstance instance = InferenceService
-        .getInferenceInstance(vehicleId);
-    if (instance == null)
-      renderJSON(jsonMapper.writeValueAsString(null));
-    
-    final Collection<InferenceResultRecord> resultRecords = instance
-        .getResultRecords();
-    if (resultRecords.isEmpty())
-      renderJSON(jsonMapper.writeValueAsString(null));
-    
-    VehicleTrackingPerformanceEvaluator evaluator = new VehicleTrackingPerformanceEvaluator();
-    
-    // TODO create target pair
-    //evaluator.evaluatePerformance(null);
-    
-    renderJSON(jsonMapper.writeValueAsString(evaluator));
-  }
-  
   public static void segment(Integer segmentId)
       throws JsonGenerationException, JsonMappingException,
       IOException {

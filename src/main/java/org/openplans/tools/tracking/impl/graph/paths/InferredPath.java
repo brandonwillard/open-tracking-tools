@@ -272,7 +272,8 @@ public class InferredPath implements Comparable<InferredPath> {
     Preconditions.checkArgument(state.getInferredEdge().isEmptyEdge()
         || this.isEmptyPath()
         || state.getInferredEdge().equals(
-            Iterables.getFirst(this.getEdges(), null).getInferredEdge()));
+            Iterables.getFirst(this.getEdges(), null)
+                .getInferredEdge()));
     /*
      * Lazily load this so we don't repeat work for dups.
      */

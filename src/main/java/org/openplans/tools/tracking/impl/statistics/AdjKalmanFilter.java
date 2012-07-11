@@ -5,7 +5,6 @@ import gov.sandia.cognition.math.matrix.MatrixFactory;
 import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.math.matrix.VectorFactory;
 import gov.sandia.cognition.math.matrix.mtj.AbstractMTJMatrix;
-import gov.sandia.cognition.math.matrix.mtj.AbstractMTJVector;
 import gov.sandia.cognition.math.matrix.mtj.DenseMatrixFactoryMTJ;
 import gov.sandia.cognition.math.matrix.mtj.DenseVectorFactoryMTJ;
 import gov.sandia.cognition.math.signals.LinearDynamicalSystem;
@@ -132,26 +131,26 @@ public class AdjKalmanFilter extends AbstractKalmanFilter {
         ((AbstractMTJMatrix) Q).getInternalMatrix(), false);
     final no.uib.cipr.matrix.Matrix CRt = ((AbstractMTJMatrix) C
         .times(R.transpose())).getInternalMatrix();
-    
+
     final DenseMatrix Amtj = new DenseMatrix(
         Qspd.numRows(), CRt.numColumns());
     Qspd.transSolve(CRt, Amtj);
-    
+
     final DenseMatrix AtQt = new DenseMatrix(
         Amtj.numColumns(), Qspd.numRows());
     Amtj.transABmult(Qspd, AtQt);
-    
+
     final DenseMatrix AtQtAMtj = new DenseMatrix(
         AtQt.numRows(), Amtj.numColumns());
     AtQt.mult(Amtj, AtQtAMtj);
-    
+
     final Matrix AtQtA = ((DenseMatrixFactoryMTJ) MatrixFactory
         .getDenseDefault()).createWrapper(AtQtAMtj);
-    
-    final DenseVector e = new DenseVector(  
-        ((gov.sandia.cognition.math.matrix.mtj.DenseVector) observation.minus(C.times(a))).getArray(), 
-        false);
-    
+
+    final DenseVector e = new DenseVector(
+        ((gov.sandia.cognition.math.matrix.mtj.DenseVector) observation
+            .minus(C.times(a))).getArray(), false);
+
     final DenseVector AteMtj = new DenseVector(Amtj.numColumns());
     Amtj.transMult(e, AteMtj);
     final Vector Ate = ((DenseVectorFactoryMTJ) VectorFactory

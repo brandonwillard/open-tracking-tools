@@ -65,13 +65,14 @@ public class InferredEdge implements Comparable<InferredEdge> {
     this.lengthLocationMap = null;
   }
 
-  public InferredEdge(@Nonnull Edge edge, @Nonnull Integer edgeId, @Nonnull OtpGraph graph) {
+  public InferredEdge(@Nonnull Edge edge, @Nonnull Integer edgeId,
+    @Nonnull OtpGraph graph) {
     Preconditions.checkNotNull(edge);
     Preconditions.checkNotNull(graph);
     Preconditions.checkNotNull(edgeId);
-    
+
     assert !(edge instanceof TurnEdge || edge == null);
-    
+
     this.graph = graph;
     this.edgeId = edgeId;
     this.edge = edge;

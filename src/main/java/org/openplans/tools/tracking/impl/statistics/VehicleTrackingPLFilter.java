@@ -18,6 +18,7 @@ import java.util.Set;
 import org.openplans.tools.tracking.impl.Observation;
 import org.openplans.tools.tracking.impl.VehicleState;
 import org.openplans.tools.tracking.impl.VehicleState.InitialParameters;
+import org.openplans.tools.tracking.impl.VehicleTrackingFilter;
 import org.openplans.tools.tracking.impl.graph.InferredEdge;
 import org.openplans.tools.tracking.impl.graph.paths.InferredPath;
 import org.openplans.tools.tracking.impl.graph.paths.InferredPath.EdgePredictiveResults;
@@ -32,8 +33,9 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Sets;
 
-public class VehicleTrackingFilter extends
-    AbstractParticleFilter<Observation, VehicleState> {
+public class VehicleTrackingPLFilter extends
+    AbstractParticleFilter<Observation, VehicleState> implements
+    VehicleTrackingFilter<Observation, VehicleState> {
 
   private static final long serialVersionUID = -8257075186193062150L;
 
@@ -54,13 +56,13 @@ public class VehicleTrackingFilter extends
 
   private final Observation initialObservation;
 
-  public VehicleTrackingFilter(Observation obs,
+  public VehicleTrackingPLFilter(Observation obs,
     OtpGraph inferredGraph, InitialParameters parameters,
     boolean isDebug) {
     this.isDebug = isDebug;
     this.setNumParticles(50);
     this.inferredGraph = inferredGraph;
-    this.setUpdater(new VehicleTrackingFilterUpdater(
+    this.setUpdater(new VehicleTrackingBootstrapFilterUpdater(
         obs, this.inferredGraph, parameters));
     this.initialObservation = obs;
   }
@@ -81,13 +83,14 @@ public class VehicleTrackingFilter extends
     return dist;
   }
 
+  @Override
   public FilterInformation getFilterInformation(Observation obs) {
     return this.filterInfo.get(obs);
   }
 
   @Override
   public Random getRandom() {
-    final VehicleTrackingFilterUpdater updater = (VehicleTrackingFilterUpdater) this
+    final VehicleTrackingBootstrapFilterUpdater updater = (VehicleTrackingBootstrapFilterUpdater) this
         .getUpdater();
     return updater.getThreadRandom().get();
   }
@@ -132,16 +135,17 @@ public class VehicleTrackingFilter extends
           .newHashMap();
 
       for (final InferredPath path : instStateTransitions) {
-        
+
         /*
          * Make sure that this path is valid for the state.
          */
         if (!state.getInferredEdge().isEmptyEdge()
             && !path.isEmptyPath()
             && !state.getInferredEdge().equals(
-                Iterables.getFirst(path.getEdges(), null).getInferredEdge()))
+                Iterables.getFirst(path.getEdges(), null)
+                    .getInferredEdge()))
           continue;
-        
+
         final InferredPathEntry infPath = path
             .getPredictiveLogLikelihood(
                 obs, state, edgeToPreBeliefAndLogLik);
