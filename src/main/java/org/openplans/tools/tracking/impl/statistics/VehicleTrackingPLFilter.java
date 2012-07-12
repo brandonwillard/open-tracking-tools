@@ -4,7 +4,6 @@ import gov.sandia.cognition.collection.ScalarMap.Entry;
 import gov.sandia.cognition.math.LogMath;
 import gov.sandia.cognition.statistics.DataDistribution;
 import gov.sandia.cognition.statistics.bayesian.AbstractParticleFilter;
-import gov.sandia.cognition.statistics.distribution.DefaultDataDistribution;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 import gov.sandia.cognition.util.DefaultPair;
 import gov.sandia.cognition.util.Pair;
@@ -15,6 +14,7 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 
+import org.openplans.tools.tracking.impl.LogDefaultDataDistribution;
 import org.openplans.tools.tracking.impl.Observation;
 import org.openplans.tools.tracking.impl.VehicleState;
 import org.openplans.tools.tracking.impl.VehicleState.InitialParameters;
@@ -182,7 +182,7 @@ public class VehicleTrackingPLFilter extends
       this.filterInfo.put(obs, new FilterInformation(
           evaluatedPaths, resampleDist));
 
-    final DataDistribution<VehicleState> posteriorDist = new DefaultDataDistribution<VehicleState>();
+    final DataDistribution<VehicleState> posteriorDist = new LogDefaultDataDistribution<VehicleState>();
     /*
      * Propagate states
      */

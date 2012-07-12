@@ -1,22 +1,20 @@
 package org.openplans.tools.tracking.impl.statistics;
 
 import gov.sandia.cognition.math.LogMath;
-import gov.sandia.cognition.math.MutableDouble;
 import gov.sandia.cognition.math.matrix.Matrix;
 import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.math.matrix.mtj.AbstractMTJMatrix;
 import gov.sandia.cognition.statistics.DataDistribution;
-import gov.sandia.cognition.statistics.ProbabilityFunction;
-import gov.sandia.cognition.statistics.distribution.DefaultDataDistribution;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 import gov.sandia.cognition.util.Weighted;
-import gov.sandia.cognition.util.WeightedValue;
 
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Random;
+
+import org.openplans.tools.tracking.impl.LogDefaultDataDistribution;
 
 import no.uib.cipr.matrix.DenseVector;
 import no.uib.cipr.matrix.UpperSPDDenseMatrix;
@@ -91,7 +89,7 @@ public class StatisticsUtil {
     if (totalLikelihood == Double.NEGATIVE_INFINITY)
       return null;
 
-    final DataDistribution<SupportType> result = new DefaultDataDistribution<SupportType>();
+    final DataDistribution<SupportType> result = new LogDefaultDataDistribution<SupportType>();
 
     /*
      * Sort before putting in the data distribution
@@ -151,7 +149,7 @@ public class StatisticsUtil {
     //
     // });
 
-    final DataDistribution<SupportType> result = new DefaultDataDistribution<SupportType>();
+    final DataDistribution<SupportType> result = new LogDefaultDataDistribution<SupportType>();
     for (final Entry<SupportType, WrappedWeightedValue<DistributionType>> entry : entryList) {
       if (entry.getValue().getWeight() == Double.NEGATIVE_INFINITY)
         continue;
@@ -409,6 +407,13 @@ public class StatisticsUtil {
     }
     return p;
 
+  }
+  
+  public static int sum(int[] array) {
+    int sum = 0;
+    for (int i = 0; i < array.length; i++)
+      sum += array[i];
+    return sum;
   }
 
 }

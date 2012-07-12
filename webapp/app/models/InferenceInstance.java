@@ -182,13 +182,13 @@ public class InferenceInstance {
 
     if (filter == null || postBelief == null) {
 
-//      filter = new VehicleTrackingBootstrapFilter(
-//          obs, inferredGraph, initialParameters,
-//          infoLevel.compareTo(INFO_LEVEL.DEBUG) >= 0);
-
-      filter = new VehicleTrackingPLFilter(
+      filter = new VehicleTrackingBootstrapFilter(
           obs, inferredGraph, initialParameters,
           infoLevel.compareTo(INFO_LEVEL.DEBUG) >= 0);
+
+//      filter = new VehicleTrackingPLFilter(
+//          obs, inferredGraph, initialParameters,
+//          infoLevel.compareTo(INFO_LEVEL.DEBUG) >= 0);
 
       filter.getRandom().setSeed(simSeed);
       postBelief = filter.createInitialLearnedObject();

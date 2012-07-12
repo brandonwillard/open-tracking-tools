@@ -755,13 +755,17 @@ public class StandardRoadTrackingFilter implements
     }
 
     if (Math.signum(mean.getElement(0)) != desiredDirection) {
-      final double totalLength = desiredDirection
-          * edge.getInferredEdge().getLength()
-          + edge.getDistToStartOfEdge();
-      final double newLocation = totalLength + mean.getElement(0);
+      final double totalPosLength = edge.getInferredEdge().getLength()
+          + Math.abs(edge.getDistToStartOfEdge());
+      double newPosLocation = totalPosLength - Math.abs(mean.getElement(0));
+      if (newPosLocation < 0d)
+        newPosLocation = 0d;
+      else if (newPosLocation > totalPosLength)
+        newPosLocation = totalPosLength;
 
+      final double newLocation = desiredDirection * newPosLocation;
       assert Double.compare(
-          Math.abs(newLocation), Math.abs(totalLength) + 1) <= 0;
+          Math.abs(newLocation), totalPosLength) <= 0;
       assert edge.isOnEdge(newLocation);
 
       mean.setElement(0, newLocation);

@@ -12,6 +12,7 @@ import java.util.Random;
 import java.util.Set;
 
 import org.apache.commons.lang.NotImplementedException;
+import org.openplans.tools.tracking.impl.LogDefaultDataDistribution;
 import org.openplans.tools.tracking.impl.Observation;
 import org.openplans.tools.tracking.impl.VehicleState;
 import org.openplans.tools.tracking.impl.VehicleState.InitialParameters;
@@ -167,7 +168,7 @@ public class VehicleTrackingBootstrapFilterUpdater implements
 
     initialDist.increment(state, lik);
 
-    final DataDistribution<VehicleState> retDist = new DefaultDataDistribution<VehicleState>(
+    final DataDistribution<VehicleState> retDist = new LogDefaultDataDistribution<VehicleState>(
         initialDist.sample(threadRandom.get(), numParticles));
 
     return retDist;
@@ -310,37 +311,34 @@ public class VehicleTrackingBootstrapFilterUpdater implements
             .sampleMovementBelief(
                 rng, newBelief.getMean(), movementFilter);
         newBelief.setMean(transStateSample);
-
-        final double newLocation = newBelief.getMean().getElement(0);
-        final double L = initialEdge.getInferredEdge().getLength();
-        if (Math.signum(newLocation) != Math.signum(previousLocation)) {
-          if (newLocation < 0d) {
-            previousLocation = -L + previousLocation;
-          } else {
-            previousLocation = L + previousLocation;
-          }
-        }
         totalDistToTravel = newBelief.getMean().getElement(0)
             - previousLocation;
 
+        double newLocation = newBelief.getMean().getElement(0);
+        final double L = initialEdge.getInferredEdge().getLength();
+        
         /*
-         * Now we assume that we've already moved along this edge as far as we
-         * can.  Note that the 0 location is the start of this edge, and
-         * that we assume the previous belief's loc was starting relative to this
-         * edge.
+         * Adjust reference locations to be the same, wrt the new
+         * location's direction.
          */
+        if (newLocation < 0d && previousLocation > 0d) {
+          previousLocation = -L + previousLocation;
+          newLocation = previousLocation + totalDistToTravel;
+          newBelief.getMean().setElement(0, newLocation);
+        } else if (newLocation >= 0d && previousLocation < 0d){
+          previousLocation = L + previousLocation;
+          newLocation = previousLocation + totalDistToTravel;
+          newBelief.getMean().setElement(0, newLocation);
+        }
 
         /*
          * Get the distance we've covered to move off of this edge, if we
          * have moved off.
          */
         direction = totalDistToTravel >= 0d ? 1d : -1d;
-        final double l = previousLocation < 0d ? L + previousLocation
-            : previousLocation;
-        final double r = Math
-            .abs(totalDistToTravel >= 0d ? L - l : l);
-        if (r < Math.abs(totalDistToTravel)) {
-          distTraveled += r * Math.signum(totalDistToTravel);
+        if (L < Math.abs(newLocation)) {
+          final double r = L - Math.abs(previousLocation);
+          distTraveled += r * direction;
         } else {
           distTraveled += totalDistToTravel;
         }

@@ -3,13 +3,13 @@ package org.openplans.tools.tracking.impl.statistics;
 import gov.sandia.cognition.collection.ScalarMap.Entry;
 import gov.sandia.cognition.statistics.DataDistribution;
 import gov.sandia.cognition.statistics.bayesian.AbstractParticleFilter;
-import gov.sandia.cognition.statistics.distribution.DefaultDataDistribution;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 
+import org.openplans.tools.tracking.impl.LogDefaultDataDistribution;
 import org.openplans.tools.tracking.impl.Observation;
 import org.openplans.tools.tracking.impl.VehicleState;
 import org.openplans.tools.tracking.impl.VehicleState.InitialParameters;
@@ -109,25 +109,32 @@ public class VehicleTrackingBootstrapFilter extends
      */
     final List<WrappedWeightedValue<VehicleState>> resampler = Lists
         .newArrayList();
+    int totalCount = 0;
     for (final VehicleState state : target.getDomain()) {
-
       state.getMovementFilter().setCurrentTimeDiff(timeDiff);
-
-      final VehicleState predictedState = ((VehicleTrackingBootstrapFilterUpdater) this.updater)
-          .update(state, obs);
       
-      final PathEdge currentPathEdge = PathEdge.getEdge(predictedState
-          .getInferredEdge());
-
-      final VehicleStateConditionalParams edgeLoc = new VehicleStateConditionalParams(
-          currentPathEdge, obs.getProjectedPoint());
-      final double totalLogLik = predictedState.getProbabilityFunction()
-          .logEvaluate(edgeLoc);
-
-      resampler.add(new WrappedWeightedValue<VehicleState>(
-          predictedState, totalLogLik));
+      final int count = ((LogDefaultDataDistribution<VehicleState>)target).getCount(state);
+      totalCount += count;
+      for (int i = 0; i < count; i++) {
+  
+        final VehicleState predictedState = ((VehicleTrackingBootstrapFilterUpdater) this.updater)
+            .update(state, obs);
+        
+        final PathEdge currentPathEdge = PathEdge.getEdge(predictedState
+            .getInferredEdge());
+  
+        final VehicleStateConditionalParams edgeLoc = new VehicleStateConditionalParams(
+            currentPathEdge, obs.getProjectedPoint());
+        final double totalLogLik = predictedState.getProbabilityFunction()
+            .logEvaluate(edgeLoc);
+  
+        resampler.add(new WrappedWeightedValue<VehicleState>(
+            predictedState, totalLogLik));
+      }
     }
 
+    assert totalCount == this.numParticles;
+    
     final DataDistribution<VehicleState> prePosteriorDist = StatisticsUtil
         .getLogNormalizedDistribution(resampler);
     
@@ -137,7 +144,7 @@ public class VehicleTrackingBootstrapFilter extends
     if (efps < this.numParticles * 3d/4d) {
       // TODO low variance resampling?
       final DataDistribution<VehicleState> resampleDist = 
-          new DefaultDataDistribution<VehicleState>(prePosteriorDist.sample(
+          new LogDefaultDataDistribution<VehicleState>(prePosteriorDist.sample(
               ((VehicleTrackingBootstrapFilterUpdater) updater).getThreadRandom().get(), 
               numParticles));
       posteriorDist = resampleDist;
@@ -146,9 +153,8 @@ public class VehicleTrackingBootstrapFilter extends
     }
 
     target.clear();
-    for (final Entry<VehicleState> entry : posteriorDist.entrySet()) {
-      target.set(entry.getKey(), entry.getValue());
-    }
+    target.incrementAll(posteriorDist);
+    
     prevTime = obs.getTimestamp().getTime();
   }
 
