@@ -456,7 +456,7 @@ function drawEdge(edge, edgeType, layerOnly) {
 
   var result = null;
   var data = edge;
-  var velocity = edge.mean;
+  var velocity = edge.velocity;
   var avg_velocity = Math.abs(velocity);
 
   var color;
