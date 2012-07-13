@@ -162,10 +162,17 @@ function addEdge() {
   map.invalidateSize();
 }
 
-function drawCoords(lat, lon, popupMessage, pan, justMarker) {
+function drawCoords(lat, lon, popupMessage, pan, justMarker, color, opacity) {
   var latlng = new L.LatLng(parseFloat(lat), parseFloat(lon));
+  
+  if (!color)
+    color = '#0c0';
+  if (!opacity)
+    opacity = 1;
+    
   marker = new L.Circle(latlng, 10, {
-    color : '#0c0',
+    color : color,
+    opacity : opacity,
     lat : parseFloat(lat),
     lon : parseFloat(lon),
     weight : 1
@@ -372,7 +379,7 @@ PointType = {
   INFERRED_EDGE : 1,
   ACTUAL_FREE : 2,
   ACTUAL_EDGE : 3
-}
+};
 
 function renderMarker() {
   if (i >= 0 && i < lines.length) {
@@ -441,7 +448,8 @@ EdgeType = {
   ACTUAL : 0,
   INFERRED : 1,
   EVALUATED : 2,
-  ADDED : 3
+  ADDED : 3,
+  INFERRED_ALL: 4
 };
 
 function drawEdge(edge, edgeType, layerOnly) {
@@ -664,7 +672,7 @@ function renderParticles(isPrior) {
                     particleEdges.addLayer(renderPath(
                         particleData.particle.infResults.pathSegments,
                         particleData.particle.infResults.pathDirection,
-                        EdgeType.ADDED, true));
+                        EdgeType.INFERRED_ALL, true));
 
                     var subList = jQuery('<ul><li><div class="subinfo"></div></li></ul>');
                     var collapsedDiv = subList.find(".subinfo");
@@ -947,6 +955,11 @@ function renderPath(pathSegments, pathDirection, edgeType, layerOnly) {
     weight = 20;
     opacity = 0.1;
     groupType = addedGroup;
+  } else if (edgeType == EdgeType.INFERRED_ALL) {
+    color = "green";
+    weight = 10;
+    opacity = 0.06;
+    groupType = allInfEdgesGroup;
   }
 
   var segments = $.extend(true, [], pathSegments);
