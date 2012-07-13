@@ -7,6 +7,7 @@ import java.util.List;
 import gov.sandia.cognition.statistics.DataDistribution;
 
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.openplans.tools.tracking.impl.Observation;
 import org.openplans.tools.tracking.impl.Simulation;
@@ -17,6 +18,7 @@ import org.openplans.tools.tracking.impl.util.OtpGraph;
 
 import com.google.common.collect.Lists;
 
+@Ignore("unfinished")
 public class SimulationTestHarness {
 
   private OtpGraph graph;
@@ -31,11 +33,11 @@ public class SimulationTestHarness {
     this.filter = filter; 
   }
       
-//  @Before
+  @Before
   public void setUp() throws Exception {
   }
 
-//  @Test
+  @Test
   public void test() {
     VehicleState vehicleState = this.sim.computeInitialState();
     long time = this.sim.getSimParameters().getStartTime().getTime();

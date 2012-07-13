@@ -3,25 +3,27 @@ package org.openplans.tools.tracking.impl.statistics;
 import static org.junit.Assert.fail;
 
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
+@Ignore("unfinished")
 public class StandardRoadTrackingFilterTest {
 
-//  @Before
+  @Before
   public void setUp() throws Exception {
   }
 
-//  @Test
+  @Test
   public void testConvertToGroundBelief() {
     fail("Not yet implemented"); // TODO
   }
 
-//  @Test
+  @Test
   public void testConvertToRoadBelief() {
     fail("Not yet implemented"); // TODO
   }
 
-//  @Test
+  @Test
   public void testGetSegmentAndDistanceToStart() {
     fail("Not yet implemented"); // TODO
   }
