@@ -9,6 +9,7 @@ public class WrappedWeightedValue<T> extends DefaultWeightedValue<T> {
    * 
    */
   private static final long serialVersionUID = -2223108371382713360L;
+  private int count = 0;
 
   public WrappedWeightedValue() {
     super();
@@ -20,6 +21,12 @@ public class WrappedWeightedValue<T> extends DefaultWeightedValue<T> {
 
   public WrappedWeightedValue(T value, double weight) {
     super(value, weight);
+    this.count++;
+  }
+  
+  public WrappedWeightedValue(T value, double weight, int count) {
+    super(value, weight);
+    this.count = count;
   }
 
   public WrappedWeightedValue(WeightedValue<? extends T> other) {
@@ -28,7 +35,11 @@ public class WrappedWeightedValue<T> extends DefaultWeightedValue<T> {
 
   @Override
   public String toString() {
-    return "WrappedWeightedValue [value=" + value + ", weight="
-        + weight + "]";
+    return "WrappedWeightedValue [count=" + count + ", value="
+        + value + ", weight=" + weight + "]";
+  }
+
+  public int getCount() {
+    return this.count;
   }
 }

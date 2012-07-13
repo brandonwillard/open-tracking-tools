@@ -2,6 +2,7 @@ package org.openplans.tools.tracking.impl.statistics;
 
 import gov.sandia.cognition.collection.ScalarMap.Entry;
 import gov.sandia.cognition.math.LogMath;
+import gov.sandia.cognition.math.MutableDouble;
 import gov.sandia.cognition.statistics.DataDistribution;
 import gov.sandia.cognition.statistics.bayesian.AbstractParticleFilter;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
@@ -15,9 +16,10 @@ import java.util.Random;
 import java.util.Set;
 
 import org.openplans.tools.tracking.impl.LogDefaultDataDistribution;
+import org.openplans.tools.tracking.impl.MutableDoubleCount;
 import org.openplans.tools.tracking.impl.Observation;
 import org.openplans.tools.tracking.impl.VehicleState;
-import org.openplans.tools.tracking.impl.VehicleState.InitialParameters;
+import org.openplans.tools.tracking.impl.VehicleState.VehicleStateInitialParameters;
 import org.openplans.tools.tracking.impl.VehicleTrackingFilter;
 import org.openplans.tools.tracking.impl.graph.InferredEdge;
 import org.openplans.tools.tracking.impl.graph.paths.InferredPath;
@@ -57,7 +59,7 @@ public class VehicleTrackingPLFilter extends
   private final Observation initialObservation;
 
   public VehicleTrackingPLFilter(Observation obs,
-    OtpGraph inferredGraph, InitialParameters parameters,
+    OtpGraph inferredGraph, VehicleStateInitialParameters parameters,
     boolean isDebug) {
     this.isDebug = isDebug;
     this.setNumParticles(50);
@@ -119,6 +121,8 @@ public class VehicleTrackingPLFilter extends
         .newArrayList();
     for (final VehicleState state : target.getDomain()) {
 
+      final int count = ((LogDefaultDataDistribution)target).getCount(state);
+      
       final Set<InferredPath> instStateTransitions = inferredGraph
           .getPaths(state, obs.getObsPoint());
 
@@ -166,7 +170,7 @@ public class VehicleTrackingPLFilter extends
       }
 
       resampler.add(new WrappedWeightedValue<VehicleState>(
-          state, totalLogLik));
+          state, totalLogLik, count));
     }
 
     final Random rng = getRandom();
@@ -188,6 +192,7 @@ public class VehicleTrackingPLFilter extends
      */
     for (final VehicleState state : smoothedStates) {
 
+      final int count = ((LogDefaultDataDistribution)resampleDist).getCount(state);
       final VehicleState newState = state.clone();
       final DataDistribution<InferredPathEntry> instStateDist = StatisticsUtil
           .getLogNormalizedDistribution(Lists
@@ -287,14 +292,15 @@ public class VehicleTrackingPLFilter extends
           this.inferredGraph, obs, updatedFilter, sampledBelief,
           updatedEdgeTransDist, sampledPathEntry.getPath(), state);
 
-      posteriorDist.set(newTransState, 1d / numParticles);
+      ((LogDefaultDataDistribution)posteriorDist).increment(newTransState, 1d / numParticles);
 
     }
 
     target.clear();
-    for (final Entry<VehicleState> entry : posteriorDist.entrySet()) {
-      target.set(entry.getKey(), entry.getValue());
-    }
+    ((LogDefaultDataDistribution<VehicleState>)target).copyAll(posteriorDist);
+    
+    assert ((LogDefaultDataDistribution<VehicleState>)target).getTotalCount() == this.numParticles;
+
     prevTime = obs.getTimestamp().getTime();
   }
 

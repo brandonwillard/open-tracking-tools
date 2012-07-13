@@ -89,7 +89,7 @@ public class StatisticsUtil {
     if (totalLikelihood == Double.NEGATIVE_INFINITY)
       return null;
 
-    final DataDistribution<SupportType> result = new LogDefaultDataDistribution<SupportType>();
+    final LogDefaultDataDistribution<SupportType> result = new LogDefaultDataDistribution<SupportType>();
 
     /*
      * Sort before putting in the data distribution
@@ -110,7 +110,7 @@ public class StatisticsUtil {
           || totalLikelihood == Double.NEGATIVE_INFINITY)
         continue;
       final double weight = entry.getWeight() - totalLikelihood;
-      result.set(entry.getValue(), Math.exp(weight));
+      result.set(entry.getValue(), Math.exp(weight), entry.getCount());
     }
 
     return result;
@@ -149,13 +149,13 @@ public class StatisticsUtil {
     //
     // });
 
-    final DataDistribution<SupportType> result = new LogDefaultDataDistribution<SupportType>();
+    final LogDefaultDataDistribution<SupportType> result = new LogDefaultDataDistribution<SupportType>();
     for (final Entry<SupportType, WrappedWeightedValue<DistributionType>> entry : entryList) {
       if (entry.getValue().getWeight() == Double.NEGATIVE_INFINITY)
         continue;
       final double weight = entry.getValue().getWeight()
           - totalLikelihood;
-      result.set(entry.getKey(), Math.exp(weight));
+      result.set(entry.getKey(), Math.exp(weight), entry.getValue().getCount());
     }
 
     return result;

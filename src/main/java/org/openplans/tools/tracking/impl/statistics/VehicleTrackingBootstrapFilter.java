@@ -12,7 +12,7 @@ import java.util.Set;
 import org.openplans.tools.tracking.impl.LogDefaultDataDistribution;
 import org.openplans.tools.tracking.impl.Observation;
 import org.openplans.tools.tracking.impl.VehicleState;
-import org.openplans.tools.tracking.impl.VehicleState.InitialParameters;
+import org.openplans.tools.tracking.impl.VehicleState.VehicleStateInitialParameters;
 import org.openplans.tools.tracking.impl.VehicleStateConditionalParams;
 import org.openplans.tools.tracking.impl.VehicleTrackingFilter;
 import org.openplans.tools.tracking.impl.graph.paths.InferredPath;
@@ -48,7 +48,7 @@ public class VehicleTrackingBootstrapFilter extends
   private final Observation initialObservation;
 
   public VehicleTrackingBootstrapFilter(Observation obs,
-    OtpGraph inferredGraph, InitialParameters parameters,
+    OtpGraph inferredGraph, VehicleStateInitialParameters parameters,
     boolean isDebug) {
     this.isDebug = isDebug;
     this.setNumParticles(50);
@@ -110,6 +110,7 @@ public class VehicleTrackingBootstrapFilter extends
     final List<WrappedWeightedValue<VehicleState>> resampler = Lists
         .newArrayList();
     int totalCount = 0;
+    Set<InferredPath> evaledPaths = Sets.newHashSet();
     for (final VehicleState state : target.getDomain()) {
       state.getMovementFilter().setCurrentTimeDiff(timeDiff);
       
@@ -120,6 +121,8 @@ public class VehicleTrackingBootstrapFilter extends
         final VehicleState predictedState = ((VehicleTrackingBootstrapFilterUpdater) this.updater)
             .update(state, obs);
         
+        evaledPaths.add(state.getPath());
+        
         final PathEdge currentPathEdge = PathEdge.getEdge(predictedState
             .getInferredEdge());
   
@@ -129,7 +132,7 @@ public class VehicleTrackingBootstrapFilter extends
             .logEvaluate(edgeLoc);
   
         resampler.add(new WrappedWeightedValue<VehicleState>(
-            predictedState, totalLogLik));
+            predictedState, totalLogLik, 1));
       }
     }
 
@@ -153,7 +156,12 @@ public class VehicleTrackingBootstrapFilter extends
     }
 
     target.clear();
-    target.incrementAll(posteriorDist);
+    ((LogDefaultDataDistribution<VehicleState>)target).copyAll(posteriorDist);
+    
+    assert ((LogDefaultDataDistribution<VehicleState>)target).getTotalCount() == this.numParticles;
+    
+    this.filterInfo.put(obs, new FilterInformation(
+        evaledPaths, prePosteriorDist));
     
     prevTime = obs.getTimestamp().getTime();
   }

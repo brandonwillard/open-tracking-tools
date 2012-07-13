@@ -33,9 +33,10 @@ var inferredGroup = new L.LayerGroup();
 var actualGroup = new L.LayerGroup();
 var evaluatedGroup = new L.LayerGroup();
 var addedGroup = new L.LayerGroup();
+var allInfEdgesGroup = new L.LayerGroup();
+var allInfMeansGroup = new L.LayerGroup();
 
 var lines = null;
-
 var i = 0;
 
 var interval = null;
@@ -55,6 +56,8 @@ $(document).ready(function() {
   map.addLayer(actualGroup);
   map.addLayer(evaluatedGroup);
   map.addLayer(addedGroup);
+  map.addLayer(allInfEdgesGroup);
+  map.addLayer(allInfMeansGroup);
 
   map.setView(startLatLng, 17, true);
 
@@ -66,6 +69,8 @@ $(document).ready(function() {
   layersControl.addOverlay(actualGroup, "actual");
   layersControl.addOverlay(evaluatedGroup, "evaluated");
   layersControl.addOverlay(addedGroup, "user added");
+  layersControl.addOverlay(allInfEdgesGroup, "all inf. edges");
+  layersControl.addOverlay(allInfMeansGroup, "all inf. means");
 
   map.addControl(layersControl);
 
@@ -80,6 +85,7 @@ $(document).ready(function() {
   
   $("#loadDataLink").click(loadData);
   showParticlesMeans();
+  showParticlesEdges();
   $("#next").click(nextPoint);
   $("#prev").click(prevPoint);
   $("#play").click(playData);
@@ -99,30 +105,59 @@ $(document).ready(function() {
 
 });
 
-function showParticlesMeans() {
-  $("#postParticleMeans").hover(function() {
-    var markers = $(this).data("particleMeans");
+function showParticlesEdges() {
+  $("#postParticleEdges").hover(function() {
+    var markers = $(this).data("particleEdges");
     if (markers) {
-      pointsGroup.addLayer(markers);
-      addedGroup.addLayer(markers);
+      allInfEdgesGroup.addLayer(markers);
       map.invalidateSize();
     }
   }, function() {
-    var markers = $(this).data("particleMeans");
+    var markers = $(this).data("particleEdges");
     if (markers) {
-      pointsGroup.removeLayer(markers);
-      addedGroup.removeLayer(markers);
+      allInfEdgesGroup.removeLayer(markers);
       map.invalidateSize();
     }
   });
 }
 
-function addEdge() {
+  
+function showParticlesMeans() {
+  $("#postParticleMeans").hover(function() {
+    var markers = $(this).data("particleMeans");
+    if (markers) {
+      allInfMeansGroup.addLayer(markers);
+      map.invalidateSize();
+    }
+  }, function() {
+    var markers = $(this).data("particleMeans");
+    if (markers) {
+      allInfMeansGroup.removeLayer(markers);
+      map.invalidateSize();
+    }
+  });
+}
 
+function getEdgeFromId(id) {
+  var edge = null;
+  $.ajax({
+    url : '/api/segment?segmentId=' + id,
+    dataType : 'json',
+    async : false,
+    cache : true,
+    success : function(data) {
+      edge = data;
+    }
+  });
+  return edge;
+}
+
+function addEdge() {
   var id = jQuery('#edge_id').val();
   var edges = id.split(',');
   $.each(edges, function(index, value) {
-    drawEdge(value, null, EdgeType.ADDED);
+    var edge = getEdgeFromId(value);
+    drawEdge(edge, EdgeType.ADDED);
   });
   map.invalidateSize();
 }
@@ -140,7 +175,7 @@ function drawCoords(lat, lon, popupMessage, pan, justMarker) {
   
 //  $(this).data('marker', marker);
   pointsGroup.addLayer(marker);
-  addedGroup.addLayer(marker);
+//  addedGroup.addLayer(marker);
   if (popupMessage != null)
     marker.bindPopup(popupMessage);
   if (pan)
@@ -347,28 +382,34 @@ function renderMarker() {
     inferredGroup.clearLayers();
     addedGroup.clearLayers();
     evaluatedGroup.clearLayers();
+    allInfEdgesGroup.clearLayers();
+    allInfMeansGroup.clearLayers();
 
     /*
      * Draw lines first
      */
     renderGraph();
 
+    /*
+     * Show particle cloud and paths
+     */
     if (lines[i].infResults) {
-      var pointType = PointType.INFERRED_FREE;
-
-      if (lines[i].infResults.pathSegmentIds.length > 0) {
-        pointType = PointType.INFERRED_EDGE;
+      var edgeMarkers = $("#postParticleEdges").data("particleEdges");
+      if (edgeMarkers) {
+        allInfEdgesGroup.addLayer(edgeMarkers);
+        map.invalidateSize();
       }
-
-      var results = lines[i].infResults;
-      drawResults(results.meanCoords, results.majorAxisCoords,
-          results.minorAxisCoords, pointType);
+      var markers = $("#postParticleMeans").data("particleMeans");
+      if (markers) {
+        allInfMeansGroup.addLayer(markers);
+        map.invalidateSize();
+      }
     }
 
     if (lines[i].actualResults) {
       var pointType = PointType.ACTUAL_FREE;
 
-      if (lines[i].actualResults.pathSegmentIds.length > 0) {
+      if (lines[i].actualResults.pathSegments.length > 0) {
         pointType = PointType.ACTUAL_EDGE;
       }
 
@@ -403,91 +444,85 @@ EdgeType = {
   ADDED : 3
 }
 
-function drawEdge(id, velocity, edgeType) {
+function drawEdge(edge, edgeType, layerOnly) {
 
   var result = null;
-  $.ajax({
-    url : '/api/segment?segmentId=' + id,
-    dataType : 'json',
-    async : false,
-    cache : true,
-    success : function(data) {
+  var data = edge;
+  var velocity = edge.mean;
+  var avg_velocity = Math.abs(velocity);
 
-      var avg_velocity = Math.abs(velocity);
+  var color;
+  var weight = 5;
+  var opacity = 0.7;
 
-      var color;
-      var weight = 5;
-      var opacity = 0.7;
+  var groupType;
+  if (edgeType == EdgeType.INFERRED) {
+    if (avg_velocity != null && avg_velocity < MAX_SPEED)
+      color = '#' + getColor(avg_velocity / MAX_SPEED);
+    else
+      color = "red";
 
-      var groupType;
-      if (edgeType == EdgeType.INFERRED) {
-        if (avg_velocity != null && avg_velocity < MAX_SPEED)
-          color = '#' + getColor(avg_velocity / MAX_SPEED);
-        else
-          color = "red";
+    weight = 10;
+    opacity = 0.3;
+    groupType = inferredGroup;
+  } else if (edgeType == EdgeType.ACTUAL) {
+    color = "black";
+    weight = 2;
+    opacity = 1.0;
+    groupType = actualGroup;
+  } else if (edgeType == EdgeType.EVALUATED) {
+    color = "blue";
+    weight = 20;
+    opacity = 0.2;
+    groupType = evaluatedGroup;
+  } else if (edgeType == EdgeType.ADDED) {
+    color = "green";
+    weight = 20;
+    opacity = 0.2;
+    groupType = addedGroup;
+  }
 
-        weight = 10;
-        opacity = 0.3;
-        groupType = inferredGroup;
-      } else if (edgeType == EdgeType.ACTUAL) {
-        color = "black";
-        weight = 2;
-        opacity = 1.0;
-        groupType = actualGroup;
-      } else if (edgeType == EdgeType.EVALUATED) {
-        color = "blue";
-        weight = 20;
-        opacity = 0.2;
-        groupType = evaluatedGroup;
-      } else if (edgeType == EdgeType.ADDED) {
-        color = "green";
-        weight = 20;
-        opacity = 0.2;
-        groupType = addedGroup;
-      }
-
-      var geojson = new L.GeoJSON();
-      geojson.on('featureparse', function(e) {
-        e.layer.setStyle({
-          color : e.properties.color,
-          weight : weight,
-          opacity : opacity
-        });
-        if (e.properties && e.properties.popupContent) {
-          e.layer.bindPopup(e.properties.popupContent);
-        }
-      });
-
-      var escName = data.name.replace(/([\\<\\>'])/g, "");
-
-      data.geom.properties = {
-        popupContent : escName,
-        color : color
-      };
-
-      var layers = new Array(geojson);
-      geojson.addGeoJSON(data.geom);
-
-      var angle = data.angle;
-      if (angle != null) {
-        var lonlat = data.geom.coordinates[data.geom.coordinates.length - 1];
-        var myicon = new MyIcon();
-        var arrowhead = new L.Marker.Compass(
-            new L.LatLng(lonlat[1], lonlat[0]), {
-              icon : myicon,
-              clickable : false
-            });
-        arrowhead.setIconAngle(angle);
-        layers.push(arrowhead);
-      }
-
-      result = new L.LayerGroup(layers);
-      edgeGroup.addLayer(result);
-      groupType.addLayer(result);
-      map.invalidateSize();
-
+  var geojson = new L.GeoJSON();
+  geojson.on('featureparse', function(e) {
+    e.layer.setStyle({
+      color : e.properties.color,
+      weight : weight,
+      opacity : opacity
+    });
+    if (e.properties && e.properties.popupContent) {
+      e.layer.bindPopup(e.properties.popupContent);
     }
   });
+
+  var escName = data.name.replace(/([\\<\\>'])/g, "");
+
+  data.geom.properties = {
+    popupContent : escName,
+    color : color
+  };
+
+  var layers = new Array(geojson);
+  geojson.addGeoJSON(data.geom);
+
+  var angle = data.angle;
+  if (angle != null) {
+    var lonlat = data.geom.coordinates[data.geom.coordinates.length - 1];
+    var myicon = new MyIcon();
+    var arrowhead = new L.Marker.Compass(
+        new L.LatLng(lonlat[1], lonlat[0]), {
+          icon : myicon,
+          clickable : false
+        });
+    arrowhead.setIconAngle(angle);
+    layers.push(arrowhead);
+  }
+
+  result = new L.LayerGroup(layers);
+  if (!layerOnly) {
+//    edgeGroup.addLayer(result);
+    groupType.addLayer(result);
+  }
+  map.invalidateSize();
 
   return result;
 }
@@ -540,20 +575,26 @@ function renderParticles(isPrior) {
 
             
             var particleList = null;
+            var particleEdgesDiv = null;
             var particleMeansDiv = null;
             var particleParentMeansDiv = null;
             if (!isPrior) {
               particleList = jQuery("#posteriorParticles");
               particleMeansDiv = jQuery("#postParticleMeans");
+              particleEdgesDiv = jQuery("#postParticleEdges");
               particleParentMeansDiv = jQuery("#postParticleParentMeans");
             } else {
               particleList = jQuery("#priorParticles");
               particleMeansDiv = jQuery("#priorParticleMeans");
+              particleEdgesDiv = jQuery("#priorParticleEdges");
               particleParentMeansDiv = jQuery("#priorParticleParentMeans");
             }
             
             var particleMeans = new L.LayerGroup();
             particleMeansDiv.data("particleMeans", particleMeans);
+            
+            var particleEdges = new L.LayerGroup();
+            particleEdgesDiv.data("particleEdges", particleEdges);
               
             var particleParentMeans = new L.LayerGroup();
             particleParentMeansDiv.data("particleParentMeans", particleParentMeans);
@@ -630,15 +671,19 @@ function renderParticles(isPrior) {
                       var stateCov = createMatrixString(particleData.particle.infResults.stateCovariance);
                       collapsedDiv.append('<li>stateCov=' + stateCov + '</li>');
 
-                      var pathName = getPathName(particleData.particle.infResults.pathSegmentIds);
+                      var pathName = getPathName(
+                          getEdgeIdsFromSegments(particleData.particle.infResults.pathSegments));
                       var pathData = $('#' + pathName).data('path');
                       if (pathData) {
                         var pathLikelihood = parseFloat(pathData.totalLogLikelihood).toFixed(2); 
                         collapsedDiv.append('<li>' + pathName + ', ' + pathLikelihood + '</li>');
+                        particleEdges.addLayer(renderPath(pathData.pathEdges, 
+                            pathData.direction, EdgeType.ADDED, true));
                       }
                       
-                      if (edgeId != null) {
-                        createHoverLineLink(edgeLinkName, edgeId);
+                      var edge = particleData.particle.infResults.inferredEdge;
+                      if (edge != null) {
+                        createHoverLineLink(edgeLinkName, edge);
                       }
 
                       if (particleData.parent) {
@@ -679,7 +724,8 @@ function renderParticles(isPrior) {
                         var stateCov = createMatrixString(particleData.parent.infResults.stateCovariance);
                         parentList.append('<li>stateCov=' + stateCov + '</li>');
                         
-                        var parentPathName = getPathName(particleData.parent.infResults.pathSegmentIds);
+                        var parentPathName = getPathName(
+                            getEdgeIdsFromSegments(particleData.parent.infResults.pathSegments));
                         if (parentPathName) {
                           parentList.append('<li>path=' + parentPathName + '</li>');
                         }
@@ -689,8 +735,9 @@ function renderParticles(isPrior) {
                         particleParentMeans.addLayer(drawCoords(parentMeanLatLon.lat, parentMeanLatLon.lng, null, null, true));
                         
 
-                        if (parentEdgeId != null) {
-                          createHoverLineLink(parentEdgeLinkName, parentEdgeId);
+                        var parentEdge = particleData.parent.infResults.inferredEdge;
+                        if (parentEdge != null) {
+                          createHoverLineLink(parentEdgeLinkName, parentEdge);
                         }
 
                       }
@@ -700,16 +747,16 @@ function renderParticles(isPrior) {
           });
 }
 
-function createHoverLineLink(linkName, edgeId) {
-  if (edgeId < 0)
+function createHoverLineLink(linkName, edge) {
+  if (edge.id < 0)
     return;
   var edgeLinkJName = 'a[name=' + linkName + ']';
-  $(edgeLinkJName).data("edgeId", edgeId);
+  $(edgeLinkJName).data("edge", edge);
   $(edgeLinkJName).hover(function() {
-    var localEdgeId = $(this).data("edgeId");
+    var localEdge = $(this).data("edge");
     var edge = this.edge;
     if (edge == null) {
-      edge = drawEdge(localEdgeId, null, EdgeType.ADDED);
+      edge = drawEdge(localEdge, EdgeType.ADDED);
       this.edge = edge;
     } else {
       edgeGroup.addLayer(edge);
@@ -759,6 +806,14 @@ function arrayHash(array) {
   return result;
 }
 
+function getEdgeIdsFromSegments(segments) {
+  var edgeIds = new Array();
+  $.each(segments, function(index, data) {
+    edgeIds.push(data.id);
+  });
+  return edgeIds;
+}
+
 function renderGraph() {
   paths = {};
   if (lines[i].infResults) {
@@ -771,14 +826,6 @@ function renderGraph() {
     pathList.append(emptyOption);
     pathList.append(startPointsOption);
     pathList.append(endPointsOption);
-
-    // jQuery.each(data.routes, function(_, routeId) {
-    // var option = jQuery("<option>" + routeId + "</option>");
-    // option.attr("value", routeId);
-    // routeList.append(option);
-    // });
-    //
-    // routeList.change(initBlockList);
 
     // TODO FIXME must make a separate call to get this
     // info.  no longer contained in every particle.
@@ -802,14 +849,16 @@ function renderGraph() {
 
         // FIXME finish
         var pathName = 'path' + k;
+        var edgeIds = getEdgeIdsFromSegments(evaluatedPaths[k].pathEdges);
         var pathStr = parseFloat(evaluatedPaths[k].totalDistance).toFixed(2) 
-          + ", [" + evaluatedPaths[k].pathEdgeIds.toString() + "]";
+          + ", [" + edgeIds.toString() + "]";
         var option = jQuery('<option id=' + pathName + '>(path' + k + ')  '
             + pathStr + '</option>');
         option.attr("value", pathName);
         option.data("path", evaluatedPaths[k]);
         pathList.append(option);
-        paths[arrayHash(evaluatedPaths[k].pathEdgeIds)] = pathName;
+        paths[arrayHash(edgeIds)] = pathName;
+        
       }
     }
 
@@ -823,13 +872,7 @@ function renderGraph() {
           && pathName !== "startEdges"
           && pathName !== "endEdges" ) {
           var path = $('#' + pathName).data('path');
-          var pathSegmentInfo = new Array();
-          for ( var l in path.pathEdgeIds) {
-            var idVelPair = new Array(path.pathEdgeIds[l], 0);
-            pathSegmentInfo.push(idVelPair);
-            // drawLine(idVelPair[0], idVelPair[1], EdgeType.EVALUATED);
-          }
-          renderPath(pathSegmentInfo, path.totalDistance, EdgeType.EVALUATED);
+          renderPath(path.pathEdges, path.totalDistance, EdgeType.EVALUATED);
         } else if (pathName === "startEdges") {
           var edges = {};
           $.each(paths, function(key, value) {
@@ -838,7 +881,7 @@ function renderGraph() {
               edges[path.startEdge] = path.startEdge;
           });
           $.each(edges, function(key, value) {
-            evaluatedGroup.addLayer(drawEdge(value, null, EdgeType.EVALUATED));
+            evaluatedGroup.addLayer(drawEdge(value, EdgeType.EVALUATED, true));
           });
         } else if (pathName === "endEdges") {
           var edges = {};
@@ -848,14 +891,13 @@ function renderGraph() {
               edges[path.endEdge] = path.endEdge;
           });
           $.each(edges, function(key, value) {
-            evaluatedGroup.addLayer(drawEdge(value, null, EdgeType.EVALUATED));
+            evaluatedGroup.addLayer(drawEdge(value, EdgeType.EVALUATED, true));
           });
         }
       });
       map.invalidateSize();
     });
 
-    renderPath(lines[i].infResults.pathSegmentIds, lines[i].infResults.pathDirection, EdgeType.INFERRED);
 
   }
 
@@ -863,15 +905,11 @@ function renderGraph() {
   renderParticles(true);
 
   if (lines[i].actualResults) {
-    renderPath(lines[i].actualResults.pathSegmentIds, lines[i].actualResults.pathDirection, EdgeType.ACTUAL);
-    // for ( var j in lines[i].actualResults.pathSegmentIds) {
-    // var segmentInfo = lines[i].actualResults.pathSegmentIds[j];
-    // drawLine(segmentInfo[0], segmentInfo[1], EdgeType.ACTUAL);
-    // }
+    renderPath(lines[i].actualResults.pathSegments, lines[i].actualResults.pathDirection, EdgeType.ACTUAL);
   }
 }
 
-function renderPath(pathSegmentIds, pathDirection, edgeType) {
+function renderPath(pathSegments, pathDirection, edgeType, layerOnly) {
   var color;
   var weight = 5;
   var opacity = 0.7;
@@ -895,38 +933,32 @@ function renderPath(pathSegmentIds, pathDirection, edgeType) {
   } else if (edgeType == EdgeType.ADDED) {
     color = "green";
     weight = 20;
-    opacity = 0.2;
+    opacity = 0.1;
     groupType = addedGroup;
   }
 
-  var segmentIds = $.extend(true, [], pathSegmentIds);
+  var segments = $.extend(true, [], pathSegments);
   if (pathDirection < 0) {
-    segmentIds.reverse();
+    segments.reverse();
   }
     
   var latLngs = new Array();
   var justIds = new Array();
-  for ( var j in segmentIds) {
-    var segmentInfo = segmentIds[j];
-    if (segmentInfo.length == 2 && segmentInfo[0] > -1) {
-      
+  for ( var j in segments) {
+    var segmentInfo = segments[j];
+    var edgeId = segmentInfo.id;
+    
+    if (edgeId > -1) {
       if (j > 0 && j % 5 == 0) {
-        justIds.push('<br>' + segmentInfo[0]);
+        justIds.push('<br>' + edgeId);
       } else {
-        justIds.push(segmentInfo[0]);
+        justIds.push(edgeId);
       }
-      $.ajax({
-        url : '/api/segment?segmentId=' + segmentInfo[0],
-        dataType : 'json',
-        async : false,
-        cache : true,
-        success : function(data) {
-          for ( var k in data.geom.coordinates) {
-            latLngs.push(new L.LatLng(data.geom.coordinates[k][1],
-                data.geom.coordinates[k][0]));
-          }
-        }
-      });
+      
+      for ( var k in segmentInfo.geom.coordinates) {
+        latLngs.push(new L.LatLng(segmentInfo.geom.coordinates[k][1],
+            segmentInfo.geom.coordinates[k][0]));
+      }
     }
   }
 
@@ -935,12 +967,14 @@ function renderPath(pathSegmentIds, pathDirection, edgeType) {
     weight : weight,
     opacity : opacity
   });
-
+  
   polyline.bindPopup(justIds.toString());
-
-  edgeGroup.addLayer(polyline);
-  groupType.addLayer(polyline);
-  map.invalidateSize();
+  
+  if (!layerOnly) {
+//    edgeGroup.addLayer(polyline);
+    groupType.addLayer(polyline);
+    map.invalidateSize();
+  }
 
   return polyline;
 }

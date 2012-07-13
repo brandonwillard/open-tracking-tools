@@ -37,7 +37,7 @@ public class VehicleState implements
     ComputableDistribution<VehicleStateConditionalParams>,
     Comparable<VehicleState> {
 
-  public static class InitialParameters {
+  public static class VehicleStateInitialParameters {
     private final Vector obsVariance;
     private final Vector onRoadStateVariance;
     private final Vector offRoadStateVariance;
@@ -45,7 +45,7 @@ public class VehicleState implements
     private final Vector onTransitionProbs;
     private final long seed;
 
-    public InitialParameters(Vector obsVariance,
+    public VehicleStateInitialParameters(Vector obsVariance,
       Vector onRoadStateVariance, Vector offRoadStateVariance,
       Vector offProbs, Vector onProbs, long seed) {
       this.obsVariance = obsVariance;
@@ -192,7 +192,7 @@ public class VehicleState implements
   private int hash = 0;
 
   public VehicleState(OtpGraph graph, Observation initialObservation,
-    InferredEdge inferredEdge, InitialParameters parameters,
+    InferredEdge inferredEdge, VehicleStateInitialParameters parameters,
     Random rng) {
 
     Preconditions.checkNotNull(initialObservation);

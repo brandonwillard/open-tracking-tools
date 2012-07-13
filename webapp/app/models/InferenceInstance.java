@@ -15,7 +15,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import org.apache.log4j.Logger;
 import org.openplans.tools.tracking.impl.Observation;
 import org.openplans.tools.tracking.impl.VehicleState;
-import org.openplans.tools.tracking.impl.VehicleState.InitialParameters;
+import org.openplans.tools.tracking.impl.VehicleState.VehicleStateInitialParameters;
 import org.openplans.tools.tracking.impl.VehicleTrackingFilter;
 import org.openplans.tools.tracking.impl.statistics.FilterInformation;
 import org.openplans.tools.tracking.impl.statistics.VehicleTrackingBootstrapFilter;
@@ -51,7 +51,7 @@ public class InferenceInstance {
   private DataDistribution<VehicleState> resampleBelief;
   private VehicleState bestState;
 
-  private final InitialParameters initialParameters;
+  private final VehicleStateInitialParameters initialParameters;
 
   public int totalRecords = 0;
 
@@ -63,7 +63,7 @@ public class InferenceInstance {
 
   public InferenceInstance(String vehicleId, boolean isSimulation,
     INFO_LEVEL infoLevel) {
-    this.initialParameters = new InitialParameters(
+    this.initialParameters = new VehicleStateInitialParameters(
         VectorFactory.getDefault().createVector2D(
             VehicleState.getGvariance(), VehicleState.getGvariance()),
         VectorFactory.getDefault().createVector2D(
@@ -78,7 +78,7 @@ public class InferenceInstance {
   }
 
   public InferenceInstance(String vehicleId, boolean isSimulation,
-    INFO_LEVEL infoLevel, InitialParameters parameters) {
+    INFO_LEVEL infoLevel, VehicleStateInitialParameters parameters) {
     this.initialParameters = parameters;
     this.vehicleId = vehicleId;
     this.isSimulation = isSimulation;
@@ -102,7 +102,7 @@ public class InferenceInstance {
     return infoLevel;
   }
 
-  public InitialParameters getInitialParameters() {
+  public VehicleStateInitialParameters getInitialParameters() {
     return initialParameters;
   }
 
@@ -182,13 +182,13 @@ public class InferenceInstance {
 
     if (filter == null || postBelief == null) {
 
-      filter = new VehicleTrackingBootstrapFilter(
-          obs, inferredGraph, initialParameters,
-          infoLevel.compareTo(INFO_LEVEL.DEBUG) >= 0);
-
-//      filter = new VehicleTrackingPLFilter(
+//      filter = new VehicleTrackingBootstrapFilter(
 //          obs, inferredGraph, initialParameters,
 //          infoLevel.compareTo(INFO_LEVEL.DEBUG) >= 0);
+
+      filter = new VehicleTrackingPLFilter(
+          obs, inferredGraph, initialParameters,
+          infoLevel.compareTo(INFO_LEVEL.DEBUG) >= 0);
 
       filter.getRandom().setSeed(simSeed);
       postBelief = filter.createInitialLearnedObject();

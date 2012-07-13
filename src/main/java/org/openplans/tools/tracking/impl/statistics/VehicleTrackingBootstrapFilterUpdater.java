@@ -15,7 +15,7 @@ import org.apache.commons.lang.NotImplementedException;
 import org.openplans.tools.tracking.impl.LogDefaultDataDistribution;
 import org.openplans.tools.tracking.impl.Observation;
 import org.openplans.tools.tracking.impl.VehicleState;
-import org.openplans.tools.tracking.impl.VehicleState.InitialParameters;
+import org.openplans.tools.tracking.impl.VehicleState.VehicleStateInitialParameters;
 import org.openplans.tools.tracking.impl.VehicleStateConditionalParams;
 import org.openplans.tools.tracking.impl.graph.InferredEdge;
 import org.openplans.tools.tracking.impl.graph.paths.InferredPath;
@@ -72,12 +72,12 @@ public class VehicleTrackingBootstrapFilterUpdater implements
 
   private final OtpGraph inferredGraph;
 
-  private final InitialParameters parameters;
+  private final VehicleStateInitialParameters parameters;
 
   private final UpdaterThreadLocal threadRandom;
 
   public VehicleTrackingBootstrapFilterUpdater(Observation obs,
-    OtpGraph inferredGraph, InitialParameters parameters) {
+    OtpGraph inferredGraph, VehicleStateInitialParameters parameters) {
     this.initialObservation = obs;
     this.inferredGraph = inferredGraph;
     this.parameters = parameters;

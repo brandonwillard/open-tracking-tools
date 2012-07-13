@@ -43,6 +43,11 @@ public class GeoJSONSerializer extends JsonSerializer<Geometry> {
     SerializerProvider provider) throws IOException,
       JsonProcessingException {
 
+    if (value == null) {
+      jgen.writeRawValue(null);
+      return;
+    }
+      
     final GeometryJSON json = new GeometryJSON();
     MathTransform transform;
     try {

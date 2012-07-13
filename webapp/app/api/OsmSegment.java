@@ -15,7 +15,7 @@ public class OsmSegment {
   private final String name;
 
   public OsmSegment(Integer i, Geometry g, String name) {
-    final int length = g.getCoordinates().length;
+    final int length = g == null ? -1 : g.getCoordinates().length;
     if (length > 1)
       angle = Angle.toDegrees(Angle.normalizePositive(Angle.angle(
           g.getCoordinates()[length - 2],

@@ -30,10 +30,13 @@ import org.openplans.tools.tracking.impl.statistics.FilterInformation;
 import org.openplans.tools.tracking.impl.statistics.StandardRoadTrackingFilter;
 import org.openplans.tools.tracking.impl.util.GeoUtils;
 
+import api.OsmSegment;
+
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.vividsolutions.jts.geom.Coordinate;
+import com.vividsolutions.jts.geom.Geometry;
 
 import controllers.Api;
 
@@ -42,14 +45,14 @@ public class InferenceResultRecord {
   public static class ResultSet {
 
     static public class EvaluatedPathInfo {
-      final List<Integer> pathEdgeIds;
+      final List<OsmSegment> pathEdges;
       final double totalDistance;
       final private Integer startEdge;
       final private Integer endEdge;
 
-      public EvaluatedPathInfo(List<Integer> pathEdgeIds,
+      public EvaluatedPathInfo(List<OsmSegment> pathEdges,
         double totalDistance, Integer startEdge, Integer endEdge) {
-        this.pathEdgeIds = pathEdgeIds;
+        this.pathEdges = pathEdges;
         this.totalDistance = totalDistance;
         this.startEdge = startEdge;
         this.endEdge = endEdge;
@@ -61,8 +64,8 @@ public class InferenceResultRecord {
       }
 
       @JsonSerialize
-      public List<Integer> getPathEdgeIds() {
-        return pathEdgeIds;
+      public List<OsmSegment> getPathEdges() {
+        return pathEdges;
       }
 
       @JsonSerialize
@@ -80,23 +83,23 @@ public class InferenceResultRecord {
     private final Coordinate meanCoords;
     private final Coordinate majorAxisCoords;
     private final Coordinate minorAxisCoords;
-    private final List<Double[]> pathSegmentIds;
+    private final List<OsmSegmentWithMean> pathSegments;
 
     private final VehicleTrackingFilter filter;
     private final VehicleState state;
     private final Double pathDirection;
-    private final Map<String, Double> inferredEdge;
+    private final OsmSegmentWithMean inferredEdge;
 
     //    private final List<EvaluatedPathInfo> evaluatedPaths;
 
     public ResultSet(VehicleState vehicleState,
       VehicleTrackingFilter filter, Coordinate meanCoords,
       Coordinate majorAxisCoords, Coordinate minorAxisCoords,
-      List<Double[]> pathSegmentIds, Double pathDirection) {
+      List<OsmSegmentWithMean> pathSegments, Double pathDirection) {
       this.meanCoords = meanCoords;
       this.majorAxisCoords = majorAxisCoords;
       this.minorAxisCoords = minorAxisCoords;
-      this.pathSegmentIds = pathSegmentIds;
+      this.pathSegments = pathSegments;
       this.state = vehicleState;
       this.pathDirection = pathDirection;
       this.inferredEdge = createInferredEdge();
@@ -113,17 +116,21 @@ public class InferenceResultRecord {
         pathEdgeIds = Lists.newArrayList();
         for (final InferredPath pathEntry : filterInfo
             .getEvaluatedPaths()) {
-          final List<Integer> edgeIds = Lists.newArrayList();
+          final List<OsmSegment> edges = Lists.newArrayList();
           for (final PathEdge edge : pathEntry.getEdges()) {
-            if (edge.getInferredEdge().getEdgeId() != null)
-              edgeIds.add(edge.getInferredEdge().getEdgeId());
+            if (edge.getInferredEdge().getEdgeId() != null) {
+              final OsmSegment segment = new OsmSegment(edge.getInferredEdge().getEdgeId(),
+                  edge.getInferredEdge().getGeometry(), 
+                  edge.getInferredEdge().getEdge().getName());
+              edges.add(segment);
+            }
           }
-          if (!edgeIds.isEmpty()) {
+          if (!edges.isEmpty()) {
             final Integer startEdge = pathEntry.getStartEdge() != null ? pathEntry
                 .getStartEdge().getEdgeId() : null;
             final Integer endEdge = pathEntry.getEndEdge() != null ? pathEntry
                 .getEndEdge().getEdgeId() : null;
-            pathEdgeIds.add(new EvaluatedPathInfo(edgeIds, pathEntry
+            pathEdgeIds.add(new EvaluatedPathInfo(edges, pathEntry
                 .getTotalPathDistance(), startEdge, endEdge));
           }
         }
@@ -134,19 +141,17 @@ public class InferenceResultRecord {
     }
 
     @JsonIgnore
-    private Map<String, Double> createInferredEdge() {
+    private OsmSegmentWithMean createInferredEdge() {
+      final OsmSegmentWithMean osmSegment;
       final InferredEdge edge = state.getInferredEdge();
-      final Map<String, Double> result = Maps.newHashMap();
       if (edge != InferredEdge.getEmptyEdge()) {
-        if (edge.getEdgeId() != null)
-          result.put("id", (double) edge.getEdgeId());
-        result.put("velocity", edge.getVelocityPrecisionDist()
+        osmSegment = new OsmSegmentWithMean(edge.getEdgeId(), 
+            edge.getGeometry(), edge.getEdge().getName(), edge.getVelocityPrecisionDist()
             .getLocation());
       } else {
-        result.put("id", -1d);
-        result.put("velocity", 0d);
+        osmSegment = new OsmSegmentWithMean(-1, null, "empty", null);
       }
-      return result;
+      return osmSegment;
     }
 
     @JsonIgnore
@@ -155,7 +160,7 @@ public class InferenceResultRecord {
     }
 
     @JsonSerialize
-    public Map<String, Double> getInferredEdge() {
+    public OsmSegmentWithMean getInferredEdge() {
       return inferredEdge;
     }
 
@@ -180,21 +185,10 @@ public class InferenceResultRecord {
     }
 
     @JsonSerialize
-    public List<Double[]> getPathSegmentIds() {
-      /*
-       * We need to restrict the full path to
-       * what was actually traveled.
-       */
-      final List<Double[]> actualPath = Lists.newArrayList();
-      for (final Double[] entry : pathSegmentIds) {
-        actualPath.add(entry);
-        final Integer currentId = state.getInferredEdge().getEdgeId();
-        if (currentId != null && entry[0] == currentId.doubleValue())
-          break;
-      }
-      return actualPath;
+    public List<OsmSegmentWithMean> getPathSegments() {
+      return pathSegments;
     }
-
+    
     @JsonIgnore
     public VehicleState getState() {
       return state;
@@ -381,7 +375,7 @@ public class InferenceResultRecord {
     final Coordinate minorAxisCoords = GeoUtils
         .makeCoordinate(minorAxis);
 
-    final List<Double[]> pathSegmentIds = Lists.newArrayList();
+    final List<OsmSegmentWithMean> pathSegmentIds = Lists.newArrayList();
     Double pathDirection = null;
     final InferredPath path = cloneState.getPath();
     if (path.getTotalPathDistance() != null)
@@ -391,9 +385,14 @@ public class InferenceResultRecord {
         continue;
       final double edgeMean = edge.getInferredEdge()
           .getVelocityPrecisionDist().getLocation();
-      final double edgeId = edge.getInferredEdge().getEdgeId() != null ? (double) edge
-          .getInferredEdge().getEdgeId() : -1d;
-      pathSegmentIds.add(new Double[] { edgeId, edgeMean });
+      final int edgeId = edge.getInferredEdge().getEdgeId() != null ? edge
+          .getInferredEdge().getEdgeId() : -1;
+      final Geometry geom = edge.isEmptyEdge() ? null : edge.getInferredEdge().getGeometry();
+      final String name = edge.isEmptyEdge() ? "empty" : edge.getInferredEdge().getEdge().getName();
+          
+      final OsmSegmentWithMean osmSegment = new OsmSegmentWithMean(edgeId, geom, name, edgeMean);
+          
+      pathSegmentIds.add(osmSegment);
     }
 
     return new ResultSet(

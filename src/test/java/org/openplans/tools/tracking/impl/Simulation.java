@@ -1,23 +1,20 @@
-package inference;
+package org.openplans.tools.tracking.impl;
 
 import gov.sandia.cognition.math.matrix.Matrix;
 import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.math.matrix.mtj.DenseMatrixFactoryMTJ;
 import gov.sandia.cognition.math.matrix.mtj.decomposition.CholeskyDecompositionMTJ;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
-import inference.InferenceService.INFO_LEVEL;
 
 import java.util.Date;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
 
-import models.InferenceInstance;
-
 import org.openplans.tools.tracking.impl.Observation;
 import org.openplans.tools.tracking.impl.TimeOrderException;
 import org.openplans.tools.tracking.impl.VehicleState;
-import org.openplans.tools.tracking.impl.VehicleState.InitialParameters;
+import org.openplans.tools.tracking.impl.VehicleState.VehicleStateInitialParameters;
 import org.openplans.tools.tracking.impl.graph.InferredEdge;
 import org.openplans.tools.tracking.impl.graph.paths.InferredPath;
 import org.openplans.tools.tracking.impl.graph.paths.InferredPathEntry;
@@ -27,30 +24,19 @@ import org.openplans.tools.tracking.impl.statistics.StandardRoadTrackingFilter;
 import org.openplans.tools.tracking.impl.util.GeoUtils;
 import org.openplans.tools.tracking.impl.util.OtpGraph;
 import org.opentripplanner.routing.edgetype.StreetEdge;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import play.Logger;
-import akka.actor.UntypedActor;
 
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.vividsolutions.jts.geom.Coordinate;
 
-import controllers.Api;
 
 public class Simulation {
 
-  //  private static final Logger _log = LoggerFactory.getLogger(Simulation.class);
-
-  public static class SimulationActor extends UntypedActor {
-    @Override
-    public void onReceive(Object arg0) throws Exception {
-      // TODO this is a lame way to get concurrency. fix this
-      final Simulation sim = (Simulation) arg0;
-
-      sim.runSimulation();
-    }
-  }
+  private static final Logger _log = LoggerFactory.getLogger(Simulation.class);
 
   public static class SimulationParameters {
 
@@ -60,10 +46,12 @@ public class Simulation {
     private final long duration;
     private final long frequency;
     private final boolean performInference;
+    private final VehicleStateInitialParameters stateParams;
 
     public SimulationParameters(Coordinate startCoordinate,
       Date startTime, long duration, long frequency,
-      boolean performInference) {
+      boolean performInference, VehicleStateInitialParameters stateParams) {
+      this.stateParams = stateParams;
       this.performInference = performInference;
       this.frequency = frequency;
       this.startCoordinate = startCoordinate;
@@ -95,27 +83,30 @@ public class Simulation {
     public boolean isPerformInference() {
       return performInference;
     }
+
+    public VehicleStateInitialParameters getStateParams() {
+      return stateParams;
+    }
   }
 
   private final long seed;
   private final Random rng;
   private final OtpGraph inferredGraph;
   private final String simulationName;
-  private final InitialParameters parameters;
-  private final InferenceInstance instance;
+  private final VehicleStateInitialParameters parameters;
 
   private int recordsProcessed = 0;
 
   private final SimulationParameters simParameters;
   private long localSeed;
 
-  public Simulation(String simulationName,
-    InitialParameters parameters, SimulationParameters simParameters) {
+  public Simulation(String simulationName, OtpGraph graph, 
+    SimulationParameters simParameters) {
 
     this.simParameters = simParameters;
-    this.parameters = parameters;
+    this.parameters = simParameters.getStateParams();
 
-    this.inferredGraph = Api.getGraph();
+    this.inferredGraph = graph;
     this.simulationName = simulationName;
 
     this.rng = new Random();
@@ -124,27 +115,16 @@ public class Simulation {
     } else {
       this.seed = rng.nextLong();
     }
+    
     this.rng.setSeed(seed);
-
-    // TODO info level should be a parameter
-    this.instance = InferenceService.getOrCreateInferenceInstance(
-        simulationName, true, INFO_LEVEL.DEBUG);
-
-    this.instance.simSeed = seed;
-    this.instance.totalRecords = (int) ((simParameters.getEndTime()
-        .getTime() - simParameters.getStartTime().getTime()) / (simParameters
-        .getFrequency() * 1000d));
   }
 
   public OtpGraph getInferredGraph() {
     return inferredGraph;
   }
 
-  public InferenceInstance getInstance() {
-    return instance;
-  }
 
-  public InitialParameters getParameters() {
+  public VehicleStateInitialParameters getParameters() {
     return parameters;
   }
 
@@ -164,9 +144,8 @@ public class Simulation {
     return simulationName;
   }
 
-  public void runSimulation() {
+  public VehicleState computeInitialState() {
 
-    Logger.info("starting simulation with seed = " + seed);
     Observation initialObs;
     try {
       try {
@@ -179,7 +158,7 @@ public class Simulation {
                 null);
       } catch (final TimeOrderException e) {
         e.printStackTrace();
-        return;
+        return null;
       }
 
       final List<InferredEdge> edges = Lists
@@ -207,29 +186,27 @@ public class Simulation {
       VehicleState vehicleState = new VehicleState(
           this.inferredGraph, initialObs, currentInferredEdge,
           parameters, rng);
-
-      long time = this.simParameters.getStartTime().getTime();
-
-      while (time < this.simParameters.getEndTime().getTime()
-      // This check allows us to terminate the simulation after deleting the instance.
-          && InferenceService.getInferenceInstance(simulationName) != null) {
-        time += this.simParameters.getFrequency() * 1000;
-        vehicleState = sampleState(vehicleState, time);
-        Logger.info("processed simulation observation : "
-            + recordsProcessed + ", " + time);
-        recordsProcessed++;
-      }
-
-      if (recordsProcessed > 0)
-        Logger.info("avg. records per sec = " + 1000d
-            / instance.getAverager().getMean().value);
+      
+      return vehicleState;
 
     } catch (final NumberFormatException e) {
       e.printStackTrace();
     }
 
+    return null;
   }
 
+  
+  public VehicleState stepSimulation(VehicleState currentState) {
+      final long time = currentState.getObservation().getTimestamp().getTime()
+          + this.simParameters.getFrequency() * 1000;
+      final VehicleState vehicleState = sampleState(currentState, time);
+      _log.info("processed simulation observation : "
+          + recordsProcessed + ", " + time);
+      recordsProcessed++;
+      return vehicleState;
+  }
+  
   public Vector sampleObservation(MultivariateGaussian velLocBelief,
     Matrix obsCov, PathEdge edge) {
 
@@ -288,11 +265,6 @@ public class Simulation {
         this.inferredGraph, thisObs,
         vehicleState.getMovementFilter(), currentLocBelief,
         currentEdgeTrans, newPath, vehicleState);
-
-    instance.update(
-        newState, thisObs, this.simParameters.isPerformInference());
-    //    if (this.simParameters.isPerformInference())
-    //      Logger.info("processed simulation inference :" + thisObs);
 
     return newState;
   }

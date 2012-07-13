@@ -3,9 +3,7 @@ package controllers;
 import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.math.matrix.VectorFactory;
 import inference.InferenceService;
-import inference.Simulation;
-import inference.Simulation.SimulationActor;
-import inference.Simulation.SimulationParameters;
+import inference.SimulationActor;
 
 import java.io.File;
 import java.util.Date;
@@ -13,7 +11,9 @@ import java.util.List;
 
 import models.InferenceInstance;
 
-import org.openplans.tools.tracking.impl.VehicleState.InitialParameters;
+import org.openplans.tools.tracking.impl.Simulation;
+import org.openplans.tools.tracking.impl.Simulation.SimulationParameters;
+import org.openplans.tools.tracking.impl.VehicleState.VehicleStateInitialParameters;
 
 import play.Logger;
 import play.mvc.Controller;
@@ -72,8 +72,6 @@ public class Application extends Controller {
     final long duration = Long.parseLong(duration_str);
     final long frequency = Long.parseLong(frequency_str);
     final boolean inference = Boolean.parseBoolean(performInference);
-    final SimulationParameters simParams = new SimulationParameters(
-        startCoord, startTime, duration, frequency, inference);
 
     final String[] obsPair = obs_variance_pair.split(",");
     final Vector obsVariance = VectorFactory.getDefault()
@@ -105,10 +103,13 @@ public class Application extends Controller {
     final Vector onProbs = VectorFactory.getDefault().createVector2D(
         Double.parseDouble(onPair[0]), Double.parseDouble(onPair[1]));
 
-    final InitialParameters parameters = new InitialParameters(
+    final VehicleStateInitialParameters parameters = new VehicleStateInitialParameters(
         obsVariance, roadStateVariance, groundStateVariance,
         offProbs, onProbs, seed);
 
+    final SimulationParameters simParams = new SimulationParameters(
+        startCoord, startTime, duration, frequency, inference, parameters);
+    
     final String simulationName = "sim-" + start_unix_time;
     if (InferenceService.getInferenceInstance(simulationName) != null) {
       Logger.warn("removing existing inference instance named "
@@ -116,7 +117,7 @@ public class Application extends Controller {
       InferenceService.remove(simulationName);
     }
     final Simulation sim = new Simulation(
-        simulationName, parameters, simParams);
+        simulationName, Api.getGraph(), simParams);
     Logger.info("starting simulation " + sim.getSimulationName());
 
     Application.simActor.tell(sim);
