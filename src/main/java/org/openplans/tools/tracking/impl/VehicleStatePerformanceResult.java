@@ -1,4 +1,4 @@
-package org.openplans.tools.tracking.impl.statistics;
+package org.openplans.tools.tracking.impl;
 
 import gov.sandia.cognition.statistics.distribution.UnivariateGaussian;
 

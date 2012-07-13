@@ -1,4 +1,4 @@
-package org.openplans.tools.tracking.impl.statistics;
+package org.openplans.tools.tracking.impl;
 
 import gov.sandia.cognition.evaluator.Evaluator;
 import gov.sandia.cognition.learning.data.InputOutputPair;
@@ -12,9 +12,8 @@ import gov.sandia.cognition.util.AbstractCloneableSerializable;
 import java.util.Collection;
 import java.util.List;
 
-import org.openplans.tools.tracking.impl.Observation;
-import org.openplans.tools.tracking.impl.VehicleState;
 import org.openplans.tools.tracking.impl.graph.paths.PathEdge;
+import org.openplans.tools.tracking.impl.statistics.StandardRoadTrackingFilter;
 
 import com.google.common.collect.Lists;
 
