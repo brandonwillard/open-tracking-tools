@@ -31,11 +31,11 @@ public class SimulationTestHarness {
     this.filter = filter; 
   }
       
-  @Before
+//  @Before
   public void setUp() throws Exception {
   }
 
-  @Test
+//  @Test
   public void test() {
     VehicleState vehicleState = this.sim.computeInitialState();
     long time = this.sim.getSimParameters().getStartTime().getTime();

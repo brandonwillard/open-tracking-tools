@@ -53,7 +53,7 @@ public class VehicleTrackingBootstrapFilter extends
     this.isDebug = isDebug;
     this.setNumParticles(50);
     this.inferredGraph = inferredGraph;
-    VehicleTrackingBootstrapFilterUpdater updater = new VehicleTrackingBootstrapFilterUpdater(
+    VehicleTrackingPathSamplerFilterUpdater updater = new VehicleTrackingPathSamplerFilterUpdater(
         obs, this.inferredGraph, parameters);
     this.setUpdater(updater);
     this.initialObservation = obs;
@@ -83,7 +83,7 @@ public class VehicleTrackingBootstrapFilter extends
 
   @Override
   public Random getRandom() {
-    final VehicleTrackingBootstrapFilterUpdater updater = (VehicleTrackingBootstrapFilterUpdater) this
+    final VehicleTrackingPathSamplerFilterUpdater updater = (VehicleTrackingPathSamplerFilterUpdater) this
         .getUpdater();
     return updater.getThreadRandom().get();
   }
@@ -118,7 +118,7 @@ public class VehicleTrackingBootstrapFilter extends
       totalCount += count;
       for (int i = 0; i < count; i++) {
   
-        final VehicleState predictedState = ((VehicleTrackingBootstrapFilterUpdater) this.updater)
+        final VehicleState predictedState = ((VehicleTrackingPathSamplerFilterUpdater) this.updater)
             .update(state, obs);
         
         evaledPaths.add(state.getPath());
@@ -148,7 +148,7 @@ public class VehicleTrackingBootstrapFilter extends
       // TODO low variance resampling?
       final DataDistribution<VehicleState> resampleDist = 
           new LogDefaultDataDistribution<VehicleState>(prePosteriorDist.sample(
-              ((VehicleTrackingBootstrapFilterUpdater) updater).getThreadRandom().get(), 
+              ((VehicleTrackingPathSamplerFilterUpdater) updater).getThreadRandom().get(), 
               numParticles));
       posteriorDist = resampleDist;
     } else {

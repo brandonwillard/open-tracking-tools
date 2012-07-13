@@ -64,7 +64,7 @@ public class VehicleTrackingPLFilter extends
     this.isDebug = isDebug;
     this.setNumParticles(50);
     this.inferredGraph = inferredGraph;
-    this.setUpdater(new VehicleTrackingBootstrapFilterUpdater(
+    this.setUpdater(new VehicleTrackingPathSamplerFilterUpdater(
         obs, this.inferredGraph, parameters));
     this.initialObservation = obs;
   }
@@ -92,7 +92,7 @@ public class VehicleTrackingPLFilter extends
 
   @Override
   public Random getRandom() {
-    final VehicleTrackingBootstrapFilterUpdater updater = (VehicleTrackingBootstrapFilterUpdater) this
+    final VehicleTrackingPathSamplerFilterUpdater updater = (VehicleTrackingPathSamplerFilterUpdater) this
         .getUpdater();
     return updater.getThreadRandom().get();
   }
@@ -192,7 +192,7 @@ public class VehicleTrackingPLFilter extends
      */
     for (final VehicleState state : smoothedStates) {
 
-      final int count = ((LogDefaultDataDistribution)resampleDist).getCount(state);
+//      final int count = ((LogDefaultDataDistribution)resampleDist).getCount(state);
       final VehicleState newState = state.clone();
       final DataDistribution<InferredPathEntry> instStateDist = StatisticsUtil
           .getLogNormalizedDistribution(Lists
@@ -272,9 +272,6 @@ public class VehicleTrackingPLFilter extends
               prevEdge, edge.getInferredEdge());
 
         if (!edge.isEmptyEdge()) {
-          /*
-           * Note: the edge velocities ARE directional!
-           */
           edge
               .getInferredEdge()
               .getVelocityEstimator()

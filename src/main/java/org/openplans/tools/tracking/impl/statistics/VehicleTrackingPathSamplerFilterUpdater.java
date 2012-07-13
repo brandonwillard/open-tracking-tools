@@ -29,7 +29,7 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 
-public class VehicleTrackingBootstrapFilterUpdater implements
+public class VehicleTrackingPathSamplerFilterUpdater implements
     ParticleFilter.Updater<Observation, VehicleState> {
 
   private static class UpdaterThreadLocal extends ThreadLocal<Random> {
@@ -76,7 +76,7 @@ public class VehicleTrackingBootstrapFilterUpdater implements
 
   private final UpdaterThreadLocal threadRandom;
 
-  public VehicleTrackingBootstrapFilterUpdater(Observation obs,
+  public VehicleTrackingPathSamplerFilterUpdater(Observation obs,
     OtpGraph inferredGraph, VehicleStateInitialParameters parameters) {
     this.initialObservation = obs;
     this.inferredGraph = inferredGraph;
@@ -85,7 +85,7 @@ public class VehicleTrackingBootstrapFilterUpdater implements
   }
 
   @Override
-  public VehicleTrackingBootstrapFilterUpdater clone() {
+  public VehicleTrackingPathSamplerFilterUpdater clone() {
     throw new RuntimeException("not implemented");
   }
 
