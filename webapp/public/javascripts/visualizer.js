@@ -14,7 +14,7 @@
 
 var dataUrl = "/api/traces?vehicleId=";
 var coordUrl = "/api/convertToLatLon?";
-var startLatLng = new L.LatLng(10.3181373, 123.8956844); 
+var startLatLng = new L.LatLng(10.3181373, 123.8956844);
 
 var map;
 
@@ -76,13 +76,15 @@ $(document).ready(function() {
 
   $("#controls").hide();
   $("#pause").hide();
-  
+
   /*
    * Set default open tab
    */
   var index = $('#filterControls li a').index($('a[href="#tabs-2"]').get(0));
-  $('#filterControls').tabs({selected: index});
-  
+  $('#filterControls').tabs({
+    selected : index
+  });
+
   $("#loadDataLink").click(loadData);
   showParticlesMeans();
   showParticlesEdges();
@@ -101,7 +103,6 @@ $(document).ready(function() {
 
   $("#addCoordinates").click(addCoordinates);
   $("#addEdge").click(addEdge);
-  
 
 });
 
@@ -121,7 +122,6 @@ function showParticlesEdges() {
   });
 }
 
-  
 function showParticlesMeans() {
   $("#postParticleMeans").hover(function() {
     var markers = $(this).data("particleMeans");
@@ -170,14 +170,14 @@ function drawCoords(lat, lon, popupMessage, pan, justMarker) {
     lon : parseFloat(lon),
     weight : 1
   });
-  if (justMarker)
-    return marker;
-  
-//  $(this).data('marker', marker);
-  pointsGroup.addLayer(marker);
-//  addedGroup.addLayer(marker);
   if (popupMessage != null)
     marker.bindPopup(popupMessage);
+
+  if (justMarker)
+    return marker;
+
+  pointsGroup.addLayer(marker);
+
   if (pan)
     map.panTo(latlng);
 
@@ -295,10 +295,10 @@ function moveMarker() {
 }
 
 /*
- * Xian 1980 / Gauss-Kruger zone 21
- * EPSG:2335  isn't saved locally.  if we omit this, then there will be
- * an error followed by a query that should obtain this information.
- * TODO what about different zones?  how will they be detected/handled?
+ * Xian 1980 / Gauss-Kruger zone 21 EPSG:2335 isn't saved locally. if we omit
+ * this, then there will be an error followed by a query that should obtain this
+ * information. TODO what about different zones? how will they be
+ * detected/handled?
  */
 Proj4js.defs["EPSG:2335"] = "+proj=tmerc +lat_0=0 +lon_0=123 +k=1 +x_0=21500000 +y_0=0 +a=6378140 +b=6356755.288157528 +units=m +no_defs";
 
@@ -307,7 +307,7 @@ var source = new Proj4js.Proj("EPSG:2335");
 
 function convertToLatLon(srcPoint) {
   var point = new Proj4js.Point(srcPoint.x, srcPoint.y);
-  Proj4js.transform(source, dest, point);  
+  Proj4js.transform(source, dest, point);
   return new L.LatLng(point.y, point.x);
 }
 
@@ -333,12 +333,12 @@ function drawResults(mean, major, minor, pointType) {
     fill = true;
     groupType = actualGroup;
   }
-  
+
   var meanCoords = convertToLatLon(mean);
 
   if (major && minor) {
     var majorLatLon = convertToLatLon(major);
-    var majorAxis = new L.Polyline([ meanCoords, majorLatLon], {
+    var majorAxis = new L.Polyline([ meanCoords, majorLatLon ], {
       fill : true,
       color : '#c00'
     });
@@ -442,7 +442,7 @@ EdgeType = {
   INFERRED : 1,
   EVALUATED : 2,
   ADDED : 3
-}
+};
 
 function drawEdge(edge, edgeType, layerOnly) {
 
@@ -508,18 +508,17 @@ function drawEdge(edge, edgeType, layerOnly) {
   if (angle != null) {
     var lonlat = data.geom.coordinates[data.geom.coordinates.length - 1];
     var myicon = new MyIcon();
-    var arrowhead = new L.Marker.Compass(
-        new L.LatLng(lonlat[1], lonlat[0]), {
-          icon : myicon,
-          clickable : false
-        });
+    var arrowhead = new L.Marker.Compass(new L.LatLng(lonlat[1], lonlat[0]), {
+      icon : myicon,
+      clickable : false
+    });
     arrowhead.setIconAngle(angle);
     layers.push(arrowhead);
   }
 
   result = new L.LayerGroup(layers);
   if (!layerOnly) {
-//    edgeGroup.addLayer(result);
+    // edgeGroup.addLayer(result);
     groupType.addLayer(result);
   }
   map.invalidateSize();
@@ -551,10 +550,10 @@ function createMatrixString(matrix) {
 }
 
 function getPathName(pathSegmentIds) {
-//  var resStr = new Array();
-//  $.each(pathSegmentIds, function(index, data) {
-//    resStr.push(data[0]);
-//  });
+  // var resStr = new Array();
+  // $.each(pathSegmentIds, function(index, data) {
+  // resStr.push(data[0]);
+  // });
 
   return paths[arrayHash(pathSegmentIds)];
 }
@@ -562,189 +561,196 @@ function getPathName(pathSegmentIds) {
 function renderParticles(isPrior) {
   var vehicleId = jQuery('#vehicle_id').val();
   $
-      .get(
-          '/api/traceParticleRecord',
-          {
-            vehicleId : vehicleId,
-            recordNumber : i,
-            particleNumber : -1,
-            withParent : true,
-            isPrior : isPrior
-          },
-          function(data) {
+      .ajax({
+        url : '/api/traceParticleRecord',
+        async : false,
+        dataType : 'json',
+        data : {
+          vehicleId : vehicleId,
+          recordNumber : i,
+          particleNumber : -1,
+          withParent : true,
+          isPrior : isPrior
+        },
+        success : function(data) {
 
-            
-            var particleList = null;
-            var particleEdgesDiv = null;
-            var particleMeansDiv = null;
-            var particleParentMeansDiv = null;
-            if (!isPrior) {
-              particleList = jQuery("#posteriorParticles");
-              particleMeansDiv = jQuery("#postParticleMeans");
-              particleEdgesDiv = jQuery("#postParticleEdges");
-              particleParentMeansDiv = jQuery("#postParticleParentMeans");
-            } else {
-              particleList = jQuery("#priorParticles");
-              particleMeansDiv = jQuery("#priorParticleMeans");
-              particleEdgesDiv = jQuery("#priorParticleEdges");
-              particleParentMeansDiv = jQuery("#priorParticleParentMeans");
-            }
-            
-            var particleMeans = new L.LayerGroup();
-            particleMeansDiv.data("particleMeans", particleMeans);
-            
-            var particleEdges = new L.LayerGroup();
-            particleEdgesDiv.data("particleEdges", particleEdges);
-              
-            var particleParentMeans = new L.LayerGroup();
-            particleParentMeansDiv.data("particleParentMeans", particleParentMeans);
-            
-            particleList.empty();
-            
-            if (data == null)
-              return;
+          var particleList = null;
+          var particleEdgesDiv = null;
+          var particleMeansDiv = null;
+          var particleParentMeansDiv = null;
+          if (!isPrior) {
+            particleList = jQuery("#posteriorParticles");
+            particleMeansDiv = jQuery("#postParticleMeans");
+            particleEdgesDiv = jQuery("#postParticleEdges");
+            particleParentMeansDiv = jQuery("#postParticleParentMeans");
+          } else {
+            particleList = jQuery("#priorParticles");
+            particleMeansDiv = jQuery("#priorParticleMeans");
+            particleEdgesDiv = jQuery("#priorParticleEdges");
+            particleParentMeansDiv = jQuery("#priorParticleParentMeans");
+          }
 
-            var particleNumber = 0;
-            jQuery
-                .each(
-                    data,
-                    function(_, particleData) {
+          var particleMeans = new L.LayerGroup();
+          particleMeansDiv.data("particleMeans", particleMeans);
 
-                      var particleMeanLoc = particleData.particle.infResults.meanCoords;
-                      var locLinkName = 'particle' + particleNumber + '_mean' + isPrior;
-                      var coordPair = particleMeanLoc.x + ','
-                          + particleMeanLoc.y;
-                      var locLink = '<a name="'
-                          + locLinkName
-                          + '" title="'
-                          + coordPair
-                          + '" style="color : black" href="javascript:void(0)">mean</a>';
+          var particleEdges = new L.LayerGroup();
+          particleEdgesDiv.data("particleEdges", particleEdges);
 
-                      var edgeDesc = "free";
-                      var edgeId = particleData.particle.infResults.inferredEdge.id;
-                      if (edgeId != null) {
-                        edgeDesc = edgeId;
+          var particleParentMeans = new L.LayerGroup();
+          particleParentMeansDiv.data("particleParentMeans",
+              particleParentMeans);
+
+          particleList.empty();
+
+          if (data == null)
+            return;
+
+          var particleNumber = 0;
+          jQuery
+              .each(
+                  data,
+                  function(_, particleData) {
+
+                    var particleMeanLoc = particleData.particle.infResults.meanCoords;
+                    var locLinkName = 'particle' + particleNumber + '_mean'
+                        + isPrior;
+                    var coordPair = particleMeanLoc.x + ',' + particleMeanLoc.y;
+                    var locLink = '<a name="'
+                        + locLinkName
+                        + '" title="'
+                        + coordPair
+                        + '" style="color : black" href="javascript:void(0)">mean</a>';
+
+                    var edgeDesc = "free";
+                    var edgeId = particleData.particle.infResults.inferredEdge.id;
+                    if (edgeId != null) {
+                      edgeDesc = edgeId;
+                    }
+                    var edgeLinkName = 'particle' + particleNumber + '_edge'
+                        + isPrior;
+                    var edgeLink = '<a name="' + edgeLinkName + '" title="'
+                        + edgeDesc
+                        + '" style="color : black" href="javascript:void(0)">'
+                        + edgeDesc + '</a>';
+
+                    var particleDivId = 'particle' + particleNumber;
+
+                    var optionDiv = jQuery('<div>' + ' ('
+                        + parseFloat(particleData.weight).toFixed(2) + '), '
+                        + locLink + ', ' + edgeLink + '</div>');
+                    // optionDiv.attr("value", particleNumber);
+
+                    if (particleData.isBest)
+                      optionDiv.css('background', 'yellow');
+
+                    particleList.append('<a class="accordion-label" href="#">'
+                        + particleNumber + '</a>');
+                    particleList.append(optionDiv);
+
+                    $('#' + particleDivId).click(function() {
+                      if (this.className == 'collapser') {
+                        if (this.parentNode.classList.contains("collapsed"))
+                          this.parentNode.classList.remove("collapsed");
+                        else
+                          this.parentNode.classList.add("collapsed");
                       }
-                      var edgeLinkName = 'particle' + particleNumber + '_edge' + isPrior;
-                      var edgeLink = '<a name="'
-                          + edgeLinkName
-                          + '" title="'
-                          + edgeDesc
-                          + '" style="color : black" href="javascript:void(0)">'
-                          + edgeDesc + '</a>';
-
-                      var particleDivId = 'particle' + particleNumber;
-
-                      var optionDiv = jQuery('<div>' + ' ('
-                          + parseFloat(particleData.weight).toFixed(2) + '), '
-                          + locLink + ', ' + edgeLink + '</div>');
-                      // optionDiv.attr("value", particleNumber);
-
-                      if (particleData.isBest)
-                        optionDiv.css('background', 'yellow');
-
-                      particleList
-                          .append('<a class="accordion-label" href="#">'
-                              + particleNumber + '</a>');
-                      particleList.append(optionDiv);
-
-                      $('#' + particleDivId).click(function() {
-                        if (this.className == 'collapser') {
-                          if (this.parentNode.classList.contains("collapsed"))
-                            this.parentNode.classList.remove("collapsed");
-                          else
-                            this.parentNode.classList.add("collapsed");
-                        }
-                      });
-
-                      var particleMeanLatLon = convertToLatLon(particleMeanLoc);
-                      createHoverPointLink(locLinkName, particleMeanLatLon);
-                      particleMeans.addLayer(drawCoords(particleMeanLatLon.lat, particleMeanLatLon.lng, null, null, true));
-
-                      var subList = jQuery('<ul><li><div class="subinfo"></div></li></ul>');
-                      var collapsedDiv = subList.find(".subinfo");
-                      optionDiv.append(subList);
-
-                      var stateMean = createMatrixString(particleData.particle.infResults.stateMean);
-                      collapsedDiv.append('<li>state=' + stateMean + '</li>');
-
-                      var stateCov = createMatrixString(particleData.particle.infResults.stateCovariance);
-                      collapsedDiv.append('<li>stateCov=' + stateCov + '</li>');
-
-                      var pathName = getPathName(
-                          getEdgeIdsFromSegments(particleData.particle.infResults.pathSegments));
-                      var pathData = $('#' + pathName).data('path');
-                      if (pathData) {
-                        var pathLikelihood = parseFloat(pathData.totalLogLikelihood).toFixed(2); 
-                        collapsedDiv.append('<li>' + pathName + ', ' + pathLikelihood + '</li>');
-                        particleEdges.addLayer(renderPath(pathData.pathEdges, 
-                            pathData.direction, EdgeType.ADDED, true));
-                      }
-                      
-                      var edge = particleData.particle.infResults.inferredEdge;
-                      if (edge != null) {
-                        createHoverLineLink(edgeLinkName, edge);
-                      }
-
-                      if (particleData.parent) {
-                        var parentList = jQuery("<ul></ul>");
-                        collapsedDiv.append(parentList);
-
-                        var parentEdgeDesc = "free";
-                        var parentEdgeId = particleData.parent.infResults.inferredEdge.id;
-                        if (parentEdgeId != null) {
-                          parentEdgeDesc = parentEdgeId;
-                        }
-                        var parentEdgeLinkName = 'parent_particle'
-                            + particleNumber + '_edge' + isPrior;
-                        var parentEdgeLink = '<a name="'
-                            + parentEdgeLinkName
-                            + '" title="'
-                            + parentEdgeDesc
-                            + '" style="color : black" href="javascript:void(0)">'
-                            + parentEdgeDesc + '</a>';
-
-                        var parentParticleMeanLoc = particleData.parent.infResults.meanCoords;
-                        var parentLocLinkName = 'parent_particle'
-                            + particleNumber + '_mean' + isPrior;
-                        var parentCoordPair = parentParticleMeanLoc.x + ','
-                            + parentParticleMeanLoc.y;
-                        var parentLocLink = '<a name="'
-                            + parentLocLinkName
-                            + '" title="'
-                            + parentCoordPair
-                            + '" style="color : black" href="javascript:void(0)">mean</a>';
-                        parentList.append("<li>Parent:" + parentLocLink + ', '
-                            + parentEdgeLink + "</li>");
-
-                        var parentStateMean = createMatrixString(particleData.parent.infResults.stateMean);
-                        parentList.append("<li>state=" + parentStateMean
-                            + "</li>");
-
-                        var stateCov = createMatrixString(particleData.parent.infResults.stateCovariance);
-                        parentList.append('<li>stateCov=' + stateCov + '</li>');
-                        
-                        var parentPathName = getPathName(
-                            getEdgeIdsFromSegments(particleData.parent.infResults.pathSegments));
-                        if (parentPathName) {
-                          parentList.append('<li>path=' + parentPathName + '</li>');
-                        }
-                        
-                        var parentMeanLatLon = convertToLatLon(parentParticleMeanLoc);
-                        createHoverPointLink(parentLocLinkName,parentMeanLatLon);
-                        particleParentMeans.addLayer(drawCoords(parentMeanLatLon.lat, parentMeanLatLon.lng, null, null, true));
-                        
-
-                        var parentEdge = particleData.parent.infResults.inferredEdge;
-                        if (parentEdge != null) {
-                          createHoverLineLink(parentEdgeLinkName, parentEdge);
-                        }
-
-                      }
-
-                      particleNumber++;
                     });
-          });
+
+                    var particleMeanLatLon = convertToLatLon(particleMeanLoc);
+                    createHoverPointLink(locLinkName, particleMeanLatLon);
+                    particleMeans.addLayer(drawCoords(particleMeanLatLon.lat,
+                        particleMeanLatLon.lng, null, null, true));
+
+                    particleEdges.addLayer(renderPath(
+                        particleData.particle.infResults.pathSegments,
+                        particleData.particle.infResults.pathDirection,
+                        EdgeType.ADDED, true));
+
+                    var subList = jQuery('<ul><li><div class="subinfo"></div></li></ul>');
+                    var collapsedDiv = subList.find(".subinfo");
+                    optionDiv.append(subList);
+
+                    var stateMean = createMatrixString(particleData.particle.infResults.stateMean);
+                    collapsedDiv.append('<li>state=' + stateMean + '</li>');
+
+                    var stateCov = createMatrixString(particleData.particle.infResults.stateCovariance);
+                    collapsedDiv.append('<li>stateCov=' + stateCov + '</li>');
+
+                    var pathName = getPathName(getEdgeIdsFromSegments(particleData.particle.infResults.pathSegments));
+                    var pathData = $('#' + pathName).data('path');
+                    if (pathData) {
+                      var pathLikelihood = parseFloat(
+                          pathData.totalLogLikelihood).toFixed(2);
+                      collapsedDiv.append('<li>' + pathName + ', '
+                          + pathLikelihood + '</li>');
+                    }
+
+                    var edge = particleData.particle.infResults.inferredEdge;
+                    if (edge != null) {
+                      createHoverLineLink(edgeLinkName, edge);
+                    }
+
+                    if (particleData.parent) {
+                      var parentList = jQuery("<ul></ul>");
+                      collapsedDiv.append(parentList);
+
+                      var parentEdgeDesc = "free";
+                      var parentEdgeId = particleData.parent.infResults.inferredEdge.id;
+                      if (parentEdgeId != null) {
+                        parentEdgeDesc = parentEdgeId;
+                      }
+                      var parentEdgeLinkName = 'parent_particle'
+                          + particleNumber + '_edge' + isPrior;
+                      var parentEdgeLink = '<a name="'
+                          + parentEdgeLinkName
+                          + '" title="'
+                          + parentEdgeDesc
+                          + '" style="color : black" href="javascript:void(0)">'
+                          + parentEdgeDesc + '</a>';
+
+                      var parentParticleMeanLoc = particleData.parent.infResults.meanCoords;
+                      var parentLocLinkName = 'parent_particle'
+                          + particleNumber + '_mean' + isPrior;
+                      var parentCoordPair = parentParticleMeanLoc.x + ','
+                          + parentParticleMeanLoc.y;
+                      var parentLocLink = '<a name="'
+                          + parentLocLinkName
+                          + '" title="'
+                          + parentCoordPair
+                          + '" style="color : black" href="javascript:void(0)">mean</a>';
+                      parentList.append("<li>Parent:" + parentLocLink + ', '
+                          + parentEdgeLink + "</li>");
+
+                      var parentStateMean = createMatrixString(particleData.parent.infResults.stateMean);
+                      parentList.append("<li>state=" + parentStateMean
+                          + "</li>");
+
+                      var stateCov = createMatrixString(particleData.parent.infResults.stateCovariance);
+                      parentList.append('<li>stateCov=' + stateCov + '</li>');
+
+                      var parentPathName = getPathName(getEdgeIdsFromSegments(particleData.parent.infResults.pathSegments));
+                      if (parentPathName) {
+                        parentList.append('<li>path=' + parentPathName
+                            + '</li>');
+                      }
+
+                      var parentMeanLatLon = convertToLatLon(parentParticleMeanLoc);
+                      createHoverPointLink(parentLocLinkName, parentMeanLatLon);
+                      particleParentMeans.addLayer(drawCoords(
+                          parentMeanLatLon.lat, parentMeanLatLon.lng, null,
+                          null, true));
+
+                      var parentEdge = particleData.parent.infResults.inferredEdge;
+                      if (parentEdge != null) {
+                        createHoverLineLink(parentEdgeLinkName, parentEdge);
+                      }
+
+                    }
+
+                    particleNumber++;
+                  });
+        }
+      });
 }
 
 function createHoverLineLink(linkName, edge) {
@@ -801,7 +807,7 @@ function arrayHash(array) {
   var prime = 31;
   var result = 1;
   $.each(array, function(index, value) {
-    result = prime*result + parseInt(value);
+    result = prime * result + parseInt(value);
   });
   return result;
 }
@@ -828,37 +834,39 @@ function renderGraph() {
     pathList.append(endPointsOption);
 
     // TODO FIXME must make a separate call to get this
-    // info.  no longer contained in every particle.
-    
+    // info. no longer contained in every particle.
+
     var vehicleId = jQuery('#vehicle_id').val();
     var evaluatedPaths = null;
-    $.ajax({
-      url : "/api/evaluatedPaths?vehicleId=" + vehicleId  + "&recordNumber=" + i,
-      dataType : 'json',
-      async : false,
-      success : function(data) {
-        evaluatedPaths = data;
-      }
-    });    
-    
+    $
+        .ajax({
+          url : "/api/evaluatedPaths?vehicleId=" + vehicleId + "&recordNumber="
+              + i,
+          dataType : 'json',
+          async : false,
+          success : function(data) {
+            evaluatedPaths = data;
+          }
+        });
+
     if (evaluatedPaths != null && evaluatedPaths.length > 0) {
-//      var limit = 500;
+      // var limit = 500;
       for ( var k in evaluatedPaths) {
-//        if (k >= limit)
-//          break;
+        // if (k >= limit)
+        // break;
 
         // FIXME finish
         var pathName = 'path' + k;
         var edgeIds = getEdgeIdsFromSegments(evaluatedPaths[k].pathEdges);
-        var pathStr = parseFloat(evaluatedPaths[k].totalDistance).toFixed(2) 
-          + ", [" + edgeIds.toString() + "]";
+        var pathStr = parseFloat(evaluatedPaths[k].totalDistance).toFixed(2)
+            + ", [" + edgeIds.toString() + "]";
         var option = jQuery('<option id=' + pathName + '>(path' + k + ')  '
             + pathStr + '</option>');
         option.attr("value", pathName);
         option.data("path", evaluatedPaths[k]);
         pathList.append(option);
         paths[arrayHash(edgeIds)] = pathName;
-        
+
       }
     }
 
@@ -866,38 +874,41 @@ function renderGraph() {
       // edgeGroup.clearLayers();
       evaluatedGroup.clearLayers();
       // segments
-      $("select option:selected").each(function() {
-        var pathName = this.value;
-        if (pathName !== "none" 
-          && pathName !== "startEdges"
-          && pathName !== "endEdges" ) {
-          var path = $('#' + pathName).data('path');
-          renderPath(path.pathEdges, path.totalDistance, EdgeType.EVALUATED);
-        } else if (pathName === "startEdges") {
-          var edges = {};
-          $.each(paths, function(key, value) {
-            var path = $('#' + value).data('path');
-            if (path.startEdge != null)
-              edges[path.startEdge] = path.startEdge;
-          });
-          $.each(edges, function(key, value) {
-            evaluatedGroup.addLayer(drawEdge(value, EdgeType.EVALUATED, true));
-          });
-        } else if (pathName === "endEdges") {
-          var edges = {};
-          $.each(paths, function(key, value) {
-            var path = $('#' + value).data('path');
-            if (path.endEdge != null)
-              edges[path.endEdge] = path.endEdge;
-          });
-          $.each(edges, function(key, value) {
-            evaluatedGroup.addLayer(drawEdge(value, EdgeType.EVALUATED, true));
-          });
-        }
-      });
+      $("select option:selected")
+          .each(
+              function() {
+                var pathName = this.value;
+                if (pathName !== "none" && pathName !== "startEdges"
+                    && pathName !== "endEdges") {
+                  var path = $('#' + pathName).data('path');
+                  renderPath(path.pathEdges, path.totalDistance,
+                      EdgeType.EVALUATED);
+                } else if (pathName === "startEdges") {
+                  var edges = {};
+                  $.each(paths, function(key, value) {
+                    var path = $('#' + value).data('path');
+                    if (path.startEdge != null)
+                      edges[path.startEdge] = path.startEdge;
+                  });
+                  $.each(edges, function(key, value) {
+                    evaluatedGroup.addLayer(drawEdge(value, EdgeType.EVALUATED,
+                        true));
+                  });
+                } else if (pathName === "endEdges") {
+                  var edges = {};
+                  $.each(paths, function(key, value) {
+                    var path = $('#' + value).data('path');
+                    if (path.endEdge != null)
+                      edges[path.endEdge] = path.endEdge;
+                  });
+                  $.each(edges, function(key, value) {
+                    evaluatedGroup.addLayer(drawEdge(value, EdgeType.EVALUATED,
+                        true));
+                  });
+                }
+              });
       map.invalidateSize();
     });
-
 
   }
 
@@ -905,7 +916,8 @@ function renderGraph() {
   renderParticles(true);
 
   if (lines[i].actualResults) {
-    renderPath(lines[i].actualResults.pathSegments, lines[i].actualResults.pathDirection, EdgeType.ACTUAL);
+    renderPath(lines[i].actualResults.pathSegments,
+        lines[i].actualResults.pathDirection, EdgeType.ACTUAL);
   }
 }
 
@@ -941,20 +953,20 @@ function renderPath(pathSegments, pathDirection, edgeType, layerOnly) {
   if (pathDirection < 0) {
     segments.reverse();
   }
-    
+
   var latLngs = new Array();
   var justIds = new Array();
   for ( var j in segments) {
     var segmentInfo = segments[j];
     var edgeId = segmentInfo.id;
-    
+
     if (edgeId > -1) {
       if (j > 0 && j % 5 == 0) {
         justIds.push('<br>' + edgeId);
       } else {
         justIds.push(edgeId);
       }
-      
+
       for ( var k in segmentInfo.geom.coordinates) {
         latLngs.push(new L.LatLng(segmentInfo.geom.coordinates[k][1],
             segmentInfo.geom.coordinates[k][0]));
@@ -967,11 +979,11 @@ function renderPath(pathSegments, pathDirection, edgeType, layerOnly) {
     weight : weight,
     opacity : opacity
   });
-  
+
   polyline.bindPopup(justIds.toString());
-  
+
   if (!layerOnly) {
-//    edgeGroup.addLayer(polyline);
+    // edgeGroup.addLayer(polyline);
     groupType.addLayer(polyline);
     map.invalidateSize();
   }
