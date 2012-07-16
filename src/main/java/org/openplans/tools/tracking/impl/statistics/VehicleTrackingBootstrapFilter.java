@@ -84,7 +84,17 @@ public class VehicleTrackingBootstrapFilter extends
                       .getThreadRandom().get(), numParticles));
       posteriorDist = resampleDist;
     } else {
+      /*
+       * Sometimes the log normalized distribution doesn't have the exact
+       * amount we need, so we need to sample the remainder. 
+       */
       posteriorDist = prePosteriorDist;
+      final int numDiff = this.numParticles - prePosteriorDist.getTotalCount();
+      if (numDiff != 0) {
+        posteriorDist.incrementAll(prePosteriorDist.sample(
+                  ((VehicleTrackingPathSamplerFilterUpdater) updater)
+                      .getThreadRandom().get(), numDiff));
+      } 
     }
 
     target.clear();
