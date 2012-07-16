@@ -30,8 +30,7 @@ public class PathEdge implements Comparable<PathEdge> {
     return ComparisonChain
         .start()
         .compare(this.edge, o.edge)
-        .compare(
-            this.distToStartOfEdge, o.distToStartOfEdge,
+        .compare(this.distToStartOfEdge, o.distToStartOfEdge,
             Ordering.natural().nullsLast()).result();
   }
 
@@ -76,10 +75,11 @@ public class PathEdge implements Comparable<PathEdge> {
   public int hashCode() {
     final int prime = 31;
     int result = 1;
-    result = prime
-        * result
-        + ((distToStartOfEdge == null) ? 0 : distToStartOfEdge
-            .hashCode());
+    result =
+        prime
+            * result
+            + ((distToStartOfEdge == null) ? 0 : distToStartOfEdge
+                .hashCode());
     result = prime * result + ((edge == null) ? 0 : edge.hashCode());
     return result;
   }

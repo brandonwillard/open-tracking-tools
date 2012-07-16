@@ -14,10 +14,10 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Random;
 
-import org.openplans.tools.tracking.impl.LogDefaultDataDistribution;
-
 import no.uib.cipr.matrix.DenseVector;
 import no.uib.cipr.matrix.UpperSPDDenseMatrix;
+
+import org.openplans.tools.tracking.impl.LogDefaultDataDistribution;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.HashMultiset;
@@ -56,8 +56,10 @@ public class StatisticsUtil {
       0.468238212480865118, 0.0659881378689285515,
       0.00378239633202758244, 7.29751555083966205e-5 };
   private static final int CUTOFF = 16; /* Cutoff allowing exact "*" and "/" */
-  private static final double M_SQRT_32 = 5.656854249492380195206754896838; /* The square root of 32 */
-  private static final double M_1_SQRT_2PI = 0.398942280401432677939946059934;
+  private static final double M_SQRT_32 =
+      5.656854249492380195206754896838; /* The square root of 32 */
+  private static final double M_1_SQRT_2PI =
+      0.398942280401432677939946059934;
   private static final double DBL_EPSILON = 2.2204460492503131e-016;
 
   private static double determineMachineEpsilon() {
@@ -73,23 +75,26 @@ public class StatisticsUtil {
     return d4;
   }
 
-  public static <SupportType extends Comparable> DataDistribution<SupportType> getLogNormalizedDistribution(
-    List<WrappedWeightedValue<SupportType>> map) {
+  public static <SupportType extends Comparable<SupportType>>
+      LogDefaultDataDistribution<SupportType>
+      getLogNormalizedDistribution(
+        List<WrappedWeightedValue<SupportType>> map) {
 
     /*-
      * Normalize to avoid zero probs.
      */
     double totalLikelihood = Double.NEGATIVE_INFINITY;
     for (final WrappedWeightedValue<SupportType> weight : map) {
-      totalLikelihood = LogMath.add(
-          weight.getWeight(), totalLikelihood);
+      totalLikelihood =
+          LogMath.add(weight.getWeight(), totalLikelihood);
       assert !Double.isNaN(totalLikelihood);
     }
 
     if (totalLikelihood == Double.NEGATIVE_INFINITY)
       return null;
 
-    final LogDefaultDataDistribution<SupportType> result = new LogDefaultDataDistribution<SupportType>();
+    final LogDefaultDataDistribution<SupportType> result =
+        new LogDefaultDataDistribution<SupportType>();
 
     /*
      * Sort before putting in the data distribution
@@ -109,15 +114,20 @@ public class StatisticsUtil {
       if (entry.getWeight() == Double.NEGATIVE_INFINITY
           || totalLikelihood == Double.NEGATIVE_INFINITY)
         continue;
-      final double weight = entry.getWeight() - totalLikelihood;
-      result.set(entry.getValue(), Math.exp(weight), entry.getCount());
+      double weight = entry.getWeight() - totalLikelihood;
+      if (weight > 0d)
+        weight = 0d;
+      result
+          .increment(entry.getValue(), Math.exp(weight), entry.getCount());
     }
 
     return result;
   }
 
-  public static <DistributionType, SupportType extends Comparable> DataDistribution<SupportType> getLogNormalizedDistribution(
-    Map<SupportType, WrappedWeightedValue<DistributionType>> map) {
+  public static
+      <DistributionType, SupportType extends Comparable<SupportType>>
+      LogDefaultDataDistribution<SupportType> getLogNormalizedDistribution(
+        Map<SupportType, WrappedWeightedValue<DistributionType>> map) {
 
     /*-
      * Normalize to avoid zero probs.
@@ -125,8 +135,8 @@ public class StatisticsUtil {
     double totalLikelihood = Double.NEGATIVE_INFINITY;
     for (final WrappedWeightedValue<DistributionType> weight : map
         .values()) {
-      totalLikelihood = LogMath.add(
-          weight.getWeight(), totalLikelihood);
+      totalLikelihood =
+          LogMath.add(weight.getWeight(), totalLikelihood);
     }
 
     if (totalLikelihood == Double.NEGATIVE_INFINITY)
@@ -135,8 +145,8 @@ public class StatisticsUtil {
     /*
      * Sort before putting in the data distribution
      */
-    final List<Entry<SupportType, WrappedWeightedValue<DistributionType>>> entryList = Lists
-        .newArrayList(map.entrySet());
+    final List<Entry<SupportType, WrappedWeightedValue<DistributionType>>> entryList =
+        Lists.newArrayList(map.entrySet());
     // Collections.sort(entryList, new Comparator<Entry<SupportType,
     // DefaultWeightedValue<DistributionType>>> () {
     //
@@ -149,26 +159,82 @@ public class StatisticsUtil {
     //
     // });
 
-    final LogDefaultDataDistribution<SupportType> result = new LogDefaultDataDistribution<SupportType>();
+    final LogDefaultDataDistribution<SupportType> result =
+        new LogDefaultDataDistribution<SupportType>();
     for (final Entry<SupportType, WrappedWeightedValue<DistributionType>> entry : entryList) {
       if (entry.getValue().getWeight() == Double.NEGATIVE_INFINITY)
         continue;
-      final double weight = entry.getValue().getWeight()
-          - totalLikelihood;
-      result.set(entry.getKey(), Math.exp(weight), entry.getValue().getCount());
+      double weight =
+          entry.getValue().getWeight() - totalLikelihood;
+      if (weight > 0d)
+        weight = 0d;
+      result.increment(entry.getKey(), Math.exp(weight), entry.getValue()
+          .getCount());
     }
 
     return result;
   }
-  
+
+  /**
+   * Low variance resampler. Follows Thrun's example in Probabilistic Robots.
+   */
+  //  public static <SupportType> DataDistribution<SupportType> lowVarianceResampler(
+  //      Random rng, DataDistribution<SupportType> particles) {
+  //    Preconditions.checkArgument(particles.size() > 0);
+  //
+  //    final double M = particles.getDomainSize();
+  //    final Multiset<SupportType> resampled = HashMultiset.create((int) M);
+  //    final double r = rng.nextDouble() / M;
+  //    final Iterator<?> pIter = particles.asMap().entrySet().iterator();
+  //    SupportType p = (SupportType) pIter.next();
+  //    double c = p.getWeight() - Math.log(particles.count(p));
+  //    for (int m = 0; m < M; ++m) {
+  //      final double U = Math.log(r + m / M);
+  //      while (U > c && pIter.hasNext()) {
+  //        p = pIter.next();
+  //        c = LogMath.add(
+  //            p.getWeight() - Math.log(particles.count(p)), c);
+  //      }
+  //      resampled.add(p);
+  //    }
+  //
+  //    return resampled;
+  //  }
+
+  public static double logEvaluateNormal(Vector input, Vector mean,
+    Matrix cov) {
+    Preconditions.checkArgument(input.getDimensionality() == mean
+        .getDimensionality());
+    final int k = mean.getDimensionality();
+    final double logLeadingCoefficient =
+        (-0.5 * k * MultivariateGaussian.LOG_TWO_PI)
+            + (-0.5 * cov.logDeterminant().getRealPart());
+
+    final Vector delta = input.minus(mean);
+    final DenseVector b = new DenseVector(cov.getNumRows());
+    final DenseVector d =
+        new DenseVector(
+            ((gov.sandia.cognition.math.matrix.mtj.DenseVector) delta)
+                .getArray(), false);
+    final UpperSPDDenseMatrix spd =
+        new UpperSPDDenseMatrix(
+            ((AbstractMTJMatrix) cov).getInternalMatrix(), false);
+    spd.transSolve(d, b);
+    final double zsquared = b.dot(d);
+
+    return logLeadingCoefficient - 0.5 * zsquared;
+  }
+
   /**
    * Low variance sampler. Follows Thrun's example in Probabilistic Robots.
    */
-  public static <SupportType extends Weighted> Multiset<SupportType> lowVarianceSampler(Random rng,
-      Multiset<SupportType> particles, double M) {
+  public static <SupportType extends Weighted> Multiset<SupportType>
+      lowVarianceSampler(Random rng, Multiset<SupportType> particles,
+        double M) {
     Preconditions.checkArgument(particles.size() > 0);
 
-    final Multiset<SupportType> resampled = HashMultiset.create((int) M);
+    final Multiset<SupportType> resampled =
+        HashMultiset.create((int) M);
     final double r = rng.nextDouble() / M;
     final Iterator<SupportType> pIter = particles.iterator();
     SupportType p = pIter.next();
@@ -177,61 +243,14 @@ public class StatisticsUtil {
       final double U = Math.log(r + m / M);
       while (U > c && pIter.hasNext()) {
         p = pIter.next();
-        c = LogMath.add(
-            p.getWeight() - Math.log(particles.count(p)), c);
+        c =
+            LogMath.add(p.getWeight() - Math.log(particles.count(p)),
+                c);
       }
       resampled.add(p);
     }
 
     return resampled;
-  }
-  
-  /**
-   * Low variance resampler. Follows Thrun's example in Probabilistic Robots.
-   */
-//  public static <SupportType> DataDistribution<SupportType> lowVarianceResampler(
-//      Random rng, DataDistribution<SupportType> particles) {
-//    Preconditions.checkArgument(particles.size() > 0);
-//
-//    final double M = particles.getDomainSize();
-//    final Multiset<SupportType> resampled = HashMultiset.create((int) M);
-//    final double r = rng.nextDouble() / M;
-//    final Iterator<?> pIter = particles.asMap().entrySet().iterator();
-//    SupportType p = (SupportType) pIter.next();
-//    double c = p.getWeight() - Math.log(particles.count(p));
-//    for (int m = 0; m < M; ++m) {
-//      final double U = Math.log(r + m / M);
-//      while (U > c && pIter.hasNext()) {
-//        p = pIter.next();
-//        c = LogMath.add(
-//            p.getWeight() - Math.log(particles.count(p)), c);
-//      }
-//      resampled.add(p);
-//    }
-//
-//    return resampled;
-//  }
-  
-  public static double logEvaluateNormal(Vector input, Vector mean,
-    Matrix cov) {
-    Preconditions.checkArgument(input.getDimensionality() == mean
-        .getDimensionality());
-    final int k = mean.getDimensionality();
-    final double logLeadingCoefficient = (-0.5 * k * MultivariateGaussian.LOG_TWO_PI)
-        + (-0.5 * cov.logDeterminant().getRealPart());
-
-    final Vector delta = input.minus(mean);
-    final DenseVector b = new DenseVector(cov.getNumRows());
-    final DenseVector d = new DenseVector(
-        ((gov.sandia.cognition.math.matrix.mtj.DenseVector) delta)
-            .getArray(),
-        false);
-    final UpperSPDDenseMatrix spd = new UpperSPDDenseMatrix(
-        ((AbstractMTJMatrix) cov).getInternalMatrix(), false);
-    spd.transSolve(d, b);
-    final double zsquared = b.dot(d);
-
-    return logLeadingCoefficient - 0.5 * zsquared;
   }
 
   /**
@@ -339,8 +358,9 @@ public class StatisticsUtil {
       if (log_p) {
         p = (-xsq * xsq * 0.5) + (-del * 0.5) + Math.log(temp);
         if ((lower && x > 0.0) || (upper && x <= 0.0)) {
-          cp = Math.log(1.0 - Math.exp(-xsq * xsq * 0.5)
-              * Math.exp(-del * 0.5) * temp);
+          cp =
+              Math.log(1.0 - Math.exp(-xsq * xsq * 0.5)
+                  * Math.exp(-del * 0.5) * temp);
         }
       } else {
         p = Math.exp(-xsq * xsq * 0.5) * Math.exp(-del * 0.5) * temp;
@@ -381,8 +401,9 @@ public class StatisticsUtil {
       if (log_p) {
         p = (-xsq * xsq * 0.5) + (-del * 0.5) + Math.log(temp);
         if ((lower && x > 0.0) || (upper && x <= 0.0)) {
-          cp = Math.log(1.0 - Math.exp(-xsq * xsq * 0.5)
-              * Math.exp(-del * 0.5) * temp);
+          cp =
+              Math.log(1.0 - Math.exp(-xsq * xsq * 0.5)
+                  * Math.exp(-del * 0.5) * temp);
         }
       } else {
         p = Math.exp(-xsq * xsq * 0.5) * Math.exp(-del * 0.5) * temp;
@@ -408,7 +429,7 @@ public class StatisticsUtil {
     return p;
 
   }
-  
+
   public static int sum(int[] array) {
     int sum = 0;
     for (int i = 0; i < array.length; i++)

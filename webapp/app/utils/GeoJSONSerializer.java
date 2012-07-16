@@ -47,7 +47,7 @@ public class GeoJSONSerializer extends JsonSerializer<Geometry> {
       jgen.writeRawValue(null);
       return;
     }
-      
+
     final GeometryJSON json = new GeometryJSON();
     MathTransform transform;
     try {

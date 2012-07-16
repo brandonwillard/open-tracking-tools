@@ -17,32 +17,6 @@ public class MutableDoubleCount extends MutableDouble {
     this.count = count;
   }
 
-  public int getCount() {
-    return this.count;
-  }
-
-  public void plusEquals(double value) {
-    this.value += value;
-    this.count++;
-  }
-
-  public void set(double value) {
-    this.set(value, 1);
-  }
-  
-  public void set(double value, int count) {
-    this.value = value;
-    this.count = count;
-  }
-
-  @Override
-  public int hashCode() {
-    final int prime = 31;
-    int result = super.hashCode();
-    result = prime * result + count;
-    return result;
-  }
-
   @Override
   public boolean equals(Object obj) {
     if (this == obj) {
@@ -54,11 +28,42 @@ public class MutableDoubleCount extends MutableDouble {
     if (getClass() != obj.getClass()) {
       return false;
     }
-    MutableDoubleCount other = (MutableDoubleCount) obj;
+    final MutableDoubleCount other = (MutableDoubleCount) obj;
     if (count != other.count) {
       return false;
     }
     return true;
+  }
+
+  public int getCount() {
+    return this.count;
+  }
+
+  @Override
+  public int hashCode() {
+    final int prime = 31;
+    int result = super.hashCode();
+    result = prime * result + count;
+    return result;
+  }
+
+  public void plusEquals(double value) {
+    this.value += value;
+    this.count++;
+  }
+  
+  public void plusEquals(double value, int count) {
+    this.value += value;
+    this.count += count;
+  }
+
+  public void set(double value) {
+    this.set(value, 1);
+  }
+
+  public void set(double value, int count) {
+    this.value = value;
+    this.count = count;
   }
 
   @Override

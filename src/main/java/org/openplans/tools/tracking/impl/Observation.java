@@ -52,8 +52,9 @@ public class Observation implements Comparable<Observation> {
     this.velocity = velocity;
     this.heading = heading;
     this.accuracy = accuracy;
-    this.projPoint = VectorFactory.getDefault().createVector2D(
-        obsPoint.x, obsPoint.y);
+    this.projPoint =
+        VectorFactory.getDefault().createVector2D(obsPoint.x,
+            obsPoint.y);
     this.prevObs = prevObs;
   }
 
@@ -145,10 +146,12 @@ public class Observation implements Comparable<Observation> {
   public int hashCode() {
     final int prime = 31;
     int result = 1;
-    result = prime * result
-        + ((timestamp == null) ? 0 : timestamp.hashCode());
-    result = prime * result
-        + ((vehicleId == null) ? 0 : vehicleId.hashCode());
+    result =
+        prime * result
+            + ((timestamp == null) ? 0 : timestamp.hashCode());
+    result =
+        prime * result
+            + ((vehicleId == null) ? 0 : vehicleId.hashCode());
     return result;
   }
 
@@ -173,8 +176,8 @@ public class Observation implements Comparable<Observation> {
     String vehicleId, Date time, Coordinate obsCoords,
     Double velocity, Double heading, Double accuracy)
       throws TimeOrderException {
-    final Coordinate obsPoint = GeoUtils
-        .convertToEuclidean(obsCoords);
+    final Coordinate obsPoint =
+        GeoUtils.convertToEuclidean(obsCoords);
 
     final Observation prevObs = vehiclesToRecords.get(vehicleId);
 
@@ -196,9 +199,9 @@ public class Observation implements Comparable<Observation> {
       recordNumber = 0;
     }
 
-    final Observation obs = new Observation(
-        vehicleId, time, obsCoords, obsPoint, velocity, heading,
-        accuracy, prevObs, recordNumber);
+    final Observation obs =
+        new Observation(vehicleId, time, obsCoords, obsPoint,
+            velocity, heading, accuracy, prevObs, recordNumber);
 
     vehiclesToRecords.put(vehicleId, obs);
 
@@ -216,16 +219,16 @@ public class Observation implements Comparable<Observation> {
     final Coordinate obsCoords = new Coordinate(lat, lon);
     Preconditions.checkArgument(GeoUtils.isInLatLonCoords(obsCoords));
 
-    final Double velocityd = velocity != null ? Double
-        .parseDouble(velocity) : null;
-    final Double headingd = heading != null ? Double
-        .parseDouble(heading) : null;
-    final Double accuracyd = accuracy != null ? Double
-        .parseDouble(accuracy) : null;
+    final Double velocityd =
+        velocity != null ? Double.parseDouble(velocity) : null;
+    final Double headingd =
+        heading != null ? Double.parseDouble(heading) : null;
+    final Double accuracyd =
+        accuracy != null ? Double.parseDouble(accuracy) : null;
     final Date time = sdf.parse(timestamp);
 
-    return createObservation(
-        vehicleId, time, obsCoords, velocityd, headingd, accuracyd);
+    return createObservation(vehicleId, time, obsCoords, velocityd,
+        headingd, accuracyd);
   }
 
   public static SimpleDateFormat getSdf() {

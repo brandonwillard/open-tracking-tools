@@ -35,8 +35,8 @@ public class CartesianProjectionConverter {
 
     final String cartesianCode = "EPSG:4499";
 
-    final CRSAuthorityFactory crsAuthorityFactory = CRS
-        .getAuthorityFactory(true);
+    final CRSAuthorityFactory crsAuthorityFactory =
+        CRS.getAuthorityFactory(true);
     CoordinateReferenceSystem mapCRS;
     CoordinateReferenceSystem dataCRS;
     MathTransform transform;
@@ -44,26 +44,31 @@ public class CartesianProjectionConverter {
     final CSVReader gps_reader;
     final FileWriter test_output;
     try {
-      mapCRS = crsAuthorityFactory
-          .createCoordinateReferenceSystem(googleWebMercatorCode);
-      dataCRS = crsAuthorityFactory
-          .createCoordinateReferenceSystem(cartesianCode);
+      mapCRS =
+          crsAuthorityFactory
+              .createCoordinateReferenceSystem(googleWebMercatorCode);
+      dataCRS =
+          crsAuthorityFactory
+              .createCoordinateReferenceSystem(cartesianCode);
       final boolean lenient = true; // allow for some error due to different
                                     // datums
       transform = CRS.findMathTransform(mapCRS, dataCRS, lenient);
-      test_output = new FileWriter(
-          "src/main/resources/org/openplans/cebutaxi/test_data/proj_output.csv");
+      test_output =
+          new FileWriter(
+              "src/main/resources/org/openplans/cebutaxi/test_data/proj_output.csv");
       test_output.write("time,proj_x,proj_y\n");
 
-      gps_reader = new CSVReader(
-          new FileReader(
-              "src/main/resources/org/openplans/cebutaxi/test_data/Cebu-Taxi-GPS/0726.csv"),
-          ',');
+      gps_reader =
+          new CSVReader(
+              new FileReader(
+                  "src/main/resources/org/openplans/cebutaxi/test_data/Cebu-Taxi-GPS/0726.csv"),
+              ',');
       String[] nextLine;
       gps_reader.readNext();
       log.info("processing gps data");
 
-      final SimpleDateFormat sdf = new SimpleDateFormat("F/d/y H:m:s");
+      final SimpleDateFormat sdf =
+          new SimpleDateFormat("F/d/y H:m:s");
 
       while ((nextLine = gps_reader.readNext()) != null) {
         final Date datetime = sdf.parse(nextLine[0]);

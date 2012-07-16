@@ -26,52 +26,58 @@ public class VehicleTrackingPerformanceEvaluator extends
 
   @Override
   public VehicleTrackingPerformanceEvaluator clone() {
-    final VehicleTrackingPerformanceEvaluator cloned = (VehicleTrackingPerformanceEvaluator) super
-        .clone();
+    final VehicleTrackingPerformanceEvaluator cloned =
+        (VehicleTrackingPerformanceEvaluator) super.clone();
     return cloned;
   }
 
   @Override
-  public VehicleStatePerformanceResult evaluatePerformance(
-    Collection<? extends TargetEstimatePair<VehicleState, DataDistribution<VehicleState>>> data) {
+  public
+      VehicleStatePerformanceResult
+      evaluatePerformance(
+        Collection<? extends TargetEstimatePair<VehicleState, DataDistribution<VehicleState>>> data) {
 
-    final List<UnivariateGaussian.SufficientStatistic> stats = Lists
-        .newArrayList();
+    final List<UnivariateGaussian.SufficientStatistic> stats =
+        Lists.newArrayList();
     for (final TargetEstimatePair<VehicleState, DataDistribution<VehicleState>> pair : data) {
 
-      final UnivariateGaussian.SufficientStatistic stat = new UnivariateGaussian.SufficientStatistic();
+      final UnivariateGaussian.SufficientStatistic stat =
+          new UnivariateGaussian.SufficientStatistic();
 
-      final MultivariateGaussian targetBelief = pair.getTarget()
-          .getBelief().clone();
-      StandardRoadTrackingFilter.convertToGroundBelief(
-          targetBelief,
+      final MultivariateGaussian targetBelief =
+          pair.getTarget().getBelief().clone();
+      StandardRoadTrackingFilter.convertToGroundBelief(targetBelief,
           PathEdge.getEdge(pair.getTarget().getInferredEdge()));
 
       for (final VehicleState estimate : pair.getEstimate()
           .getDomain()) {
 
-        final MultivariateGaussian estimateBelief = estimate
-            .getBelief().clone();
+        final MultivariateGaussian estimateBelief =
+            estimate.getBelief().clone();
         StandardRoadTrackingFilter.convertToGroundBelief(
             estimateBelief,
             PathEdge.getEdge(estimate.getInferredEdge()));
 
-        final double se = targetBelief.getMean()
-            .euclideanDistanceSquared(estimateBelief.getMean());
+        final double se =
+            targetBelief.getMean().euclideanDistanceSquared(
+                estimateBelief.getMean());
         stat.update(se);
       }
       stats.add(stat);
     }
 
-    final VehicleStatePerformanceResult results = new VehicleStatePerformanceResult();
+    final VehicleStatePerformanceResult results =
+        new VehicleStatePerformanceResult();
     results.setStats(stats);
     return results;
   }
 
   @Override
-  public VehicleStatePerformanceResult evaluatePerformance(
-    Evaluator<? super Observation, DataDistribution<VehicleState>> object,
-    Collection<? extends InputOutputPair<Observation, VehicleState>> data) {
+  public
+      VehicleStatePerformanceResult
+      evaluatePerformance(
+        Evaluator<? super Observation, DataDistribution<VehicleState>> object,
+        Collection<? extends InputOutputPair<Observation, VehicleState>> data) {
     // TODO Auto-generated method stub
     return null;
   }

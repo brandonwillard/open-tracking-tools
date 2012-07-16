@@ -35,11 +35,11 @@ public class LinearTurnTrackingFilter extends AbstractKalmanFilter {
     this.aVariance = aVariance;
     this.gVariance = gVariance;
 
-    final LinearDynamicalSystem model = new LinearDynamicalSystem(
-        0, 5);
+    final LinearDynamicalSystem model =
+        new LinearDynamicalSystem(0, 5);
 
-    final Matrix Gct = createStateTransitionMatrix(
-        initialTurnRate, currentTimeDiff);
+    final Matrix Gct =
+        createStateTransitionMatrix(initialTurnRate, currentTimeDiff);
     final Matrix G = MatrixFactory.getDefault().createIdentity(5, 5);
     G.setSubMatrix(0, 0, Gct);
 
@@ -61,8 +61,8 @@ public class LinearTurnTrackingFilter extends AbstractKalmanFilter {
 
   @Override
   public MultivariateGaussian createInitialLearnedObject() {
-    return new MultivariateGaussian(
-        this.model.getState(), this.getModelCovariance());
+    return new MultivariateGaussian(this.model.getState(),
+        this.getModelCovariance());
   }
 
   public double getCurrentTimeDiff() {
@@ -70,7 +70,8 @@ public class LinearTurnTrackingFilter extends AbstractKalmanFilter {
   }
 
   @Override
-  public void measure(MultivariateGaussian belief, Vector observation) {
+  public void
+      measure(MultivariateGaussian belief, Vector observation) {
 
     final Matrix C = this.model.getC();
 
@@ -99,8 +100,8 @@ public class LinearTurnTrackingFilter extends AbstractKalmanFilter {
     // Calculate the covariance, which will increase due to the
     // inherent uncertainty of the model.
     if (currentTimeDiff != prevTimeDiff) {
-      final Matrix modelCovariance = createStateCovarianceMatrix(
-          currentTimeDiff, aVariance);
+      final Matrix modelCovariance =
+          createStateCovarianceMatrix(currentTimeDiff, aVariance);
       this.setModelCovariance(modelCovariance);
     }
 
@@ -108,11 +109,12 @@ public class LinearTurnTrackingFilter extends AbstractKalmanFilter {
      * Uses the previous turn-rate value
      */
     final double angularRate = belief.getMean().getElement(4);
-    final Matrix G = createStateTransitionMatrix(
-        angularRate, currentTimeDiff);
+    final Matrix G =
+        createStateTransitionMatrix(angularRate, currentTimeDiff);
     this.model.setA(G);
-    final Matrix P = this.computePredictionCovariance(
-        this.model.getA(), belief.getCovariance());
+    final Matrix P =
+        this.computePredictionCovariance(this.model.getA(),
+            belief.getCovariance());
 
     // Load the updated belief
     belief.setMean(xpred);
@@ -127,8 +129,8 @@ public class LinearTurnTrackingFilter extends AbstractKalmanFilter {
 
   private static Matrix createStateCovarianceMatrix(double timeDiff,
     double aVariance) {
-    final Matrix A_half = MatrixFactory.getDefault().createIdentity(
-        4, 5);
+    final Matrix A_half =
+        MatrixFactory.getDefault().createIdentity(4, 5);
     A_half.setElement(0, 0, Math.pow(timeDiff, 2) / 2d);
     A_half.setElement(1, 1, timeDiff);
     A_half.setElement(2, 2, Math.pow(timeDiff, 2) / 2d);
@@ -141,8 +143,8 @@ public class LinearTurnTrackingFilter extends AbstractKalmanFilter {
   private static Matrix createStateTransitionMatrix(
     double angularRate, double timeDiff) {
 
-    final Matrix Gct = MatrixFactory.getDefault()
-        .createIdentity(5, 5);
+    final Matrix Gct =
+        MatrixFactory.getDefault().createIdentity(5, 5);
     Gct.setElement(0, 1, timeDiff);
     Gct.setElement(0, 3, -angularRate * Math.pow(timeDiff, 2) / 2d);
     Gct.setElement(1, 1, 1 - Math.pow(angularRate * timeDiff, 2) / 2d);

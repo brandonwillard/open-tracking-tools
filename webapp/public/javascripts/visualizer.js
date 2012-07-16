@@ -632,7 +632,8 @@ function renderParticles(isPrior) {
                     var edgeDesc = "free";
                     var edgeId = particleData.particle.infResults.inferredEdge.id;
                     if (edgeId != null) {
-                      edgeDesc = edgeId;
+                      edgeDesc = edgeId + " (" 
+                        + parseFloat(particleData.particle.infResults.inferredEdge.length).toFixed(2) + ")";
                     }
                     var edgeLinkName = 'particle' + particleNumber + '_edge'
                         + isPrior;
@@ -667,7 +668,8 @@ function renderParticles(isPrior) {
                     var particleMeanLatLon = convertToLatLon(particleMeanLoc);
                     createHoverPointLink(locLinkName, particleMeanLatLon);
                     particleMeans.addLayer(drawCoords(particleMeanLatLon.lat,
-                        particleMeanLatLon.lng, null, null, true));
+                        particleMeanLatLon.lng, null, false, true, null, 
+                        particleData.weight * particleData.particle.infResults.particleCount));
 
                     particleEdges.addLayer(renderPath(
                         particleData.particle.infResults.pathSegments,
@@ -705,7 +707,8 @@ function renderParticles(isPrior) {
                       var parentEdgeDesc = "free";
                       var parentEdgeId = particleData.parent.infResults.inferredEdge.id;
                       if (parentEdgeId != null) {
-                        parentEdgeDesc = parentEdgeId;
+                        parentEdgeDesc = parentEdgeId + " (" 
+                          + parseFloat(particleData.parent.infResults.inferredEdge.length).toFixed(2) + ")";
                       }
                       var parentEdgeLinkName = 'parent_particle'
                           + particleNumber + '_edge' + isPrior;
@@ -770,7 +773,7 @@ function createHoverLineLink(linkName, edge) {
     var localEdge = $(this).data("edge");
     var edge = this.edge;
     if (edge == null) {
-      edge = drawEdge(localEdge, EdgeType.ADDED);
+      edge = drawEdge(localEdge, EdgeType.INFERRED);
       this.edge = edge;
     } else {
       edgeGroup.addLayer(edge);
@@ -795,7 +798,7 @@ function createHoverPointLink(linkName, latlon) {
     var localLoc = $(this).data("loc");
     var marker = this.marker;
     if (marker == null) {
-      marker = drawCoords(localLoc.lat, localLoc.lng, null, false);
+      marker = drawCoords(localLoc.lat, localLoc.lng, null, false, false, 'red');
       this.marker = marker;
     } else {
       pointsGroup.addLayer(marker);

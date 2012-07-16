@@ -121,10 +121,12 @@ public class OtpGraph {
     public int hashCode() {
       final int prime = 31;
       int result = 1;
-      result = prime * result
-          + ((endCoord == null) ? 0 : endCoord.hashCode());
-      result = prime * result
-          + ((startCoord == null) ? 0 : startCoord.hashCode());
+      result =
+          prime * result
+              + ((endCoord == null) ? 0 : endCoord.hashCode());
+      result =
+          prime * result
+              + ((startCoord == null) ? 0 : startCoord.hashCode());
       return result;
     }
 
@@ -181,10 +183,12 @@ public class OtpGraph {
     public int hashCode() {
       final int prime = 31;
       int result = 1;
-      result = prime * result
-          + ((endVertex == null) ? 0 : endVertex.hashCode());
-      result = prime * result
-          + ((startVertex == null) ? 0 : startVertex.hashCode());
+      result =
+          prime * result
+              + ((endVertex == null) ? 0 : endVertex.hashCode());
+      result =
+          prime * result
+              + ((startVertex == null) ? 0 : startVertex.hashCode());
       return result;
     }
 
@@ -210,26 +214,27 @@ public class OtpGraph {
   private final Graph baseGraph;
   //base index service is in projected coords
   private final StreetVertexIndexServiceImpl baseIndexService;
-  private final static RoutingRequest defaultOptions = new RoutingRequest(
-      TraverseMode.CAR);
+  private final static RoutingRequest defaultOptions =
+      new RoutingRequest(TraverseMode.CAR);
   private final STRtree turnEdgeIndex = new STRtree();
   private final STRtree baseEdgeIndex = new STRtree();
 
   private final STRtree turnVertexIndex = new STRtree();
 
-  private final DistanceLibrary distanceLibrary = new CartesianDistanceLibrary();
+  private final DistanceLibrary distanceLibrary =
+      new CartesianDistanceLibrary();
 
   private final Map<VertexPair, InferredEdge> edgeToInfo = Maps
       .newConcurrentMap();
 
-  private final LoadingCache<PathKey, Set<InferredPath>> pathsCache = CacheBuilder
-      .newBuilder().maximumSize(1000)
-      .build(new CacheLoader<PathKey, Set<InferredPath>>() {
-        @Override
-        public Set<InferredPath> load(PathKey key) {
-          return computeUniquePaths(key);
-        }
-      });
+  private final LoadingCache<PathKey, Set<InferredPath>> pathsCache =
+      CacheBuilder.newBuilder().maximumSize(1000)
+          .build(new CacheLoader<PathKey, Set<InferredPath>>() {
+            @Override
+            public Set<InferredPath> load(PathKey key) {
+              return computeUniquePaths(key);
+            }
+          });
 
   public OtpGraph(String path) {
     log.info("Loading OTP graph...");
@@ -237,7 +242,8 @@ public class OtpGraph {
     gs = new GraphServiceImpl();
     gs.setLoadLevel(LoadLevel.DEBUG);
 
-    final ApplicationContext appContext = new GenericApplicationContext();
+    final ApplicationContext appContext =
+        new GenericApplicationContext();
 
     gs.setResourceLoader(appContext);
 
@@ -247,8 +253,8 @@ public class OtpGraph {
     turnGraph = gs.getGraph();
     baseGraph = turnGraph.getService(BaseGraph.class).getBaseGraph();
 
-    baseIndexService = new StreetVertexIndexServiceImpl(
-        baseGraph, distanceLibrary);
+    baseIndexService =
+        new StreetVertexIndexServiceImpl(baseGraph, distanceLibrary);
     createIndices(baseGraph, baseEdgeIndex, null);
     createIndices(turnGraph, turnEdgeIndex, turnVertexIndex);
 
@@ -266,38 +272,42 @@ public class OtpGraph {
     final Coordinate toCoord = key.getEndCoord();
     final Coordinate fromCoord = key.getStartCoord();
 
-    final Set<InferredPath> paths = Sets.newHashSet(InferredPath
-        .getEmptyPath());
+    final Set<InferredPath> paths =
+        Sets.newHashSet(InferredPath.getEmptyPath());
     final Set<Edge> startEdges = Sets.newHashSet();
 
     if (!currentEdge.isEmptyEdge()) {
 
-      final PlainStreetEdgeWithOSMData edge = (PlainStreetEdgeWithOSMData) currentEdge
-          .getEdge();
+      final PlainStreetEdgeWithOSMData edge =
+          (PlainStreetEdgeWithOSMData) currentEdge.getEdge();
       for (final Edge outgoing : edge.getTurnVertex().getOutgoing()) {
         startEdges.add(outgoing);
       }
     } else {
-      final double stateStdDevDistance = 1.98d * Math.sqrt(key
-          .getState().getBelief().getCovariance().normFrobenius()
-          / Math.sqrt(key.getState().getBelief()
-              .getInputDimensionality()));
-      for (final Object obj : getNearbyEdges(
-          fromCoord, stateStdDevDistance)) {
-        final PlainStreetEdgeWithOSMData edge = (PlainStreetEdgeWithOSMData) obj;
+      final double stateStdDevDistance =
+          1.98d * Math.sqrt(key.getState().getBelief()
+              .getCovariance().normFrobenius()
+              / Math.sqrt(key.getState().getBelief()
+                  .getInputDimensionality()));
+      for (final Object obj : getNearbyEdges(fromCoord,
+          stateStdDevDistance)) {
+        final PlainStreetEdgeWithOSMData edge =
+            (PlainStreetEdgeWithOSMData) obj;
         startEdges.addAll(edge.getTurnVertex().getOutgoing());
       }
     }
 
     final Set<Edge> endEdges = Sets.newHashSet();
 
-    final double obsStdDevDistance = key.getState()
-        .getMovementFilter().getObservationErrorAbsRadius();
+    final double obsStdDevDistance =
+        key.getState().getMovementFilter()
+            .getObservationErrorAbsRadius();
     //        1.98d * Math.sqrt(key.getState()
     //        .getMovementFilter().getObsVariance().normFrobenius()/Math.sqrt(2));
 
     for (final Object obj : getNearbyEdges(toCoord, obsStdDevDistance)) {
-      final PlainStreetEdgeWithOSMData edge = (PlainStreetEdgeWithOSMData) obj;
+      final PlainStreetEdgeWithOSMData edge =
+          (PlainStreetEdgeWithOSMData) obj;
       endEdges.addAll(edge.getTurnVertex().getOutgoing());
     }
 
@@ -305,28 +315,29 @@ public class OtpGraph {
      * If we're already on an edge, then we attempt to gauge how
      * far in the opposite direction we are willing to consider.
      */
-    final double timeDiff = key.getState().getMovementFilter()
-        .getCurrentTimeDiff();
+    final double timeDiff =
+        key.getState().getMovementFilter().getCurrentTimeDiff();
     final double distanceMax = MAX_DISTANCE_SPEED * timeDiff;
 
     for (final Edge startEdge : startEdges) {
-      final MultiDestinationAStar forwardAStar = new MultiDestinationAStar(
-          turnGraph, endEdges, toCoord, obsStdDevDistance, startEdge,
-          distanceMax);
+      final MultiDestinationAStar forwardAStar =
+          new MultiDestinationAStar(turnGraph, endEdges, toCoord,
+              obsStdDevDistance, startEdge, distanceMax);
 
       final ShortestPathTree spt1 = forwardAStar.getSPT(false);
 
-      final MultiDestinationAStar backwardAStar = new MultiDestinationAStar(
-          turnGraph, endEdges, toCoord, obsStdDevDistance, startEdge,
-          distanceMax);
+      final MultiDestinationAStar backwardAStar =
+          new MultiDestinationAStar(turnGraph, endEdges, toCoord,
+              obsStdDevDistance, startEdge, distanceMax);
       final ShortestPathTree spt2 = backwardAStar.getSPT(true);
 
       for (final Edge endEdge : endEdges) {
-        final GraphPath forwardPath = spt1.getPath(
-            endEdge.getToVertex(), false);
+        final GraphPath forwardPath =
+            spt1.getPath(endEdge.getToVertex(), false);
         if (forwardPath != null) {
-          final InferredPath forwardResult = copyAStarResults(
-              forwardPath, getBaseEdge(startEdge), false);
+          final InferredPath forwardResult =
+              copyAStarResults(forwardPath, getBaseEdge(startEdge),
+                  false);
           if (forwardResult != null) {
             paths.add(forwardResult);
             // for debugging
@@ -338,11 +349,11 @@ public class OtpGraph {
         }
 
         if (backwardAStar != null) {
-          final GraphPath backwardPath = spt2.getPath(
-              endEdge.getFromVertex(), false);
+          final GraphPath backwardPath =
+              spt2.getPath(endEdge.getFromVertex(), false);
           if (backwardPath != null) {
-            final InferredPath backwardResult = copyAStarResults(
-                backwardPath, startEdge, true);
+            final InferredPath backwardResult =
+                copyAStarResults(backwardPath, startEdge, true);
             if (backwardResult != null) {
               paths.add(backwardResult);
               // for debugging
@@ -370,17 +381,17 @@ public class OtpGraph {
     final double direction = isReverse ? -1d : 1d;
     double pathDist = 0d;
     final List<PathEdge> path = Lists.newArrayList();
-    final PathEdge startPathEdge = PathEdge.getEdge(this
-        .getInferredEdge(startEdge));
+    final PathEdge startPathEdge =
+        PathEdge.getEdge(this.getInferredEdge(startEdge));
     if (gpath.edges.isEmpty()) {
       path.add(startPathEdge);
     } else {
       for (final Edge edge : isReverse ? Lists.reverse(gpath.edges)
           : gpath.edges) {
-        final PathEdge pathEdge = getValidPathEdge(
-            edge, pathDist, direction, path);
-        pathDist += direction
-            * pathEdge.getInferredEdge().getLength();
+        final PathEdge pathEdge =
+            getValidPathEdge(edge, pathDist, direction, path);
+        pathDist +=
+            direction * pathEdge.getInferredEdge().getLength();
         path.add(pathEdge);
       }
     }
@@ -395,8 +406,8 @@ public class OtpGraph {
 
     for (final Vertex v : graph.getVertices()) {
       if (vertexIndex != null) {
-        final Envelope vertexEnvelope = new Envelope(
-            v.getCoordinate());
+        final Envelope vertexEnvelope =
+            new Envelope(v.getCoordinate());
         vertexIndex.insert(vertexEnvelope, v);
       }
 
@@ -412,8 +423,8 @@ public class OtpGraph {
 
   private Edge getBaseEdge(Edge edge) {
     if (edge instanceof TurnEdge) {
-      final TurnVertexWithOSMData base = (TurnVertexWithOSMData) edge
-          .getFromVertex();
+      final TurnVertexWithOSMData base =
+          (TurnVertexWithOSMData) edge.getFromVertex();
       edge = base.getOriginal();
     }
     return edge;
@@ -427,8 +438,8 @@ public class OtpGraph {
   public InferredEdge getEdge(int id) {
 
     final Edge edge = baseGraph.getEdgeById(id);
-    final VertexPair key = new VertexPair(
-        edge.getFromVertex(), edge.getToVertex());
+    final VertexPair key =
+        new VertexPair(edge.getFromVertex(), edge.getToVertex());
     InferredEdge edgeInfo = edgeToInfo.get(key);
 
     if (edgeInfo == null) {
@@ -450,8 +461,8 @@ public class OtpGraph {
   public InferredEdge getInferredEdge(Edge edge) {
     edge = getBaseEdge(edge);
 
-    final VertexPair key = new VertexPair(
-        edge.getFromVertex(), edge.getToVertex());
+    final VertexPair key =
+        new VertexPair(edge.getFromVertex(), edge.getToVertex());
     InferredEdge edgeInfo = edgeToInfo.get(key);
 
     if (edgeInfo == null) {
@@ -473,7 +484,8 @@ public class OtpGraph {
    * @param mean
    * @return
    */
-  public Set<StreetEdge> getNearbyEdges(Coordinate loc, double radius) {
+  public Set<StreetEdge>
+      getNearbyEdges(Coordinate loc, double radius) {
 
     final Envelope toEnv = new Envelope(loc);
     toEnv.expandBy(radius);
@@ -491,11 +503,12 @@ public class OtpGraph {
     Preconditions.checkArgument(initialBelief
         .getInputDimensionality() == 4);
 
-    final Envelope toEnv = new Envelope(
-        GeoUtils.makeCoordinate(StandardRoadTrackingFilter.getOg()
-            .times(initialBelief.getMean())));
-    final double varDistance = trackingFilter
-        .getObservationErrorAbsRadius();
+    final Envelope toEnv =
+        new Envelope(
+            GeoUtils.makeCoordinate(StandardRoadTrackingFilter
+                .getOg().times(initialBelief.getMean())));
+    final double varDistance =
+        trackingFilter.getObservationErrorAbsRadius();
     //        1.98d * Math.sqrt(trackingFilter
     //        .getObsVariance().normFrobenius()
     //        / Math.sqrt(initialBelief.getInputDimensionality()));
@@ -527,13 +540,14 @@ public class OtpGraph {
       fromCoord = fromState.getInferredEdge().getCenterPointCoord();
     } else {
       final Vector meanLocation = fromState.getMeanLocation();
-      fromCoord = new Coordinate(
-          meanLocation.getElement(0), meanLocation.getElement(1));
+      fromCoord =
+          new Coordinate(meanLocation.getElement(0),
+              meanLocation.getElement(1));
     }
 
     final Set<InferredPath> paths = Sets.newHashSet();
-    final PathKey startEndEntry = new PathKey(
-        fromState, fromCoord, toCoord, 0d);
+    final PathKey startEndEntry =
+        new PathKey(fromState, fromCoord, toCoord, 0d);
 
     paths.addAll(pathsCache.getUnchecked(startEndEntry));
     //    paths.addAll(computeUniquePaths(startEndEntry));
@@ -564,8 +578,8 @@ public class OtpGraph {
           /*
            * Find a valid street edge to work with
            */
-          return PathEdge.getEdge(
-              this.getInferredEdge(streetEdge), pathDist);
+          return PathEdge.getEdge(this.getInferredEdge(streetEdge),
+              pathDist);
         }
       }
     }
@@ -582,12 +596,14 @@ public class OtpGraph {
     Preconditions.checkNotNull(toCoords);
 
     final RoutingRequest options = OtpGraph.defaultOptions;
-    final CandidateEdgeBundle edgeBundle = baseIndexService
-        .getClosestEdges(toCoords, options, null, null);
+    final CandidateEdgeBundle edgeBundle =
+        baseIndexService.getClosestEdges(toCoords, options, null,
+            null);
     return edgeBundle.toEdgeList();
   }
 
-  public static List<Edge> filterForStreetEdges(Collection<Edge> edges) {
+  public static List<Edge>
+      filterForStreetEdges(Collection<Edge> edges) {
     final List<Edge> result = Lists.newArrayList();
     for (final Edge out : edges) {
       if (!(out instanceof StreetEdge)) {
@@ -614,7 +630,8 @@ public class OtpGraph {
   public static void makeUnique(Set<InferredPath> paths) {
     final PathTree tree = new PathTree();
 
-    final HashSet<InferredPath> toRemove = new HashSet<InferredPath>();
+    final HashSet<InferredPath> toRemove =
+        new HashSet<InferredPath>();
     for (final InferredPath path : paths) {
       PathTree cur = tree;
       for (final PathEdge edge : path.getEdges()) {

@@ -13,7 +13,8 @@ import org.opentripplanner.routing.graph.Vertex;
 public class ReconstructOriginalGraph implements GraphBuilder {
 
   @Override
-  public void buildGraph(Graph graph, HashMap<Class<?>, Object> extra) {
+  public void
+      buildGraph(Graph graph, HashMap<Class<?>, Object> extra) {
     final Graph original = new Graph();
     for (final Vertex v : graph.getVertices()) {
       if (!(v instanceof TurnVertexWithOSMData))

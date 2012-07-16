@@ -56,8 +56,8 @@ public class PathSampler {
   private final STRtree vertexIndex;
 
   /** Change this if PathSampler is changed to use base graph */
-  private final DistanceLibrary distanceLibrary = SphericalDistanceLibrary
-      .getInstance();
+  private final DistanceLibrary distanceLibrary =
+      SphericalDistanceLibrary.getInstance();
 
   public PathSampler(Graph graph) {
     this.graph = graph;
@@ -79,8 +79,8 @@ public class PathSampler {
 
       // TODO just use the constructor for envelope, no?
       Envelope vertexEnvelope;
-      final Geometry vertexGeometry = GeoUtils.lonlatToGeometry(v
-          .getCoordinate());
+      final Geometry vertexGeometry =
+          GeoUtils.lonlatToGeometry(v.getCoordinate());
       vertexEnvelope = vertexGeometry.getEnvelopeInternal();
       vertexIndex.insert(vertexEnvelope, v);
 
@@ -123,28 +123,29 @@ public class PathSampler {
       return null;
 
     // initial state: start midway along a block.
-    final LocationIndexedLine indexedLine = new LocationIndexedLine(
-        routeGeometry);
+    final LocationIndexedLine indexedLine =
+        new LocationIndexedLine(routeGeometry);
 
     final LinearLocation startIndex = indexedLine.getStartIndex();
 
-    final Coordinate routeStartCoordinate = startIndex
-        .getCoordinate(routeGeometry);
+    final Coordinate routeStartCoordinate =
+        startIndex.getCoordinate(routeGeometry);
 
     final BinHeap<MatchState> states = new BinHeap<MatchState>();
     final Geometry edgeGeometry = initialEdge.getGeometry();
 
-    final LocationIndexedLine indexedEdge = new LocationIndexedLine(
-        edgeGeometry);
-    final LinearLocation initialLocation = indexedEdge
-        .project(routeStartCoordinate);
+    final LocationIndexedLine indexedEdge =
+        new LocationIndexedLine(edgeGeometry);
+    final LinearLocation initialLocation =
+        indexedEdge.project(routeStartCoordinate);
 
-    final double error = distanceLibrary.fastDistance(
-        initialLocation.getCoordinate(edgeGeometry),
-        routeStartCoordinate);
-    final MatchState startState = new MidblockMatchState(
-        null, routeGeometry, initialEdge, startIndex,
-        initialLocation, error, 0.01);
+    final double error =
+        distanceLibrary.fastDistance(
+            initialLocation.getCoordinate(edgeGeometry),
+            routeStartCoordinate);
+    final MatchState startState =
+        new MidblockMatchState(null, routeGeometry, initialEdge,
+            startIndex, initialLocation, error, 0.01);
     states.insert(startState, 0); // make sure all initial states are visited by
                                   // inserting them at 0
 
@@ -173,10 +174,8 @@ public class PathSampler {
         if (seen.contains(next)) {
           continue;
         }
-        states
-            .insert(
-                next,
-                next.getTotalError() - next.getDistanceAlongRoute());
+        states.insert(next,
+            next.getTotalError() - next.getDistanceAlongRoute());
       }
     }
     return null;
@@ -191,13 +190,13 @@ public class PathSampler {
       return null;
 
     // initial state: start midway along a block.
-    final LocationIndexedLine indexedLine = new LocationIndexedLine(
-        routeGeometry);
+    final LocationIndexedLine indexedLine =
+        new LocationIndexedLine(routeGeometry);
 
     final LinearLocation startIndex = indexedLine.getStartIndex();
 
-    final Coordinate routeStartCoordinate = startIndex
-        .getCoordinate(routeGeometry);
+    final Coordinate routeStartCoordinate =
+        startIndex.getCoordinate(routeGeometry);
     final Envelope envelope = new Envelope(routeStartCoordinate);
     double localDistanceThreshold = startDistanceThreshold;
     if (localDistanceThreshold > 0d)
@@ -218,17 +217,18 @@ public class PathSampler {
       final Edge initialEdge = (Edge) obj;
       final Geometry edgeGeometry = initialEdge.getGeometry();
 
-      final LocationIndexedLine indexedEdge = new LocationIndexedLine(
-          edgeGeometry);
-      final LinearLocation initialLocation = indexedEdge
-          .project(routeStartCoordinate);
+      final LocationIndexedLine indexedEdge =
+          new LocationIndexedLine(edgeGeometry);
+      final LinearLocation initialLocation =
+          indexedEdge.project(routeStartCoordinate);
 
-      final double error = distanceLibrary.fastDistance(
-          initialLocation.getCoordinate(edgeGeometry),
-          routeStartCoordinate);
-      final MatchState state = new MidblockMatchState(
-          null, routeGeometry, initialEdge, startIndex,
-          initialLocation, error, 0.01);
+      final double error =
+          distanceLibrary.fastDistance(
+              initialLocation.getCoordinate(edgeGeometry),
+              routeStartCoordinate);
+      final MatchState state =
+          new MidblockMatchState(null, routeGeometry, initialEdge,
+              startIndex, initialLocation, error, 0.01);
       states.insert(state, 0); // make sure all initial states are visited by
                                // inserting them at 0
     }
@@ -260,10 +260,8 @@ public class PathSampler {
         if (seen.contains(next)) {
           continue;
         }
-        states
-            .insert(
-                next,
-                next.getTotalError() - next.getDistanceAlongRoute());
+        states.insert(next,
+            next.getTotalError() - next.getDistanceAlongRoute());
       }
     }
     return results;

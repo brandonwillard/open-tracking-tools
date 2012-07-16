@@ -36,8 +36,8 @@ public class MultiDestinationAStar implements
 
   private final Edge start;
 
-  private final DistanceLibrary distanceLibrary = SphericalDistanceLibrary
-      .getInstance();
+  private final DistanceLibrary distanceLibrary =
+      SphericalDistanceLibrary.getInstance();
 
   private final double maxDistance;
 
@@ -57,8 +57,9 @@ public class MultiDestinationAStar implements
   @Override
   public double computeForwardWeight(State s, Vertex target) {
     final Vertex v = s.getVertex();
-    double distance = distanceLibrary.fastDistance(
-        v.getCoordinate(), center) + radius;
+    double distance =
+        distanceLibrary.fastDistance(v.getCoordinate(), center)
+            + radius;
 
     if (distance < 0)
       distance = 0;
@@ -85,11 +86,12 @@ public class MultiDestinationAStar implements
     final RoutingRequest req = new RoutingRequest(TraverseMode.CAR);
     req.setArriveBy(arriveBy);
 
-    final Vertex startVertex = arriveBy ? start.getToVertex() : start
-        .getFromVertex();
+    final Vertex startVertex =
+        arriveBy ? start.getToVertex() : start.getFromVertex();
     final String bogusName = "bogus" + Thread.currentThread().getId();
-    final Vertex bogus = new IntersectionVertex(
-        graph, bogusName, startVertex.getCoordinate(), bogusName);
+    final Vertex bogus =
+        new IntersectionVertex(graph, bogusName,
+            startVertex.getCoordinate(), bogusName);
 
     if (!arriveBy) {
       req.setRoutingContext(graph, startVertex, bogus);

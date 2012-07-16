@@ -34,8 +34,72 @@ import com.google.common.base.Preconditions;
  * 
  */
 public class VehicleState implements
-    ComputableDistribution<VehicleStateConditionalParams>,
-    Comparable<VehicleState> {
+    ComputableDistribution<Observation>, Comparable<VehicleState> {
+
+  public static class PDF extends VehicleState implements
+      ProbabilityFunction<Observation> {
+
+    private static final long serialVersionUID = 879217079360170446L;
+
+    public PDF(VehicleState state) {
+      super(state);
+    }
+
+    @Override
+    public PDF clone() {
+      return (PDF) super.clone();
+    }
+
+    @Override
+    public Double evaluate(Observation input) {
+      return Math.exp(logEvaluate(input));
+    }
+
+    @Override
+    public VehicleState.PDF getProbabilityFunction() {
+      return this;
+    }
+
+    @Override
+    public double logEvaluate(Observation input) {
+      double logLikelihood = 0d;
+
+      /*
+       * Edge transitions
+       */
+      logLikelihood +=
+          this.edgeTransitionDist.logEvaluate(this.getPath()
+              .getEdges().get(0).getInferredEdge(),
+              this.getInferredEdge());
+
+      /*
+       * Movement
+      //       * We must use the last PathEdge since the belief should
+      //       * be predictive and thus cover the length of the path,
+      //       * instead of being normalized relative to it's final
+      //       * position.
+       */
+      logLikelihood +=
+          this.getMovementFilter().logLikelihood(
+              input.getProjectedPoint(), this.belief,
+              PathEdge.getEdge(this.getInferredEdge()));
+      //          Iterables.getLast(this.getPath().getEdges()));
+
+      return logLikelihood;
+    }
+
+    @Override
+    public Observation sample(Random random) {
+      throw new NotImplementedError();
+    }
+
+    @Override
+    public ArrayList<Observation>
+        sample(Random random, int numSamples) {
+      throw new NotImplementedError();
+    }
+
+  }
 
   public static class VehicleStateInitialParameters {
     private final Vector obsVariance;
@@ -44,16 +108,22 @@ public class VehicleState implements
     private final Vector offTransitionProbs;
     private final Vector onTransitionProbs;
     private final long seed;
+    private final int numParticles;
 
     public VehicleStateInitialParameters(Vector obsVariance,
       Vector onRoadStateVariance, Vector offRoadStateVariance,
-      Vector offProbs, Vector onProbs, long seed) {
+      Vector offProbs, Vector onProbs, int numParticles, long seed) {
+      this.numParticles = numParticles;
       this.obsVariance = obsVariance;
       this.onRoadStateVariance = onRoadStateVariance;
       this.offRoadStateVariance = offRoadStateVariance;
       this.offTransitionProbs = offProbs;
       this.onTransitionProbs = onProbs;
       this.seed = seed;
+    }
+
+    public int getNumParticles() {
+      return numParticles;
     }
 
     public Vector getObsVariance() {
@@ -81,76 +151,7 @@ public class VehicleState implements
     }
   }
 
-  public static class PDF extends VehicleState implements
-      ProbabilityFunction<VehicleStateConditionalParams> {
-
-    private static final long serialVersionUID = 879217079360170446L;
-
-    public PDF(VehicleState state) {
-      super(state);
-    }
-
-    @Override
-    public PDF clone() {
-      return (PDF) super.clone();
-    }
-
-    @Override
-    public Double evaluate(VehicleStateConditionalParams input) {
-      return Math.exp(logEvaluate(input));
-    }
-
-    @Override
-    public VehicleState.PDF getProbabilityFunction() {
-      return this;
-    }
-
-    @Override
-    public double logEvaluate(VehicleStateConditionalParams input) {
-      double logLikelihood = 0d;
-
-      final InferredEdge previousEdge = input.getPathEdge()
-          .getInferredEdge();
-      /*
-       * Edge transitions
-       */
-      logLikelihood += this.edgeTransitionDist.logEvaluate(
-          previousEdge, this.getInferredEdge());
-
-      /*
-       * Movement likelihood Note: should be predictive for PL
-       */
-      PathEdge edge;
-      if (this.getInferredEdge().isEmptyEdge()) {
-        edge = PathEdge.getEmptyPathEdge();
-      } else {
-        edge = PathEdge.getEdge(
-            this.getInferredEdge(), input.getDistanceToCurrentEdge());
-      }
-      logLikelihood += this.getMovementFilter().logLikelihood(
-          input.getLocation(), this.belief, edge);
-
-      return logLikelihood;
-    }
-
-    @Override
-    public VehicleStateConditionalParams sample(Random random) {
-      throw new NotImplementedError();
-    }
-
-    @Override
-    public ArrayList<VehicleStateConditionalParams> sample(
-      Random random, int numSamples) {
-      throw new NotImplementedError();
-    }
-
-  }
-
   private static final long serialVersionUID = 3229140254421801273L;
-
-  private static final double gVariance = 50d * 50d / 4d; // meters
-  private static final double dVariance = Math.pow(0.05, 2) / 4d; // m/s^2
-  private static final double vVariance = Math.pow(0.05, 2) / 4d; // m/s^2
 
   /*
    * These members represent the state/parameter samples/sufficient statistics.
@@ -192,22 +193,23 @@ public class VehicleState implements
   private int hash = 0;
 
   public VehicleState(OtpGraph graph, Observation initialObservation,
-    InferredEdge inferredEdge, VehicleStateInitialParameters parameters,
-    Random rng) {
+    InferredEdge inferredEdge,
+    VehicleStateInitialParameters parameters, Random rng) {
 
     Preconditions.checkNotNull(initialObservation);
     Preconditions.checkNotNull(inferredEdge);
     Preconditions.checkNotNull(parameters);
 
-    this.movementFilter = new StandardRoadTrackingFilter(
-        parameters.getObsVariance(),
-        parameters.getOffRoadStateVariance(),
-        parameters.getOnRoadStateVariance());
+    this.movementFilter =
+        new StandardRoadTrackingFilter(parameters.getObsVariance(),
+            parameters.getOffRoadStateVariance(),
+            parameters.getOnRoadStateVariance());
 
     final double timeDiff;
     if (initialObservation.getPreviousObservation() != null) {
-      timeDiff = (initialObservation.getTimestamp().getTime() - initialObservation
-          .getPreviousObservation().getTimestamp().getTime()) / 1000d;
+      timeDiff =
+          (initialObservation.getTimestamp().getTime() - initialObservation
+              .getPreviousObservation().getTimestamp().getTime()) / 1000d;
     } else {
       timeDiff = 30d;
     }
@@ -215,8 +217,9 @@ public class VehicleState implements
     this.movementFilter.setCurrentTimeDiff(timeDiff);
 
     if (inferredEdge.isEmptyEdge()) {
-      this.belief = movementFilter.getGroundFilter()
-          .createInitialLearnedObject();
+      this.belief =
+          movementFilter.getGroundFilter()
+              .createInitialLearnedObject();
       final Vector xyPoint = initialObservation.getProjectedPoint();
 
       /*
@@ -231,11 +234,11 @@ public class VehicleState implements
       /*
        * Find our starting position on this edge
        */
-      this.belief = movementFilter.getRoadFilter()
-          .createInitialLearnedObject();
+      this.belief =
+          movementFilter.getRoadFilter().createInitialLearnedObject();
 
-      final double lengthLocation = inferredEdge
-          .getLengthIndexedLine().project(
+      final double lengthLocation =
+          inferredEdge.getLengthIndexedLine().project(
               initialObservation.getObsPoint());
 
       /*
@@ -258,9 +261,10 @@ public class VehicleState implements
     this.path = InferredPath.getInferredPath(this.edge);
     this.observation = initialObservation;
     this.graph = graph;
-    this.edgeTransitionDist = new EdgeTransitionDistributions(
-        this.graph, parameters.getOnTransitionProbs(),
-        parameters.getOffTransitionProbs());
+    this.edgeTransitionDist =
+        new EdgeTransitionDistributions(this.graph,
+            parameters.getOnTransitionProbs(),
+            parameters.getOffTransitionProbs());
     this.distanceFromPreviousState = 0d;
 
     // DEBUG
@@ -301,21 +305,21 @@ public class VehicleState implements
        * that the filtered location will end up on the same edge.
        */
       final double distPosition = this.belief.getMean().getElement(0);
-      final PathEdge pathEdge = path.getEdgeForDistance(
-          distPosition, true);
-      
+      final PathEdge pathEdge =
+          path.getEdgeForDistance(distPosition, true);
+
       assert !path.isEmptyPath() && !pathEdge.isEmptyEdge();
-      
+
       this.edge = pathEdge.getInferredEdge();
-      this.distanceFromPreviousState = pathEdge
-          .getDistToStartOfEdge();
+      this.distanceFromPreviousState =
+          pathEdge.getDistToStartOfEdge();
 
       /*
        * We normalized the position relative to the direction of motion.
        */
       final double currentLoc = this.belief.getMean().getElement(0);
-      this.belief.getMean().setElement(
-          0, currentLoc - pathEdge.getDistToStartOfEdge());
+      this.belief.getMean().setElement(0,
+          currentLoc - pathEdge.getDistToStartOfEdge());
       StandardRoadTrackingFilter.normalizeBelief(
           this.belief.getMean(), PathEdge.getEdge(this.edge));
 
@@ -324,7 +328,7 @@ public class VehicleState implements
           edge.getLength() + 0.9) <= 0;
 
     } else {
-      
+
       this.edge = InferredEdge.getEmptyEdge();
       this.distanceFromPreviousState = null;
     }
@@ -345,8 +349,9 @@ public class VehicleState implements
 
     final double timeDiff;
     if (observation.getPreviousObservation() != null) {
-      timeDiff = (observation.getTimestamp().getTime() - observation
-          .getPreviousObservation().getTimestamp().getTime()) / 1000d;
+      timeDiff =
+          (observation.getTimestamp().getTime() - observation
+              .getPreviousObservation().getTimestamp().getTime()) / 1000d;
     } else {
       timeDiff = 30d;
     }
@@ -405,10 +410,10 @@ public class VehicleState implements
       return false;
     }
     final VehicleState other = (VehicleState) obj;
-    final DenseVector thisV = (DenseVector) initialBelief
-        .convertToVector();
-    final DenseVector otherV = (DenseVector) other.initialBelief
-        .convertToVector();
+    final DenseVector thisV =
+        (DenseVector) initialBelief.convertToVector();
+    final DenseVector otherV =
+        (DenseVector) other.initialBelief.convertToVector();
     if (initialBelief == null) {
       if (other.initialBelief != null) {
         return false;
@@ -468,9 +473,10 @@ public class VehicleState implements
    */
   public MultivariateGaussian getGroundOnlyBelief() {
     if (belief.getInputDimensionality() == 2) {
-      final MultivariateGaussian beliefProj = new MultivariateGaussian();
-      StandardRoadTrackingFilter.convertToGroundBelief(
-          beliefProj, PathEdge.getEdge(this.edge, 0d));
+      final MultivariateGaussian beliefProj =
+          new MultivariateGaussian();
+      StandardRoadTrackingFilter.convertToGroundBelief(beliefProj,
+          PathEdge.getEdge(this.edge, 0d));
       return beliefProj;
     } else {
       return belief;
@@ -501,14 +507,14 @@ public class VehicleState implements
     if (belief.getInputDimensionality() == 2) {
       Preconditions.checkArgument(!this.edge.isEmptyEdge());
       final MultivariateGaussian projBelief = belief.clone();
-      StandardRoadTrackingFilter.convertToGroundBelief(
-          projBelief, PathEdge.getEdge(this.edge, 0d));
+      StandardRoadTrackingFilter.convertToGroundBelief(projBelief,
+          PathEdge.getEdge(this.edge, 0d));
       v = projBelief.getMean();
     } else {
       v = belief.getMean();
     }
-    return VectorFactory.getDefault().createVector2D(
-        v.getElement(0), v.getElement(2));
+    return VectorFactory.getDefault().createVector2D(v.getElement(0),
+        v.getElement(2));
   }
 
   public StandardRoadTrackingFilter getMovementFilter() {
@@ -543,31 +549,33 @@ public class VehicleState implements
 
     final int prime = 31;
     int result = 1;
-    final DenseVector thisV = (DenseVector) initialBelief
-        .convertToVector();
-    result = prime
-        * result
-        + ((initialBelief == null) ? 0 : Arrays.hashCode(thisV
-            .getArray()));
+    final DenseVector thisV =
+        (DenseVector) initialBelief.convertToVector();
+    result =
+        prime
+            * result
+            + ((initialBelief == null) ? 0 : Arrays.hashCode(thisV
+                .getArray()));
     result = prime * result + ((edge == null) ? 0 : edge.hashCode());
-    result = prime
-        * result
-        + ((edgeTransitionDist == null) ? 0 : edgeTransitionDist
-            .hashCode());
-    result = prime * result
-        + ((observation == null) ? 0 : observation.hashCode());
+    result =
+        prime
+            * result
+            + ((edgeTransitionDist == null) ? 0 : edgeTransitionDist
+                .hashCode());
+    result =
+        prime * result
+            + ((observation == null) ? 0 : observation.hashCode());
     hash = result;
     return result;
   }
 
   @Override
-  public VehicleStateConditionalParams sample(Random random) {
+  public Observation sample(Random random) {
     throw new NotImplementedError();
   }
 
   @Override
-  public ArrayList<VehicleStateConditionalParams> sample(
-    Random random, int numSamples) {
+  public ArrayList<Observation> sample(Random random, int numSamples) {
     throw new NotImplementedError();
   }
 
@@ -580,14 +588,6 @@ public class VehicleState implements
     return Objects.toStringHelper(this).add("belief", belief)
         .add("edge", edge.getEdgeId())
         .addValue(observation.getTimestamp()).toString();
-  }
-
-  public static double getDvariance() {
-    return dVariance;
-  }
-
-  public static double getGvariance() {
-    return gVariance;
   }
 
   public static Vector getNonVelocityVector(Vector vector) {
@@ -603,11 +603,8 @@ public class VehicleState implements
     return serialVersionUID;
   }
 
-  public static double getVvariance() {
-    return vVariance;
-  }
-
-  private static int oneStateCompareTo(VehicleState t, VehicleState o) {
+  private static int
+      oneStateCompareTo(VehicleState t, VehicleState o) {
     if (t == o)
       return 0;
 
@@ -620,10 +617,10 @@ public class VehicleState implements
       return 1;
     }
 
-    final DenseVector thisV = (DenseVector) t.initialBelief
-        .convertToVector();
-    final DenseVector otherV = (DenseVector) o.initialBelief
-        .convertToVector();
+    final DenseVector thisV =
+        (DenseVector) t.initialBelief.convertToVector();
+    final DenseVector otherV =
+        (DenseVector) o.initialBelief.convertToVector();
     final CompareToBuilder comparator = new CompareToBuilder();
     comparator.append(thisV.getArray(), otherV.getArray());
     comparator.append(t.getObservation(), o.getObservation());

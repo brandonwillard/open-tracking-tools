@@ -51,8 +51,8 @@ public class Api extends Controller {
       throws JsonGenerationException, JsonMappingException,
       IOException {
 
-    final Coordinate rawCoords = new Coordinate(
-        Double.parseDouble(x), Double.parseDouble(y));
+    final Coordinate rawCoords =
+        new Coordinate(Double.parseDouble(x), Double.parseDouble(y));
 
     Coordinate coords;
     // if (GeoUtils.isInLatLonCoords(rawCoords))
@@ -65,21 +65,22 @@ public class Api extends Controller {
     renderJSON(jsonMapper.writeValueAsString(coords));
   }
 
-  public static void evaluatedPaths(String vehicleId, int recordNumber)
-      throws JsonGenerationException, JsonMappingException,
-      IOException {
-    final InferenceInstance instance = InferenceService
-        .getInferenceInstance(vehicleId);
+  public static void
+      evaluatedPaths(String vehicleId, int recordNumber)
+          throws JsonGenerationException, JsonMappingException,
+          IOException {
+    final InferenceInstance instance =
+        InferenceService.getInferenceInstance(vehicleId);
     if (instance == null)
       renderJSON(jsonMapper.writeValueAsString(null));
 
-    final Collection<InferenceResultRecord> results = instance
-        .getResultRecords();
+    final Collection<InferenceResultRecord> results =
+        instance.getResultRecords();
     if (results.isEmpty())
       renderJSON(jsonMapper.writeValueAsString(null));
 
-    final InferenceResultRecord tmpResult = Iterables.get(
-        results, recordNumber, null);
+    final InferenceResultRecord tmpResult =
+        Iterables.get(results, recordNumber, null);
 
     if (tmpResult == null)
       error(vehicleId + " result record " + recordNumber
@@ -109,19 +110,19 @@ public class Api extends Controller {
     Integer edgeId) throws JsonGenerationException,
       JsonMappingException, IOException {
     renderJSON(jsonMapper
-        .writeValueAsString(getObservationsForEdgeInternal(
-            vehicleId, edgeId)));
+        .writeValueAsString(getObservationsForEdgeInternal(vehicleId,
+            edgeId)));
   }
 
   private static List<Coordinate> getObservationsForEdgeInternal(
     String vehicleId, Integer edgeId) {
-    final InferenceInstance instance = InferenceService
-        .getInferenceInstance(vehicleId);
+    final InferenceInstance instance =
+        InferenceService.getInferenceInstance(vehicleId);
     if (instance == null)
       return Collections.emptyList();
 
-    final Collection<InferenceResultRecord> resultRecords = instance
-        .getResultRecords();
+    final Collection<InferenceResultRecord> resultRecords =
+        instance.getResultRecords();
     if (resultRecords.isEmpty())
       return Collections.emptyList();
 
@@ -144,27 +145,28 @@ public class Api extends Controller {
       throws JsonGenerationException, JsonMappingException,
       IOException {
 
-    final InferenceInstance instance = InferenceService
-        .getInferenceInstance(vehicleId);
+    final InferenceInstance instance =
+        InferenceService.getInferenceInstance(vehicleId);
     if (instance == null)
       renderJSON(jsonMapper.writeValueAsString(null));
 
-    final Collection<InferenceResultRecord> resultRecords = instance
-        .getResultRecords();
+    final Collection<InferenceResultRecord> resultRecords =
+        instance.getResultRecords();
     if (resultRecords.isEmpty())
       renderJSON(jsonMapper.writeValueAsString(null));
 
-    final VehicleTrackingPerformanceEvaluator evaluator = new VehicleTrackingPerformanceEvaluator();
+    final VehicleTrackingPerformanceEvaluator evaluator =
+        new VehicleTrackingPerformanceEvaluator();
 
-    final List<TargetEstimatePair<VehicleState, DataDistribution<VehicleState>>> pairs = Lists
-        .newArrayList();
+    final List<TargetEstimatePair<VehicleState, DataDistribution<VehicleState>>> pairs =
+        Lists.newArrayList();
     for (final InferenceResultRecord record : resultRecords) {
       pairs.add(new DefaultTargetEstimatePair(record
           .getActualResults().getState(), record
           .getPostDistribution()));
     }
-    final VehicleStatePerformanceResult result = evaluator
-        .evaluatePerformance(pairs);
+    final VehicleStatePerformanceResult result =
+        evaluator.evaluatePerformance(pairs);
 
     renderJSON(jsonMapper.writeValueAsString(result));
   }
@@ -175,9 +177,9 @@ public class Api extends Controller {
 
     try {
 
-      final Observation location = Observation.createObservation(
-          vehicleId, timestamp, latStr, lonStr, velocity, heading,
-          accuracy);
+      final Observation location =
+          Observation.createObservation(vehicleId, timestamp, latStr,
+              lonStr, velocity, heading, accuracy);
 
       if (location != null) {
         Application.locationActor.tell(location);
@@ -194,25 +196,25 @@ public class Api extends Controller {
     int recordNumber) throws JsonGenerationException,
       JsonMappingException, IOException {
 
-    final InferenceInstance instance = InferenceService
-        .getInferenceInstance(vehicleId);
+    final InferenceInstance instance =
+        InferenceService.getInferenceInstance(vehicleId);
     if (instance == null)
       renderJSON(jsonMapper.writeValueAsString(null));
 
-    final Collection<InferenceResultRecord> results = instance
-        .getResultRecords();
+    final Collection<InferenceResultRecord> results =
+        instance.getResultRecords();
     if (results.isEmpty())
       renderJSON(jsonMapper.writeValueAsString(null));
 
-    final InferenceResultRecord tmpResult = Iterables.get(
-        results, recordNumber, null);
+    final InferenceResultRecord tmpResult =
+        Iterables.get(results, recordNumber, null);
 
     if (tmpResult == null)
       error(vehicleId + " result record " + recordNumber
           + " is out-of-bounds");
 
-    final List<Map<String, Object>> jsonResults = Lists
-        .newArrayList();
+    final List<Map<String, Object>> jsonResults =
+        Lists.newArrayList();
     for (final Entry<VehicleState> stateEntry : tmpResult
         .getPostDistribution().entrySet()) {
       final Map<String, Object> thisMap = Maps.newHashMap();
@@ -238,8 +240,8 @@ public class Api extends Controller {
 
     if (e != null) {
 
-      final OsmSegment osmSegment = new OsmSegment(
-          segmentId, e.getGeometry(), e.toString());
+      final OsmSegment osmSegment =
+          new OsmSegment(segmentId, e.getGeometry(), e.toString());
 
       renderJSON(jsonMapper.writeValueAsString(osmSegment));
     } else
@@ -251,13 +253,13 @@ public class Api extends Controller {
     Boolean isPrior) throws JsonGenerationException,
       JsonMappingException, IOException {
 
-    final InferenceInstance instance = InferenceService
-        .getInferenceInstance(vehicleId);
+    final InferenceInstance instance =
+        InferenceService.getInferenceInstance(vehicleId);
     if (instance == null)
       renderJSON(jsonMapper.writeValueAsString(null));
 
-    final Collection<InferenceResultRecord> resultRecords = instance
-        .getResultRecords();
+    final Collection<InferenceResultRecord> resultRecords =
+        instance.getResultRecords();
     if (resultRecords.isEmpty())
       renderJSON(jsonMapper.writeValueAsString(null));
 
@@ -268,8 +270,8 @@ public class Api extends Controller {
        * Just return the "best" state
        */
 
-      final InferenceResultRecord result = Iterables.get(
-          resultRecords, recordNumber, null);
+      final InferenceResultRecord result =
+          Iterables.get(resultRecords, recordNumber, null);
 
       if (result == null)
         renderJSON(jsonMapper.writeValueAsString(null));
@@ -278,8 +280,8 @@ public class Api extends Controller {
 
     } else {
 
-      final InferenceResultRecord tmpResult = Iterables.get(
-          resultRecords, recordNumber, null);
+      final InferenceResultRecord tmpResult =
+          Iterables.get(resultRecords, recordNumber, null);
 
       if (tmpResult == null)
         error(vehicleId + " result record " + recordNumber
@@ -296,28 +298,29 @@ public class Api extends Controller {
       if (particleNumber < 0) {
         for (final VehicleState infState : belief.getDomain()) {
 
-          final VehicleState actualState = tmpResult
-              .getActualResults() != null ? tmpResult
-              .getActualResults().getState() : null;
-          final InferenceResultRecord result = InferenceResultRecord
-              .createInferenceResultRecord(
+          final VehicleState actualState =
+              tmpResult.getActualResults() != null ? tmpResult
+                  .getActualResults().getState() : null;
+          final InferenceResultRecord result =
+              InferenceResultRecord.createInferenceResultRecord(
                   infState.getObservation(), instance, actualState,
                   infState, null, null);
           results.add(result);
         }
       } else {
 
-        final VehicleState infState = Iterables.get(
-            belief.getDomain(), particleNumber, null);
+        final VehicleState infState =
+            Iterables.get(belief.getDomain(), particleNumber, null);
 
         if (infState == null)
           renderJSON(jsonMapper.writeValueAsString(null));
 
-        final VehicleState actualState = tmpResult.getActualResults() != null ? tmpResult
-            .getActualResults().getState() : null;
+        final VehicleState actualState =
+            tmpResult.getActualResults() != null ? tmpResult
+                .getActualResults().getState() : null;
 
-        final InferenceResultRecord result = InferenceResultRecord
-            .createInferenceResultRecord(
+        final InferenceResultRecord result =
+            InferenceResultRecord.createInferenceResultRecord(
                 infState.getObservation(), instance, actualState,
                 infState, null, null);
         results.add(result);
@@ -331,9 +334,10 @@ public class Api extends Controller {
       if (withParent == Boolean.TRUE) {
         final VehicleState parentState = state.getParentState();
         if (parentState != null) {
-          parent = InferenceResultRecord.createInferenceResultRecord(
-              parentState.getObservation(), instance, null,
-              parentState, null, null);
+          parent =
+              InferenceResultRecord.createInferenceResultRecord(
+                  parentState.getObservation(), instance, null,
+                  parentState, null, null);
         } else {
           parent = null;
         }
@@ -363,13 +367,13 @@ public class Api extends Controller {
       throws JsonGenerationException, JsonMappingException,
       IOException {
 
-    final InferenceInstance instance = InferenceService
-        .getInferenceInstance(vehicleId);
+    final InferenceInstance instance =
+        InferenceService.getInferenceInstance(vehicleId);
     if (instance == null)
       renderJSON(jsonMapper.writeValueAsString(null));
 
-    final Collection<InferenceResultRecord> resultRecords = instance
-        .getResultRecords();
+    final Collection<InferenceResultRecord> resultRecords =
+        instance.getResultRecords();
     if (resultRecords.isEmpty())
       renderJSON(jsonMapper.writeValueAsString(null));
 

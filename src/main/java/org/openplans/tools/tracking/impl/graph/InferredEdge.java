@@ -90,34 +90,38 @@ public class InferredEdge implements Comparable<InferredEdge> {
     this.startVertex = edge.getFromVertex();
     this.endVertex = edge.getToVertex();
 
-    final Coordinate startPointCoord = this.locationIndexedLine
-        .extractPoint(this.locationIndexedLine.getStartIndex());
+    final Coordinate startPointCoord =
+        this.locationIndexedLine
+            .extractPoint(this.locationIndexedLine.getStartIndex());
 
-    this.startPoint = VectorFactory.getDefault().createVector2D(
-        startPointCoord.x, startPointCoord.y);
+    this.startPoint =
+        VectorFactory.getDefault().createVector2D(startPointCoord.x,
+            startPointCoord.y);
 
-    final Coordinate endPointCoord = this.locationIndexedLine
-        .extractPoint(this.locationIndexedLine.getEndIndex());
-    this.endPoint = VectorFactory.getDefault().createVector2D(
-        endPointCoord.x, endPointCoord.y);
+    final Coordinate endPointCoord =
+        this.locationIndexedLine
+            .extractPoint(this.locationIndexedLine.getEndIndex());
+    this.endPoint =
+        VectorFactory.getDefault().createVector2D(endPointCoord.x,
+            endPointCoord.y);
 
     this.velocityPrecisionDist =
     // ~4.4 m/s, std. dev ~ 30 m/s, Gamma with exp. value = 30 m/s
     // TODO perhaps variance of velocity should be in m/s^2. yeah...
-    new NormalInverseGammaDistribution(
-        4.4d, 1d / Math.pow(30d, 2d), 1d / Math.pow(30d, 2d) + 1d,
-        Math.pow(30d, 2d));
-    this.velocityEstimator = new UnivariateGaussianMeanVarianceBayesianEstimator(
-        velocityPrecisionDist);
+        new NormalInverseGammaDistribution(4.4d, 1d / Math.pow(30d,
+            2d), 1d / Math.pow(30d, 2d) + 1d, Math.pow(30d, 2d));
+    this.velocityEstimator =
+        new UnivariateGaussianMeanVarianceBayesianEstimator(
+            velocityPrecisionDist);
   }
 
   @Override
   public int compareTo(InferredEdge o) {
     final CompareToBuilder comparator = new CompareToBuilder();
-    comparator.append(
-        this.endVertex.getLabel(), o.endVertex.getLabel());
-    comparator.append(
-        this.startVertex.getLabel(), o.startVertex.getLabel());
+    comparator.append(this.endVertex.getLabel(),
+        o.endVertex.getLabel());
+    comparator.append(this.startVertex.getLabel(),
+        o.startVertex.getLabel());
 
     return comparator.toComparison();
   }
@@ -158,14 +162,14 @@ public class InferredEdge implements Comparable<InferredEdge> {
   public Coordinate getCoordOnEdge(Vector obsPoint) {
     if (this == InferredEdge.emptyEdge)
       return null;
-    final Coordinate revObsPoint = new Coordinate(
-        obsPoint.getElement(1), obsPoint.getElement(0));
-    final LinearLocation here = locationIndexedLine
-        .project(revObsPoint);
-    final Coordinate pointOnLine = locationIndexedLine
-        .extractPoint(here);
-    final Coordinate revOnLine = new Coordinate(
-        pointOnLine.y, pointOnLine.x);
+    final Coordinate revObsPoint =
+        new Coordinate(obsPoint.getElement(1), obsPoint.getElement(0));
+    final LinearLocation here =
+        locationIndexedLine.project(revObsPoint);
+    final Coordinate pointOnLine =
+        locationIndexedLine.extractPoint(here);
+    final Coordinate revOnLine =
+        new Coordinate(pointOnLine.y, pointOnLine.x);
     return revOnLine;
   }
 
@@ -258,10 +262,10 @@ public class InferredEdge implements Comparable<InferredEdge> {
     if (this == InferredEdge.emptyEdge)
       return null;
     final LinearLocation here = locationIndexedLine.project(obsPoint);
-    final Coordinate pointOnLine = locationIndexedLine
-        .extractPoint(here);
-    return VectorFactory.getDefault().createVector2D(
-        pointOnLine.x, pointOnLine.y);
+    final Coordinate pointOnLine =
+        locationIndexedLine.extractPoint(here);
+    return VectorFactory.getDefault().createVector2D(pointOnLine.x,
+        pointOnLine.y);
   }
 
   public Vector getStartPoint() {
@@ -272,7 +276,8 @@ public class InferredEdge implements Comparable<InferredEdge> {
     return startVertex;
   }
 
-  public UnivariateGaussianMeanVarianceBayesianEstimator getVelocityEstimator() {
+  public UnivariateGaussianMeanVarianceBayesianEstimator
+      getVelocityEstimator() {
     return velocityEstimator;
   }
 
@@ -284,10 +289,12 @@ public class InferredEdge implements Comparable<InferredEdge> {
   public int hashCode() {
     final int prime = 31;
     int result = 1;
-    result = prime * result
-        + ((endVertex == null) ? 0 : endVertex.hashCode());
-    result = prime * result
-        + ((startVertex == null) ? 0 : startVertex.hashCode());
+    result =
+        prime * result
+            + ((endVertex == null) ? 0 : endVertex.hashCode());
+    result =
+        prime * result
+            + ((startVertex == null) ? 0 : startVertex.hashCode());
     return result;
   }
 

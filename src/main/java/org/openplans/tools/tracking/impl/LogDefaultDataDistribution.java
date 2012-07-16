@@ -80,8 +80,8 @@ public class LogDefaultDataDistribution<KeyType> extends
      */
     public void setInitialDomainCapacity(
       final int initialDomainCapacity) {
-      ArgumentChecker.assertIsPositive(
-          "initialDomainCapacity", initialDomainCapacity);
+      ArgumentChecker.assertIsPositive("initialDomainCapacity",
+          initialDomainCapacity);
       this.initialDomainCapacity = initialDomainCapacity;
     }
 
@@ -112,7 +112,8 @@ public class LogDefaultDataDistribution<KeyType> extends
     }
 
     @Override
-    public LogDefaultDataDistribution.PMF<KeyType> createInitialLearnedObject() {
+    public LogDefaultDataDistribution.PMF<KeyType>
+        createInitialLearnedObject() {
       return new LogDefaultDataDistribution.PMF<KeyType>();
     }
 
@@ -183,7 +184,8 @@ public class LogDefaultDataDistribution<KeyType> extends
     }
 
     @Override
-    public LogDefaultDataDistribution.PMF<KeyType> getProbabilityFunction() {
+    public LogDefaultDataDistribution.PMF<KeyType>
+        getProbabilityFunction() {
       return this;
     }
 
@@ -209,7 +211,8 @@ public class LogDefaultDataDistribution<KeyType> extends
     /**
        * 
        */
-    private static final long serialVersionUID = -9067384837227173014L;
+    private static final long serialVersionUID =
+        -9067384837227173014L;
 
     /**
      * Default constructor
@@ -219,7 +222,8 @@ public class LogDefaultDataDistribution<KeyType> extends
     }
 
     @Override
-    public LogDefaultDataDistribution.PMF<KeyType> createInitialLearnedObject() {
+    public LogDefaultDataDistribution.PMF<KeyType>
+        createInitialLearnedObject() {
       return new LogDefaultDataDistribution.PMF<KeyType>();
     }
 
@@ -246,10 +250,6 @@ public class LogDefaultDataDistribution<KeyType> extends
    * Total of the counts in the distribution
    */
   protected double total;
-  
-  public int getCount(KeyType key) {
-    return ((MutableDoubleCount)this.map.get(key)).getCount(); 
-  }
 
   /**
    * Default constructor
@@ -315,20 +315,38 @@ public class LogDefaultDataDistribution<KeyType> extends
 
   @Override
   public LogDefaultDataDistribution<KeyType> clone() {
-    final LogDefaultDataDistribution<KeyType> clone = new LogDefaultDataDistribution<KeyType>(this.size());
-    for (java.util.Map.Entry<KeyType, MutableDouble> entry : this.map.entrySet()) {
-      MutableDoubleCount count = (MutableDoubleCount)entry.getValue();
+    final LogDefaultDataDistribution<KeyType> clone =
+        new LogDefaultDataDistribution<KeyType>(this.size());
+    for (final java.util.Map.Entry<KeyType, MutableDouble> entry : this.map
+        .entrySet()) {
+      final MutableDoubleCount count =
+          (MutableDoubleCount) entry.getValue();
       clone.set(entry.getKey(), count.getValue(), count.getCount());
     }
-    
+
     assert this.getTotalCount() == clone.getTotalCount();
-    
+
     clone.total = this.total;
     return clone;
   }
 
+  public void copyAll(DataDistribution<KeyType> posteriorDist) {
+    for (final java.util.Map.Entry<KeyType, ? extends Number> entry : posteriorDist
+        .asMap().entrySet()) {
+      final MutableDoubleCount count =
+          (MutableDoubleCount) entry.getValue();
+      this.set(entry.getKey(), count.getValue(), count.getCount());
+    }
+  }
+
+  public int getCount(KeyType key) {
+    return ((MutableDoubleCount) this.map.get(key)).getCount();
+  }
+
   @Override
-  public DistributionEstimator<KeyType, ? extends DataDistribution<KeyType>> getEstimator() {
+  public
+      DistributionEstimator<KeyType, ? extends DataDistribution<KeyType>>
+      getEstimator() {
     return new LogDefaultDataDistribution.Estimator<KeyType>();
   }
 
@@ -347,15 +365,6 @@ public class LogDefaultDataDistribution<KeyType> extends
     }
   }
 
-  public int getTotalCount() {
-    int total = 0;
-    for (java.util.Map.Entry<KeyType, MutableDouble> entry : this.map.entrySet()) {
-      MutableDoubleCount count = (MutableDoubleCount)entry.getValue();
-      total += count.getCount();
-    } 
-    return total;
-  }
-  
   @Override
   public DataDistribution.PMF<KeyType> getProbabilityFunction() {
     return new LogDefaultDataDistribution.PMF<KeyType>(this);
@@ -366,11 +375,24 @@ public class LogDefaultDataDistribution<KeyType> extends
     return this.total;
   }
 
+  public int getTotalCount() {
+    int total = 0;
+    for (final MutableDouble value : this.map.values()) {
+      final MutableDoubleCount count = (MutableDoubleCount) value;
+      total += count.getCount();
+    }
+    return total;
+  }
+
   @Override
   public double increment(KeyType key, final double value) {
+    return this.increment(key, value, 1);
+  }
+  
+  public double increment(KeyType key, final double value, int count) {
     // TODO FIXME terrible hack!
-    final MutableDoubleCount entry = (MutableDoubleCount) this.map
-        .get(key);
+    final MutableDoubleCount entry =
+        (MutableDoubleCount) this.map.get(key);
     double newValue;
     double delta;
     if (entry == null) {
@@ -378,7 +400,7 @@ public class LogDefaultDataDistribution<KeyType> extends
         // It's best to avoid this.set() here as it could mess up
         // our total tracker in some subclasses...
         // Also it's more efficient this way (avoid another get)
-        this.map.put(key, new MutableDoubleCount(value));
+        this.map.put(key, new MutableDoubleCount(value, count));
         delta = value;
       } else {
         delta = 0.0;
@@ -387,7 +409,7 @@ public class LogDefaultDataDistribution<KeyType> extends
     } else {
       if (entry.value + value >= 0.0) {
         delta = value;
-        entry.plusEquals(value);
+        entry.plusEquals(value, count);
       } else {
         delta = -entry.value;
         entry.set(0d);
@@ -402,16 +424,17 @@ public class LogDefaultDataDistribution<KeyType> extends
   @Override
   public void set(final KeyType key, final double value) {
     // TODO FIXME terrible hack!
-    final MutableDoubleCount entry = (MutableDoubleCount) this.map
-        .get(key);
+    final MutableDoubleCount entry =
+        (MutableDoubleCount) this.map.get(key);
     set(key, value, entry == null ? 1 : entry.getCount());
   }
-  
-  public void set(final KeyType key, final double value, final int count) {
+
+  public void set(final KeyType key, final double value,
+    final int count) {
 
     // TODO FIXME terrible hack!
-    final MutableDoubleCount entry = (MutableDoubleCount) this.map
-        .get(key);
+    final MutableDoubleCount entry =
+        (MutableDoubleCount) this.map.get(key);
     if (entry == null) {
       // Only need to allocate if it's not null
       if (value > 0.0) {
@@ -424,13 +447,6 @@ public class LogDefaultDataDistribution<KeyType> extends
     } else {
       entry.set(0d, count);
     }
-  }
-
-  public void copyAll(DataDistribution<KeyType> posteriorDist) {
-    for (java.util.Map.Entry<KeyType, ? extends Number> entry : posteriorDist.asMap().entrySet()) {
-      MutableDoubleCount count = (MutableDoubleCount)entry.getValue();
-      this.set(entry.getKey(), count.getValue(), count.getCount());
-    } 
   }
 
 }

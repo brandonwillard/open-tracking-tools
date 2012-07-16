@@ -8,7 +8,8 @@ import org.openplans.tools.tracking.impl.graph.paths.InferredPath;
 import org.openplans.tools.tracking.impl.graph.paths.PathEdge;
 
 public class PathTree {
-  HashMap<PathEdge, PathTree> children = new HashMap<PathEdge, PathTree>();
+  HashMap<PathEdge, PathTree> children =
+      new HashMap<PathEdge, PathTree>();
   List<InferredPath> paths = new ArrayList<InferredPath>();
   PathTree parent;
   boolean isLeaf = false;

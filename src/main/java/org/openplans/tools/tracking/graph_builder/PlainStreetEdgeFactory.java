@@ -13,14 +13,15 @@ public class PlainStreetEdgeFactory implements
     OSMPlainStreetEdgeFactory {
 
   @Override
-  public PlainStreetEdge createEdge(OSMNode fromNode, OSMNode toNode,
-    OSMWithTags wayOrArea, IntersectionVertex startEndpoint,
-    IntersectionVertex endEndpoint, LineString geometry, String name,
-    double length, StreetTraversalPermission permissions, boolean back) {
-    return new PlainStreetEdgeWithOSMData(
-        wayOrArea.getId(), fromNode.getId(), toNode.getId(),
-        startEndpoint, endEndpoint, geometry, name, length,
-        permissions, back);
+  public PlainStreetEdge
+      createEdge(OSMNode fromNode, OSMNode toNode,
+        OSMWithTags wayOrArea, IntersectionVertex startEndpoint,
+        IntersectionVertex endEndpoint, LineString geometry,
+        String name, double length,
+        StreetTraversalPermission permissions, boolean back) {
+    return new PlainStreetEdgeWithOSMData(wayOrArea.getId(),
+        fromNode.getId(), toNode.getId(), startEndpoint, endEndpoint,
+        geometry, name, length, permissions, back);
 
   }
 

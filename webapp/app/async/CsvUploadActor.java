@@ -13,6 +13,7 @@ import models.InferenceInstance;
 
 import org.openplans.tools.tracking.impl.Observation;
 import org.openplans.tools.tracking.impl.TimeOrderException;
+import org.openplans.tools.tracking.impl.VehicleState.VehicleStateInitialParameters;
 
 import akka.actor.UntypedActor;
 import akka.event.Logging;
@@ -27,14 +28,23 @@ public class CsvUploadActor extends UntypedActor {
 
     private final File dest;
     private final boolean debugEnabled;
+    private final VehicleStateInitialParameters vehicleStateParams;
 
-    public TraceParameters(File dest, boolean debugEnabled) {
+    public TraceParameters(File dest,
+      VehicleStateInitialParameters vehicleStateParams,
+      boolean debugEnabled) {
+      this.vehicleStateParams = vehicleStateParams;
       this.dest = dest;
       this.debugEnabled = debugEnabled;
     }
 
     public File getDest() {
       return dest;
+    }
+
+    public VehicleStateInitialParameters
+        getVehicleStateInitialParams() {
+      return vehicleStateParams;
     }
 
     public boolean isDebugEnabled() {
@@ -50,8 +60,8 @@ public class CsvUploadActor extends UntypedActor {
     if (params instanceof TraceParameters) {
 
       final TraceParameters traceParams = (TraceParameters) params;
-      final CSVReader gps_reader = new CSVReader(new FileReader(
-          traceParams.getDest()), ';');
+      final CSVReader gps_reader =
+          new CSVReader(new FileReader(traceParams.getDest()), ';');
 
       final String filename = traceParams.getDest().getName();
       log.info("processing gps data from " + filename);
@@ -73,9 +83,9 @@ public class CsvUploadActor extends UntypedActor {
             final String vehicleId = "trace-" + line[3];
             vehicleIds.add(vehicleId);
 
-            final Observation obs = Observation.createObservation(
-                vehicleId, line[1], line[5], line[7], line[10], null,
-                null);
+            final Observation obs =
+                Observation.createObservation(vehicleId, line[1],
+                    line[5], line[7], line[10], null, null);
             observations.add(obs);
 
           } catch (final TimeOrderException ex) {
@@ -94,18 +104,20 @@ public class CsvUploadActor extends UntypedActor {
 
       gps_reader.close();
 
-      final INFO_LEVEL level = traceParams.isDebugEnabled() ? INFO_LEVEL.DEBUG
-          : InferenceService.defaultInfoLevel;
+      final INFO_LEVEL level =
+          traceParams.isDebugEnabled() ? INFO_LEVEL.DEBUG
+              : InferenceService.defaultInfoLevel;
 
-      InferenceService.processRecords(observations, level);
-      InferenceService.getExecutor().awaitTermination(
-          5, TimeUnit.SECONDS);
+      InferenceService.processRecords(observations,
+          traceParams.getVehicleStateInitialParams(), level);
+      InferenceService.getExecutor().awaitTermination(5,
+          TimeUnit.SECONDS);
 
       log.info("finished processing " + filename);
 
       for (final String vehicleId : vehicleIds) {
-        final InferenceInstance ie = InferenceService
-            .getInferenceInstance(vehicleId);
+        final InferenceInstance ie =
+            InferenceService.getInferenceInstance(vehicleId);
         if (ie != null)
           log.info("avg. records per sec = " + 1000d
               / ie.getAverager().getMean().value);

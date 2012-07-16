@@ -32,7 +32,8 @@ import com.vividsolutions.jts.geom.Geometry;
 public class ReprojectCoords implements GraphBuilder {
 
   @Override
-  public void buildGraph(Graph graph, HashMap<Class<?>, Object> extra) {
+  public void
+      buildGraph(Graph graph, HashMap<Class<?>, Object> extra) {
     Field xfield;
     Field yfield;
     Field geomfield;

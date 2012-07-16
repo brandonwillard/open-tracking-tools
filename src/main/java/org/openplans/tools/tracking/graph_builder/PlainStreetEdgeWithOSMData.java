@@ -40,9 +40,10 @@ public class PlainStreetEdgeWithOSMData extends PlainStreetEdge {
   @Override
   public TurnVertex createTurnVertex(Graph graph) {
     final String id = getId();
-    final TurnVertexWithOSMData tv = new TurnVertexWithOSMData(
-        this, way, fromNode, toNode, graph, id, getGeometry(),
-        getName(), getLength(), back, getNotes());
+    final TurnVertexWithOSMData tv =
+        new TurnVertexWithOSMData(this, way, fromNode, toNode, graph,
+            id, getGeometry(), getName(), getLength(), back,
+            getNotes());
     tv.setWheelchairNotes(getWheelchairNotes());
     tv.setWheelchairAccessible(isWheelchairAccessible());
     tv.setPermission(getPermission());

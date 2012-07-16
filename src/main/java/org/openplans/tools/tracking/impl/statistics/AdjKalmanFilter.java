@@ -91,8 +91,8 @@ public class AdjKalmanFilter extends AbstractKalmanFilter {
 
   @Override
   public MultivariateGaussian createInitialLearnedObject() {
-    return new MultivariateGaussian(
-        this.model.getState(), this.getModelCovariance());
+    return new MultivariateGaussian(this.model.getState(),
+        this.getModelCovariance());
   }
 
   /**
@@ -105,7 +105,8 @@ public class AdjKalmanFilter extends AbstractKalmanFilter {
   }
 
   @Override
-  public void measure(MultivariateGaussian belief, Vector observation) {
+  public void
+      measure(MultivariateGaussian belief, Vector observation) {
     final Matrix C = this.model.getC();
 
     // Figure out what the model says the observation should be
@@ -121,40 +122,46 @@ public class AdjKalmanFilter extends AbstractKalmanFilter {
 
     final Vector a = belief.getMean();
     final Matrix R = belief.getCovariance();
-    final Matrix Q = C.times(R).times(C.transpose())
-        .plus(this.getMeasurementCovariance());
+    final Matrix Q =
+        C.times(R).times(C.transpose())
+            .plus(this.getMeasurementCovariance());
     /*
      * This is the source of one major improvement:
      * uses the solve routine for a positive definite matrix
      */
-    final UpperSPDDenseMatrix Qspd = new UpperSPDDenseMatrix(
-        ((AbstractMTJMatrix) Q).getInternalMatrix(), false);
-    final no.uib.cipr.matrix.Matrix CRt = ((AbstractMTJMatrix) C
-        .times(R.transpose())).getInternalMatrix();
+    final UpperSPDDenseMatrix Qspd =
+        new UpperSPDDenseMatrix(
+            ((AbstractMTJMatrix) Q).getInternalMatrix(), false);
+    final no.uib.cipr.matrix.Matrix CRt =
+        ((AbstractMTJMatrix) C.times(R.transpose()))
+            .getInternalMatrix();
 
-    final DenseMatrix Amtj = new DenseMatrix(
-        Qspd.numRows(), CRt.numColumns());
+    final DenseMatrix Amtj =
+        new DenseMatrix(Qspd.numRows(), CRt.numColumns());
     Qspd.transSolve(CRt, Amtj);
 
-    final DenseMatrix AtQt = new DenseMatrix(
-        Amtj.numColumns(), Qspd.numRows());
+    final DenseMatrix AtQt =
+        new DenseMatrix(Amtj.numColumns(), Qspd.numRows());
     Amtj.transABmult(Qspd, AtQt);
 
-    final DenseMatrix AtQtAMtj = new DenseMatrix(
-        AtQt.numRows(), Amtj.numColumns());
+    final DenseMatrix AtQtAMtj =
+        new DenseMatrix(AtQt.numRows(), Amtj.numColumns());
     AtQt.mult(Amtj, AtQtAMtj);
 
-    final Matrix AtQtA = ((DenseMatrixFactoryMTJ) MatrixFactory
-        .getDenseDefault()).createWrapper(AtQtAMtj);
+    final Matrix AtQtA =
+        ((DenseMatrixFactoryMTJ) MatrixFactory.getDenseDefault())
+            .createWrapper(AtQtAMtj);
 
-    final DenseVector e = new DenseVector(
-        ((gov.sandia.cognition.math.matrix.mtj.DenseVector) observation
-            .minus(C.times(a))).getArray(), false);
+    final DenseVector e =
+        new DenseVector(
+            ((gov.sandia.cognition.math.matrix.mtj.DenseVector) observation
+                .minus(C.times(a))).getArray(), false);
 
     final DenseVector AteMtj = new DenseVector(Amtj.numColumns());
     Amtj.transMult(e, AteMtj);
-    final Vector Ate = ((DenseVectorFactoryMTJ) VectorFactory
-        .getDenseDefault()).createWrapper(AteMtj);
+    final Vector Ate =
+        ((DenseVectorFactoryMTJ) VectorFactory.getDenseDefault())
+            .createWrapper(AteMtj);
 
     final Matrix CC = R.minus(AtQtA);
     final Vector m = a.plus(Ate);
@@ -170,8 +177,9 @@ public class AdjKalmanFilter extends AbstractKalmanFilter {
 
     // Calculate the covariance, which will increase due to the
     // inherent uncertainty of the model.
-    final Matrix P = this.computePredictionCovariance(
-        this.model.getA(), belief.getCovariance());
+    final Matrix P =
+        this.computePredictionCovariance(this.model.getA(),
+            belief.getCovariance());
 
     // Load the updated belief
     belief.setMean(xpred);

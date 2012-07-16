@@ -2,7 +2,6 @@ package models;
 
 import gov.sandia.cognition.math.MutableDouble;
 import gov.sandia.cognition.math.RingAccumulator;
-import gov.sandia.cognition.math.matrix.VectorFactory;
 import gov.sandia.cognition.statistics.DataDistribution;
 import inference.InferenceResultRecord;
 import inference.InferenceService.INFO_LEVEL;
@@ -19,7 +18,6 @@ import org.openplans.tools.tracking.impl.VehicleState.VehicleStateInitialParamet
 import org.openplans.tools.tracking.impl.VehicleTrackingFilter;
 import org.openplans.tools.tracking.impl.statistics.FilterInformation;
 import org.openplans.tools.tracking.impl.statistics.VehicleTrackingBootstrapFilter;
-import org.openplans.tools.tracking.impl.statistics.VehicleTrackingPLFilter;
 import org.openplans.tools.tracking.impl.util.OtpGraph;
 
 import com.google.common.base.Stopwatch;
@@ -45,7 +43,8 @@ public class InferenceInstance {
 
   private VehicleTrackingFilter<Observation, VehicleState> filter;
 
-  private final Queue<InferenceResultRecord> resultRecords = new ConcurrentLinkedQueue<InferenceResultRecord>();
+  private final Queue<InferenceResultRecord> resultRecords =
+      new ConcurrentLinkedQueue<InferenceResultRecord>();
 
   private DataDistribution<VehicleState> postBelief;
   private DataDistribution<VehicleState> resampleBelief;
@@ -59,23 +58,8 @@ public class InferenceInstance {
 
   private static OtpGraph inferredGraph = Api.getGraph();
 
-  private final RingAccumulator<MutableDouble> averager = new RingAccumulator<MutableDouble>();
-
-  public InferenceInstance(String vehicleId, boolean isSimulation,
-    INFO_LEVEL infoLevel) {
-    this.initialParameters = new VehicleStateInitialParameters(
-        VectorFactory.getDefault().createVector2D(
-            VehicleState.getGvariance(), VehicleState.getGvariance()),
-        VectorFactory.getDefault().createVector2D(
-            VehicleState.getDvariance(), VehicleState.getVvariance()),
-        VectorFactory.getDefault().createVector2D(
-            VehicleState.getDvariance(), VehicleState.getVvariance()),
-        VectorFactory.getDefault().createVector2D(0.05d, 1d),
-        VectorFactory.getDefault().createVector2D(1d, 0.05d), 0l);
-    this.vehicleId = vehicleId;
-    this.isSimulation = isSimulation;
-    this.infoLevel = infoLevel;
-  }
+  private final RingAccumulator<MutableDouble> averager =
+      new RingAccumulator<MutableDouble>();
 
   public InferenceInstance(String vehicleId, boolean isSimulation,
     INFO_LEVEL infoLevel, VehicleStateInitialParameters parameters) {
@@ -143,8 +127,8 @@ public class InferenceInstance {
     updateFilter(obs);
     this.recordsProcessed++;
 
-    final InferenceResultRecord infResult = InferenceResultRecord
-        .createInferenceResultRecord(obs, this);
+    final InferenceResultRecord infResult =
+        InferenceResultRecord.createInferenceResultRecord(obs, this);
 
     if (infoLevel == INFO_LEVEL.SINGLE_RESULT
         && !this.resultRecords.isEmpty())
@@ -162,10 +146,10 @@ public class InferenceInstance {
 
     this.recordsProcessed++;
 
-    final InferenceResultRecord result = InferenceResultRecord
-        .createInferenceResultRecord(
-            obs, this, actualState, postBelief.getMaxValueKey(),
-            postBelief.clone(),
+    final InferenceResultRecord result =
+        InferenceResultRecord.createInferenceResultRecord(obs, this,
+            actualState, postBelief.getMaxValueKey(), postBelief
+                .clone(),
             resampleBelief != null ? resampleBelief.clone() : null);
 
     if (infoLevel == INFO_LEVEL.SINGLE_RESULT
@@ -182,23 +166,24 @@ public class InferenceInstance {
 
     if (filter == null || postBelief == null) {
 
-//      filter = new VehicleTrackingBootstrapFilter(
-//          obs, inferredGraph, initialParameters,
-//          infoLevel.compareTo(INFO_LEVEL.DEBUG) >= 0);
+      filter =
+          new VehicleTrackingBootstrapFilter(obs, inferredGraph,
+              initialParameters,
+              infoLevel.compareTo(INFO_LEVEL.DEBUG) >= 0);
 
-      filter = new VehicleTrackingPLFilter(
-          obs, inferredGraph, initialParameters,
-          infoLevel.compareTo(INFO_LEVEL.DEBUG) >= 0);
+      //      filter = new VehicleTrackingPLFilter(
+      //          obs, inferredGraph, initialParameters,
+      //          infoLevel.compareTo(INFO_LEVEL.DEBUG) >= 0);
 
       filter.getRandom().setSeed(simSeed);
       postBelief = filter.createInitialLearnedObject();
     } else {
       filter.update(postBelief, obs);
       if (infoLevel.compareTo(INFO_LEVEL.DEBUG) >= 0) {
-        final FilterInformation filterInfo = filter
-            .getFilterInformation(obs);
-        resampleBelief = filterInfo != null ? filterInfo
-            .getResampleDist() : null;
+        final FilterInformation filterInfo =
+            filter.getFilterInformation(obs);
+        resampleBelief =
+            filterInfo != null ? filterInfo.getResampleDist() : null;
       }
     }
 

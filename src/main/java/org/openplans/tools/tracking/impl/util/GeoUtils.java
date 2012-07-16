@@ -44,52 +44,56 @@ public class GeoUtils {
 
   }
 
-  public static ThreadLocal<GeoSetup> geoData = new ThreadLocal<GeoSetup>() {
+  public static ThreadLocal<GeoSetup> geoData =
+      new ThreadLocal<GeoSetup>() {
 
-    @Override
-    public GeoSetup get() {
-      return super.get();
-    }
+        @Override
+        public GeoSetup get() {
+          return super.get();
+        }
 
-    @Override
-    protected GeoSetup initialValue() {
-      System.setProperty("org.geotools.referencing.forceXY", "true");
-      try {
-        // EPSG:4326 -> WGS84
-        // EPSG:3785 is web mercator
-        final String googleWebMercatorCode = "EPSG:4326";
+        @Override
+        protected GeoSetup initialValue() {
+          System.setProperty("org.geotools.referencing.forceXY",
+              "true");
+          try {
+            // EPSG:4326 -> WGS84
+            // EPSG:3785 is web mercator
+            final String googleWebMercatorCode = "EPSG:4326";
 
-        // Projected CRS
-        // CRS code: 3785
-        final String cartesianCode = "EPSG:4499";
+            // Projected CRS
+            // CRS code: 3785
+            final String cartesianCode = "EPSG:4499";
 
-        // UTM zone 51N
-        // final String cartesianCode = "EPSG:3829";
+            // UTM zone 51N
+            // final String cartesianCode = "EPSG:3829";
 
-        final CRSAuthorityFactory crsAuthorityFactory = CRS
-            .getAuthorityFactory(true);
+            final CRSAuthorityFactory crsAuthorityFactory =
+                CRS.getAuthorityFactory(true);
 
-        final CoordinateReferenceSystem mapCRS = crsAuthorityFactory
-            .createCoordinateReferenceSystem(googleWebMercatorCode);
+            final CoordinateReferenceSystem mapCRS =
+                crsAuthorityFactory
+                    .createCoordinateReferenceSystem(googleWebMercatorCode);
 
-        final CoordinateReferenceSystem dataCRS = crsAuthorityFactory
-            .createCoordinateReferenceSystem(cartesianCode);
+            final CoordinateReferenceSystem dataCRS =
+                crsAuthorityFactory
+                    .createCoordinateReferenceSystem(cartesianCode);
 
-        final boolean lenient = true; // allow for some error due to different
-                                      // datums
-        final MathTransform transform = CRS.findMathTransform(
-            mapCRS, dataCRS, lenient);
+            final boolean lenient = true; // allow for some error due to different
+                                          // datums
+            final MathTransform transform =
+                CRS.findMathTransform(mapCRS, dataCRS, lenient);
 
-        return new GeoSetup(mapCRS, dataCRS, transform);
+            return new GeoSetup(mapCRS, dataCRS, transform);
 
-      } catch (final Exception e) {
-        e.printStackTrace();
-      }
+          } catch (final Exception e) {
+            e.printStackTrace();
+          }
 
-      return null;
-    }
+          return null;
+        }
 
-  };
+      };
 
   public static Coordinate convertToEuclidean(Coordinate latlon) {
     final Coordinate converted = new Coordinate();
@@ -110,8 +114,8 @@ public class GeoUtils {
   }
 
   public static Coordinate convertToEuclidean(Vector vec) {
-    return convertToEuclidean(new Coordinate(
-        vec.getElement(0), vec.getElement(1)));
+    return convertToEuclidean(new Coordinate(vec.getElement(0),
+        vec.getElement(1)));
   }
 
   public static Coordinate convertToLatLon(Coordinate xy) {
@@ -128,8 +132,8 @@ public class GeoUtils {
   }
 
   public static Coordinate convertToLatLon(Vector vec) {
-    return convertToLatLon(new Coordinate(
-        vec.getElement(0), vec.getElement(1)));
+    return convertToLatLon(new Coordinate(vec.getElement(0),
+        vec.getElement(1)));
   }
 
   public static Coordinate convertToLonLat(Coordinate xy) {
@@ -161,8 +165,8 @@ public class GeoUtils {
   }
 
   public static Object getCoordinates(Vector meanLocation) {
-    return new Coordinate(
-        meanLocation.getElement(0), meanLocation.getElement(1));
+    return new Coordinate(meanLocation.getElement(0),
+        meanLocation.getElement(1));
   }
 
   public static MathTransform getCRSTransform() {
@@ -172,8 +176,8 @@ public class GeoUtils {
   public static Vector getEuclideanVectorFromLatLon(
     Coordinate coordinate) {
     final Coordinate resCoord = convertToEuclidean(coordinate);
-    return VectorFactory.getDefault().createVector2D(
-        resCoord.x, resCoord.y);
+    return VectorFactory.getDefault().createVector2D(resCoord.x,
+        resCoord.y);
   }
 
   public static CoordinateReferenceSystem getLatLonCRS() {
@@ -196,9 +200,8 @@ public class GeoUtils {
   public static boolean isInLatLonCoords(Coordinate rawCoords) {
     try {
       JTS.checkCoordinatesRange(
-          JTS.toGeometry(JTS.toDirectPosition(
-              rawCoords, getLatLonCRS()).getDirectPosition()),
-          getLatLonCRS());
+          JTS.toGeometry(JTS.toDirectPosition(rawCoords,
+              getLatLonCRS()).getDirectPosition()), getLatLonCRS());
       return true;
     } catch (final PointOutsideEnvelopeException e) {
       return false;

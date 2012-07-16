@@ -33,12 +33,13 @@ public class SimpleTurnEdge extends TurnEdge {
 
     final StateEditor s1 = s0.edit(this);
 
-    final double speed = options.getSpeed(s0
-        .getNonTransitMode(options));
-    final double time = (((TurnVertex) fromv)
-        .getEffectiveLength(traverseMode) + turnCost / 20.0) / speed;
-    final double weight = ((TurnVertex) fromv).computeWeight(
-        s0, options, time);
+    final double speed =
+        options.getSpeed(s0.getNonTransitMode(options));
+    final double time =
+        (((TurnVertex) fromv).getEffectiveLength(traverseMode) + turnCost / 20.0)
+            / speed;
+    final double weight =
+        ((TurnVertex) fromv).computeWeight(s0, options, time);
     s1.incrementWalkDistance(((TurnVertex) fromv).getLength());
     s1.incrementTimeInSeconds((int) Math.ceil(time));
     s1.incrementWeight(weight);

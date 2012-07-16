@@ -60,7 +60,8 @@ public class InferredPathEntry implements
     return false;
   }
 
-  public Map<Pair<PathEdge, Boolean>, EdgePredictiveResults> getEdgeToPredictiveBelief() {
+  public Map<Pair<PathEdge, Boolean>, EdgePredictiveResults>
+      getEdgeToPredictiveBelief() {
     return edgeToPredictiveBelief;
   }
 
