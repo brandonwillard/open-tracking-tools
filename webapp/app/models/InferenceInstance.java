@@ -18,6 +18,7 @@ import org.openplans.tools.tracking.impl.VehicleState.VehicleStateInitialParamet
 import org.openplans.tools.tracking.impl.VehicleTrackingFilter;
 import org.openplans.tools.tracking.impl.statistics.FilterInformation;
 import org.openplans.tools.tracking.impl.statistics.VehicleTrackingBootstrapFilter;
+import org.openplans.tools.tracking.impl.statistics.VehicleTrackingPLFilter;
 import org.openplans.tools.tracking.impl.util.OtpGraph;
 
 import com.google.common.base.Stopwatch;
@@ -166,14 +167,14 @@ public class InferenceInstance {
 
     if (filter == null || postBelief == null) {
 
-      filter =
-          new VehicleTrackingBootstrapFilter(obs, inferredGraph,
-              initialParameters,
-              infoLevel.compareTo(INFO_LEVEL.DEBUG) >= 0);
+//      filter =
+//          new VehicleTrackingBootstrapFilter(obs, inferredGraph,
+//              initialParameters,
+//              infoLevel.compareTo(INFO_LEVEL.DEBUG) >= 0);
 
-      //      filter = new VehicleTrackingPLFilter(
-      //          obs, inferredGraph, initialParameters,
-      //          infoLevel.compareTo(INFO_LEVEL.DEBUG) >= 0);
+      filter = new VehicleTrackingPLFilter(
+          obs, inferredGraph, initialParameters,
+          infoLevel.compareTo(INFO_LEVEL.DEBUG) >= 0);
 
       filter.getRandom().setSeed(simSeed);
       postBelief = filter.createInitialLearnedObject();
