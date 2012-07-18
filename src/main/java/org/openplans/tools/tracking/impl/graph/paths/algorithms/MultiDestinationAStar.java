@@ -27,8 +27,6 @@ public class MultiDestinationAStar implements
     SkipTraverseResultStrategy, TraverseVisitor {
   private static final long serialVersionUID = 1L;
 
-  double MAX_SPEED = 27.0; // ~60 mph
-
   private final HashSet<Edge> end;
   private final Coordinate center;
   private final double radius;
@@ -64,7 +62,7 @@ public class MultiDestinationAStar implements
     if (distance < radius)
       return 0;
 
-    return distance / MAX_SPEED;
+    return distance / s.getOptions().getCarSpeed();
   }
 
   @Override
@@ -118,7 +116,7 @@ public class MultiDestinationAStar implements
   public boolean shouldSearchContinue(Vertex origin, Vertex target,
     State current, ShortestPathTree spt,
     RoutingRequest traverseOptions) {
-    final double traveledDistance = current.getWeight() * MAX_SPEED;
+    final double traveledDistance = current.getWalkDistance();
     if (Math.abs(traveledDistance) >= this.maxDistance)
       return false;
     return end.size() != 0;
