@@ -57,12 +57,13 @@ public class MultiDestinationAStar implements
   @Override
   public double computeForwardWeight(State s, Vertex target) {
     final Vertex v = s.getVertex();
-    double distance =
-        distanceLibrary.fastDistance(v.getCoordinate(), center)
-            + radius;
 
-    if (distance < 0)
-      distance = 0;
+    double distance = distanceLibrary.fastDistance(
+        v.getCoordinate(), center);
+
+    if (distance < radius)
+      return 0;
+
     return distance / MAX_SPEED;
   }
 
