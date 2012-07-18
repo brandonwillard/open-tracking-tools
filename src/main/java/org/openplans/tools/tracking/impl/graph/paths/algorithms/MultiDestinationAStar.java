@@ -62,7 +62,7 @@ public class MultiDestinationAStar implements
     if (distance < radius)
       return 0;
 
-    return distance / s.getOptions().getCarSpeed();
+    return (distance - radius) / s.getOptions().getCarSpeed();
   }
 
   @Override
