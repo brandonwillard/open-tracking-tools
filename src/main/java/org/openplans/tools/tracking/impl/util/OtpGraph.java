@@ -267,7 +267,8 @@ public class OtpGraph {
      * We always consider moving off of an edge, staying on an edge, and
      * whatever else we can find.
      */
-    final InferredEdge currentEdge = key.getState().getInferredEdge();
+    final VehicleState currentState = key.getState();
+    final InferredEdge currentEdge = currentState.getInferredEdge();
 
     final Coordinate toCoord = key.getEndCoord();
     final Coordinate fromCoord = key.getStartCoord();
@@ -285,9 +286,9 @@ public class OtpGraph {
       }
     } else {
       final double stateStdDevDistance =
-          1.98d * Math.sqrt(key.getState().getBelief()
+          1.98d * Math.sqrt(currentState.getBelief()
               .getCovariance().normFrobenius()
-              / Math.sqrt(key.getState().getBelief()
+              / Math.sqrt(currentState.getBelief()
                   .getInputDimensionality()));
       for (final Object obj : getNearbyEdges(fromCoord,
           stateStdDevDistance)) {
@@ -300,24 +301,32 @@ public class OtpGraph {
     final Set<Edge> endEdges = Sets.newHashSet();
 
     final double obsStdDevDistance =
-        key.getState().getMovementFilter()
+        currentState.getMovementFilter()
             .getObservationErrorAbsRadius();
-    //        1.98d * Math.sqrt(key.getState()
-    //        .getMovementFilter().getObsVariance().normFrobenius()/Math.sqrt(2));
 
+    double maxEndEdgeLength = Double.NEGATIVE_INFINITY;
     for (final Object obj : getNearbyEdges(toCoord, obsStdDevDistance)) {
       final PlainStreetEdgeWithOSMData edge =
           (PlainStreetEdgeWithOSMData) obj;
+      if (edge.getLength() > maxEndEdgeLength)
+        maxEndEdgeLength = edge.getLength();
       endEdges.addAll(edge.getTurnVertex().getOutgoing());
     }
+    
+    if (endEdges.isEmpty())
+      return paths;
 
     /*
      * If we're already on an edge, then we attempt to gauge how
      * far in the opposite direction we are willing to consider.
      */
     final double timeDiff =
-        key.getState().getMovementFilter().getCurrentTimeDiff();
-    final double distanceMax = MAX_DISTANCE_SPEED * timeDiff;
+        currentState.getMovementFilter().getCurrentTimeDiff();
+    final double distanceMax = 
+        Math.max(MAX_DISTANCE_SPEED * timeDiff,
+            currentState.getMeanLocation().euclideanDistance(
+                currentState.getObservation().getProjectedPoint())) 
+                + currentEdge.getLength() + maxEndEdgeLength;
 
     for (final Edge startEdge : startEdges) {
       final MultiDestinationAStar forwardAStar =

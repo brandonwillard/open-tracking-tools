@@ -78,6 +78,8 @@ public class VehicleTrackingPLFilter extends
           Maps.newHashMap();
 
       for (final InferredPath path : instStateTransitions) {
+        if (isDebug)
+          evaluatedPaths.add(path);
 
         /*
          * Make sure that this path is valid for the state.
@@ -93,8 +95,6 @@ public class VehicleTrackingPLFilter extends
             path.getPredictiveLogLikelihood(obs, state,
                 edgeToPreBeliefAndLogLik);
 
-        if (isDebug)
-          evaluatedPaths.add(path);
 
         if (infPath != null) {
           totalLogLik =
