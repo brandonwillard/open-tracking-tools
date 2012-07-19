@@ -17,7 +17,7 @@ import models.InferenceInstance;
 
 import org.codehaus.jackson.annotate.JsonIgnore;
 import org.codehaus.jackson.map.annotate.JsonSerialize;
-import org.openplans.tools.tracking.impl.LogDefaultDataDistribution;
+import org.openplans.tools.tracking.impl.DefaultCountedDataDistribution;
 import org.openplans.tools.tracking.impl.Observation;
 import org.openplans.tools.tracking.impl.VehicleState;
 import org.openplans.tools.tracking.impl.graph.paths.InferredPath;
@@ -54,7 +54,7 @@ public class InferenceResultRecord {
     final int count;
     if (postDist != null)
       count =
-          ((LogDefaultDataDistribution<VehicleState>) postDist)
+          ((DefaultCountedDataDistribution<VehicleState>) postDist)
               .getCount(infResults.getState());
     else
       count = 1;

@@ -17,7 +17,7 @@ import java.util.Random;
 import no.uib.cipr.matrix.DenseVector;
 import no.uib.cipr.matrix.UpperSPDDenseMatrix;
 
-import org.openplans.tools.tracking.impl.LogDefaultDataDistribution;
+import org.openplans.tools.tracking.impl.DefaultCountedDataDistribution;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.HashMultiset;
@@ -76,7 +76,7 @@ public class StatisticsUtil {
   }
 
   public static <SupportType extends Comparable<SupportType>>
-      LogDefaultDataDistribution<SupportType>
+      DefaultCountedDataDistribution<SupportType>
       getLogNormalizedDistribution(
         List<WrappedWeightedValue<SupportType>> map) {
 
@@ -93,8 +93,8 @@ public class StatisticsUtil {
     if (totalLikelihood == Double.NEGATIVE_INFINITY)
       return null;
 
-    final LogDefaultDataDistribution<SupportType> result =
-        new LogDefaultDataDistribution<SupportType>();
+    final DefaultCountedDataDistribution<SupportType> result =
+        new DefaultCountedDataDistribution<SupportType>();
 
     /*
      * Sort before putting in the data distribution
@@ -126,7 +126,7 @@ public class StatisticsUtil {
 
   public static
       <DistributionType, SupportType extends Comparable<SupportType>>
-      LogDefaultDataDistribution<SupportType> getLogNormalizedDistribution(
+      DefaultCountedDataDistribution<SupportType> getLogNormalizedDistribution(
         Map<SupportType, WrappedWeightedValue<DistributionType>> map) {
 
     /*-
@@ -159,8 +159,8 @@ public class StatisticsUtil {
     //
     // });
 
-    final LogDefaultDataDistribution<SupportType> result =
-        new LogDefaultDataDistribution<SupportType>();
+    final DefaultCountedDataDistribution<SupportType> result =
+        new DefaultCountedDataDistribution<SupportType>();
     for (final Entry<SupportType, WrappedWeightedValue<DistributionType>> entry : entryList) {
       if (entry.getValue().getWeight() == Double.NEGATIVE_INFINITY)
         continue;

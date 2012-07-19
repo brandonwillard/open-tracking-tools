@@ -12,7 +12,7 @@ import java.util.Random;
 import java.util.Set;
 
 import org.apache.commons.lang.NotImplementedException;
-import org.openplans.tools.tracking.impl.LogDefaultDataDistribution;
+import org.openplans.tools.tracking.impl.DefaultCountedDataDistribution;
 import org.openplans.tools.tracking.impl.Observation;
 import org.openplans.tools.tracking.impl.VehicleState;
 import org.openplans.tools.tracking.impl.VehicleState.VehicleStateInitialParameters;
@@ -166,7 +166,7 @@ public class VehicleTrackingPathSamplerFilterUpdater implements
     initialDist.increment(state, lik);
 
     final DataDistribution<VehicleState> retDist =
-        new LogDefaultDataDistribution<VehicleState>(
+        new DefaultCountedDataDistribution<VehicleState>(
             initialDist.sample(threadRandom.get(), numParticles));
 
     return retDist;

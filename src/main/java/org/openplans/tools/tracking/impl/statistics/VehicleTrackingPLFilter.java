@@ -12,7 +12,7 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 
-import org.openplans.tools.tracking.impl.LogDefaultDataDistribution;
+import org.openplans.tools.tracking.impl.DefaultCountedDataDistribution;
 import org.openplans.tools.tracking.impl.Observation;
 import org.openplans.tools.tracking.impl.VehicleState;
 import org.openplans.tools.tracking.impl.VehicleState.VehicleStateInitialParameters;
@@ -59,7 +59,7 @@ public class VehicleTrackingPLFilter extends
     for (final VehicleState state : target.getDomain()) {
 
       final int count =
-          ((LogDefaultDataDistribution<VehicleState>) target)
+          ((DefaultCountedDataDistribution<VehicleState>) target)
               .getCount(state);
 
       final Set<InferredPath> instStateTransitions =
@@ -127,7 +127,7 @@ public class VehicleTrackingPLFilter extends
           resampleDist));
 
     final DataDistribution<VehicleState> posteriorDist =
-        new LogDefaultDataDistribution<VehicleState>();
+        new DefaultCountedDataDistribution<VehicleState>();
     /*
      * Propagate states
      */
@@ -233,16 +233,16 @@ public class VehicleTrackingPLFilter extends
               sampledBelief, updatedEdgeTransDist,
               sampledPathEntry.getPath(), state);
 
-      ((LogDefaultDataDistribution<VehicleState>) posteriorDist)
+      ((DefaultCountedDataDistribution<VehicleState>) posteriorDist)
           .increment(newTransState, 1d / numParticles);
 
     }
 
     target.clear();
-    ((LogDefaultDataDistribution<VehicleState>) target)
+    ((DefaultCountedDataDistribution<VehicleState>) target)
         .copyAll(posteriorDist);
 
-    assert ((LogDefaultDataDistribution<VehicleState>) target)
+    assert ((DefaultCountedDataDistribution<VehicleState>) target)
         .getTotalCount() == this.numParticles;
 
   }

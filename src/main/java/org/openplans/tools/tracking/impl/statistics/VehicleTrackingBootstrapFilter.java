@@ -5,7 +5,7 @@ import gov.sandia.cognition.statistics.DataDistribution;
 import java.util.List;
 import java.util.Set;
 
-import org.openplans.tools.tracking.impl.LogDefaultDataDistribution;
+import org.openplans.tools.tracking.impl.DefaultCountedDataDistribution;
 import org.openplans.tools.tracking.impl.Observation;
 import org.openplans.tools.tracking.impl.VehicleState;
 import org.openplans.tools.tracking.impl.VehicleState.VehicleStateInitialParameters;
@@ -47,7 +47,7 @@ public class VehicleTrackingBootstrapFilter extends
       state.getMovementFilter().setCurrentTimeDiff(timeDiff);
 
       final int count =
-          ((LogDefaultDataDistribution<VehicleState>) target)
+          ((DefaultCountedDataDistribution<VehicleState>) target)
               .getCount(state);
       totalCount += count;
       for (int i = 0; i < count; i++) {
@@ -68,7 +68,7 @@ public class VehicleTrackingBootstrapFilter extends
 
     assert totalCount == this.numParticles;
 
-    final LogDefaultDataDistribution<VehicleState> prePosteriorDist =
+    final DefaultCountedDataDistribution<VehicleState> prePosteriorDist =
         StatisticsUtil.getLogNormalizedDistribution(resampler);
 
     final double efps =
@@ -78,7 +78,7 @@ public class VehicleTrackingBootstrapFilter extends
     if (efps < this.numParticles * 0.9d) {
       // TODO low variance resampling?
       final DataDistribution<VehicleState> resampleDist =
-          new LogDefaultDataDistribution<VehicleState>(
+          new DefaultCountedDataDistribution<VehicleState>(
               prePosteriorDist.sample(
                   ((VehicleTrackingPathSamplerFilterUpdater) updater)
                       .getThreadRandom().get(), numParticles));
@@ -98,10 +98,10 @@ public class VehicleTrackingBootstrapFilter extends
     }
 
     target.clear();
-    ((LogDefaultDataDistribution<VehicleState>) target)
+    ((DefaultCountedDataDistribution<VehicleState>) target)
         .copyAll(posteriorDist);
 
-    assert ((LogDefaultDataDistribution<VehicleState>) target)
+    assert ((DefaultCountedDataDistribution<VehicleState>) target)
         .getTotalCount() == this.numParticles;
 
     this.filterInfo.put(obs, new FilterInformation(evaledPaths,
