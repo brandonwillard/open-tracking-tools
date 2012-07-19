@@ -18,7 +18,7 @@ public class DefaultCountedDataDistribution<KeyType> extends
     AbstractDataDistribution<KeyType> {
 
   /**
-   * A factory for {@code LogDefaultDataDistribution} objects using some given
+   * A factory for {@code DefaultCountedDataDistribution} objects using some given
    * initial capacity for them.
    * 
    * @param <DataType>
@@ -88,7 +88,7 @@ public class DefaultCountedDataDistribution<KeyType> extends
   }
 
   /**
-   * Estimator for a LogDefaultDataDistribution
+   * Estimator for a DefaultCountedDataDistribution
    * 
    * @param <KeyType>
    *          Type of Key in the distribution
@@ -127,7 +127,7 @@ public class DefaultCountedDataDistribution<KeyType> extends
   }
 
   /**
-   * PMF of the LogDefaultDataDistribution
+   * PMF of the DefaultCountedDataDistribution
    * 
    * @param <KeyType>
    *          Type of Key in the distribution
@@ -159,7 +159,7 @@ public class DefaultCountedDataDistribution<KeyType> extends
     }
 
     /**
-     * Creates a new instance of LogDefaultDataDistribution
+     * Creates a new instance of DefaultCountedDataDistribution
      * 
      * @param initialCapacity
      *          Initial capacity of the Map
@@ -197,7 +197,7 @@ public class DefaultCountedDataDistribution<KeyType> extends
   }
 
   /**
-   * A weighted estimator for a LogDefaultDataDistribution
+   * A weighted estimator for a DefaultCountedDataDistribution
    * 
    * @param <KeyType>
    *          Type of Key in the distribution
@@ -259,7 +259,7 @@ public class DefaultCountedDataDistribution<KeyType> extends
   }
 
   /**
-   * Creates a new instance of LogDefaultDataDistribution
+   * Creates a new instance of DefaultCountedDataDistribution
    * 
    * @param other
    *          DataDistribution to copy
@@ -271,7 +271,7 @@ public class DefaultCountedDataDistribution<KeyType> extends
   }
 
   /**
-   * Creates a new instance of LogDefaultDataDistribution
+   * Creates a new instance of DefaultCountedDataDistribution
    * 
    * @param initialCapacity
    *          Initial capacity of the Map
