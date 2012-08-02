@@ -155,8 +155,9 @@ public class InferenceResultRecord {
      * (or edge?  seems unlikely).
      */
     final VehicleState cloneState = state.clone();
+    final Boolean isBackward = cloneState.getPath().getIsBackward();
     final PathEdge currentEdge =
-        PathEdge.getEdge(cloneState.getInferredEdge(), 0d);
+        PathEdge.getEdge(cloneState.getInferredEdge(), 0d, isBackward);
     final MultivariateGaussian gbelief =
         cloneState.getBelief().clone();
     final Matrix O =

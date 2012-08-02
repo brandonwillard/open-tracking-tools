@@ -125,10 +125,10 @@ public class ResultSet {
         }
         if (!edges.isEmpty()) {
           final Integer startEdge =
-              pathEntry.getStartEdge() != null ? pathEntry
-                  .getStartEdge().getEdgeId() : null;
+              pathEntry.getStartSearchEdge() != null ? pathEntry
+                  .getStartSearchEdge().getEdgeId() : null;
           final Integer endEdge =
-              pathEntry.getEndEdge() != null ? pathEntry.getEndEdge()
+              pathEntry.getEndSearchEdge() != null ? pathEntry.getEndSearchEdge()
                   .getEdgeId() : null;
           pathEdgeIds.add(new EvaluatedPathInfo(edges, pathEntry
               .getTotalPathDistance(), startEdge, endEdge));
