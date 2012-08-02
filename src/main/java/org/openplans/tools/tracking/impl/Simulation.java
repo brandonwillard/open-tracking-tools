@@ -365,7 +365,7 @@ public class Simulation {
           PathEdge.getEdge(sampledEdge, previousEdge == null
               || previousEdge.isEmptyEdge() ? 0d : direction
               * previousEdge.getInferredEdge().getLength()
-              + previousEdge.getDistToStartOfEdge());
+              + previousEdge.getDistToStartOfEdge(), direction < 0d);
 
       if (sampledPathEdge == null) {
         /*-
@@ -448,10 +448,10 @@ public class Simulation {
       currentPath.add(currentEdge);
     }
 
-    if(!Iterables.getLast(currentPath).isEmptyEdge() && 
-          !Iterables.getLast(currentPath).isOnEdge(newBelief.getMean().getElement(0))) {
-      Iterables.getLast(currentPath).isOnEdge(newBelief.getMean().getElement(0));
-    }
+    //    if(!Iterables.getLast(currentPath).isEmptyEdge() && 
+    //          !Iterables.getLast(currentPath).isOnEdge(newBelief.getMean().getElement(0))) {
+    //      Iterables.getLast(currentPath).isOnEdge(newBelief.getMean().getElement(0));
+    //    }
 
     assert (Iterables.getLast(currentPath).isEmptyEdge() || Iterables
         .getLast(currentPath).isOnEdge(
