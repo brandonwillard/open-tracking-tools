@@ -10,19 +10,25 @@ public class PathEdge implements Comparable<PathEdge> {
 
   private final InferredEdge edge;
   private final Double distToStartOfEdge;
+  private final Boolean isBackward;
 
   private static PathEdge emptyPathEdge = new PathEdge(
       InferredEdge.getEmptyEdge());
 
+  private static double edgeLengthTolerance = 1e-6;
+
   private PathEdge(InferredEdge edge) {
     this.edge = edge;
     this.distToStartOfEdge = null;
+    this.isBackward = null;
   }
 
-  private PathEdge(InferredEdge edge, double distToStartOfEdge) {
+  private PathEdge(InferredEdge edge, double distToStartOfEdge,
+    Boolean isBackward) {
     Preconditions.checkArgument(!edge.isEmptyEdge());
     this.edge = edge;
     this.distToStartOfEdge = distToStartOfEdge;
+    this.isBackward = isBackward;
   }
 
   @Override
@@ -67,6 +73,10 @@ public class PathEdge implements Comparable<PathEdge> {
     return distToStartOfEdge;
   }
 
+  public InferredEdge getEdge() {
+    return edge;
+  }
+
   public InferredEdge getInferredEdge() {
     return edge;
   }
@@ -84,6 +94,10 @@ public class PathEdge implements Comparable<PathEdge> {
     return result;
   }
 
+  public Boolean isBackward() {
+    return isBackward;
+  }
+
   public boolean isEmptyEdge() {
     return this == emptyPathEdge;
   }
@@ -97,20 +111,14 @@ public class PathEdge implements Comparable<PathEdge> {
    * @return
    */
   public boolean isOnEdge(double distance) {
-    if (distToStartOfEdge < 0d) {
-      if (distance >= -edge.getLength() + distToStartOfEdge
-          && distance <= distToStartOfEdge)
-        return true;
-    } else if (distToStartOfEdge > 0d) {
-      if (distance <= edge.getLength() + distToStartOfEdge
-          && distance >= distToStartOfEdge)
-        return true;
-    } else {
-      if (Math.abs(distance) <= edge.getLength()
-          + Math.abs(distToStartOfEdge)
-          && Math.abs(distance) >= Math.abs(distToStartOfEdge))
-        return true;
-    }
+    final double posDistToStart = Math.abs(distToStartOfEdge);
+    final double posDistToEnd = posDistToStart + edge.getLength();
+    final double posDist = Math.abs(distance);
+
+    if (posDist <= posDistToEnd + edgeLengthTolerance
+        && posDist >= posDistToStart)
+      return true;
+
     return false;
   }
 
@@ -129,18 +137,21 @@ public class PathEdge implements Comparable<PathEdge> {
     if (infEdge.isEmptyEdge()) {
       edge = PathEdge.getEmptyPathEdge();
     } else {
-      edge = new PathEdge(infEdge, 0d);
+      edge = new PathEdge(infEdge, 0d, false);
     }
     return edge;
   }
 
   public static PathEdge getEdge(InferredEdge infEdge,
-    double distToStart) {
+    double distToStart, Boolean isBackward) {
+    Preconditions.checkArgument(isBackward != Boolean.TRUE
+        || distToStart <= 0d);
+
     PathEdge edge;
-    if (infEdge.isEmptyEdge()) {
+    if (infEdge.isEmptyEdge() || isBackward == null) {
       edge = PathEdge.getEmptyPathEdge();
     } else {
-      edge = new PathEdge(infEdge, distToStart);
+      edge = new PathEdge(infEdge, distToStart, isBackward);
     }
     return edge;
   }

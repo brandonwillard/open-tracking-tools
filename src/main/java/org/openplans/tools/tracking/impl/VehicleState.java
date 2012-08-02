@@ -317,11 +317,10 @@ public class VehicleState implements
       /*
        * We normalized the position relative to the direction of motion.
        */
-      final double currentLoc = this.belief.getMean().getElement(0);
       this.belief.getMean().setElement(0,
-          currentLoc - pathEdge.getDistToStartOfEdge());
+          distPosition - pathEdge.getDistToStartOfEdge());
       StandardRoadTrackingFilter.normalizeBelief(
-          this.belief.getMean(), PathEdge.getEdge(this.edge));
+          this.belief.getMean(), PathEdge.getEdge(edge));
 
       assert Double.compare(
           Math.abs(this.belief.getMean().getElement(0)),
@@ -476,7 +475,7 @@ public class VehicleState implements
       final MultivariateGaussian beliefProj =
           new MultivariateGaussian();
       StandardRoadTrackingFilter.convertToGroundBelief(beliefProj,
-          PathEdge.getEdge(this.edge, 0d));
+          PathEdge.getEdge(this.edge, 0d, this.path.getIsBackward()));
       return beliefProj;
     } else {
       return belief;
@@ -508,7 +507,7 @@ public class VehicleState implements
       Preconditions.checkArgument(!this.edge.isEmptyEdge());
       final MultivariateGaussian projBelief = belief.clone();
       StandardRoadTrackingFilter.convertToGroundBelief(projBelief,
-          PathEdge.getEdge(this.edge, 0d));
+          PathEdge.getEdge(this.edge, 0d, this.path.getIsBackward()));
       v = projBelief.getMean();
     } else {
       v = belief.getMean();

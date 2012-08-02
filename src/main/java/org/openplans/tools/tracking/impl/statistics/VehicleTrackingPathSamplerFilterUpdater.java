@@ -133,7 +133,7 @@ public class VehicleTrackingPathSamplerFilterUpdater implements
       for (final Edge nativeEdge : initialEdges) {
         final InferredEdge edge =
             inferredGraph.getInferredEdge(nativeEdge);
-        final PathEdge pathEdge = PathEdge.getEdge(edge, 0d);
+        final PathEdge pathEdge = PathEdge.getEdge(edge, 0d, false);
         final InferredPath path =
             InferredPath.getInferredPath(pathEdge);
         evaluatedPaths.add(new InferredPathEntry(path, null, null,
@@ -268,7 +268,7 @@ public class VehicleTrackingPathSamplerFilterUpdater implements
           PathEdge.getEdge(sampledEdge, previousEdge == null
               || previousEdge.isEmptyEdge() ? 0d : direction
               * previousEdge.getInferredEdge().getLength()
-              + previousEdge.getDistToStartOfEdge());
+              + previousEdge.getDistToStartOfEdge(), direction < 0d);
 
       if (sampledPathEdge == null) {
         /*-

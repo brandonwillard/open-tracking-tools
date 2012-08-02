@@ -24,7 +24,6 @@ import org.openplans.tools.tracking.impl.graph.paths.PathEdge;
 import org.openplans.tools.tracking.impl.util.OtpGraph;
 
 import com.google.common.collect.HashMultimap;
-import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Multimap;
@@ -81,20 +80,9 @@ public class VehicleTrackingPLFilter extends
         if (isDebug)
           evaluatedPaths.add(path);
 
-        /*
-         * Make sure that this path is valid for the state.
-         */
-        if (!state.getInferredEdge().isEmptyEdge()
-            && !path.isEmptyPath()
-            && !state.getInferredEdge().equals(
-                Iterables.getFirst(path.getEdges(), null)
-                    .getInferredEdge()))
-          continue;
-
         final InferredPathEntry infPath =
             path.getPredictiveLogLikelihood(obs, state,
                 edgeToPreBeliefAndLogLik);
-
 
         if (infPath != null) {
           totalLogLik =
@@ -169,12 +157,12 @@ public class VehicleTrackingPLFilter extends
         directionalSampledEdge =
             new DefaultPair<PathEdge, Boolean>(
                 pathEdgeDist.sample(rng), sampledPathEntry.getPath()
-                    .isBackward());
+                    .getIsBackward());
       } else {
         directionalSampledEdge =
             new DefaultPair<PathEdge, Boolean>(sampledPathEntry
                 .getPath().getEdges().get(0), sampledPathEntry
-                .getPath().isBackward());
+                .getPath().getIsBackward());
       }
       final MultivariateGaussian sampledBelief =
           sampledPathEntry.getEdgeToPredictiveBelief()
@@ -195,9 +183,7 @@ public class VehicleTrackingPLFilter extends
         updatedFilter.measure(sampledBelief, obs.getProjectedPoint(),
             sampledPathEntry.getPath());
 
-        actualPosteriorEdge =
-            sampledPathEntry.getPath().getEdgeForDistance(
-                sampledBelief.getMean().getElement(0), true);
+        actualPosteriorEdge = directionalSampledEdge.getFirst();
       } else {
         updatedFilter.measure(sampledBelief, obs.getProjectedPoint(),
             sampledPathEntry.getPath());
