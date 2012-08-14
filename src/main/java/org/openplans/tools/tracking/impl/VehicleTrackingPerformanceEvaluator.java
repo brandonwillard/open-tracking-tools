@@ -13,7 +13,7 @@ import java.util.Collection;
 import java.util.List;
 
 import org.openplans.tools.tracking.impl.graph.paths.PathEdge;
-import org.openplans.tools.tracking.impl.statistics.StandardRoadTrackingFilter;
+import org.openplans.tools.tracking.impl.statistics.filters.StandardRoadTrackingFilter;
 
 import com.google.common.collect.Lists;
 

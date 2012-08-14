@@ -22,7 +22,7 @@ public class SimpleTurnEdge extends TurnEdge {
   @Override
   public State traverse(State s0) {
     final RoutingRequest options = s0.getOptions();
-    if (turnRestricted(s0, options)
+    if (turnRestricted(options)
         && !options.getModes().contains(TraverseMode.WALK)) {
       return null;
     }

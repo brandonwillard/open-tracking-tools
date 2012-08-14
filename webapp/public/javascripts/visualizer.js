@@ -645,7 +645,8 @@ function renderParticles(isPrior) {
                     var particleDivId = 'particle' + particleNumber;
 
                     var optionDiv = jQuery('<div>' + ' ('
-                        + parseFloat(particleData.weight).toFixed(2) + '), '
+                        + parseFloat(particleData.weight).toFixed(2) + "*" 
+                        + particleData.particle.infResults.particleCount + '), '
                         + locLink + ', ' + edgeLink + '</div>');
                     // optionDiv.attr("value", particleNumber);
 

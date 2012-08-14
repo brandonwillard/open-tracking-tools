@@ -29,11 +29,12 @@ public class CsvUploadActor extends UntypedActor {
     private final File dest;
     private final boolean debugEnabled;
     private final VehicleStateInitialParameters vehicleStateParams;
+    private final String filterTypeName;
 
     public TraceParameters(File dest,
-      VehicleStateInitialParameters vehicleStateParams,
-      boolean debugEnabled) {
+      VehicleStateInitialParameters vehicleStateParams, boolean debugEnabled) {
       this.vehicleStateParams = vehicleStateParams;
+      this.filterTypeName = vehicleStateParams.getFilterTypeName();
       this.dest = dest;
       this.debugEnabled = debugEnabled;
     }
@@ -49,6 +50,69 @@ public class CsvUploadActor extends UntypedActor {
 
     public boolean isDebugEnabled() {
       return debugEnabled;
+    }
+
+    public String getFilterTypeName() {
+      return filterTypeName;
+    }
+
+    @Override
+    public int hashCode() {
+      final int prime = 31;
+      int result = 1;
+      result = prime * result + (debugEnabled ? 1231 : 1237);
+      result =
+          prime * result + ((dest == null) ? 0 : dest.hashCode());
+      result =
+          prime
+              * result
+              + ((filterTypeName == null) ? 0 : filterTypeName
+                  .hashCode());
+      result =
+          prime
+              * result
+              + ((vehicleStateParams == null) ? 0
+                  : vehicleStateParams.hashCode());
+      return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+      if (this == obj) {
+        return true;
+      }
+      if (obj == null) {
+        return false;
+      }
+      if (getClass() != obj.getClass()) {
+        return false;
+      }
+      TraceParameters other = (TraceParameters) obj;
+      if (debugEnabled != other.debugEnabled) {
+        return false;
+      }
+      if (dest == null) {
+        if (other.dest != null) {
+          return false;
+        }
+      } else if (!dest.equals(other.dest)) {
+        return false;
+      }
+      if (filterTypeName == null) {
+        if (other.filterTypeName != null) {
+          return false;
+        }
+      } else if (!filterTypeName.equals(other.filterTypeName)) {
+        return false;
+      }
+      if (vehicleStateParams == null) {
+        if (other.vehicleStateParams != null) {
+          return false;
+        }
+      } else if (!vehicleStateParams.equals(other.vehicleStateParams)) {
+        return false;
+      }
+      return true;
     }
 
   }
@@ -80,7 +144,7 @@ public class CsvUploadActor extends UntypedActor {
       try {
         do {
           try {
-            final String vehicleId = "trace-" + line[3];
+            final String vehicleId = "trace" + line[3] + traceParams.hashCode();
             vehicleIds.add(vehicleId);
 
             final Observation obs =
@@ -109,7 +173,7 @@ public class CsvUploadActor extends UntypedActor {
               : InferenceService.defaultInfoLevel;
 
       InferenceService.processRecords(observations,
-          traceParams.getVehicleStateInitialParams(), level);
+          traceParams.getVehicleStateInitialParams(), traceParams.getFilterTypeName(), level);
       InferenceService.getExecutor().awaitTermination(5,
           TimeUnit.SECONDS);
 

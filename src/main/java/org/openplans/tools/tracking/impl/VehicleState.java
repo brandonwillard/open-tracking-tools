@@ -17,9 +17,10 @@ import org.apache.commons.lang.builder.CompareToBuilder;
 import org.openplans.tools.tracking.impl.graph.InferredEdge;
 import org.openplans.tools.tracking.impl.graph.paths.InferredPath;
 import org.openplans.tools.tracking.impl.graph.paths.PathEdge;
-import org.openplans.tools.tracking.impl.statistics.AdjKalmanFilter;
 import org.openplans.tools.tracking.impl.statistics.EdgeTransitionDistributions;
-import org.openplans.tools.tracking.impl.statistics.StandardRoadTrackingFilter;
+import org.openplans.tools.tracking.impl.statistics.StatisticsUtil;
+import org.openplans.tools.tracking.impl.statistics.filters.AdjKalmanFilter;
+import org.openplans.tools.tracking.impl.statistics.filters.StandardRoadTrackingFilter;
 import org.openplans.tools.tracking.impl.util.OtpGraph;
 
 import com.google.common.base.Objects;
@@ -109,10 +110,12 @@ public class VehicleState implements
     private final Vector onTransitionProbs;
     private final long seed;
     private final int numParticles;
+    private final String filterTypeName;
 
     public VehicleStateInitialParameters(Vector obsVariance,
       Vector onRoadStateVariance, Vector offRoadStateVariance,
-      Vector offProbs, Vector onProbs, int numParticles, long seed) {
+      Vector offProbs, Vector onProbs, String filterTypeName, 
+      int numParticles, long seed) {
       this.numParticles = numParticles;
       this.obsVariance = obsVariance;
       this.onRoadStateVariance = onRoadStateVariance;
@@ -120,6 +123,7 @@ public class VehicleState implements
       this.offTransitionProbs = offProbs;
       this.onTransitionProbs = onProbs;
       this.seed = seed;
+      this.filterTypeName = filterTypeName;
     }
 
     public int getNumParticles() {
@@ -148,6 +152,109 @@ public class VehicleState implements
 
     public long getSeed() {
       return seed;
+    }
+
+    public String getFilterTypeName() {
+      return filterTypeName;
+    }
+
+    @Override
+    public int hashCode() {
+      final int prime = 31;
+      int result = 1;
+      result =
+          prime
+              * result
+              + ((filterTypeName == null) ? 0 : filterTypeName
+                  .hashCode());
+      result = prime * result + numParticles;
+      result =
+          prime * result
+              + StatisticsUtil.hashCodeVector(obsVariance);
+      result =
+          prime
+              * result
+              + StatisticsUtil.hashCodeVector(offRoadStateVariance);
+      result =
+          prime
+              * result
+              + StatisticsUtil.hashCodeVector(offTransitionProbs);
+      result =
+          prime
+              * result
+              + StatisticsUtil.hashCodeVector(onRoadStateVariance);
+      result =
+          prime
+              * result
+              + StatisticsUtil.hashCodeVector(onTransitionProbs);
+      result = prime * result + (int) (seed ^ (seed >>> 32));
+      return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+      if (this == obj) {
+        return true;
+      }
+      if (obj == null) {
+        return false;
+      }
+      if (getClass() != obj.getClass()) {
+        return false;
+      }
+      VehicleStateInitialParameters other =
+          (VehicleStateInitialParameters) obj;
+      if (filterTypeName == null) {
+        if (other.filterTypeName != null) {
+          return false;
+        }
+      } else if (!filterTypeName.equals(other.filterTypeName)) {
+        return false;
+      }
+      if (numParticles != other.numParticles) {
+        return false;
+      }
+      if (obsVariance == null) {
+        if (other.obsVariance != null) {
+          return false;
+        }
+      } else if (!StatisticsUtil.vectorEquals(obsVariance, other.obsVariance)) {
+        return false;
+      }
+      if (offRoadStateVariance == null) {
+        if (other.offRoadStateVariance != null) {
+          return false;
+        }
+      } else if (!StatisticsUtil
+          .vectorEquals(offRoadStateVariance, other.offRoadStateVariance)) {
+        return false;
+      }
+      if (offTransitionProbs == null) {
+        if (other.offTransitionProbs != null) {
+          return false;
+        }
+      } else if (!StatisticsUtil.vectorEquals(offTransitionProbs, other.offTransitionProbs)) {
+        return false;
+      }
+      if (onRoadStateVariance == null) {
+        if (other.onRoadStateVariance != null) {
+          return false;
+        }
+      } else if (!StatisticsUtil
+          .vectorEquals(onRoadStateVariance, other.onRoadStateVariance)) {
+        return false;
+      }
+      if (onTransitionProbs == null) {
+        if (other.onTransitionProbs != null) {
+          return false;
+        }
+      } else if (!StatisticsUtil.vectorEquals(onTransitionProbs, other.onTransitionProbs)) {
+        return false;
+      }
+      if (seed != other.seed) {
+        return false;
+      }
+      return true;
     }
   }
 
@@ -584,9 +691,13 @@ public class VehicleState implements
 
   @Override
   public String toString() {
-    return Objects.toStringHelper(this).add("belief", belief)
-        .add("edge", edge.getEdgeId())
-        .addValue(observation.getTimestamp()).toString();
+    return "VehicleState [movementFilter=" + movementFilter
+        + ", belief=" + belief + ", initialBelief=" + initialBelief
+        + ", edgeTransitionDist=" + edgeTransitionDist
+        + ", observation=" + observation + ", edge=" + edge
+        + ", parentState=" + parentState
+        + ", distanceFromPreviousState=" + distanceFromPreviousState
+        + ", graph=" + graph + ", path=" + path + "]";
   }
 
   public static Vector getNonVelocityVector(Vector vector) {

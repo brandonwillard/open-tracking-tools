@@ -27,7 +27,7 @@ public class SimulationActor extends UntypedActor {
     // TODO info level should be a parameter
     this.instance =
         InferenceService.getOrCreateInferenceInstance(
-            sim.getSimulationName(), sim.getParameters(), true,
+            sim.getSimulationName(), sim.getParameters(), sim.getFilterTypeName(), true,
             INFO_LEVEL.DEBUG);
 
     this.instance.simSeed = sim.getSeed();

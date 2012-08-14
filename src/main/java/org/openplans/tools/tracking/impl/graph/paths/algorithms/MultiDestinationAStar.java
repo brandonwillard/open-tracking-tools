@@ -56,8 +56,8 @@ public class MultiDestinationAStar implements
   public double computeForwardWeight(State s, Vertex target) {
     final Vertex v = s.getVertex();
 
-    double distance = distanceLibrary.fastDistance(
-        v.getCoordinate(), center);
+    final double distance =
+        distanceLibrary.fastDistance(v.getCoordinate(), center);
 
     if (distance < radius)
       return 0;

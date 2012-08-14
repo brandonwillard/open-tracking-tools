@@ -8,6 +8,7 @@ import gov.sandia.cognition.statistics.DataDistribution;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 import gov.sandia.cognition.util.Weighted;
 
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -19,6 +20,7 @@ import no.uib.cipr.matrix.UpperSPDDenseMatrix;
 
 import org.openplans.tools.tracking.impl.DefaultCountedDataDistribution;
 
+import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.HashMultiset;
 import com.google.common.collect.Lists;
@@ -173,6 +175,28 @@ public class StatisticsUtil {
     }
 
     return result;
+  }
+  
+  /**
+   * Uses the underlying arrays in these vector objects for comparison.
+   */
+  public static boolean vectorEquals(Vector vec1, Vector vec2) {
+    if ((vec1 instanceof gov.sandia.cognition.math.matrix.mtj.DenseVector)
+        && (vec2 instanceof gov.sandia.cognition.math.matrix.mtj.DenseVector))
+      return Arrays.equals(((gov.sandia.cognition.math.matrix.mtj.DenseVector) vec1).getArray(),
+          ((gov.sandia.cognition.math.matrix.mtj.DenseVector) vec2).getArray());
+    else
+      return Objects.equal(vec1, vec2);
+  }
+  
+  /**
+   * Uses the underlying arrays in these vector objects for a hash code.
+   */
+  public static int hashCodeVector(Vector vec) {
+    if (vec instanceof gov.sandia.cognition.math.matrix.mtj.DenseVector)
+      return Arrays.hashCode(((gov.sandia.cognition.math.matrix.mtj.DenseVector) vec).getArray());
+    else
+      return vec.hashCode();
   }
 
   /**

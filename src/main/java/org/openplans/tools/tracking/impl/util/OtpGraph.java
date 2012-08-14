@@ -19,7 +19,7 @@ import org.openplans.tools.tracking.impl.graph.InferredEdge;
 import org.openplans.tools.tracking.impl.graph.paths.InferredPath;
 import org.openplans.tools.tracking.impl.graph.paths.PathEdge;
 import org.openplans.tools.tracking.impl.graph.paths.algorithms.MultiDestinationAStar;
-import org.openplans.tools.tracking.impl.statistics.StandardRoadTrackingFilter;
+import org.openplans.tools.tracking.impl.statistics.filters.StandardRoadTrackingFilter;
 import org.opentripplanner.common.geometry.DistanceLibrary;
 import org.opentripplanner.routing.core.RoutingRequest;
 import org.opentripplanner.routing.core.TraverseMode;
@@ -43,9 +43,11 @@ import com.google.common.base.Preconditions;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
+import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.google.common.collect.Multimap;
 import com.google.common.collect.Sets;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Envelope;
@@ -220,9 +222,8 @@ public class OtpGraph {
   private final STRtree baseEdgeIndex = new STRtree();
 
   private final STRtree turnVertexIndex = new STRtree();
-
-  private final DistanceLibrary distanceLibrary =
-      new CartesianDistanceLibrary();
+  private final Multimap<Geometry, Edge> geomEdgeMap = HashMultimap
+      .create();
 
   private final Map<VertexPair, InferredEdge> edgeToInfo = Maps
       .newConcurrentMap();
@@ -254,9 +255,9 @@ public class OtpGraph {
     baseGraph = turnGraph.getService(BaseGraph.class).getBaseGraph();
 
     baseIndexService =
-        new StreetVertexIndexServiceImpl(baseGraph, distanceLibrary);
-    createIndices(baseGraph, baseEdgeIndex, null);
-    createIndices(turnGraph, turnEdgeIndex, turnVertexIndex);
+        new StreetVertexIndexServiceImpl(baseGraph);
+    createIndices(baseGraph, baseEdgeIndex, null, geomEdgeMap);
+    createIndices(turnGraph, turnEdgeIndex, turnVertexIndex, null);
 
     log.info("Graph loaded..");
   }
@@ -271,7 +272,6 @@ public class OtpGraph {
     final InferredEdge currentEdge = currentState.getInferredEdge();
 
     final Coordinate toCoord = key.getEndCoord();
-    final Coordinate fromCoord = key.getStartCoord();
 
     final Set<InferredPath> paths =
         Sets.newHashSet(InferredPath.getEmptyPath());
@@ -281,15 +281,26 @@ public class OtpGraph {
 
       final PlainStreetEdgeWithOSMData edge =
           (PlainStreetEdgeWithOSMData) currentEdge.getEdge();
-      for (final Edge outgoing : edge.getTurnVertex().getOutgoing()) {
-        startEdges.add(outgoing);
+      /*
+       * Make sure we get the non-base edges corresponding to our
+       * current edge and the reverse.
+       */
+      final Collection<Edge> baseEdges = getOppositeEdge(edge);
+      for (final Edge baseEdge : baseEdges) {
+        final PlainStreetEdgeWithOSMData plainBaseEdge =
+            (PlainStreetEdgeWithOSMData) baseEdge;
+        for (final Edge outgoing : plainBaseEdge.getTurnVertex()
+            .getOutgoing()) {
+          startEdges.add(outgoing);
+        }
       }
     } else {
       final double stateStdDevDistance =
-          1.98d * Math.sqrt(currentState.getBelief()
-              .getCovariance().normFrobenius()
+          1.98d * Math.sqrt(currentState.getBelief().getCovariance()
+              .normFrobenius()
               / Math.sqrt(currentState.getBelief()
                   .getInputDimensionality()));
+      final Coordinate fromCoord = key.getStartCoord();
       for (final Object obj : getNearbyEdges(fromCoord,
           stateStdDevDistance)) {
         final PlainStreetEdgeWithOSMData edge =
@@ -312,7 +323,7 @@ public class OtpGraph {
         maxEndEdgeLength = edge.getLength();
       endEdges.addAll(edge.getTurnVertex().getOutgoing());
     }
-    
+
     if (endEdges.isEmpty())
       return paths;
 
@@ -322,11 +333,12 @@ public class OtpGraph {
      */
     final double timeDiff =
         currentState.getMovementFilter().getCurrentTimeDiff();
-    final double distanceMax = 
-        Math.max(MAX_DISTANCE_SPEED * timeDiff,
+    final double distanceMax =
+        Math.max(
+            MAX_DISTANCE_SPEED * timeDiff,
             currentState.getMeanLocation().euclideanDistance(
-                currentState.getObservation().getProjectedPoint())) 
-                + currentEdge.getLength() + maxEndEdgeLength;
+                currentState.getObservation().getProjectedPoint()))
+            + currentEdge.getLength() + maxEndEdgeLength;
 
     for (final Edge startEdge : startEdges) {
       final MultiDestinationAStar forwardAStar =
@@ -411,7 +423,7 @@ public class OtpGraph {
   }
 
   private void createIndices(Graph graph, STRtree edgeIndex,
-    STRtree vertexIndex) {
+    STRtree vertexIndex, Multimap<Geometry, Edge> geomEdgeMap2) {
 
     for (final Vertex v : graph.getVertices()) {
       if (vertexIndex != null) {
@@ -423,6 +435,15 @@ public class OtpGraph {
       for (final Edge e : v.getOutgoing()) {
         if (graph.getIdForEdge(e) != null) {
           final Geometry geometry = e.getGeometry();
+
+          if (geomEdgeMap2 != null) {
+            geomEdgeMap2.put(geometry, e);
+            // TODO reverse shouldn't make a difference
+            // if topological equality is used.  Is that
+            // what's happening here?
+            geomEdgeMap2.put(geometry.reverse(), e);
+          }
+
           final Envelope envelope = geometry.getEnvelopeInternal();
           edgeIndex.insert(envelope, e);
         }
@@ -536,6 +557,20 @@ public class OtpGraph {
     return getNearbyEdges(GeoUtils.makeCoordinate(loc), radius);
   }
 
+  public Collection<Edge> getOppositeEdge(
+    PlainStreetEdgeWithOSMData edge) {
+    //    @SuppressWarnings("unchecked")
+    //    List<PlainStreetEdgeWithOSMData> baseEdgesWithThisGeom = this.baseEdgeIndex.query(
+    //        edge.getGeometry().getEnvelopeInternal());
+    //    List<PlainStreetEdgeWithOSMData> oppositeEdges = Lists.newArrayList();
+    //    for (PlainStreetEdgeWithOSMData baseEdge : baseEdgesWithThisGeom) { 
+    //      if (baseEdge.getGeometry().reverse().equalsExact(edge.getGeometry()))
+    //        oppositeEdges.add(baseEdge);
+    //    }
+    //    return oppositeEdges;
+    return geomEdgeMap.get(edge.getGeometry());
+  }
+
   public RoutingRequest getOptions() {
     return defaultOptions;
   }
@@ -559,7 +594,7 @@ public class OtpGraph {
         new PathKey(fromState, fromCoord, toCoord, 0d);
 
     paths.addAll(pathsCache.getUnchecked(startEndEntry));
-    //    paths.addAll(computeUniquePaths(startEndEntry));
+//    paths.addAll(computeUniquePaths(startEndEntry));
     return paths;
   }
 
@@ -571,7 +606,8 @@ public class OtpGraph {
         && baseGraph.getIdForEdge(edge) != null
         && !edge.equals(Iterables.getLast(path, null))) {
 
-      return PathEdge.getEdge(this.getInferredEdge(edge), pathDist);
+      return PathEdge.getEdge(this.getInferredEdge(edge), pathDist,
+          direction < 0d);
 
     } else if (edge.getFromVertex() != null
         && !edge.getFromVertex().getOutgoingStreetEdges().isEmpty()) {
@@ -588,7 +624,7 @@ public class OtpGraph {
            * Find a valid street edge to work with
            */
           return PathEdge.getEdge(this.getInferredEdge(streetEdge),
-              pathDist);
+              pathDist, direction < 0d);
         }
       }
     }
@@ -615,10 +651,10 @@ public class OtpGraph {
       filterForStreetEdges(Collection<Edge> edges) {
     final List<Edge> result = Lists.newArrayList();
     for (final Edge out : edges) {
-      if (!(out instanceof StreetEdge)) {
-        continue;
+      if ((out instanceof StreetEdge)
+          && ((StreetEdge)out).canTraverse(defaultOptions)) {
+        result.add(out);
       }
-      result.add(out);
     }
     return result;
   }

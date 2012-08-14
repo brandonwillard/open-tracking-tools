@@ -26,10 +26,10 @@ title("50 particles, 120 observations")
 dev.off()
 
 pdf(file="plbs-rmse-1200-series.pdf") 
-matplot(cbind("PL 50 particles"=pl_means_50_s1, 
-              "Bootstrap 50 particles"=bs_means_50_s1,
-              "Bootstrap 200 particles"=bs_means_200_s1,
-              "Bootstrap 500 particles"=bs_means_500_s1
+matplot(cbind("PL 50 particles"=pl_means_50_s1
+              ,"Bootstrap 50 particles"=bs_means_50_s1
+              #,"Bootstrap 200 particles"=bs_means_200_s1
+              #,"Bootstrap 500 particles"=bs_means_500_s1
               ), 
         lty=1,
         type="l", log="y", ylab="RMSE")

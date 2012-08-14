@@ -6,8 +6,18 @@ import gov.sandia.cognition.statistics.DataDistribution;
 import inference.InferenceResultRecord;
 import inference.InferenceService.INFO_LEVEL;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
+import java.net.URL;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Enumeration;
+import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
@@ -17,13 +27,17 @@ import org.openplans.tools.tracking.impl.VehicleState;
 import org.openplans.tools.tracking.impl.VehicleState.VehicleStateInitialParameters;
 import org.openplans.tools.tracking.impl.VehicleTrackingFilter;
 import org.openplans.tools.tracking.impl.statistics.FilterInformation;
-import org.openplans.tools.tracking.impl.statistics.VehicleTrackingBootstrapFilter;
-import org.openplans.tools.tracking.impl.statistics.VehicleTrackingPLFilter;
+import org.openplans.tools.tracking.impl.statistics.filters.AbstractVehicleTrackingFilter;
+import org.openplans.tools.tracking.impl.statistics.filters.VehicleTrackingBootstrapFilter;
+import org.openplans.tools.tracking.impl.statistics.filters.VehicleTrackingPLFilter;
 import org.openplans.tools.tracking.impl.util.OtpGraph;
 
 import com.google.common.base.Stopwatch;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 
 import controllers.Api;
+import controllers.Application;
 
 /**
  * This class holds inference data for a particular vehicle
@@ -61,14 +75,18 @@ public class InferenceInstance {
 
   private final RingAccumulator<MutableDouble> averager =
       new RingAccumulator<MutableDouble>();
-
+  
+  private final Class<? extends VehicleTrackingFilter> filterType;
+  
   public InferenceInstance(String vehicleId, boolean isSimulation,
-    INFO_LEVEL infoLevel, VehicleStateInitialParameters parameters) {
+    INFO_LEVEL infoLevel, VehicleStateInitialParameters parameters, 
+    String filterTypeName) {
     this.initialParameters = parameters;
     this.vehicleId = vehicleId;
     this.isSimulation = isSimulation;
     this.simSeed = parameters.getSeed();
     this.infoLevel = infoLevel;
+    this.filterType = Application.getFilters().get(filterTypeName);
   }
 
   public RingAccumulator<MutableDouble> getAverager() {
@@ -159,7 +177,7 @@ public class InferenceInstance {
 
     this.resultRecords.add(result);
   }
-
+  
   synchronized private void updateFilter(Observation obs) {
 
     final Stopwatch watch = new Stopwatch();
@@ -172,12 +190,28 @@ public class InferenceInstance {
 //              initialParameters,
 //              infoLevel.compareTo(INFO_LEVEL.DEBUG) >= 0);
 
-      filter = new VehicleTrackingPLFilter(
-          obs, inferredGraph, initialParameters,
+      Constructor<? extends VehicleTrackingFilter> ctor;
+      try {
+        ctor = filterType.getConstructor(Observation.class, OtpGraph.class,
+            VehicleStateInitialParameters.class, Boolean.class);
+        filter = ctor.newInstance(obs, inferredGraph, initialParameters,
           infoLevel.compareTo(INFO_LEVEL.DEBUG) >= 0);
+        filter.getRandom().setSeed(simSeed);
+        postBelief = filter.createInitialLearnedObject();
+      } catch (SecurityException e) {
+        e.printStackTrace();
+      } catch (NoSuchMethodException e) {
+        e.printStackTrace();
+      } catch (IllegalArgumentException e) {
+        e.printStackTrace();
+      } catch (InstantiationException e) {
+        e.printStackTrace();
+      } catch (IllegalAccessException e) {
+        e.printStackTrace();
+      } catch (InvocationTargetException e) {
+        e.printStackTrace();
+      }
 
-      filter.getRandom().setSeed(simSeed);
-      postBelief = filter.createInitialLearnedObject();
     } else {
       filter.update(postBelief, obs);
       if (infoLevel.compareTo(INFO_LEVEL.DEBUG) >= 0) {
@@ -201,6 +235,10 @@ public class InferenceInstance {
 
   public static OtpGraph getInferredGraph() {
     return inferredGraph;
+  }
+
+  public Class<? extends VehicleTrackingFilter> getFilterType() {
+    return filterType;
   }
 
 }

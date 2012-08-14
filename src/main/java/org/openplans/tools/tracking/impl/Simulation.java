@@ -17,7 +17,7 @@ import org.openplans.tools.tracking.impl.graph.paths.InferredPath;
 import org.openplans.tools.tracking.impl.graph.paths.InferredPathEntry;
 import org.openplans.tools.tracking.impl.graph.paths.PathEdge;
 import org.openplans.tools.tracking.impl.statistics.EdgeTransitionDistributions;
-import org.openplans.tools.tracking.impl.statistics.StandardRoadTrackingFilter;
+import org.openplans.tools.tracking.impl.statistics.filters.StandardRoadTrackingFilter;
 import org.openplans.tools.tracking.impl.util.GeoUtils;
 import org.openplans.tools.tracking.impl.util.OtpGraph;
 import org.opentripplanner.routing.edgetype.StreetEdge;
@@ -81,6 +81,83 @@ public class Simulation {
     public boolean isPerformInference() {
       return performInference;
     }
+
+    @Override
+    public int hashCode() {
+      final int prime = 31;
+      int result = 1;
+      result = prime * result + (int) (duration ^ (duration >>> 32));
+      result =
+          prime * result
+              + ((endTime == null) ? 0 : endTime.hashCode());
+      result =
+          prime * result + (int) (frequency ^ (frequency >>> 32));
+      result = prime * result + (performInference ? 1231 : 1237);
+      result =
+          prime
+              * result
+              + ((startCoordinate == null) ? 0 : startCoordinate
+                  .hashCode());
+      result =
+          prime * result
+              + ((startTime == null) ? 0 : startTime.hashCode());
+      result =
+          prime * result
+              + ((stateParams == null) ? 0 : stateParams.hashCode());
+      return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+      if (this == obj) {
+        return true;
+      }
+      if (obj == null) {
+        return false;
+      }
+      if (getClass() != obj.getClass()) {
+        return false;
+      }
+      SimulationParameters other = (SimulationParameters) obj;
+      if (duration != other.duration) {
+        return false;
+      }
+      if (endTime == null) {
+        if (other.endTime != null) {
+          return false;
+        }
+      } else if (!endTime.equals(other.endTime)) {
+        return false;
+      }
+      if (frequency != other.frequency) {
+        return false;
+      }
+      if (performInference != other.performInference) {
+        return false;
+      }
+      if (startCoordinate == null) {
+        if (other.startCoordinate != null) {
+          return false;
+        }
+      } else if (!startCoordinate.equals(other.startCoordinate)) {
+        return false;
+      }
+      if (startTime == null) {
+        if (other.startTime != null) {
+          return false;
+        }
+      } else if (!startTime.equals(other.startTime)) {
+        return false;
+      }
+      if (stateParams == null) {
+        if (other.stateParams != null) {
+          return false;
+        }
+      } else if (!stateParams.equals(other.stateParams)) {
+        return false;
+      }
+      return true;
+    }
   }
 
   private static final Logger _log = LoggerFactory
@@ -97,11 +174,14 @@ public class Simulation {
   private final SimulationParameters simParameters;
   private long localSeed;
 
+  private final String filterTypeName;
+
   public Simulation(String simulationName, OtpGraph graph,
     SimulationParameters simParameters) {
 
     this.simParameters = simParameters;
     this.parameters = simParameters.getStateParams();
+    this.filterTypeName = simParameters.getStateParams().getFilterTypeName();
 
     this.inferredGraph = graph;
     this.simulationName = simulationName;
@@ -462,6 +542,10 @@ public class Simulation {
     return InferredPath.getInferredPath(currentPath,
         (totalDistToTravel != null && totalDistToTravel < 0d) ? true
             : false);
+  }
+
+  public String getFilterTypeName() {
+    return filterTypeName;
   }
 
 }

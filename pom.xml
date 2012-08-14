@@ -86,48 +86,48 @@
           <artifactId>maven-surefire-plugin</artifactId>
           <version>2.12</version>
         </plugin>
-        <plugin>
-          <!-- m2eclipse lifecycle mapping configuration -->
-          <!-- should not affect builds outside IDE -->
-          <groupId>org.eclipse.m2e</groupId>
-          <artifactId>lifecycle-mapping</artifactId>
-          <version>1.0.0</version>
-          <configuration>
-            <lifecycleMappingMetadata>
-              <pluginExecutions>
-                <pluginExecution>
-                  <pluginExecutionFilter>
-                    <groupId>org.codehaus.mojo</groupId>
-                    <artifactId>exec-maven-plugin</artifactId>
-                    <versionRange>[1.0,)</versionRange>
-                    <goals>
-                      <goal>java</goal>
-                      <goal>build</goal>
-                    </goals>
-                  </pluginExecutionFilter>
-                  <action>
-                    <execute />
-                  </action>
-                </pluginExecution>
-                <pluginExecution>
-                  <pluginExecutionFilter>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-jar-plugin</artifactId>
-                    <versionRange>[2.2,)</versionRange>
-                    <goals>
-                      <goal>jar</goal>
-                    </goals>
-                  </pluginExecutionFilter>
-                  <action>
-                    <execute>
-                      <!-- <runOnIncremental>false</runOnIncremental> -->
-                    </execute>
-                  </action>
-                </pluginExecution>
-              </pluginExecutions>
-            </lifecycleMappingMetadata>
-          </configuration>
-        </plugin>
+<!--         <plugin> -->
+<!--           m2eclipse lifecycle mapping configuration -->
+<!--           should not affect builds outside IDE -->
+<!--           <groupId>org.eclipse.m2e</groupId> -->
+<!--           <artifactId>lifecycle-mapping</artifactId> -->
+<!--           <version>1.0.0</version> -->
+<!--           <configuration> -->
+<!--             <lifecycleMappingMetadata> -->
+<!--               <pluginExecutions> -->
+<!--                 <pluginExecution> -->
+<!--                   <pluginExecutionFilter> -->
+<!--                     <groupId>org.codehaus.mojo</groupId> -->
+<!--                     <artifactId>exec-maven-plugin</artifactId> -->
+<!--                     <versionRange>[1.0,)</versionRange> -->
+<!--                     <goals> -->
+<!--                       <goal>java</goal> -->
+<!--                       <goal>build</goal> -->
+<!--                     </goals> -->
+<!--                   </pluginExecutionFilter> -->
+<!--                   <action> -->
+<!--                     <execute /> -->
+<!--                   </action> -->
+<!--                 </pluginExecution> -->
+<!--                 <pluginExecution> -->
+<!--                   <pluginExecutionFilter> -->
+<!--                     <groupId>org.apache.maven.plugins</groupId> -->
+<!--                     <artifactId>maven-jar-plugin</artifactId> -->
+<!--                     <versionRange>[2.2,)</versionRange> -->
+<!--                     <goals> -->
+<!--                       <goal>jar</goal> -->
+<!--                     </goals> -->
+<!--                   </pluginExecutionFilter> -->
+<!--                   <action> -->
+<!--                     <execute> -->
+<!--                       <runOnIncremental>false</runOnIncremental> -->
+<!--                     </execute> -->
+<!--                   </action> -->
+<!--                 </pluginExecution> -->
+<!--               </pluginExecutions> -->
+<!--             </lifecycleMappingMetadata> -->
+<!--           </configuration> -->
+<!--         </plugin> -->
       </plugins>
     </pluginManagement>
   </build>
@@ -278,6 +278,11 @@
       <artifactId>jackson-mapper-asl</artifactId>
       <version>1.9.7</version>
     </dependency>
+    <dependency>
+      <groupId>org.opentripplanner</groupId>
+      <artifactId>opentripplanner-utils</artifactId>
+      <version>${otp.version}</version>
+    </dependency>
   </dependencies>
 
   <dependencyManagement>
@@ -325,7 +330,7 @@
   <properties>
     <geotools.version>8.0-M4</geotools.version>
     <spring.version>3.0.5.RELEASE</spring.version>
-    <otp.version>0.8.0-SNAPSHOT</otp.version>
+    <otp.version>0.7.10-SNAPSHOT</otp.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <distribution_id>opengeo</distribution_id>
     <distribution_name>OpenGeo Maven Repository</distribution_name>

@@ -5,15 +5,28 @@ import gov.sandia.cognition.math.matrix.VectorFactory;
 import inference.InferenceService;
 import inference.SimulationActor;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.net.URL;
 import java.util.Date;
+import java.util.Enumeration;
 import java.util.List;
+import java.util.Map;
+import java.util.ServiceLoader;
+import java.util.Set;
 
 import models.InferenceInstance;
 
 import org.openplans.tools.tracking.impl.Simulation;
 import org.openplans.tools.tracking.impl.Simulation.SimulationParameters;
 import org.openplans.tools.tracking.impl.VehicleState.VehicleStateInitialParameters;
+import org.openplans.tools.tracking.impl.VehicleTrackingFilter;
+import org.openplans.tools.tracking.impl.statistics.filters.AbstractVehicleTrackingFilter;
+import org.openplans.tools.tracking.impl.statistics.filters.VehicleTrackingBootstrapFilter;
+import org.openplans.tools.tracking.impl.statistics.filters.VehicleTrackingPLFilter;
 
 import play.Logger;
 import play.mvc.Controller;
@@ -23,6 +36,7 @@ import akka.actor.Props;
 import async.CsvUploadActor;
 import async.CsvUploadActor.TraceParameters;
 
+import com.google.common.collect.Maps;
 import com.vividsolutions.jts.geom.Coordinate;
 
 public class Application extends Controller {
@@ -41,10 +55,18 @@ public class Application extends Controller {
     render(instances);
   }
 
+  private static Map<String, Class<? extends VehicleTrackingFilter>> filtersMap = Maps.newHashMap();
+  static {
+    filtersMap.put(VehicleTrackingPLFilter.class.getName(), VehicleTrackingPLFilter.class);
+    filtersMap.put(VehicleTrackingBootstrapFilter.class.getName(), VehicleTrackingBootstrapFilter.class);
+  }
+  
   public static void instances() {
     final List<InferenceInstance> instances =
         InferenceService.getInferenceInstances();
-    render(instances);
+      
+    final Set<String> filters = filtersMap.keySet();
+    render(instances, filters);
   }
 
   public static void map(String vehicleId) {
@@ -61,7 +83,7 @@ public class Application extends Controller {
   public static void setDefaultVehicleStateParams(
     String obs_variance_pair, String road_state_variance_pair,
     String ground_state_variance_pair, String off_prob_pair,
-    String on_prob_pair, String numParticles_str) {
+    String on_prob_pair, String numParticles_str, String filterTypeName) {
 
     final int numParticles = Integer.parseInt(numParticles_str);
     final String[] obsPair = obs_variance_pair.split(",");
@@ -99,7 +121,7 @@ public class Application extends Controller {
     final VehicleStateInitialParameters parameters =
         new VehicleStateInitialParameters(obsVariance,
             roadStateVariance, groundStateVariance, offProbs,
-            onProbs, numParticles, 0);
+            onProbs, filterTypeName, numParticles, 0);
 
     InferenceService.setDefaultVehicleStateInitialParams(parameters);
 
@@ -112,7 +134,7 @@ public class Application extends Controller {
     String on_prob_pair, String performInference,
     String start_coordinate_pair, String start_unix_time,
     String duration_str, String frequency_str,
-    String numParticles_str, String seed_str) {
+    String numParticles_str, String filterTypeName, String seed_str) {
 
     final String[] startCoordPair = start_coordinate_pair.split(",");
     final Coordinate startCoord =
@@ -160,13 +182,13 @@ public class Application extends Controller {
     final VehicleStateInitialParameters parameters =
         new VehicleStateInitialParameters(obsVariance,
             roadStateVariance, groundStateVariance, offProbs,
-            onProbs, numParticles, seed);
+            onProbs, filterTypeName, numParticles, seed);
 
     final SimulationParameters simParams =
         new SimulationParameters(startCoord, startTime, duration,
             frequency, inference, parameters);
 
-    final String simulationName = "sim-" + start_unix_time;
+    final String simulationName = "sim" + simParams.hashCode();
     if (InferenceService.getInferenceInstance(simulationName) != null) {
       Logger.warn("removing existing inference instance named "
           + simulationName);
@@ -185,7 +207,7 @@ public class Application extends Controller {
     String obs_variance_pair, String road_state_variance_pair,
     String ground_state_variance_pair, String off_prob_pair,
     String on_prob_pair, String numParticles_str, String seed_str,
-    String debugEnabled) {
+    String filterTypeName, String debugEnabled) {
 
     if (csv != null) {
       final String[] obsPair = obs_variance_pair.split(",");
@@ -226,7 +248,7 @@ public class Application extends Controller {
       final VehicleStateInitialParameters parameters =
           new VehicleStateInitialParameters(obsVariance,
               roadStateVariance, groundStateVariance, offProbs,
-              onProbs, numParticles, seed);
+              onProbs, filterTypeName, numParticles, seed);
 
       final boolean debug_enabled =
           Boolean.parseBoolean(debugEnabled);
@@ -240,6 +262,16 @@ public class Application extends Controller {
     }
 
     instances();
+  }
+
+  public static Map<String, Class<? extends VehicleTrackingFilter>>
+      getFilters() {
+    return filtersMap;
+  }
+
+  public static void setFilters(
+    Map<String, Class<? extends VehicleTrackingFilter>> filters) {
+    Application.filtersMap = filters;
   }
 
 }

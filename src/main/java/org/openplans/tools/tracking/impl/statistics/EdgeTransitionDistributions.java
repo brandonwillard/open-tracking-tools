@@ -38,23 +38,23 @@ public class EdgeTransitionDistributions extends
    * Distribution corresponding to free-movement -> free-movement and
    * free-movement -> edge-movement
    */
-  DirichletDistribution freeMotionTransProbPrior;
-  MultinomialDistribution freeMotionTransPrior =
+  private DirichletDistribution freeMotionTransProbPrior;
+  private MultinomialDistribution freeMotionTransPrior =
       new MultinomialDistribution(2, 1);
   MultinomialBayesianEstimator freeMotionTransEstimator =
-      new MultinomialBayesianEstimator(freeMotionTransPrior,
-          freeMotionTransProbPrior);
+      new MultinomialBayesianEstimator(getFreeMotionTransPrior(),
+          getFreeMotionTransProbPrior());
 
   /*
    * Distribution corresponding to edge-movement -> free-movement and
    * edge-movement -> edge-movement
    */
-  DirichletDistribution edgeMotionTransProbPrior;
-  MultinomialDistribution edgeMotionTransPrior =
+  private DirichletDistribution edgeMotionTransProbPrior;
+  private MultinomialDistribution edgeMotionTransPrior =
       new MultinomialDistribution(2, 1);
   MultinomialBayesianEstimator edgeMotionTransEstimator =
-      new MultinomialBayesianEstimator(freeMotionTransPrior,
-          freeMotionTransProbPrior);
+      new MultinomialBayesianEstimator(getFreeMotionTransPrior(),
+          getFreeMotionTransProbPrior());
 
   private final OtpGraph graph;
 
@@ -71,16 +71,14 @@ public class EdgeTransitionDistributions extends
   public EdgeTransitionDistributions(OtpGraph graph,
     Vector edgeMotionPriorParams, Vector freeMotionPriorParams) {
     this.graph = graph;
-    this.freeMotionTransProbPrior =
-        new DirichletDistribution(freeMotionPriorParams);
-    this.edgeMotionTransProbPrior =
-        new DirichletDistribution(edgeMotionPriorParams);
+    this.setFreeMotionTransProbPrior(new DirichletDistribution(freeMotionPriorParams));
+    this.setEdgeMotionTransProbPrior(new DirichletDistribution(edgeMotionPriorParams));
     /*
      * Start by setting the means.
      */
-    freeMotionTransPrior.setParameters(freeMotionTransProbPrior
+    getFreeMotionTransPrior().setParameters(getFreeMotionTransProbPrior()
         .getMean());
-    edgeMotionTransPrior.setParameters(edgeMotionTransProbPrior
+    getEdgeMotionTransPrior().setParameters(getEdgeMotionTransProbPrior()
         .getMean());
   }
 
@@ -94,14 +92,10 @@ public class EdgeTransitionDistributions extends
     transDist.freeMotionTransEstimator =
         (MultinomialBayesianEstimator) this.freeMotionTransEstimator
             .clone();
-    transDist.edgeMotionTransPrior =
-        this.edgeMotionTransPrior.clone();
-    transDist.freeMotionTransPrior =
-        this.freeMotionTransPrior.clone();
-    transDist.edgeMotionTransProbPrior =
-        this.edgeMotionTransProbPrior.clone();
-    transDist.freeMotionTransProbPrior =
-        this.freeMotionTransProbPrior.clone();
+    transDist.setEdgeMotionTransPrior(this.getEdgeMotionTransPrior().clone());
+    transDist.setFreeMotionTransPrior(this.getFreeMotionTransPrior().clone());
+    transDist.setEdgeMotionTransProbPrior(this.getEdgeMotionTransProbPrior().clone());
+    transDist.setFreeMotionTransProbPrior(this.getFreeMotionTransProbPrior().clone());
 
     return transDist;
   }
@@ -109,22 +103,22 @@ public class EdgeTransitionDistributions extends
   @Override
   public int compareTo(EdgeTransitionDistributions o) {
     final CompareToBuilder comparator = new CompareToBuilder();
-    comparator.append(((DenseVector) this.edgeMotionTransPrior
+    comparator.append(((DenseVector) this.getEdgeMotionTransPrior()
         .getParameters()).getArray(),
-        ((DenseVector) o.edgeMotionTransPrior.getParameters())
+        ((DenseVector) o.getEdgeMotionTransPrior().getParameters())
             .getArray());
-    comparator.append(((DenseVector) this.freeMotionTransPrior
+    comparator.append(((DenseVector) this.getFreeMotionTransPrior()
         .getParameters()).getArray(),
-        ((DenseVector) o.freeMotionTransPrior.getParameters())
+        ((DenseVector) o.getFreeMotionTransPrior().getParameters())
             .getArray());
 
-    comparator.append(((DenseVector) this.edgeMotionTransProbPrior
+    comparator.append(((DenseVector) this.getEdgeMotionTransProbPrior()
         .getParameters()).getArray(),
-        ((DenseVector) o.edgeMotionTransProbPrior.getParameters())
+        ((DenseVector) o.getEdgeMotionTransProbPrior().getParameters())
             .getArray());
-    comparator.append(((DenseVector) this.freeMotionTransProbPrior
+    comparator.append(((DenseVector) this.getFreeMotionTransProbPrior()
         .getParameters()).getArray(),
-        ((DenseVector) o.freeMotionTransProbPrior.getParameters())
+        ((DenseVector) o.getFreeMotionTransProbPrior().getParameters())
             .getArray());
 
     return comparator.toComparison();
@@ -143,46 +137,42 @@ public class EdgeTransitionDistributions extends
     }
     final EdgeTransitionDistributions other =
         (EdgeTransitionDistributions) obj;
-    if (edgeMotionTransPrior == null) {
-      if (other.edgeMotionTransPrior != null) {
+    if (getEdgeMotionTransPrior() == null) {
+      if (other.getEdgeMotionTransPrior() != null) {
         return false;
       }
-    } else if (!Arrays.equals(((DenseVector) edgeMotionTransPrior
-        .getParameters()).getArray(),
-        ((DenseVector) other.edgeMotionTransPrior.getParameters())
-            .getArray())) {
+    } else if (!StatisticsUtil.vectorEquals(getEdgeMotionTransPrior()
+        .getParameters(),
+        other.getEdgeMotionTransPrior().getParameters())) {
       return false;
     }
-    if (edgeMotionTransProbPrior == null) {
-      if (other.edgeMotionTransProbPrior != null) {
+    if (getEdgeMotionTransProbPrior() == null) {
+      if (other.getEdgeMotionTransProbPrior() != null) {
         return false;
       }
-    } else if (!Arrays
-        .equals(((DenseVector) edgeMotionTransProbPrior
-            .getParameters()).getArray(),
-            ((DenseVector) other.edgeMotionTransProbPrior
-                .getParameters()).getArray())) {
+    } else if (!StatisticsUtil.vectorEquals(getEdgeMotionTransProbPrior()
+            .getParameters(),
+            other.getEdgeMotionTransProbPrior()
+                .getParameters())) {
       return false;
     }
-    if (freeMotionTransPrior == null) {
-      if (other.freeMotionTransPrior != null) {
+    if (getFreeMotionTransPrior() == null) {
+      if (other.getFreeMotionTransPrior() != null) {
         return false;
       }
-    } else if (!Arrays.equals(((DenseVector) freeMotionTransPrior
-        .getParameters()).getArray(),
-        ((DenseVector) other.freeMotionTransPrior.getParameters())
-            .getArray())) {
+    } else if (!StatisticsUtil.vectorEquals(getFreeMotionTransPrior()
+        .getParameters(),
+        other.getFreeMotionTransPrior().getParameters())) {
       return false;
     }
-    if (freeMotionTransProbPrior == null) {
-      if (other.freeMotionTransProbPrior != null) {
+    if (getFreeMotionTransProbPrior() == null) {
+      if (other.getFreeMotionTransProbPrior() != null) {
         return false;
       }
-    } else if (!Arrays
-        .equals(((DenseVector) freeMotionTransProbPrior
-            .getParameters()).getArray(),
-            ((DenseVector) other.freeMotionTransProbPrior
-                .getParameters()).getArray())) {
+    } else if (!StatisticsUtil.vectorEquals(getFreeMotionTransProbPrior()
+            .getParameters(),
+            other.getFreeMotionTransProbPrior()
+                .getParameters())) {
       return false;
     }
     return true;
@@ -190,10 +180,10 @@ public class EdgeTransitionDistributions extends
 
   public double evaluate(InferredEdge from, InferredEdge to) {
     if (from.isEmptyEdge()) {
-      return freeMotionTransPrior.getProbabilityFunction().evaluate(
+      return getFreeMotionTransPrior().getProbabilityFunction().evaluate(
           getTransitionType(from, to));
     } else {
-      return edgeMotionTransPrior.getProbabilityFunction().evaluate(
+      return getEdgeMotionTransPrior().getProbabilityFunction().evaluate(
           getTransitionType(from, to));
     }
   }
@@ -205,36 +195,35 @@ public class EdgeTransitionDistributions extends
     result =
         prime
             * result
-            + ((edgeMotionTransPrior == null) ? 0 : Arrays
-                .hashCode(((DenseVector) edgeMotionTransPrior
-                    .getParameters()).getArray()));
+            + ((getEdgeMotionTransPrior() == null) ? 0 : StatisticsUtil.hashCodeVector(
+                getEdgeMotionTransPrior().getParameters()));
     result =
         prime
             * result
-            + ((edgeMotionTransProbPrior == null) ? 0 : Arrays
-                .hashCode(((DenseVector) edgeMotionTransProbPrior
-                    .getParameters()).getArray()));
+            + ((getEdgeMotionTransProbPrior() == null) ? 0 : StatisticsUtil
+                .hashCodeVector(getEdgeMotionTransProbPrior()
+                    .getParameters()));
     result =
         prime
             * result
-            + ((freeMotionTransPrior == null) ? 0 : Arrays
-                .hashCode(((DenseVector) freeMotionTransPrior
-                    .getParameters()).getArray()));
+            + ((getFreeMotionTransPrior() == null) ? 0 : StatisticsUtil 
+                .hashCodeVector(getFreeMotionTransPrior()
+                    .getParameters()));
     result =
         prime
             * result
-            + ((freeMotionTransProbPrior == null) ? 0 : Arrays
-                .hashCode(((DenseVector) freeMotionTransProbPrior
-                    .getParameters()).getArray()));
+            + ((getFreeMotionTransProbPrior() == null) ? 0 : StatisticsUtil 
+                .hashCodeVector(getFreeMotionTransProbPrior()
+                    .getParameters()));
     return result;
   }
 
   public double logEvaluate(InferredEdge from, InferredEdge to) {
     if (from.isEmptyEdge()) {
-      return freeMotionTransPrior.getProbabilityFunction()
+      return getFreeMotionTransPrior().getProbabilityFunction()
           .logEvaluate(getTransitionType(from, to));
     } else {
-      return edgeMotionTransPrior.getProbabilityFunction()
+      return getEdgeMotionTransPrior().getProbabilityFunction()
           .logEvaluate(getTransitionType(from, to));
     }
   }
@@ -245,12 +234,12 @@ public class EdgeTransitionDistributions extends
     if (from.isEmptyEdge()) {
       final MultivariatePolyaDistribution predDist =
           freeMotionTransEstimator
-              .createPredictiveDistribution(freeMotionTransProbPrior);
+              .createPredictiveDistribution(getFreeMotionTransProbPrior());
       return predDist.getProbabilityFunction().logEvaluate(state);
     } else {
       final MultivariatePolyaDistribution predDist =
           edgeMotionTransEstimator
-              .createPredictiveDistribution(edgeMotionTransProbPrior);
+              .createPredictiveDistribution(getEdgeMotionTransProbPrior());
       return predDist.getProbabilityFunction().logEvaluate(state);
     }
   }
@@ -271,7 +260,7 @@ public class EdgeTransitionDistributions extends
       if (transferEdges.isEmpty()) {
         return InferredEdge.getEmptyEdge();
       } else {
-        final Vector sample = this.freeMotionTransPrior.sample(rng);
+        final Vector sample = this.getFreeMotionTransPrior().sample(rng);
 
         if (sample.equals(stateOffToOn)) {
           return transferEdges.get(rng.nextInt(transferEdges.size()));
@@ -284,7 +273,7 @@ public class EdgeTransitionDistributions extends
        * We're on an edge, so sample whether we go off-road, or transfer/stay
        * on.
        */
-      final Vector sample = this.edgeMotionTransPrior.sample(rng);
+      final Vector sample = this.getEdgeMotionTransPrior().sample(rng);
 
       if (sample.equals(stateOnToOff) || transferEdges.isEmpty()) {
         return InferredEdge.getEmptyEdge();
@@ -301,18 +290,18 @@ public class EdgeTransitionDistributions extends
   @Override
   public String toString() {
     return "EdgeTransitionDistributions [freeMotionTransPrior="
-        + freeMotionTransPrior.getParameters()
+        + getFreeMotionTransPrior().getParameters()
         + ", edgeMotionTransPrior="
-        + edgeMotionTransPrior.getParameters() + "]";
+        + getEdgeMotionTransPrior().getParameters() + "]";
   }
 
   public void update(InferredEdge from, InferredEdge to) {
     final Vector transType = getTransitionType(from, to);
     if (from.isEmptyEdge()) {
-      freeMotionTransEstimator.update(freeMotionTransProbPrior,
+      freeMotionTransEstimator.update(getFreeMotionTransProbPrior(),
           transType);
     } else {
-      edgeMotionTransEstimator.update(edgeMotionTransProbPrior,
+      edgeMotionTransEstimator.update(getEdgeMotionTransProbPrior(),
           transType);
     }
   }
@@ -348,6 +337,40 @@ public class EdgeTransitionDistributions extends
         return stateOnToOff;
       }
     }
+  }
+
+  public DirichletDistribution getEdgeMotionTransProbPrior() {
+    return edgeMotionTransProbPrior;
+  }
+
+  public void setEdgeMotionTransProbPrior(
+    DirichletDistribution edgeMotionTransProbPrior) {
+    this.edgeMotionTransProbPrior = edgeMotionTransProbPrior;
+  }
+
+  public DirichletDistribution getFreeMotionTransProbPrior() {
+    return freeMotionTransProbPrior;
+  }
+
+  public void setFreeMotionTransProbPrior(
+    DirichletDistribution freeMotionTransProbPrior) {
+    this.freeMotionTransProbPrior = freeMotionTransProbPrior;
+  }
+
+  public MultinomialDistribution getEdgeMotionTransPrior() {
+    return edgeMotionTransPrior;
+  }
+
+  public void setEdgeMotionTransPrior(MultinomialDistribution edgeMotionTransPrior) {
+    this.edgeMotionTransPrior = edgeMotionTransPrior;
+  }
+
+  public MultinomialDistribution getFreeMotionTransPrior() {
+    return freeMotionTransPrior;
+  }
+
+  public void setFreeMotionTransPrior(MultinomialDistribution freeMotionTransPrior) {
+    this.freeMotionTransPrior = freeMotionTransPrior;
   }
 
 }

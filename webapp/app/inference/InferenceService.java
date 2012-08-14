@@ -12,12 +12,17 @@ import models.InferenceInstance;
 
 import org.openplans.tools.tracking.impl.Observation;
 import org.openplans.tools.tracking.impl.VehicleState.VehicleStateInitialParameters;
+import org.openplans.tools.tracking.impl.statistics.filters.AbstractVehicleTrackingFilter;
+import org.openplans.tools.tracking.impl.statistics.filters.VehicleTrackingPLFilter;
 
 import play.Logger;
 import akka.actor.UntypedActor;
 
+import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+
+import controllers.Application;
 
 /**
  * This class is an Actor that responds to LocationRecord messages and
@@ -56,7 +61,9 @@ public class InferenceService extends UntypedActor {
           .createVector2D(0.000625, 0.000625), VectorFactory
           .getDefault().createVector2D(0.000625, 0.000625),
           VectorFactory.getDefault().createVector2D(0.05d, 1d),
-          VectorFactory.getDefault().createVector2D(1d, 0.05d), 50,
+          VectorFactory.getDefault().createVector2D(1d, 0.05d), 
+          VehicleTrackingPLFilter.class.getName(),
+          50,
           0l);
 
   static public final int THREAD_COUNT;
@@ -78,6 +85,9 @@ public class InferenceService extends UntypedActor {
   private static final Map<String, InferenceInstance> vehicleToInstance =
       Maps.newConcurrentMap();
 
+  public static final String defaultFilterName = 
+      Iterables.getFirst(Application.getFilters().keySet(), null);
+
   public static INFO_LEVEL defaultInfoLevel = INFO_LEVEL.ALL_RESULTS;
 
   /**
@@ -91,7 +101,7 @@ public class InferenceService extends UntypedActor {
         if (!processRecord(observation)) {
 
           new InferenceInstance(observation.getVehicleId(), false,
-              defaultInfoLevel, defaultVehicleStateInitialParams);
+              defaultInfoLevel, defaultVehicleStateInitialParams, defaultFilterName);
         }
 
         Logger.info("Message received:  "
@@ -131,6 +141,7 @@ public class InferenceService extends UntypedActor {
   public static InferenceInstance getOrCreateInferenceInstance(
     String vehicleId,
     VehicleStateInitialParameters initialParameters,
+    String filterTypeName,
     boolean isSimulation, INFO_LEVEL infoLevel) {
 
     InferenceInstance ie = vehicleToInstance.get(vehicleId);
@@ -138,7 +149,7 @@ public class InferenceService extends UntypedActor {
     if (ie == null) {
       ie =
           new InferenceInstance(vehicleId, isSimulation, infoLevel,
-              initialParameters);
+              initialParameters, filterTypeName);
       vehicleToInstance.put(vehicleId, ie);
     }
 
@@ -168,13 +179,14 @@ public class InferenceService extends UntypedActor {
   public static void
       processRecords(List<Observation> observations,
         VehicleStateInitialParameters initialParameters,
+        String filterTypeName,
         INFO_LEVEL level) throws InterruptedException {
 
     final List<Callable<Object>> tasks = Lists.newArrayList();
     for (final Observation obs : observations) {
       final InferenceInstance ie =
           getOrCreateInferenceInstance(obs.getVehicleId(),
-              initialParameters, false, level);
+              initialParameters, filterTypeName, false, level);
       tasks.add(Executors.callable(new UpdateRunnable(obs, ie)));
     }
 

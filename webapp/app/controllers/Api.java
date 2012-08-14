@@ -304,7 +304,9 @@ public class Api extends Controller {
           final InferenceResultRecord result =
               InferenceResultRecord.createInferenceResultRecord(
                   infState.getObservation(), instance, actualState,
-                  infState, null, null);
+                  infState, 
+                  !isPrior ? belief : null, 
+                  isPrior ? belief : null);
           results.add(result);
         }
       } else {

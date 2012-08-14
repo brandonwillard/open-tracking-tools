@@ -11,16 +11,14 @@ import gov.sandia.cognition.util.Pair;
 import java.util.List;
 import java.util.Map;
 
-import lombok.Getter;
-
 import org.apache.commons.lang.builder.CompareToBuilder;
 import org.geotools.geometry.jts.JTSFactoryFinder;
 import org.openplans.tools.tracking.impl.Observation;
 import org.openplans.tools.tracking.impl.VehicleState;
 import org.openplans.tools.tracking.impl.graph.InferredEdge;
-import org.openplans.tools.tracking.impl.statistics.StandardRoadTrackingFilter;
 import org.openplans.tools.tracking.impl.statistics.StatisticsUtil;
 import org.openplans.tools.tracking.impl.statistics.WrappedWeightedValue;
+import org.openplans.tools.tracking.impl.statistics.filters.StandardRoadTrackingFilter;
 
 import com.google.common.annotations.Beta;
 import com.google.common.base.Preconditions;
@@ -37,7 +35,6 @@ import com.vividsolutions.jts.geom.Geometry;
  * @author bwillard
  * 
  */
-@Getter
 public class InferredPath implements Comparable<InferredPath> {
 
   public static class EdgePredictiveResults {
@@ -83,7 +80,7 @@ public class InferredPath implements Comparable<InferredPath> {
 
   private static InferredPath emptyPath = new InferredPath();
 
-  private static double edgeDistTolerance = 1e-10;
+  private static double edgeDistTolerance = 1e-4;
 
   private InferredPath() {
     this.edges = ImmutableList.of(PathEdge.getEmptyPathEdge());
@@ -679,6 +676,38 @@ public class InferredPath implements Comparable<InferredPath> {
       return emptyPath;
     else
       return new InferredPath(pathEdge);
+  }
+
+  public ImmutableList<PathEdge> getEdges() {
+    return edges;
+  }
+
+  public Double getTotalPathDistance() {
+    return totalPathDistance;
+  }
+
+  public List<Integer> getEdgeIds() {
+    return edgeIds;
+  }
+
+  public InferredEdge getStartSearchEdge() {
+    return startSearchEdge;
+  }
+
+  public InferredEdge getEndSearchEdge() {
+    return endSearchEdge;
+  }
+
+  public Boolean getIsBackward() {
+    return isBackward;
+  }
+
+  public Geometry getGeometry() {
+    return geometry;
+  }
+
+  public static double getEdgeDistTolerance() {
+    return edgeDistTolerance;
   }
 
 }

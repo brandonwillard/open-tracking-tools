@@ -6,8 +6,8 @@ import java.util.List;
 import java.util.Map;
 
 import org.openplans.tools.tracking.impl.graph.paths.InferredPath.EdgePredictiveResults;
-import org.openplans.tools.tracking.impl.statistics.StandardRoadTrackingFilter;
 import org.openplans.tools.tracking.impl.statistics.WrappedWeightedValue;
+import org.openplans.tools.tracking.impl.statistics.filters.StandardRoadTrackingFilter;
 
 import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
