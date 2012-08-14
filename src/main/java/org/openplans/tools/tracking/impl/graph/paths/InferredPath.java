@@ -617,11 +617,6 @@ public class InferredPath implements Comparable<InferredPath> {
     final double e = mean - Or.times(belief.getMean()).getElement(0);
     final Vector a = belief.getMean().plus(W.getColumn(0).scale(e));
 
-    // TODO FIXME XXX debug. remove!
-    //    final double tmean1 = getTruncatedMean(mean, Math.sqrt(S), edge);
-    //    final double stdDev = Math.sqrt(Or.times(R).times(Or.transpose()).getElement(0, 0));
-    //    final double tmean2 = getTruncatedMean(a.getElement(0), stdDev, edge);
-
     belief.setMean(a);
     belief.setCovariance(R);
   }

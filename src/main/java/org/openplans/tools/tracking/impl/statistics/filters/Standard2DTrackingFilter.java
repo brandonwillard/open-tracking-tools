@@ -129,10 +129,6 @@ public class Standard2DTrackingFilter extends AbstractKalmanFilter {
     final Vector innovation = observation.minus(ypred);
     this.computeMeasurementBelief(belief, innovation, C);
 
-    // XXX covariance was set in the previous call
-    // if (!checkPosDef((DenseMatrix)belief.getCovariance()))
-    // return;
-
   }
 
   @Override
