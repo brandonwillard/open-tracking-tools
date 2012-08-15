@@ -12,6 +12,7 @@ import org.openplans.tools.tracking.impl.Observation;
 import org.openplans.tools.tracking.impl.VehicleState;
 import org.openplans.tools.tracking.impl.VehicleState.VehicleStateInitialParameters;
 import org.openplans.tools.tracking.impl.graph.paths.InferredPath;
+import org.openplans.tools.tracking.impl.graph.paths.PathEdge;
 import org.openplans.tools.tracking.impl.statistics.FilterInformation;
 import org.openplans.tools.tracking.impl.statistics.StatisticsUtil;
 import org.openplans.tools.tracking.impl.statistics.WrappedWeightedValue;
@@ -64,7 +65,9 @@ public class VehicleTrackingBootstrapFilter extends
         evaledPaths.add(state.getPath());
 
         final double totalLogLik =
-            predictedState.getProbabilityFunction().logEvaluate(obs);
+            predictedState.getMovementFilter().logLikelihood(
+                obs.getProjectedPoint(), predictedState.getBelief(),
+                PathEdge.getEdge(predictedState.getInferredEdge()));
 
         resampler.add(new WrappedWeightedValue<VehicleState>(
             predictedState, totalLogLik, 1));

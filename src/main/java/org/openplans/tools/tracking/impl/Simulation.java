@@ -18,6 +18,7 @@ import org.openplans.tools.tracking.impl.graph.paths.InferredPathEntry;
 import org.openplans.tools.tracking.impl.graph.paths.PathEdge;
 import org.openplans.tools.tracking.impl.statistics.EdgeTransitionDistributions;
 import org.openplans.tools.tracking.impl.statistics.filters.StandardRoadTrackingFilter;
+import org.openplans.tools.tracking.impl.statistics.filters.VehicleTrackingPathSamplerFilterUpdater;
 import org.openplans.tools.tracking.impl.util.GeoUtils;
 import org.openplans.tools.tracking.impl.util.OtpGraph;
 import org.opentripplanner.routing.edgetype.StreetEdge;
@@ -175,6 +176,7 @@ public class Simulation {
   private long localSeed;
 
   private final String filterTypeName;
+  private final VehicleTrackingPathSamplerFilterUpdater updater;
 
   public Simulation(String simulationName, OtpGraph graph,
     SimulationParameters simParameters) {
@@ -194,24 +196,39 @@ public class Simulation {
     }
 
     this.rng.setSeed(seed);
+    Observation initialObs = null;
+    try {
+      Observation.remove(simulationName);
+      initialObs =
+          Observation.createObservation(this.simulationName,
+              this.simParameters.getStartTime(),
+              this.simParameters.getStartCoordinate(), null, null,
+              null);
+    } catch (final TimeOrderException e) {
+      e.printStackTrace();
+    } 
+    
+    if (initialObs != null) {
+      this.updater = new VehicleTrackingPathSamplerFilterUpdater(initialObs, graph, 
+          parameters, rng);
+    } else {
+      this.updater = null;
+    }
   }
 
   public VehicleState computeInitialState() {
-
-    Observation initialObs;
+    
+    /*
+     * If the updater is null, then creation of the initial obs failed,
+     * or something equally bad.
+     * 
+     */
+    if (this.updater == null)
+      return null;
+    
     try {
-      try {
-        Observation.remove(simulationName);
-        initialObs =
-            Observation.createObservation(this.simulationName,
-                this.simParameters.getStartTime(),
-                this.simParameters.getStartCoordinate(), null, null,
-                null);
-      } catch (final TimeOrderException e) {
-        e.printStackTrace();
-        return null;
-      }
 
+      final Observation initialObs = this.updater.getInitialObservation();
       final List<InferredEdge> edges =
           Lists.newArrayList(InferredEdge.getEmptyEdge());
       for (final StreetEdge edge : this.inferredGraph.getNearbyEdges(
@@ -303,7 +320,7 @@ public class Simulation {
      */
     this.localSeed = rng.nextLong();
     final InferredPath newPath =
-        traverseEdge(vehicleState.getEdgeTransitionDist(),
+        this.updater.traverseEdge(vehicleState.getEdgeTransitionDist(),
             currentLocBelief, currentPathEdge,
             vehicleState.getMovementFilter());
 
@@ -347,203 +364,7 @@ public class Simulation {
     recordsProcessed++;
     return vehicleState;
   }
-
-  /**
-   * This method samples a path, updates the belief to reflect that, and returns
-   * the path.
-   * 
-   * @param edgeTransDist
-   * @param belief
-   * @param startEdge
-   * @param movementFilter
-   * @return
-   */
-  private InferredPath traverseEdge(
-    EdgeTransitionDistributions edgeTransDist,
-    final MultivariateGaussian belief, PathEdge startEdge,
-    StandardRoadTrackingFilter movementFilter) {
-
-    /*
-     * We project the road path
-     */
-    rng.setSeed(this.localSeed);
-    PathEdge currentEdge = startEdge;
-    PathEdge previousEdge = null;
-    final MultivariateGaussian newBelief = belief.clone();
-
-    final List<PathEdge> currentPath = Lists.newArrayList();
-
-    double distTraveled = 0d;
-    Double totalDistToTravel = null;
-    while (totalDistToTravel == null ||
-    // the following case is when we're truly on the edge
-        Math.abs(totalDistToTravel) > Math.abs(distTraveled)) {
-
-      final List<InferredEdge> transferEdges = Lists.newArrayList();
-      if (currentEdge.getInferredEdge() == InferredEdge
-          .getEmptyEdge()) {
-        final Vector projLocation =
-            StandardRoadTrackingFilter.getOg().times(
-                newBelief.getMean());
-        for (final StreetEdge edge : this.inferredGraph
-            .getNearbyEdges(projLocation,
-                movementFilter.getObservationErrorAbsRadius())) {
-          transferEdges.add(this.inferredGraph.getInferredEdge(edge));
-        }
-      } else {
-        if (totalDistToTravel == null) {
-          transferEdges.add(startEdge.getInferredEdge());
-        } else {
-          if (newBelief.getMean().getElement(0) < 0d) {
-            transferEdges.addAll(currentEdge.getInferredEdge()
-                .getIncomingTransferableEdges());
-          } else if (newBelief.getMean().getElement(0) > 0d) {
-            transferEdges.addAll(currentEdge.getInferredEdge()
-                .getOutgoingTransferableEdges());
-          } else {
-            transferEdges.addAll(currentEdge.getInferredEdge()
-                .getIncomingTransferableEdges());
-            transferEdges.addAll(currentEdge.getInferredEdge()
-                .getOutgoingTransferableEdges());
-          }
-          // Make sure we don't move back and forth
-          transferEdges.remove(currentEdge.getInferredEdge());
-        }
-      }
-
-      final InferredEdge sampledEdge =
-          edgeTransDist.sample(rng, transferEdges,
-              currentEdge == null ? startEdge.getInferredEdge()
-                  : currentEdge.getInferredEdge());
-
-      if (sampledEdge == InferredEdge.getEmptyEdge()) {
-
-        if (totalDistToTravel == null) {
-          /*
-           * Off-road, so just return/add the empty path and be done
-           */
-          movementFilter.predict(newBelief,
-              PathEdge.getEmptyPathEdge(), startEdge);
-        } else {
-          /*
-           * This belief should/could extend past the length of the current
-           * edge, so that the converted ground coordinates emulate driving
-           * off of a road (most of the time, perhaps).
-           */
-          StandardRoadTrackingFilter.convertToGroundBelief(newBelief,
-              currentEdge, true);
-        }
-
-        currentEdge = PathEdge.getEmptyPathEdge();
-        currentPath.add(PathEdge.getEmptyPathEdge());
-        break;
-      }
-
-      double direction =
-          newBelief.getMean().getElement(0) >= 0d ? 1d : -1d;
-      final PathEdge sampledPathEdge =
-          PathEdge.getEdge(sampledEdge, previousEdge == null
-              || previousEdge.isEmptyEdge() ? 0d : direction
-              * previousEdge.getInferredEdge().getLength()
-              + previousEdge.getDistToStartOfEdge(), direction < 0d);
-
-      if (sampledPathEdge == null) {
-        /*-
-         * We have nowhere else to go, but we're not moving off of an edge, so 
-         * we call this a stop.
-         */
-        newBelief.getMean().setElement(0,
-            direction * currentEdge.getInferredEdge().getLength());
-        newBelief.getMean().setElement(1, 0d);
-        break;
-      }
-
-      if (totalDistToTravel == null) {
-        /*
-         * Predict the movement, i.e. distance and direction to travel. The mean
-         * of this belief should be set to the true value, so the prediction is
-         * exact.
-         */
-
-        /*
-         * Since we might be just transferring onto an edge, check
-         * first.
-         */
-        final PathEdge initialEdge =
-            startEdge.isEmptyEdge() ? sampledPathEdge : startEdge;
-        currentEdge = initialEdge;
-
-        if (newBelief.getInputDimensionality() == 4) {
-          StandardRoadTrackingFilter.convertToRoadBelief(newBelief,
-              InferredPath.getInferredPath(initialEdge));
-        }
-
-        double previousLocation = newBelief.getMean().getElement(0);
-        movementFilter.predict(newBelief, initialEdge, initialEdge);
-
-        final Vector transStateSample =
-            StandardRoadTrackingFilter.sampleMovementBelief(rng,
-                newBelief.getMean(), movementFilter);
-        newBelief.setMean(transStateSample);
-        totalDistToTravel =
-            newBelief.getMean().getElement(0) - previousLocation;
-
-        double newLocation = newBelief.getMean().getElement(0);
-        final double L = initialEdge.getInferredEdge().getLength();
-
-        /*
-         * Adjust reference locations to be the same, wrt the new
-         * location's direction.
-         */
-        if (newLocation < 0d && previousLocation > 0d) {
-          previousLocation = -L + previousLocation;
-          newLocation = previousLocation + totalDistToTravel;
-          newBelief.getMean().setElement(0, newLocation);
-        } else if (newLocation >= 0d && previousLocation < 0d) {
-          previousLocation = L + previousLocation;
-          newLocation = previousLocation + totalDistToTravel;
-          newBelief.getMean().setElement(0, newLocation);
-        }
-
-        /*
-         * Get the distance we've covered to move off of this edge, if we
-         * have moved off.
-         */
-        direction = totalDistToTravel >= 0d ? 1d : -1d;
-        if (L < Math.abs(newLocation)) {
-          final double r = L - Math.abs(previousLocation);
-          distTraveled += r * direction;
-        } else {
-          distTraveled += totalDistToTravel;
-        }
-      } else {
-        /*
-         * Continue along edges
-         */
-        distTraveled +=
-            direction * sampledPathEdge.getInferredEdge().getLength();
-        currentEdge = sampledPathEdge;
-      }
-      previousEdge = currentEdge;
-      currentPath.add(currentEdge);
-    }
-
-    //    if(!Iterables.getLast(currentPath).isEmptyEdge() && 
-    //          !Iterables.getLast(currentPath).isOnEdge(newBelief.getMean().getElement(0))) {
-    //      Iterables.getLast(currentPath).isOnEdge(newBelief.getMean().getElement(0));
-    //    }
-
-    assert (Iterables.getLast(currentPath).isEmptyEdge() || Iterables
-        .getLast(currentPath).isOnEdge(
-            newBelief.getMean().getElement(0)));
-
-    belief.setMean(newBelief.getMean());
-    belief.setCovariance(newBelief.getCovariance());
-    return InferredPath.getInferredPath(currentPath,
-        (totalDistToTravel != null && totalDistToTravel < 0d) ? true
-            : false);
-  }
-
+  
   public String getFilterTypeName() {
     return filterTypeName;
   }

@@ -219,12 +219,27 @@ public class EdgeTransitionDistributions extends
   }
 
   public double logEvaluate(InferredEdge from, InferredEdge to) {
-    if (from.isEmptyEdge()) {
-      return getFreeMotionTransPrior().getProbabilityFunction()
-          .logEvaluate(getTransitionType(from, to));
+    if (from == null) {
+      /*
+       * This corresponds to the initialization/prior
+       * XXX FIXME: use the to -> to transition
+       */
+      if (to.isEmptyEdge()) {
+        return getFreeMotionTransPrior().getProbabilityFunction()
+            .logEvaluate(getTransitionType(to, to));
+      } else {
+        return getEdgeMotionTransPrior().getProbabilityFunction()
+            .logEvaluate(getTransitionType(to, to));
+      }
+      
     } else {
-      return getEdgeMotionTransPrior().getProbabilityFunction()
-          .logEvaluate(getTransitionType(from, to));
+      if (from.isEmptyEdge()) {
+        return getFreeMotionTransPrior().getProbabilityFunction()
+            .logEvaluate(getTransitionType(from, to));
+      } else {
+        return getEdgeMotionTransPrior().getProbabilityFunction()
+            .logEvaluate(getTransitionType(from, to));
+      }
     }
   }
 

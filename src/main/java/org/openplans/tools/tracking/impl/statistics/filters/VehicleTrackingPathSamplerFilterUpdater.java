@@ -11,6 +11,8 @@ import java.util.List;
 import java.util.Random;
 import java.util.Set;
 
+import javax.annotation.Nonnull;
+
 import org.apache.commons.lang.NotImplementedException;
 import org.openplans.tools.tracking.impl.DefaultCountedDataDistribution;
 import org.openplans.tools.tracking.impl.Observation;
@@ -74,8 +76,38 @@ public class VehicleTrackingPathSamplerFilterUpdater implements
 
   private final VehicleStateInitialParameters parameters;
 
-  private final UpdaterThreadLocal threadRandom;
+  private final ThreadLocal<Random> threadRandom;
 
+  public VehicleTrackingPathSamplerFilterUpdater(Observation obs,
+    OtpGraph inferredGraph, VehicleStateInitialParameters parameters, 
+    @Nonnull Random rng) {
+    this.initialObservation = obs;
+    this.inferredGraph = inferredGraph;
+    this.parameters = parameters;
+    
+    /*
+     * If we passed a Random then we don't want thread local values.
+     */
+    this.threadRandom = new ThreadLocal<Random>() {
+      
+      private Random rng;
+
+      @Override
+      public Random get() {
+        return rng;
+      }
+
+      @Override
+      public void set(Random value) {
+        rng = value;
+      }
+      
+    };
+    
+    this.threadRandom.set(rng);
+    
+  }
+  
   public VehicleTrackingPathSamplerFilterUpdater(Observation obs,
     OtpGraph inferredGraph, VehicleStateInitialParameters parameters) {
     this.initialObservation = obs;
@@ -181,7 +213,7 @@ public class VehicleTrackingPathSamplerFilterUpdater implements
     return threadRandom;
   }
 
-  private InferredPath traverseEdge(
+  public InferredPath traverseEdge(
     EdgeTransitionDistributions edgeTransDist,
     final MultivariateGaussian belief, PathEdge startEdge,
     StandardRoadTrackingFilter movementFilter) {
@@ -189,8 +221,13 @@ public class VehicleTrackingPathSamplerFilterUpdater implements
     /*
      * We project the road path
      */
+    
+    /*
+     * TODO FIXME there should probably be a flag for this debug stuff
+     */
     final Random rng = this.threadRandom.get();
-    rng.setSeed(this.threadRandom.getSeed());
+    rng.setSeed(rng.nextLong());
+    
     PathEdge currentEdge = startEdge;
     PathEdge previousEdge = null;
     final MultivariateGaussian newBelief = belief.clone();
@@ -257,6 +294,14 @@ public class VehicleTrackingPathSamplerFilterUpdater implements
           StandardRoadTrackingFilter.convertToGroundBelief(newBelief,
               currentEdge, true);
         }
+        
+        /*
+         * Add some transition noise.
+         */
+        final Vector transStateSample =
+            StandardRoadTrackingFilter.sampleMovementBelief(rng,
+                newBelief.getMean(), movementFilter);
+        newBelief.setMean(transStateSample);
 
         currentEdge = PathEdge.getEmptyPathEdge();
         currentPath.add(PathEdge.getEmptyPathEdge());
@@ -390,7 +435,12 @@ public class VehicleTrackingPathSamplerFilterUpdater implements
     /*
      * Run through the edges, predict movement and reset the belief.
      */
-    this.threadRandom.setSeed(this.threadRandom.get().nextLong());
+    
+    /*
+     * TODO FIXME again, a flag for this debug?
+     */
+    final Random rng = this.threadRandom.get();
+    rng.setSeed(rng.nextLong());
 
     final EdgeTransitionDistributions sampledTransDist =
         previousParameter.getEdgeTransitionDist().clone();

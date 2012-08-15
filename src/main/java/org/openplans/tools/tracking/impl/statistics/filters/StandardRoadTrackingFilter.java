@@ -245,7 +245,7 @@ public class StandardRoadTrackingFilter implements
    * @param belief
    * @return
    */
-  public double logLikelihood(Vector obs,
+  public double priorPredictiveLogLikelihood(Vector obs,
     MultivariateGaussian belief, PathEdge edge) {
     final MultivariateGaussian projBelief = belief.clone();
     if (projBelief.getInputDimensionality() == 2) {
@@ -259,6 +259,19 @@ public class StandardRoadTrackingFilter implements
     final double result =
         StatisticsUtil.logEvaluateNormal(obs,
             Og.times(projBelief.getMean()), Q);
+    return result;
+  }
+  
+  public double logLikelihood(Vector obs,
+    MultivariateGaussian belief, PathEdge edge) {
+    final MultivariateGaussian projBelief = belief.clone();
+    if (projBelief.getInputDimensionality() == 2) {
+      convertToGroundBelief(projBelief, edge);
+    }
+
+    final double result =
+        StatisticsUtil.logEvaluateNormal(obs,
+            Og.times(projBelief.getMean()), this.groundFilter.getMeasurementCovariance());
     return result;
   }
 

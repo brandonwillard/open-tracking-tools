@@ -23,6 +23,7 @@ import org.openplans.tools.tracking.impl.statistics.filters.AdjKalmanFilter;
 import org.openplans.tools.tracking.impl.statistics.filters.StandardRoadTrackingFilter;
 import org.openplans.tools.tracking.impl.util.OtpGraph;
 
+import com.google.common.annotations.Beta;
 import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
 
@@ -61,30 +62,29 @@ public class VehicleState implements
       return this;
     }
 
+    @Beta
     @Override
     public double logEvaluate(Observation input) {
       double logLikelihood = 0d;
 
-      /*
-       * Edge transitions
-       */
-      logLikelihood +=
-          this.edgeTransitionDist.logEvaluate(this.getPath()
-              .getEdges().get(0).getInferredEdge(),
-              this.getInferredEdge());
+//      /*
+//       * Edge transitions.
+//       * XXX: Very important!  This skips the edges in-between.
+//       */
+//      final InferredEdge parentEdge = this.getParentState() != null ? 
+//          this.getParentState().getInferredEdge() : null;
+//      logLikelihood +=
+//          this.edgeTransitionDist.logEvaluate(parentEdge,
+//              this.getInferredEdge());
 
       /*
-       * Movement
-      //       * We must use the last PathEdge since the belief should
-      //       * be predictive and thus cover the length of the path,
-      //       * instead of being normalized relative to it's final
-      //       * position.
+       * Movement.
+       * XXX: this does not include the state transition likelihood.
        */
       logLikelihood +=
           this.getMovementFilter().logLikelihood(
               input.getProjectedPoint(), this.belief,
               PathEdge.getEdge(this.getInferredEdge()));
-      //          Iterables.getLast(this.getPath().getEdges()));
 
       return logLikelihood;
     }

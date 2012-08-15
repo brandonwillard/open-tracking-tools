@@ -333,7 +333,7 @@ public class InferredPath implements Comparable<InferredPath> {
                   edgeOfLocPrediction.getInferredEdge());
 
           final double localPosVelPredLogLik =
-              filter.logLikelihood(obs.getProjectedPoint(),
+              filter.priorPredictiveLogLikelihood(obs.getProjectedPoint(),
                   locationPrediction, edgeOfLocPrediction);
 
           assert !Double.isNaN(edgePredMarginalLogLik);
