@@ -25,10 +25,10 @@ import org.apache.log4j.Logger;
 import org.openplans.tools.tracking.impl.Observation;
 import org.openplans.tools.tracking.impl.VehicleState;
 import org.openplans.tools.tracking.impl.VehicleState.VehicleStateInitialParameters;
-import org.openplans.tools.tracking.impl.VehicleTrackingFilter;
-import org.openplans.tools.tracking.impl.statistics.FilterInformation;
 import org.openplans.tools.tracking.impl.statistics.filters.AbstractVehicleTrackingFilter;
+import org.openplans.tools.tracking.impl.statistics.filters.FilterInformation;
 import org.openplans.tools.tracking.impl.statistics.filters.VehicleTrackingBootstrapFilter;
+import org.openplans.tools.tracking.impl.statistics.filters.VehicleTrackingFilter;
 import org.openplans.tools.tracking.impl.statistics.filters.VehicleTrackingPLFilter;
 import org.openplans.tools.tracking.impl.util.OtpGraph;
 

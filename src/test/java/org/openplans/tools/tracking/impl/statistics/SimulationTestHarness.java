@@ -12,7 +12,7 @@ import org.openplans.tools.tracking.impl.Observation;
 import org.openplans.tools.tracking.impl.Simulation;
 import org.openplans.tools.tracking.impl.Simulation.SimulationParameters;
 import org.openplans.tools.tracking.impl.VehicleState;
-import org.openplans.tools.tracking.impl.VehicleTrackingFilter;
+import org.openplans.tools.tracking.impl.statistics.filters.VehicleTrackingFilter;
 import org.openplans.tools.tracking.impl.util.OtpGraph;
 
 import com.google.common.collect.Lists;

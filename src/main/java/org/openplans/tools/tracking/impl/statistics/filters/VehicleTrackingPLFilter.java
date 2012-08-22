@@ -14,19 +14,18 @@ import java.util.Set;
 
 import javax.annotation.Nonnull;
 
-import org.openplans.tools.tracking.impl.DefaultCountedDataDistribution;
 import org.openplans.tools.tracking.impl.Observation;
 import org.openplans.tools.tracking.impl.VehicleState;
+import org.openplans.tools.tracking.impl.WrappedWeightedValue;
 import org.openplans.tools.tracking.impl.VehicleState.VehicleStateInitialParameters;
 import org.openplans.tools.tracking.impl.graph.InferredEdge;
 import org.openplans.tools.tracking.impl.graph.paths.InferredPath;
 import org.openplans.tools.tracking.impl.graph.paths.InferredPath.EdgePredictiveResults;
 import org.openplans.tools.tracking.impl.graph.paths.InferredPathEntry;
 import org.openplans.tools.tracking.impl.graph.paths.PathEdge;
-import org.openplans.tools.tracking.impl.statistics.EdgeTransitionDistributions;
-import org.openplans.tools.tracking.impl.statistics.FilterInformation;
+import org.openplans.tools.tracking.impl.statistics.DefaultCountedDataDistribution;
+import org.openplans.tools.tracking.impl.statistics.OnOffEdgeTransDirMulti;
 import org.openplans.tools.tracking.impl.statistics.StatisticsUtil;
-import org.openplans.tools.tracking.impl.statistics.WrappedWeightedValue;
 import org.openplans.tools.tracking.impl.util.OtpGraph;
 
 import com.google.common.collect.HashMultimap;
@@ -199,7 +198,7 @@ public class VehicleTrackingPLFilter extends
       InferredEdge prevEdge =
           sampledPathEntry.getPath().getEdges().get(0)
               .getInferredEdge();
-      final EdgeTransitionDistributions updatedEdgeTransDist =
+      final OnOffEdgeTransDirMulti updatedEdgeTransDist =
           newState.getEdgeTransitionDist().clone();
       for (final PathEdge edge : sampledPathEntry.getPath()
           .getEdges()) {

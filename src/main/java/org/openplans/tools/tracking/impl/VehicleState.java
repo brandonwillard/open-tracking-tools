@@ -17,7 +17,7 @@ import org.apache.commons.lang.builder.CompareToBuilder;
 import org.openplans.tools.tracking.impl.graph.InferredEdge;
 import org.openplans.tools.tracking.impl.graph.paths.InferredPath;
 import org.openplans.tools.tracking.impl.graph.paths.PathEdge;
-import org.openplans.tools.tracking.impl.statistics.EdgeTransitionDistributions;
+import org.openplans.tools.tracking.impl.statistics.OnOffEdgeTransDirMulti;
 import org.openplans.tools.tracking.impl.statistics.StatisticsUtil;
 import org.openplans.tools.tracking.impl.statistics.filters.AdjKalmanFilter;
 import org.openplans.tools.tracking.impl.statistics.filters.StandardRoadTrackingFilter;
@@ -281,7 +281,7 @@ public class VehicleState implements
    * 3. edges transitions to others (one for all)
    * edges
    */
-  protected final EdgeTransitionDistributions edgeTransitionDist;
+  protected final OnOffEdgeTransDirMulti edgeTransitionDist;
   private final Observation observation;
   private final InferredEdge edge;
   private VehicleState parentState = null;
@@ -369,7 +369,7 @@ public class VehicleState implements
     this.observation = initialObservation;
     this.graph = graph;
     this.edgeTransitionDist =
-        new EdgeTransitionDistributions(this.graph,
+        new OnOffEdgeTransDirMulti(this.graph,
             parameters.getOnTransitionProbs(),
             parameters.getOffTransitionProbs());
     this.distanceFromPreviousState = 0d;
@@ -385,7 +385,7 @@ public class VehicleState implements
 
   public VehicleState(OtpGraph graph, Observation observation,
     StandardRoadTrackingFilter filter, MultivariateGaussian belief,
-    EdgeTransitionDistributions edgeTransitionDist,
+    OnOffEdgeTransDirMulti edgeTransitionDist,
     InferredPath path, VehicleState state) {
 
     Preconditions
@@ -563,7 +563,7 @@ public class VehicleState implements
     return edge;
   }
 
-  public EdgeTransitionDistributions getEdgeTransitionDist() {
+  public OnOffEdgeTransDirMulti getEdgeTransitionDist() {
     return edgeTransitionDist;
   }
 

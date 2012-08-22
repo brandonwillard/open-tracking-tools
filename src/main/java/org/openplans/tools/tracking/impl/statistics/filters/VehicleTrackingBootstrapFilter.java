@@ -7,15 +7,14 @@ import java.util.Set;
 
 import javax.annotation.Nonnull;
 
-import org.openplans.tools.tracking.impl.DefaultCountedDataDistribution;
 import org.openplans.tools.tracking.impl.Observation;
 import org.openplans.tools.tracking.impl.VehicleState;
+import org.openplans.tools.tracking.impl.WrappedWeightedValue;
 import org.openplans.tools.tracking.impl.VehicleState.VehicleStateInitialParameters;
 import org.openplans.tools.tracking.impl.graph.paths.InferredPath;
 import org.openplans.tools.tracking.impl.graph.paths.PathEdge;
-import org.openplans.tools.tracking.impl.statistics.FilterInformation;
+import org.openplans.tools.tracking.impl.statistics.DefaultCountedDataDistribution;
 import org.openplans.tools.tracking.impl.statistics.StatisticsUtil;
-import org.openplans.tools.tracking.impl.statistics.WrappedWeightedValue;
 import org.openplans.tools.tracking.impl.util.OtpGraph;
 
 import com.google.common.collect.HashMultimap;

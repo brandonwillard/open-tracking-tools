@@ -1,4 +1,4 @@
-package org.openplans.tools.tracking.impl.statistics;
+package org.openplans.tools.tracking.impl.statistics.filters;
 
 import gov.sandia.cognition.statistics.DataDistribution;
 

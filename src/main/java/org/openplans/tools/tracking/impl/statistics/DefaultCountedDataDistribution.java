@@ -1,4 +1,4 @@
-package org.openplans.tools.tracking.impl;
+package org.openplans.tools.tracking.impl.statistics;
 
 import gov.sandia.cognition.factory.Factory;
 import gov.sandia.cognition.learning.algorithm.AbstractBatchAndIncrementalLearner;
@@ -13,6 +13,8 @@ import gov.sandia.cognition.util.WeightedValue;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+
+import org.openplans.tools.tracking.impl.MutableDoubleCount;
 
 public class DefaultCountedDataDistribution<KeyType> extends
     AbstractDataDistribution<KeyType> {

@@ -15,9 +15,9 @@ import org.apache.commons.lang.builder.CompareToBuilder;
 import org.geotools.geometry.jts.JTSFactoryFinder;
 import org.openplans.tools.tracking.impl.Observation;
 import org.openplans.tools.tracking.impl.VehicleState;
+import org.openplans.tools.tracking.impl.WrappedWeightedValue;
 import org.openplans.tools.tracking.impl.graph.InferredEdge;
 import org.openplans.tools.tracking.impl.statistics.StatisticsUtil;
-import org.openplans.tools.tracking.impl.statistics.WrappedWeightedValue;
 import org.openplans.tools.tracking.impl.statistics.filters.StandardRoadTrackingFilter;
 
 import com.google.common.annotations.Beta;
@@ -479,7 +479,7 @@ public class InferredPath implements Comparable<InferredPath> {
         Or.times(beliefPrediction.getCovariance())
             .times(Or.transpose()).getElement(0, 0)
             + Math.pow(edge.getInferredEdge().getLength(), 2d)
-            / Math.sqrt(12);
+            / 12d;
     final double mean =
         Or.times(beliefPrediction.getMean()).getElement(0);
     final double direction = Math.signum(totalPathDistance);

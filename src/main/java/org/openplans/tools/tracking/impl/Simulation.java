@@ -16,7 +16,7 @@ import org.openplans.tools.tracking.impl.graph.InferredEdge;
 import org.openplans.tools.tracking.impl.graph.paths.InferredPath;
 import org.openplans.tools.tracking.impl.graph.paths.InferredPathEntry;
 import org.openplans.tools.tracking.impl.graph.paths.PathEdge;
-import org.openplans.tools.tracking.impl.statistics.EdgeTransitionDistributions;
+import org.openplans.tools.tracking.impl.statistics.OnOffEdgeTransDirMulti;
 import org.openplans.tools.tracking.impl.statistics.filters.StandardRoadTrackingFilter;
 import org.openplans.tools.tracking.impl.statistics.filters.VehicleTrackingPathSamplerFilterUpdater;
 import org.openplans.tools.tracking.impl.util.GeoUtils;
@@ -173,7 +173,6 @@ public class Simulation {
   private int recordsProcessed = 0;
 
   private final SimulationParameters simParameters;
-  private long localSeed;
 
   private final String filterTypeName;
   private final VehicleTrackingPathSamplerFilterUpdater updater;
@@ -310,7 +309,7 @@ public class Simulation {
         this.simParameters.getFrequency());
     final MultivariateGaussian currentLocBelief =
         vehicleState.getBelief();
-    final EdgeTransitionDistributions currentEdgeTrans =
+    final OnOffEdgeTransDirMulti currentEdgeTrans =
         vehicleState.getEdgeTransitionDist();
     final PathEdge currentPathEdge =
         PathEdge.getEdge(vehicleState.getInferredEdge());
@@ -318,7 +317,6 @@ public class Simulation {
     /*
      * Run through the edges, predict movement and reset the belief.
      */
-    this.localSeed = rng.nextLong();
     final InferredPath newPath =
         this.updater.traverseEdge(vehicleState.getEdgeTransitionDist(),
             currentLocBelief, currentPathEdge,

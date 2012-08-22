@@ -5,8 +5,8 @@ import gov.sandia.cognition.util.Pair;
 import java.util.List;
 import java.util.Map;
 
+import org.openplans.tools.tracking.impl.WrappedWeightedValue;
 import org.openplans.tools.tracking.impl.graph.paths.InferredPath.EdgePredictiveResults;
-import org.openplans.tools.tracking.impl.statistics.WrappedWeightedValue;
 import org.openplans.tools.tracking.impl.statistics.filters.StandardRoadTrackingFilter;
 
 import com.google.common.base.Objects;

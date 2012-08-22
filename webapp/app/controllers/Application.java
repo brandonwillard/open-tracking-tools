@@ -23,9 +23,9 @@ import models.InferenceInstance;
 import org.openplans.tools.tracking.impl.Simulation;
 import org.openplans.tools.tracking.impl.Simulation.SimulationParameters;
 import org.openplans.tools.tracking.impl.VehicleState.VehicleStateInitialParameters;
-import org.openplans.tools.tracking.impl.VehicleTrackingFilter;
 import org.openplans.tools.tracking.impl.statistics.filters.AbstractVehicleTrackingFilter;
 import org.openplans.tools.tracking.impl.statistics.filters.VehicleTrackingBootstrapFilter;
+import org.openplans.tools.tracking.impl.statistics.filters.VehicleTrackingFilter;
 import org.openplans.tools.tracking.impl.statistics.filters.VehicleTrackingPLFilter;
 
 import play.Logger;

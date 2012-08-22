@@ -14,7 +14,6 @@ import java.util.Set;
 import javax.annotation.Nonnull;
 
 import org.apache.commons.lang.NotImplementedException;
-import org.openplans.tools.tracking.impl.DefaultCountedDataDistribution;
 import org.openplans.tools.tracking.impl.Observation;
 import org.openplans.tools.tracking.impl.VehicleState;
 import org.openplans.tools.tracking.impl.VehicleState.VehicleStateInitialParameters;
@@ -22,7 +21,8 @@ import org.openplans.tools.tracking.impl.graph.InferredEdge;
 import org.openplans.tools.tracking.impl.graph.paths.InferredPath;
 import org.openplans.tools.tracking.impl.graph.paths.InferredPathEntry;
 import org.openplans.tools.tracking.impl.graph.paths.PathEdge;
-import org.openplans.tools.tracking.impl.statistics.EdgeTransitionDistributions;
+import org.openplans.tools.tracking.impl.statistics.DefaultCountedDataDistribution;
+import org.openplans.tools.tracking.impl.statistics.OnOffEdgeTransDirMulti;
 import org.openplans.tools.tracking.impl.util.OtpGraph;
 import org.opentripplanner.routing.edgetype.StreetEdge;
 import org.opentripplanner.routing.graph.Edge;
@@ -137,13 +137,6 @@ public class VehicleTrackingPathSamplerFilterUpdater implements
   @Override
   public DataDistribution<VehicleState> createInitialParticles(
     int numParticles) {
-    /*
-     * Create initial distributions for all snapped edges
-     */
-
-    // final List<StreetEdge> initialEdges = inferredGraph.getNearbyEdges(null)
-    // .getNarratedGraph().snapToGraph(
-    // null, initialObservation.getObsCoords());
 
     final StandardRoadTrackingFilter trackingFilter =
         new StandardRoadTrackingFilter(parameters.getObsVariance(),
@@ -214,7 +207,7 @@ public class VehicleTrackingPathSamplerFilterUpdater implements
   }
 
   public InferredPath traverseEdge(
-    EdgeTransitionDistributions edgeTransDist,
+    OnOffEdgeTransDirMulti edgeTransDist,
     final MultivariateGaussian belief, PathEdge startEdge,
     StandardRoadTrackingFilter movementFilter) {
 
@@ -397,11 +390,6 @@ public class VehicleTrackingPathSamplerFilterUpdater implements
       currentPath.add(currentEdge);
     }
 
-    //    if(!Iterables.getLast(currentPath).isEmptyEdge() && 
-    //          !Iterables.getLast(currentPath).isOnEdge(newBelief.getMean().getElement(0))) {
-    //      Iterables.getLast(currentPath).isOnEdge(newBelief.getMean().getElement(0));
-    //    }
-
     assert (Iterables.getLast(currentPath).isEmptyEdge() || Iterables
         .getLast(currentPath).isOnEdge(
             newBelief.getMean().getElement(0)));
@@ -418,13 +406,6 @@ public class VehicleTrackingPathSamplerFilterUpdater implements
     throw new NotImplementedException();
   }
 
-  /**
-   * The ParticleFilter.Updater interface isn't flexible enough.
-   * 
-   * @param previousParameter
-   * @param obs
-   * @return
-   */
   public VehicleState update(VehicleState previousParameter,
     Observation obs) {
     final MultivariateGaussian currentLocBelief =
@@ -433,40 +414,27 @@ public class VehicleTrackingPathSamplerFilterUpdater implements
         PathEdge.getEdge(previousParameter.getInferredEdge());
 
     /*
-     * Run through the edges, predict movement and reset the belief.
-     */
-    
-    /*
      * TODO FIXME again, a flag for this debug?
      */
     final Random rng = this.threadRandom.get();
     rng.setSeed(rng.nextLong());
 
-    final EdgeTransitionDistributions sampledTransDist =
-        previousParameter.getEdgeTransitionDist().clone();
-    final Vector edgeMotionProbPriorSample =
-        sampledTransDist.getEdgeMotionTransProbPrior()
-            .sample(this.threadRandom.get());
-
-    final Vector freeMotionProbPriorSample =
-        sampledTransDist.getFreeMotionTransProbPrior()
-            .sample(this.threadRandom.get());
-
-    sampledTransDist.getEdgeMotionTransPrior()
-        .setParameters(edgeMotionProbPriorSample);
-    sampledTransDist.getFreeMotionTransPrior()
-        .setParameters(freeMotionProbPriorSample);
-
+    /*
+     * Nothing to update in this filter, besides the sampled path
+     * and state.
+     */
+    final OnOffEdgeTransDirMulti newTransDist = previousParameter.
+        getEdgeTransitionDist().clone();
     final StandardRoadTrackingFilter predictedFilter =
         previousParameter.getMovementFilter().clone();
 
     final InferredPath newPath =
-        traverseEdge(sampledTransDist, currentLocBelief,
+        traverseEdge(newTransDist, currentLocBelief,
             currentPathEdge, predictedFilter);
 
     final VehicleState newState =
         new VehicleState(this.inferredGraph, obs, predictedFilter,
-            currentLocBelief, sampledTransDist, newPath,
+            currentLocBelief, newTransDist, newPath,
             previousParameter);
 
     return newState;

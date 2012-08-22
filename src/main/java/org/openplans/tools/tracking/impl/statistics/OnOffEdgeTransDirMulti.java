@@ -28,9 +28,9 @@ import com.google.common.collect.Lists;
  * @author bwillard
  * 
  */
-public class EdgeTransitionDistributions extends
+public class OnOffEdgeTransDirMulti extends
     AbstractCloneableSerializable implements
-    Comparable<EdgeTransitionDistributions> {
+    Comparable<OnOffEdgeTransDirMulti> {
 
   private static final long serialVersionUID = -8329433263373783485L;
 
@@ -68,7 +68,7 @@ public class EdgeTransitionDistributions extends
   private static final Vector stateOnToOff = VectorFactory
       .getDefault().copyValues(0d, 1d);
 
-  public EdgeTransitionDistributions(OtpGraph graph,
+  public OnOffEdgeTransDirMulti(OtpGraph graph,
     Vector edgeMotionPriorParams, Vector freeMotionPriorParams) {
     this.graph = graph;
     this.setFreeMotionTransProbPrior(new DirichletDistribution(freeMotionPriorParams));
@@ -83,9 +83,9 @@ public class EdgeTransitionDistributions extends
   }
 
   @Override
-  public EdgeTransitionDistributions clone() {
-    final EdgeTransitionDistributions transDist =
-        (EdgeTransitionDistributions) super.clone();
+  public OnOffEdgeTransDirMulti clone() {
+    final OnOffEdgeTransDirMulti transDist =
+        (OnOffEdgeTransDirMulti) super.clone();
     transDist.edgeMotionTransEstimator =
         (MultinomialBayesianEstimator) this.edgeMotionTransEstimator
             .clone();
@@ -101,7 +101,7 @@ public class EdgeTransitionDistributions extends
   }
 
   @Override
-  public int compareTo(EdgeTransitionDistributions o) {
+  public int compareTo(OnOffEdgeTransDirMulti o) {
     final CompareToBuilder comparator = new CompareToBuilder();
     comparator.append(((DenseVector) this.getEdgeMotionTransPrior()
         .getParameters()).getArray(),
@@ -135,8 +135,8 @@ public class EdgeTransitionDistributions extends
     if (getClass() != obj.getClass()) {
       return false;
     }
-    final EdgeTransitionDistributions other =
-        (EdgeTransitionDistributions) obj;
+    final OnOffEdgeTransDirMulti other =
+        (OnOffEdgeTransDirMulti) obj;
     if (getEdgeMotionTransPrior() == null) {
       if (other.getEdgeMotionTransPrior() != null) {
         return false;

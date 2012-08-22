@@ -19,9 +19,7 @@ import javax.annotation.Nonnull;
 import org.openplans.tools.tracking.impl.Observation;
 import org.openplans.tools.tracking.impl.VehicleState;
 import org.openplans.tools.tracking.impl.VehicleState.VehicleStateInitialParameters;
-import org.openplans.tools.tracking.impl.VehicleTrackingFilter;
 import org.openplans.tools.tracking.impl.graph.paths.InferredPath;
-import org.openplans.tools.tracking.impl.statistics.FilterInformation;
 import org.openplans.tools.tracking.impl.util.OtpGraph;
 
 import com.google.common.collect.Maps;

@@ -15,10 +15,11 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Random;
 
+import org.openplans.tools.tracking.impl.WrappedWeightedValue;
+
 import no.uib.cipr.matrix.DenseVector;
 import no.uib.cipr.matrix.UpperSPDDenseMatrix;
 
-import org.openplans.tools.tracking.impl.DefaultCountedDataDistribution;
 
 import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;

@@ -9,11 +9,11 @@ import java.util.List;
 import org.codehaus.jackson.annotate.JsonIgnore;
 import org.codehaus.jackson.map.annotate.JsonSerialize;
 import org.openplans.tools.tracking.impl.VehicleState;
-import org.openplans.tools.tracking.impl.VehicleTrackingFilter;
 import org.openplans.tools.tracking.impl.graph.InferredEdge;
 import org.openplans.tools.tracking.impl.graph.paths.InferredPath;
 import org.openplans.tools.tracking.impl.graph.paths.PathEdge;
-import org.openplans.tools.tracking.impl.statistics.FilterInformation;
+import org.openplans.tools.tracking.impl.statistics.filters.FilterInformation;
+import org.openplans.tools.tracking.impl.statistics.filters.VehicleTrackingFilter;
 
 import api.OsmSegment;
 
