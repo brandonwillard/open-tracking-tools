@@ -110,4 +110,8 @@ public abstract class AbstractVehicleTrackingFilter extends
     prevTime = obs.getTimestamp().getTime();
   }
 
+  @Override
+  public double getLastProcessedTime() {
+    return prevTime;
+  }
 }

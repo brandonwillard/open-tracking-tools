@@ -1,10 +1,12 @@
 package models;
 
+import gov.sandia.cognition.collection.ScalarMap;
 import gov.sandia.cognition.math.MutableDouble;
 import gov.sandia.cognition.math.RingAccumulator;
 import gov.sandia.cognition.statistics.DataDistribution;
 import inference.InferenceResultRecord;
 import inference.InferenceService.INFO_LEVEL;
+import inference.ResultSet.OffRoadPath;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -17,6 +19,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Enumeration;
+import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -146,8 +149,7 @@ public class InferenceInstance {
     updateFilter(obs);
     this.recordsProcessed++;
 
-    final InferenceResultRecord infResult =
-        InferenceResultRecord.createInferenceResultRecord(obs, this);
+    final InferenceResultRecord infResult = InferenceResultRecord.createInferenceResultRecord(obs, this);
 
     if (infoLevel == INFO_LEVEL.SINGLE_RESULT
         && !this.resultRecords.isEmpty())
@@ -185,11 +187,6 @@ public class InferenceInstance {
 
     if (filter == null || postBelief == null) {
 
-//      filter =
-//          new VehicleTrackingBootstrapFilter(obs, inferredGraph,
-//              initialParameters,
-//              infoLevel.compareTo(INFO_LEVEL.DEBUG) >= 0);
-
       Constructor<? extends VehicleTrackingFilter> ctor;
       try {
         ctor = filterType.getConstructor(Observation.class, OtpGraph.class,
@@ -214,6 +211,7 @@ public class InferenceInstance {
 
     } else {
       filter.update(postBelief, obs);
+      
       if (infoLevel.compareTo(INFO_LEVEL.DEBUG) >= 0) {
         final FilterInformation filterInfo =
             filter.getFilterInformation(obs);
@@ -231,6 +229,7 @@ public class InferenceInstance {
 
     if (postBelief != null)
       this.bestState = postBelief.getMaxValueKey();
+    
   }
 
   public static OtpGraph getInferredGraph() {
@@ -239,6 +238,17 @@ public class InferenceInstance {
 
   public Class<? extends VehicleTrackingFilter> getFilterType() {
     return filterType;
+  }
+
+  private Map<VehicleState, List<OffRoadPath>> stateToOffRoadPaths = Maps.newHashMap();
+  
+  public Map<VehicleState, List<OffRoadPath>> getStateToOffRoadPaths() {
+    return stateToOffRoadPaths;
+  }
+
+  public void setStateToOffRoadPaths(
+    Map<VehicleState, List<OffRoadPath>> newMap) {
+    this.stateToOffRoadPaths = newMap;
   }
 
 }

@@ -3,24 +3,92 @@ package inference;
 import gov.sandia.cognition.math.matrix.mtj.DenseMatrix;
 import gov.sandia.cognition.math.matrix.mtj.DenseVector;
 
+import inference.ResultSet.OffRoadPath;
+
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 
 import org.codehaus.jackson.annotate.JsonIgnore;
 import org.codehaus.jackson.map.annotate.JsonSerialize;
+import org.openplans.tools.tracking.impl.Observation;
 import org.openplans.tools.tracking.impl.VehicleState;
 import org.openplans.tools.tracking.impl.graph.InferredEdge;
 import org.openplans.tools.tracking.impl.graph.paths.InferredPath;
 import org.openplans.tools.tracking.impl.graph.paths.PathEdge;
 import org.openplans.tools.tracking.impl.statistics.filters.FilterInformation;
 import org.openplans.tools.tracking.impl.statistics.filters.VehicleTrackingFilter;
+import org.openplans.tools.tracking.impl.util.GeoUtils;
+import org.opentripplanner.routing.graph.Edge;
 
 import api.OsmSegment;
 
+import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.vividsolutions.jts.geom.Coordinate;
 
 public class ResultSet {
+
+  static public class OffRoadPath {
+    private Observation startObs;
+    private Observation endObs;
+    private OsmSegment startEdge;
+    private OsmSegment endEdge;
+    
+    private List<Coordinate> pointsBetween;
+
+    public OffRoadPath() {
+    }
+
+    public OffRoadPath(OffRoadPath last) {
+      this.startEdge = last.startEdge;
+      this.endEdge = last.endEdge;
+      this.startObs = last.startObs;
+      this.endObs = last.endObs;
+      this.pointsBetween = Lists.newArrayList(last.pointsBetween);
+    }
+
+    public Long getStartObsTime() {
+      return startObs != null ? startObs.getTimestamp().getTime() : null;
+    }
+
+    public Long getEndObsTime() {
+      return endObs != null ? endObs.getTimestamp().getTime() : null;
+    }
+
+    public OsmSegment getStartEdge() {
+      return startEdge;
+    }
+
+    public OsmSegment getEndEdge() {
+      return endEdge;
+    }
+
+    public List<Coordinate> getPointsBetween() {
+      return pointsBetween;
+    }
+
+    public void setStartObs(Observation startObs) {
+      this.startObs = startObs;
+    }
+
+    public void setEndObs(Observation endObs) {
+      this.endObs = endObs;
+    }
+
+    public void setStartEdge(OsmSegment startEdge) {
+      this.startEdge = startEdge;
+    }
+
+    public void setEndEdge(OsmSegment endEdge) {
+      this.endEdge = endEdge;
+    }
+
+    public void setPointsBetween(List<Coordinate> pointsBetween) {
+      this.pointsBetween = pointsBetween;
+    }
+    
+  }
 
   static public class EvaluatedPathInfo {
     final List<OsmSegment> pathEdges;
@@ -61,13 +129,16 @@ public class ResultSet {
   static public class InferenceResultSet extends ResultSet {
 
     private final int particleCount;
+    private final List<OffRoadPath> offRoadPaths;
 
-    public InferenceResultSet(ResultSet infResults, int count) {
+    public InferenceResultSet(ResultSet infResults, int count, 
+      List<OffRoadPath> offRoadPaths) {
       super(infResults.state, infResults.filter,
           infResults.meanCoords, infResults.majorAxisCoords,
           infResults.minorAxisCoords, infResults.pathSegments,
           infResults.pathDirection);
       this.particleCount = count;
+      this.offRoadPaths = offRoadPaths;
     }
 
     @JsonSerialize
@@ -75,6 +146,9 @@ public class ResultSet {
       return this.particleCount;
     }
 
+    public List<OffRoadPath> getOffRoadPaths() {
+      return offRoadPaths;
+    }
   }
 
   private final Coordinate meanCoords;
@@ -212,5 +286,6 @@ public class ResultSet {
     return ((DenseVector) state.getBelief().getMean()).getArray()
         .clone();
   }
+
 
 }

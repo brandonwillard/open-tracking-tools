@@ -89,6 +89,32 @@ public class Api extends Controller {
     renderJSON(jsonMapper.writeValueAsString(tmpResult
         .getInfResults().createEvaluatedPaths()));
   }
+  public static void
+      getOffRoadPaths(String vehicleId, int recordNumber)
+          throws JsonGenerationException, JsonMappingException,
+          IOException {
+    final InferenceInstance instance =
+        InferenceService.getInferenceInstance(vehicleId);
+    if (instance == null)
+      renderJSON(jsonMapper.writeValueAsString(null));
+
+    final Collection<InferenceResultRecord> results =
+        instance.getResultRecords();
+    if (results.isEmpty())
+      renderJSON(jsonMapper.writeValueAsString(null));
+
+    final InferenceResultRecord tmpResult =
+        Iterables.get(results, recordNumber, null);
+
+    if (tmpResult == null)
+      error(vehicleId + " result record " + recordNumber
+          + " is out-of-bounds");
+
+    renderJSON(jsonMapper.writeValueAsString(
+        ((inference.ResultSet.InferenceResultSet)
+            tmpResult.getInfResults()).getOffRoadPaths()));
+  }
+
 
   public static OtpGraph getGraph() {
     return graph;

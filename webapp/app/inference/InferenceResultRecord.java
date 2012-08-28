@@ -9,9 +9,11 @@ import gov.sandia.cognition.statistics.DataDistribution;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 import inference.InferenceService.INFO_LEVEL;
 import inference.ResultSet.InferenceResultSet;
+import inference.ResultSet.OffRoadPath;
 
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 
 import models.InferenceInstance;
 
@@ -19,14 +21,20 @@ import org.codehaus.jackson.annotate.JsonIgnore;
 import org.codehaus.jackson.map.annotate.JsonSerialize;
 import org.openplans.tools.tracking.impl.Observation;
 import org.openplans.tools.tracking.impl.VehicleState;
+import org.openplans.tools.tracking.impl.graph.InferredEdge;
 import org.openplans.tools.tracking.impl.graph.paths.InferredPath;
 import org.openplans.tools.tracking.impl.graph.paths.PathEdge;
 import org.openplans.tools.tracking.impl.statistics.DefaultCountedDataDistribution;
 import org.openplans.tools.tracking.impl.statistics.filters.StandardRoadTrackingFilter;
 import org.openplans.tools.tracking.impl.util.GeoUtils;
+import org.opentripplanner.routing.graph.Edge;
+
+import api.OsmSegment;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 
@@ -46,7 +54,8 @@ public class InferenceResultRecord {
 
   private final DataDistribution<VehicleState> resampleDistribution;
 
-  public InferenceResultRecord(long time, Coordinate obsCoords,
+  public InferenceResultRecord(InferenceInstance instance, 
+    long time, Coordinate obsCoords,
     ResultSet actualResults, ResultSet infResults,
     DataDistribution<VehicleState> postDist,
     DataDistribution<VehicleState> priorDist) {
@@ -59,7 +68,8 @@ public class InferenceResultRecord {
     else
       count = 1;
 
-    this.infResults = new InferenceResultSet(infResults, count);
+    this.infResults = new InferenceResultSet(infResults, count, 
+        instance.getStateToOffRoadPaths().get(infResults.state));
     this.observedCoords = obsCoords;
     this.time = Api.sdf.format(new Date(time));
     this.postDistribution = postDist;
@@ -103,12 +113,11 @@ public class InferenceResultRecord {
         null,
         inferenceInstance.getBestState(),
         inferenceInstance.getPostBelief().clone(),
-        //        inferenceInstance.getInfoLevel().compareTo(INFO_LEVEL.DEBUG) >= 0 ? inferenceInstance
-        //            .getPostBelief() : null,
         inferenceInstance.getInfoLevel().compareTo(INFO_LEVEL.DEBUG) >= 0
             ? inferenceInstance.getResampleBelief() : null);
   }
 
+  
   public static InferenceResultRecord createInferenceResultRecord(
     Observation observation, InferenceInstance instance,
     VehicleState actualState, VehicleState inferredState,
@@ -127,16 +136,107 @@ public class InferenceResultRecord {
     if (inferredState != null) {
       infResults =
           processVehicleStateResults(inferredState, instance);
+      updateOffRoadPaths(postDist, instance);
     }
 
     /*
      * XXX distributions are cloned, if given.
      */
-    return new InferenceResultRecord(observation.getTimestamp()
+    return new InferenceResultRecord(instance, observation.getTimestamp()
         .getTime(), observation.getObsCoordsLatLon(), actualResults,
         infResults, postDist != null ? postDist.clone() : null,
         priorDist != null ? priorDist.clone() : null);
 
+  }
+
+  private static synchronized void updateOffRoadPaths(
+    DataDistribution<VehicleState> postDist, InferenceInstance instance) {
+    
+    /*
+     * This map will be our new map; containing only the parent
+     * particles of the next posterior set.
+     */
+    Map<VehicleState, List<OffRoadPath>> newMap = Maps.newHashMap();
+    
+    for (VehicleState state : postDist.getDomain()) {
+      
+      /*
+       * Update current off-road path, if applicable.
+       * We always keep a list, though.
+       */
+      List<OffRoadPath> previousOffRoadPaths = instance.getStateToOffRoadPaths().get(state.getParentState()); 
+      if (previousOffRoadPaths == null) {
+        previousOffRoadPaths = Lists.newArrayList();
+        newMap.put(state, previousOffRoadPaths);
+      } else {
+        /*
+         * Make a copy for this particle.
+         */
+        previousOffRoadPaths = Lists.newArrayList(previousOffRoadPaths);
+      }
+      
+      VehicleState parentState = state.getParentState();
+      if (state.getPath().isEmptyPath()) {
+        if (parentState != null && parentState.getPath().isEmptyPath()) {
+          /*
+           * If this is the case, then we're continuing on an off-road
+           * path, so just add the new mean location.
+           */
+          OffRoadPath previousPath = new OffRoadPath(Iterables.getLast(previousOffRoadPaths)); 
+          previousPath.getPointsBetween().add(GeoUtils.makeCoordinate(
+              state.getMeanLocation()));
+          /*
+           * Replace the last entry
+           */
+          previousOffRoadPaths.remove(previousOffRoadPaths.size() - 1);
+          previousOffRoadPaths.add(previousPath);
+          
+        } else {
+          /*
+           * Newly started off-road path
+           */
+          List<Coordinate> coordList = Lists.newArrayList();
+          coordList.add(GeoUtils.makeCoordinate(
+              state.getMeanLocation()));
+          OffRoadPath newPath = new OffRoadPath();
+          newPath.setStartObs(state.getObservation());
+          
+          InferredEdge parentStateEdge = parentState != null ? parentState.getEdge() : null;
+          newPath.setStartEdge(parentStateEdge != null ? 
+              new OsmSegment(parentStateEdge.getEdgeId(), 
+                  parentStateEdge.getGeometry(), parentStateEdge.getEdge().getName()) : null);
+          newPath.setPointsBetween(coordList);
+          previousOffRoadPaths.add(newPath);
+          
+        }
+        
+      } else if (parentState != null && parentState.getPath().isEmptyPath()){
+        /*
+         * We just finished our off-road path.
+         * There should be a previousPath...
+         */
+        OffRoadPath previousPath = new OffRoadPath(Iterables.getLast(previousOffRoadPaths)); 
+        previousPath.getPointsBetween().add(GeoUtils.makeCoordinate(
+            state.getMeanLocation()));
+        previousPath.setEndEdge(new OsmSegment(state.getEdge().getEdgeId(), 
+                state.getEdge().getGeometry(), state.getEdge().getEdge().getName()));
+        previousPath.setEndObs(state.getObservation());
+        /*
+         * Replace the last entry
+         */
+        previousOffRoadPaths.remove(previousOffRoadPaths.size() - 1);
+        previousOffRoadPaths.add(previousPath);
+        
+      }
+      
+      /*
+       * Finally, update the new map.
+       */
+      newMap.put(state, previousOffRoadPaths);
+    }
+    
+    instance.setStateToOffRoadPaths(newMap);
+    
   }
 
   private static ResultSet processVehicleStateResults(
