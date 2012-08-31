@@ -206,8 +206,8 @@ public class InferenceInstance {
         /*
          * Note: we're not resetting the off-road paths, yet.
          */
-        log.warn(" time diff (" + timeDiff + ") is past update limit (" 
-         + _maxUpdateIntervalCutoff + ".  resetting filter...");
+        log.warn(" time diff (" + timeDiff + "s) is past update limit (" 
+         + _maxUpdateIntervalCutoff + "s).  resetting filter...");
         postBelief = null;
         filter = null;
         return false;
