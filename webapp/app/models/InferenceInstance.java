@@ -5,6 +5,7 @@ import gov.sandia.cognition.math.MutableDouble;
 import gov.sandia.cognition.math.RingAccumulator;
 import gov.sandia.cognition.statistics.DataDistribution;
 import inference.InferenceResultRecord;
+import inference.InferenceService;
 import inference.InferenceService.INFO_LEVEL;
 import inference.ResultSet.OffRoadPath;
 
@@ -58,6 +59,7 @@ public class InferenceInstance {
   public long simSeed = 0l;
 
   public final boolean isSimulation;
+  public boolean isEnabled = true;
 
   private VehicleTrackingFilter<Observation, VehicleState> filter;
 
@@ -73,6 +75,7 @@ public class InferenceInstance {
   public int totalRecords = 0;
 
   private final INFO_LEVEL infoLevel;
+  private static final double _maxUpdateIntervalCutoff = 5d * 60d;
 
   private static OtpGraph inferredGraph = Api.getGraph();
 
@@ -146,6 +149,9 @@ public class InferenceInstance {
 
   synchronized public void update(Observation obs) {
 
+    if (!shouldProcessUpdate(obs))
+      return;
+    
     updateFilter(obs);
     this.recordsProcessed++;
 
@@ -158,9 +164,12 @@ public class InferenceInstance {
     this.resultRecords.add(infResult);
   }
 
-  public void update(VehicleState actualState, Observation obs,
+  synchronized public void update(VehicleState actualState, Observation obs,
     boolean performInference) {
 
+    if (!shouldProcessUpdate(obs))
+      return;
+    
     if (performInference) {
       updateFilter(obs);
     }
@@ -180,6 +189,37 @@ public class InferenceInstance {
     this.resultRecords.add(result);
   }
   
+  /**
+   * We check basic conditions for processing the update and
+   * also consider resetting the filter.
+   * 
+   */
+  private boolean shouldProcessUpdate(Observation obs) {
+    if (filter != null) {
+      final double timeDiff =
+          filter.getLastProcessedTime() == 0 ? 1d
+              : (obs.getTimestamp().getTime() - filter.getLastProcessedTime()) / 1000;
+  
+      if (timeDiff <= 0) {
+        return false;
+      } else if (timeDiff >= _maxUpdateIntervalCutoff) {
+        /*
+         * Note: we're not resetting the off-road paths, yet.
+         */
+        log.warn(" time diff (" + timeDiff + ") is past update limit (" 
+         + _maxUpdateIntervalCutoff + ".  resetting filter...");
+        postBelief = null;
+        filter = null;
+        return false;
+      }
+    }
+    
+    if (!isEnabled || InferenceService.getInferenceInstance(vehicleId) == null)
+      return false;
+    
+    return true;
+  }
+
   synchronized private void updateFilter(Observation obs) {
 
     final Stopwatch watch = new Stopwatch();

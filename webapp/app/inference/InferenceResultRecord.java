@@ -149,7 +149,7 @@ public class InferenceResultRecord {
 
   }
 
-  private static synchronized void updateOffRoadPaths(
+  private static void updateOffRoadPaths(
     DataDistribution<VehicleState> postDist, InferenceInstance instance) {
     
     /*
@@ -158,84 +158,87 @@ public class InferenceResultRecord {
      */
     Map<VehicleState, List<OffRoadPath>> newMap = Maps.newHashMap();
     
-    for (VehicleState state : postDist.getDomain()) {
-      
-      /*
-       * Update current off-road path, if applicable.
-       * We always keep a list, though.
-       */
-      List<OffRoadPath> previousOffRoadPaths = instance.getStateToOffRoadPaths().get(state.getParentState()); 
-      if (previousOffRoadPaths == null) {
-        previousOffRoadPaths = Lists.newArrayList();
-        newMap.put(state, previousOffRoadPaths);
-      } else {
+    synchronized (instance) {
+      for (VehicleState state : postDist.getDomain()) {
+        
         /*
-         * Make a copy for this particle.
+         * Update current off-road path, if applicable.
+         * We always keep a list, though.
          */
-        previousOffRoadPaths = Lists.newArrayList(previousOffRoadPaths);
-      }
-      
-      VehicleState parentState = state.getParentState();
-      if (state.getPath().isEmptyPath()) {
-        if (parentState != null && parentState.getPath().isEmptyPath()) {
+        List<OffRoadPath> previousOffRoadPaths = instance.getStateToOffRoadPaths().get(state.getParentState()); 
+        if (previousOffRoadPaths == null) {
+          previousOffRoadPaths = Lists.newArrayList();
+          newMap.put(state, previousOffRoadPaths);
+        } else {
           /*
-           * If this is the case, then we're continuing on an off-road
-           * path, so just add the new mean location.
+           * Make a copy for this particle.
+           */
+          previousOffRoadPaths = Lists.newArrayList(previousOffRoadPaths);
+        }
+        
+        VehicleState parentState = state.getParentState();
+        if (state.getPath().isEmptyPath()) {
+          if (parentState != null && parentState.getPath().isEmptyPath()) {
+            /*
+             * If this is the case, then we're continuing on an off-road
+             * path, so just add the new mean location.
+             */
+            OffRoadPath previousPath = new OffRoadPath(Iterables.getLast(previousOffRoadPaths)); 
+            previousPath.getPointsBetween().add(GeoUtils.makeCoordinate(
+                state.getMeanLocation()));
+            /*
+             * Replace the last entry
+             */
+            previousOffRoadPaths.remove(previousOffRoadPaths.size() - 1);
+            previousOffRoadPaths.add(previousPath);
+            
+          } else {
+            /*
+             * Newly started off-road path
+             */
+            List<Coordinate> coordList = Lists.newArrayList();
+            coordList.add(GeoUtils.makeCoordinate(
+                state.getMeanLocation()));
+            OffRoadPath newPath = new OffRoadPath();
+            newPath.setStartObs(state.getObservation());
+            
+            InferredEdge parentStateEdge = parentState != null ? parentState.getEdge() : null;
+            newPath.setStartEdge(parentStateEdge != null ? 
+                new OsmSegment(parentStateEdge.getEdgeId(), 
+                    parentStateEdge.getGeometry(), parentStateEdge.getEdge().getName()) : null);
+            newPath.setPointsBetween(coordList);
+            previousOffRoadPaths.add(newPath);
+            
+          }
+          
+        } else if (parentState != null && parentState.getPath().isEmptyPath()){
+          /*
+           * We just finished our off-road path.
+           * There should be a previousPath...
            */
           OffRoadPath previousPath = new OffRoadPath(Iterables.getLast(previousOffRoadPaths)); 
           previousPath.getPointsBetween().add(GeoUtils.makeCoordinate(
               state.getMeanLocation()));
+          previousPath.setEndEdge(new OsmSegment(state.getEdge().getEdgeId(), 
+                  state.getEdge().getGeometry(), state.getEdge().getEdge().getName()));
+          previousPath.setEndObs(state.getObservation());
           /*
            * Replace the last entry
            */
           previousOffRoadPaths.remove(previousOffRoadPaths.size() - 1);
           previousOffRoadPaths.add(previousPath);
           
-        } else {
-          /*
-           * Newly started off-road path
-           */
-          List<Coordinate> coordList = Lists.newArrayList();
-          coordList.add(GeoUtils.makeCoordinate(
-              state.getMeanLocation()));
-          OffRoadPath newPath = new OffRoadPath();
-          newPath.setStartObs(state.getObservation());
-          
-          InferredEdge parentStateEdge = parentState != null ? parentState.getEdge() : null;
-          newPath.setStartEdge(parentStateEdge != null ? 
-              new OsmSegment(parentStateEdge.getEdgeId(), 
-                  parentStateEdge.getGeometry(), parentStateEdge.getEdge().getName()) : null);
-          newPath.setPointsBetween(coordList);
-          previousOffRoadPaths.add(newPath);
-          
         }
         
-      } else if (parentState != null && parentState.getPath().isEmptyPath()){
         /*
-         * We just finished our off-road path.
-         * There should be a previousPath...
+         * Finally, update the new map.
          */
-        OffRoadPath previousPath = new OffRoadPath(Iterables.getLast(previousOffRoadPaths)); 
-        previousPath.getPointsBetween().add(GeoUtils.makeCoordinate(
-            state.getMeanLocation()));
-        previousPath.setEndEdge(new OsmSegment(state.getEdge().getEdgeId(), 
-                state.getEdge().getGeometry(), state.getEdge().getEdge().getName()));
-        previousPath.setEndObs(state.getObservation());
-        /*
-         * Replace the last entry
-         */
-        previousOffRoadPaths.remove(previousOffRoadPaths.size() - 1);
-        previousOffRoadPaths.add(previousPath);
-        
+        newMap.put(state, previousOffRoadPaths);
       }
       
-      /*
-       * Finally, update the new map.
-       */
-      newMap.put(state, previousOffRoadPaths);
-    }
+      instance.setStateToOffRoadPaths(newMap);
     
-    instance.setStateToOffRoadPaths(newMap);
+    }
     
   }
 
