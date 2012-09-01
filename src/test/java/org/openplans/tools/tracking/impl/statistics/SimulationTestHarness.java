@@ -29,7 +29,7 @@ public class SimulationTestHarness {
   private SimulationTestHarness(String graphName, String simName,
     SimulationParameters simParams,
     VehicleTrackingFilter<Observation, VehicleState> filter) {
-    this.graph = new OtpGraph(graphName);
+    this.graph = new OtpGraph(graphName, null);
     this.sim = new Simulation(simName, graph, simParams);
     this.filter = filter;
   }

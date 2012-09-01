@@ -43,7 +43,7 @@ public class Api extends Controller {
       "yyyy-MM-dd hh:mm:ss");
 
   public static OtpGraph graph = new OtpGraph(
-      Play.configuration.getProperty("application.otpGraphPath"));
+      Play.configuration.getProperty("application.otpGraphPath"), null);
 
   public static ObjectMapper jsonMapper = new ObjectMapper();
 

@@ -3,6 +3,12 @@ package org.openplans.tools.tracking.impl.util;
 import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
@@ -19,6 +25,7 @@ import org.openplans.tools.tracking.impl.graph.InferredEdge;
 import org.openplans.tools.tracking.impl.graph.paths.InferredPath;
 import org.openplans.tools.tracking.impl.graph.paths.PathEdge;
 import org.openplans.tools.tracking.impl.graph.paths.algorithms.MultiDestinationAStar;
+import org.openplans.tools.tracking.impl.statistics.DataCube;
 import org.openplans.tools.tracking.impl.statistics.filters.StandardRoadTrackingFilter;
 import org.opentripplanner.common.geometry.DistanceLibrary;
 import org.opentripplanner.routing.core.RoutingRequest;
@@ -62,6 +69,8 @@ public class OtpGraph {
     private final Coordinate startCoord;
     private final Coordinate endCoord;
     private final double distanceToTravel;
+    
+   
 
     public PathKey(VehicleState state, Coordinate start,
       Coordinate end, double distance) {
@@ -72,6 +81,7 @@ public class OtpGraph {
       this.startCoord = start;
       this.endCoord = end;
       this.distanceToTravel = distance;
+     
     }
 
     @Override
@@ -118,6 +128,8 @@ public class OtpGraph {
     public VehicleState getState() {
       return state;
     }
+    
+ 
 
     @Override
     public int hashCode() {
@@ -236,8 +248,10 @@ public class OtpGraph {
               return computeUniquePaths(key);
             }
           });
+  
+  private final DataCube dc;
 
-  public OtpGraph(String path) {
+  public OtpGraph(String path, String dcPath) {
     log.info("Loading OTP graph...");
     log.info("Using BLAS: " + BLAS.getInstance().getClass().getName());
     gs = new GraphServiceImpl();
@@ -259,6 +273,12 @@ public class OtpGraph {
     createIndices(baseGraph, baseEdgeIndex, null, geomEdgeMap);
     createIndices(turnGraph, turnEdgeIndex, turnVertexIndex, null);
 
+    if(dcPath == null)
+    	dc = new DataCube();
+    else
+    	dc = DataCube.read(new File(dcPath));
+    	
+    
     log.info("Graph loaded..");
   }
 
@@ -703,6 +723,16 @@ public class OtpGraph {
       }
     }
     paths.removeAll(toRemove);
+  }
+
+  public DataCube getDataCube()
+  {
+  	return this.dc;
+  }
+  
+  public void writeDataCube(File outFile)
+  {
+	  DataCube.write(this.dc, outFile);
   }
 
 }

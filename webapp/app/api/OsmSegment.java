@@ -10,7 +10,7 @@ import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryFactory;
 
 public class OsmSegment {
-  private final static double OFFSET = 8;
+  private final static double OFFSET = 2;
   private static GeometryFactory gf = new GeometryFactory();
     
   private final int id;

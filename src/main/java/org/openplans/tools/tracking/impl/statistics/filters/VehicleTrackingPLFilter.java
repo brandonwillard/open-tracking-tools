@@ -7,6 +7,7 @@ import gov.sandia.cognition.util.DefaultPair;
 import gov.sandia.cognition.util.Pair;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -23,6 +24,7 @@ import org.openplans.tools.tracking.impl.graph.paths.InferredPath;
 import org.openplans.tools.tracking.impl.graph.paths.InferredPath.EdgePredictiveResults;
 import org.openplans.tools.tracking.impl.graph.paths.InferredPathEntry;
 import org.openplans.tools.tracking.impl.graph.paths.PathEdge;
+import org.openplans.tools.tracking.impl.statistics.DataCube;
 import org.openplans.tools.tracking.impl.statistics.DefaultCountedDataDistribution;
 import org.openplans.tools.tracking.impl.statistics.OnOffEdgeTransDirMulti;
 import org.openplans.tools.tracking.impl.statistics.StatisticsUtil;
@@ -207,11 +209,21 @@ public class VehicleTrackingPLFilter extends
               edge.getInferredEdge());
 
         if (!edge.isEmptyEdge()) {
+        	
           edge.getInferredEdge()
               .getVelocityEstimator()
               .update(
                   edge.getInferredEdge().getVelocityPrecisionDist(),
                   Math.abs(sampledBelief.getMean().getElement(1)));
+          
+          HashMap<String, Integer> attributes = new HashMap<String, Integer>();
+          
+          Integer interval = Math.round(((obs.getTimestamp().getHours() * 60) + obs.getTimestamp().getMinutes()) / DataCube.INTERVAL);
+          
+          attributes.put("interval", interval);
+          attributes.put("edge", edge.getEdge().getEdgeId());
+          
+          inferredGraph.getDataCube().store(Math.abs(sampledBelief.getMean().getElement(1)), attributes);
         }
 
         if (edge.equals(actualPosteriorEdge))
