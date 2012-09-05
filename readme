@@ -1,5 +1,5 @@
 To build the graph, you need OpenTripPlanner's graph builder and the following command:
- java -cp path/to/openplans-tracking-tools.jar:opentripplanner-graph-builder/target/graph-builder.jar org.opentripplanner.graph_builder.GraphBuilderMain cebu-osm.xml
+ java -Xmx2048m -cp path/to/openplans-tracking-tools.jar:opentripplanner-graph-builder/target/graph-builder.jar org.opentripplanner.graph_builder.GraphBuilderMain cebu-osm.xml
 
 JProfiler settings:
  Start Profiling From Classes:
