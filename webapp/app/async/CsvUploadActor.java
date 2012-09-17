@@ -148,8 +148,8 @@ public class CsvUploadActor extends UntypedActor {
             vehicleIds.add(vehicleId);
 
             final Observation obs =
-                Observation.createObservation(vehicleId, line[1],
-                    line[5], line[7], line[10], null, null);
+                Observation.createObservation(vehicleId, line[6],
+                    line[4], line[5], line[7], null, null);
             observations.add(obs);
 
           } catch (final TimeOrderException ex) {
