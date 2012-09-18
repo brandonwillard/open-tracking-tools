@@ -1,5 +1,7 @@
 package org.openplans.tools.tracking.impl.util;
 
+import java.awt.geom.Point2D;
+
 import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.math.matrix.VectorFactory;
 
@@ -14,6 +16,10 @@ import org.opengis.referencing.operation.TransformException;
 
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Point;
+
+import com.jhlabs.map.proj.Projection;
+import com.jhlabs.map.proj.ProjectionFactory;
+
 
 public class GeoUtils {
 
@@ -95,75 +101,77 @@ public class GeoUtils {
 
       };
 
-  public static Coordinate convertToEuclidean(Coordinate latlon) {
-    final Coordinate converted = new Coordinate();
+  public static ProjectedCoordinate convertToEuclidean(Coordinate latlon) {
 
-    try {
-      /*
-       * CRS is lon-lat order
-       */
-      final Coordinate lonlat = reverseCoordinates(latlon);
-      JTS.transform(lonlat, converted, getCRSTransform());
-    } catch (final NoninvertibleTransformException e) {
-      e.printStackTrace();
-    } catch (final TransformException e) {
-      e.printStackTrace();
-    }
+    String[] spec = new String[5];
+    final int utmZone = GeoUtils.getUTMZoneForLongitude(latlon.y);
+    spec[0] = "+proj=utm";
+    spec[1] = "+zone=" + utmZone;
+    spec[2] = "+ellps=clrk66";
+    spec[3] = "+units=m";
+    spec[4] = "+no_defs";
+    Projection projection = ProjectionFactory.fromPROJ4Specification(spec);
+    Point2D.Double from = new Point2D.Double(latlon.y, latlon.x);
+    Point2D.Double to = new Point2D.Double();
+    to = projection.transform(from, to);
 
-    return converted;
+    return new ProjectedCoordinate(projection, utmZone, to);
   }
 
-  public static Coordinate convertToEuclidean(Vector vec) {
+  public static ProjectedCoordinate convertToEuclidean(Vector vec) {
     return convertToEuclidean(new Coordinate(vec.getElement(0),
         vec.getElement(1)));
   }
 
-  public static Coordinate convertToLatLon(Coordinate xy) {
+  public static Coordinate convertToLatLon(ProjectedCoordinate xy) {
     final Coordinate converted = new Coordinate();
-    try {
-      JTS.transform(xy, converted, getCRSTransform().inverse());
-    } catch (final NoninvertibleTransformException e) {
-      e.printStackTrace();
-    } catch (final TransformException e) {
-      e.printStackTrace();
-    }
+    Point2D.Double from = new Point2D.Double(xy.x, xy.y);
+    Point2D.Double to = new Point2D.Double();
+    to = xy.getProjection().inverseTransform(from, to);
 
     return new Coordinate(converted.y, converted.x);
   }
 
-  public static Coordinate convertToLatLon(Vector vec) {
-    return convertToLatLon(new Coordinate(vec.getElement(0),
-        vec.getElement(1)));
+  public static Coordinate convertToLatLon(Point2D.Double point, int zone) {
+    String[] spec = new String[5];
+    spec[0] = "+proj=utm";
+    spec[1] = "+zone=" + zone;
+    spec[2] = "+ellps=clrk66";
+    spec[3] = "+units=m";
+    spec[4] = "+no_defs";
+    Projection projection = ProjectionFactory.fromPROJ4Specification(spec);
+    return convertToLatLon(new ProjectedCoordinate(projection, zone, point));
   }
-
-  public static Coordinate convertToLonLat(Coordinate xy) {
-    final Coordinate converted = new Coordinate();
-    try {
-      JTS.transform(xy, converted, getCRSTransform().inverse());
-    } catch (final NoninvertibleTransformException e) {
-      e.printStackTrace();
-    } catch (final TransformException e) {
-      e.printStackTrace();
-    }
-
-    return new Coordinate(converted.x, converted.y);
+  
+  public static Coordinate convertToLatLon(Vector vec, ProjectedCoordinate projCoord) {
+    final Point2D.Double point = new Point2D.Double(vec.getElement(0),
+        vec.getElement(1));
+    return convertToLatLon(new ProjectedCoordinate(projCoord.getProjection(), 
+        projCoord.getUtmZone(), point));
   }
-
-  public static Coordinate convertToLonLat(Vector vec) {
-    final Coordinate converted = new Coordinate();
-    try {
-      JTS.transform(
-          new Coordinate(vec.getElement(0), vec.getElement(1)),
-          converted, getCRSTransform().inverse());
-    } catch (final NoninvertibleTransformException e) {
-      e.printStackTrace();
-    } catch (final TransformException e) {
-      e.printStackTrace();
-    }
-
-    return converted;
+  
+  public static Coordinate convertToLatLon(Vector vec, Projection projection, int zone) {
+    final Point2D.Double point = new Point2D.Double(vec.getElement(0),
+        vec.getElement(1));
+    return convertToLatLon(new ProjectedCoordinate(projection, zone, point));
   }
+  
+  /*
+   * Taken from OneBusAway's UTMLibrary class
+   */
+  public static int getUTMZoneForLongitude(double lon) {
 
+    if (lon < -180 || lon > 180)
+      throw new IllegalArgumentException(
+          "Coordinates not within UTM zone limits");
+
+    int lonZone = (int) ((lon + 180) / 6);
+
+    if (lonZone == 60)
+      lonZone--;
+    return lonZone + 1;
+  }
+  
   public static Object getCoordinates(Vector meanLocation) {
     return new Coordinate(meanLocation.getElement(0),
         meanLocation.getElement(1));
@@ -195,27 +203,6 @@ public class GeoUtils {
   public static Vector getVector(Coordinate coord) {
     return VectorFactory.getDefault()
         .createVector2D(coord.x, coord.y);
-  }
-
-  public static boolean isInLatLonCoords(Coordinate rawCoords) {
-    try {
-      JTS.checkCoordinatesRange(
-          JTS.toGeometry(JTS.toDirectPosition(rawCoords,
-              getLatLonCRS()).getDirectPosition()), getLatLonCRS());
-      return true;
-    } catch (final PointOutsideEnvelopeException e) {
-      return false;
-    }
-  }
-
-  public static boolean isInProjCoords(Coordinate rawCoords) {
-    try {
-      JTS.checkCoordinatesRange(JTS.toGeometry(JTS.toDirectPosition(
-          rawCoords, getProjCRS()).getDirectPosition()), getProjCRS());
-      return true;
-    } catch (final PointOutsideEnvelopeException e) {
-      return false;
-    }
   }
 
   public static Point lonlatToGeometry(Coordinate lonlat) {

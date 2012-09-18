@@ -10,6 +10,7 @@ import java.util.Map;
 
 import org.opengis.referencing.operation.TransformException;
 import org.openplans.tools.tracking.impl.util.GeoUtils;
+import org.openplans.tools.tracking.impl.util.ProjectedCoordinate;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ComparisonChain;
@@ -21,7 +22,7 @@ public class Observation implements Comparable<Observation> {
   private final String vehicleId;
   private final Date timestamp;
   private final Coordinate obsCoords;
-  private final Coordinate obsPoint;
+  private final ProjectedCoordinate obsPoint;
   private final Vector projPoint;
 
   private final Double velocity;
@@ -41,7 +42,7 @@ public class Observation implements Comparable<Observation> {
       "yyyy-MM-dd hh:mm:ss");
 
   private Observation(String vehicleId, Date timestamp,
-    Coordinate obsCoords, Coordinate obsPoint, Double velocity,
+    Coordinate obsCoords, ProjectedCoordinate obsPoint, Double velocity,
     Double heading, Double accuracy, Observation prevObs,
     int recordNumber) {
     this.recordNumber = recordNumber;
@@ -106,7 +107,7 @@ public class Observation implements Comparable<Observation> {
     return obsCoords;
   }
 
-  public Coordinate getObsPoint() {
+  public ProjectedCoordinate getObsPoint() {
     return obsPoint;
   }
 
@@ -176,7 +177,7 @@ public class Observation implements Comparable<Observation> {
     String vehicleId, Date time, Coordinate obsCoords,
     Double velocity, Double heading, Double accuracy)
       throws TimeOrderException {
-    final Coordinate obsPoint =
+    final ProjectedCoordinate obsPoint =
         GeoUtils.convertToEuclidean(obsCoords);
 
     final Observation prevObs = vehiclesToRecords.get(vehicleId);
@@ -217,7 +218,6 @@ public class Observation implements Comparable<Observation> {
     final double lat = Double.parseDouble(latStr);
     final double lon = Double.parseDouble(lonStr);
     final Coordinate obsCoords = new Coordinate(lat, lon);
-    Preconditions.checkArgument(GeoUtils.isInLatLonCoords(obsCoords));
 
     final Double velocityd =
         velocity != null ? Double.parseDouble(velocity) : null;

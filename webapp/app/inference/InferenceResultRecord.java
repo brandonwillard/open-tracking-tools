@@ -117,12 +117,20 @@ public class InferenceResultRecord {
             ? inferenceInstance.getResampleBelief() : null);
   }
 
-  
   public static InferenceResultRecord createInferenceResultRecord(
     Observation observation, InferenceInstance instance,
     VehicleState actualState, VehicleState inferredState,
     DataDistribution<VehicleState> postDist,
     DataDistribution<VehicleState> priorDist) {
+    return createInferenceResultRecord(observation, instance, actualState, 
+        inferredState, postDist, priorDist, true);
+  }
+  
+  public static InferenceResultRecord createInferenceResultRecord(
+    Observation observation, InferenceInstance instance,
+    VehicleState actualState, VehicleState inferredState,
+    DataDistribution<VehicleState> postDist,
+    DataDistribution<VehicleState> priorDist, boolean updateOffRoad) {
 
     Preconditions.checkNotNull(observation);
 
@@ -136,7 +144,9 @@ public class InferenceResultRecord {
     if (inferredState != null) {
       infResults =
           processVehicleStateResults(inferredState, instance);
-      updateOffRoadPaths(postDist, instance);
+      
+      if (updateOffRoad)
+        updateOffRoadPaths(postDist, instance);
     }
 
     /*
@@ -159,6 +169,12 @@ public class InferenceResultRecord {
     Map<VehicleState, List<OffRoadPath>> newMap = Maps.newHashMap();
     
     synchronized (instance) {
+      
+      // FIXME this shouldn't be true!
+      if (postDist == null) {
+        return;
+      }
+      
       for (VehicleState state : postDist.getDomain()) {
         
         /*
@@ -178,7 +194,9 @@ public class InferenceResultRecord {
         
         VehicleState parentState = state.getParentState();
         if (state.getPath().isEmptyPath()) {
-          if (parentState != null && parentState.getPath().isEmptyPath()) {
+          if (parentState != null && parentState.getPath().isEmptyPath()
+              // FIXME below shouldn't be true!
+              && !previousOffRoadPaths.isEmpty()) {
             /*
              * If this is the case, then we're continuing on an off-road
              * path, so just add the new mean location.

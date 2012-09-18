@@ -7,6 +7,7 @@ import gov.sandia.cognition.statistics.DataDistribution;
 import inference.InferenceResultRecord;
 import inference.InferenceService;
 
+import java.awt.geom.Point2D;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Collection;
@@ -25,6 +26,7 @@ import org.openplans.tools.tracking.impl.VehicleStatePerformanceResult;
 import org.openplans.tools.tracking.impl.VehicleTrackingPerformanceEvaluator;
 import org.openplans.tools.tracking.impl.util.GeoUtils;
 import org.openplans.tools.tracking.impl.util.OtpGraph;
+import org.openplans.tools.tracking.impl.util.ProjectedCoordinate;
 import org.opentripplanner.routing.graph.Edge;
 
 import play.Logger;
@@ -47,22 +49,20 @@ public class Api extends Controller {
 
   public static ObjectMapper jsonMapper = new ObjectMapper();
 
-  public static void convertToLatLon(String x, String y)
+  public static void convertToLatLon(String x, String y, Integer zone)
       throws JsonGenerationException, JsonMappingException,
       IOException {
 
-    final Coordinate rawCoords =
-        new Coordinate(Double.parseDouble(x), Double.parseDouble(y));
+    final Point2D.Double rawCoords =
+        new Point2D.Double(Double.parseDouble(x), Double.parseDouble(y));
 
-    Coordinate coords;
-    // if (GeoUtils.isInLatLonCoords(rawCoords))
-    // coords = rawCoords;
-    // else if (GeoUtils.isInProjCoords(rawCoords))
-    coords = GeoUtils.convertToLatLon(rawCoords);
-    // else
-    // coords = null;
+    Coordinate coords = GeoUtils.convertToLatLon(rawCoords, zone);
+    Map<String, Object> jsonResults = Maps.newHashMap();
+    jsonResults.put("x", coords.x);
+    jsonResults.put("y", coords.y);
+    jsonResults.put("utmZone", zone);
 
-    renderJSON(jsonMapper.writeValueAsString(coords));
+    renderJSON(jsonMapper.writeValueAsString(jsonResults));
   }
 
   public static void
@@ -332,7 +332,7 @@ public class Api extends Controller {
                   infState.getObservation(), instance, actualState,
                   infState, 
                   !isPrior ? belief : null, 
-                  isPrior ? belief : null);
+                  isPrior ? belief : null, false);
           results.add(result);
         }
       } else {
@@ -350,7 +350,7 @@ public class Api extends Controller {
         final InferenceResultRecord result =
             InferenceResultRecord.createInferenceResultRecord(
                 infState.getObservation(), instance, actualState,
-                infState, null, null);
+                infState, null, null, false);
         results.add(result);
       }
     }
@@ -365,7 +365,7 @@ public class Api extends Controller {
           parent =
               InferenceResultRecord.createInferenceResultRecord(
                   parentState.getObservation(), instance, null,
-                  parentState, null, null);
+                  parentState, null, null, false);
         } else {
           parent = null;
         }

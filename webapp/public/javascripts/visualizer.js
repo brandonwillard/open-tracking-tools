@@ -191,8 +191,8 @@ function drawCoords(lat, lon, popupMessage, pan, justMarker, color, opacity) {
   return marker;
 }
 
-function drawProjectedCoords(x, y, popupMessage, pan) {
-  var latLon = convertToLatLon(new Proj4js.Point(x, y));
+function drawProjectedCoords(x, y, zone, popupMessage, pan) {
+  var latLon = convertToLatLon(new Proj4js.Point(x, y), zone);
   var marker = drawCoords(latLon.lat, latLon.lng, popupMessage, pan);
   map.invalidateSize();
 
@@ -312,8 +312,27 @@ Proj4js.defs["EPSG:2335"] = "+proj=tmerc +lat_0=0 +lon_0=123 +k=1 +x_0=21500000 
 var dest = new Proj4js.Proj("EPSG:4326");
 var source = new Proj4js.Proj("EPSG:2335");
 
-function convertToLatLon(srcPoint) {
+function truncate(_value) {
+  if (_value<0) 
+    return Math.ceil(_value);
+  else 
+    return Math.floor(_value);
+}
+
+function getUTMzone(lon) {
+  if (lon < -180 || lon > 180)
+    return null;
+
+  var lonZone = truncate((lon + 180) / 6);
+
+  if (lonZone == 60)
+    lonZone--;
+  return lonZone + 1;  
+}
+
+function convertToLatLon(srcPoint, zone) {
   var point = new Proj4js.Point(srcPoint.x, srcPoint.y);
+  var source = new Proj4js.Proj("+proj=utm +zone=" + zone + " +ellps=clrk66 +units=m +no_defs");
   Proj4js.transform(source, dest, point);
   return new L.LatLng(point.y, point.x);
 }
