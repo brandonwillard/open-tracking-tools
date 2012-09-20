@@ -15,6 +15,8 @@ import org.opengis.referencing.operation.NoninvertibleTransformException;
 import org.opengis.referencing.operation.TransformException;
 
 import com.vividsolutions.jts.geom.Coordinate;
+import com.vividsolutions.jts.geom.CoordinateFilter;
+import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.Point;
 
 import com.jhlabs.map.proj.Projection;
@@ -22,85 +24,23 @@ import com.jhlabs.map.proj.ProjectionFactory;
 
 
 public class GeoUtils {
-
-  public static class GeoSetup {
-
-    final CoordinateReferenceSystem mapCRS;
-    final CoordinateReferenceSystem dataCRS;
-    final MathTransform transform;
-
-    public GeoSetup(CoordinateReferenceSystem mapCRS,
-      CoordinateReferenceSystem dataCRS, MathTransform transform) {
-      this.mapCRS = mapCRS;
-      this.dataCRS = dataCRS;
-      this.transform = transform;
+  
+  /**
+   * From http://gis.stackexchange.com/questions/28986/geotoolkit-conversion-from-lat-long-to-utm
+   */
+  public static int getEPSGCodefromUTS(double lat, int zone) {
+    // define base EPSG code value of all UTM zones;
+    int epsg_code = 32600;
+    // add 100 for all zones in southern hemisphere
+    if (lat < 0) {
+       epsg_code += 100;
     }
-
-    public CoordinateReferenceSystem getLatLonCRS() {
-      return dataCRS;
-    }
-
-    public CoordinateReferenceSystem getProjCRS() {
-      return mapCRS;
-    }
-
-    public MathTransform getTransform() {
-      return transform;
-    }
-
+    // finally, add zone number to code
+    epsg_code += zone;  
+    
+    return epsg_code;
   }
-
-  public static ThreadLocal<GeoSetup> geoData =
-      new ThreadLocal<GeoSetup>() {
-
-        @Override
-        public GeoSetup get() {
-          return super.get();
-        }
-
-        @Override
-        protected GeoSetup initialValue() {
-          System.setProperty("org.geotools.referencing.forceXY",
-              "true");
-          try {
-            // EPSG:4326 -> WGS84
-            // EPSG:3785 is web mercator
-            final String googleWebMercatorCode = "EPSG:4326";
-
-            // Projected CRS
-            // CRS code: 3785
-            final String cartesianCode = "EPSG:4499";
-
-            // UTM zone 51N
-            // final String cartesianCode = "EPSG:3829";
-
-            final CRSAuthorityFactory crsAuthorityFactory =
-                CRS.getAuthorityFactory(true);
-
-            final CoordinateReferenceSystem mapCRS =
-                crsAuthorityFactory
-                    .createCoordinateReferenceSystem(googleWebMercatorCode);
-
-            final CoordinateReferenceSystem dataCRS =
-                crsAuthorityFactory
-                    .createCoordinateReferenceSystem(cartesianCode);
-
-            final boolean lenient = true; // allow for some error due to different
-                                          // datums
-            final MathTransform transform =
-                CRS.findMathTransform(mapCRS, dataCRS, lenient);
-
-            return new GeoSetup(mapCRS, dataCRS, transform);
-
-          } catch (final Exception e) {
-            e.printStackTrace();
-          }
-
-          return null;
-        }
-
-      };
-
+  
   public static ProjectedCoordinate convertToEuclidean(Coordinate latlon) {
 
     String[] spec = new String[5];
@@ -124,15 +64,14 @@ public class GeoUtils {
   }
 
   public static Coordinate convertToLatLon(ProjectedCoordinate xy) {
-    final Coordinate converted = new Coordinate();
     Point2D.Double from = new Point2D.Double(xy.x, xy.y);
     Point2D.Double to = new Point2D.Double();
     to = xy.getProjection().inverseTransform(from, to);
 
-    return new Coordinate(converted.y, converted.x);
+    return new Coordinate(to.y, to.x);
   }
 
-  public static Coordinate convertToLatLon(Point2D.Double point, int zone) {
+  public static Projection getProjection(int zone) {
     String[] spec = new String[5];
     spec[0] = "+proj=utm";
     spec[1] = "+zone=" + zone;
@@ -140,7 +79,11 @@ public class GeoUtils {
     spec[3] = "+units=m";
     spec[4] = "+no_defs";
     Projection projection = ProjectionFactory.fromPROJ4Specification(spec);
-    return convertToLatLon(new ProjectedCoordinate(projection, zone, point));
+    return projection;
+  }
+  
+  public static Coordinate convertToLatLon(Point2D.Double point, int zone) {
+    return convertToLatLon(new ProjectedCoordinate(getProjection(zone), zone, point));
   }
   
   public static Coordinate convertToLatLon(Vector vec, ProjectedCoordinate projCoord) {
@@ -177,10 +120,6 @@ public class GeoUtils {
         meanLocation.getElement(1));
   }
 
-  public static MathTransform getCRSTransform() {
-    return geoData.get().getTransform();
-  }
-
   public static Vector getEuclideanVectorFromLatLon(
     Coordinate coordinate) {
     final Coordinate resCoord = convertToEuclidean(coordinate);
@@ -188,27 +127,14 @@ public class GeoUtils {
         resCoord.y);
   }
 
-  public static CoordinateReferenceSystem getLatLonCRS() {
-    return geoData.get().getLatLonCRS();
-  }
 
   public static double getMetersInAngleDegrees(double distance) {
     return distance / (Math.PI / 180d) / 6378137d;
   }
 
-  public static CoordinateReferenceSystem getProjCRS() {
-    return geoData.get().getProjCRS();
-  }
-
   public static Vector getVector(Coordinate coord) {
     return VectorFactory.getDefault()
         .createVector2D(coord.x, coord.y);
-  }
-
-  public static Point lonlatToGeometry(Coordinate lonlat) {
-    return JTS
-        .toGeometry(JTS.toDirectPosition(lonlat, getLatLonCRS())
-            .getDirectPosition());
   }
 
   public static Coordinate makeCoordinate(Vector vec) {
@@ -217,5 +143,50 @@ public class GeoUtils {
 
   public static Coordinate reverseCoordinates(Coordinate startCoord) {
     return new Coordinate(startCoord.y, startCoord.x);
+  }
+  
+  /**
+   * Finds a UTM projection and applies it to all coordinates of the
+   * given geom.
+   * @param orig
+   * @return
+   */
+
+  public static Geometry projectLonLatGeom(Geometry orig) {
+    // TODO FIXME XXX: what about when the geoms cross zones?
+    final Geometry geom = (Geometry)orig.clone(); 
+    geom.apply(new CoordinateFilter() {
+      @Override
+      public void filter(Coordinate coord) {
+        final ProjectedCoordinate converted = GeoUtils.convertToEuclidean(
+           GeoUtils.reverseCoordinates(coord));
+        coord.setCoordinate(converted);
+      }
+    });
+    
+    geom.geometryChanged();
+    return geom;
+  }
+  
+  /**
+   * Inverts a geometry's projection.
+   * @param orig
+   * @param projection
+   * @return
+   */
+  public static Geometry invertGeom(Geometry orig, final Projection projection) {
+    // TODO FIXME XXX: what about when the geoms cross zones?
+    final Geometry geom = (Geometry)orig.clone(); 
+    geom.apply(new CoordinateFilter() {
+      @Override
+      public void filter(Coordinate coord) {
+        final Point2D.Double from = new Point2D.Double(coord.x, coord.y); 
+        Point2D.Double to = new Point2D.Double(); 
+        to = projection.inverseTransform(from, to);
+        coord.setCoordinate(new Coordinate(to.x, to.y));
+      }
+    });
+    geom.geometryChanged();
+    return geom;
   }
 }

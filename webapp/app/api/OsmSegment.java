@@ -58,7 +58,9 @@ public class OsmSegment {
           newCoords[i+1] = c1; //will get overwritten except at last iteration
       }
       
-      return gf.createLineString(newCoords);
+      final Geometry newGeom = gf.createLineString(newCoords);
+      newGeom.setUserData(g.getUserData());
+      return newGeom;
   }
 
 @JsonSerialize

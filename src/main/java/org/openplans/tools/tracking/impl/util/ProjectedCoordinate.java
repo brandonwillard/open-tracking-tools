@@ -2,6 +2,8 @@ package org.openplans.tools.tracking.impl.util;
 
 import java.awt.geom.Point2D;
 
+import org.codehaus.jackson.annotate.JsonIgnore;
+
 import com.jhlabs.map.proj.Projection;
 import com.vividsolutions.jts.geom.Coordinate;
 
@@ -19,6 +21,7 @@ public class ProjectedCoordinate extends Coordinate {
     this.y = coords.y;
   }
 
+  @JsonIgnore
   public Projection getProjection() {
     return projection;
   }

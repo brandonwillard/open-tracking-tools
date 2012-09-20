@@ -15,6 +15,9 @@
 
 package utils;
 
+import com.jhlabs.map.proj.Projection;
+import com.jhlabs.map.proj.ProjectionFactory;
+
 import java.io.IOException;
 
 import org.codehaus.jackson.JsonGenerator;
@@ -49,18 +52,10 @@ public class GeoJSONSerializer extends JsonSerializer<Geometry> {
     }
 
     final GeometryJSON json = new GeometryJSON();
-    MathTransform transform;
-    try {
-      transform = GeoUtils.getCRSTransform().inverse();
-      final Geometry transformed = JTS.transform(value, transform);
-      jgen.writeRawValue(json.toString(transformed));
+    final Integer zone = (Integer)value.getUserData();
+    Projection transform = GeoUtils.getProjection(zone);
+    final Geometry transformed = GeoUtils.invertGeom(value, transform);
+    jgen.writeRawValue(json.toString(transformed));
 
-    } catch (final NoninvertibleTransformException e) {
-      throw new RuntimeException(e);
-    } catch (final MismatchedDimensionException e) {
-      throw new RuntimeException(e);
-    } catch (final TransformException e) {
-      throw new RuntimeException(e);
-    }
   }
 }

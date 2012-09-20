@@ -1,6 +1,5 @@
 package org.openplans.tools.tracking.impl.graph;
 
-import static org.openplans.tools.tracking.impl.util.GeoUtils.getCRSTransform;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
@@ -9,10 +8,8 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 
-import org.geotools.geometry.jts.JTS;
-import org.opengis.referencing.operation.MathTransform;
-import org.opengis.referencing.operation.NoninvertibleTransformException;
-import org.opengis.referencing.operation.TransformException;
+import org.openplans.tools.tracking.impl.util.GeoUtils;
+import org.openplans.tools.tracking.impl.util.ProjectedCoordinate;
 import org.opentripplanner.graph_builder.services.GraphBuilder;
 import org.opentripplanner.routing.edgetype.PlainStreetEdge;
 import org.opentripplanner.routing.graph.AbstractVertex;
@@ -21,6 +18,7 @@ import org.opentripplanner.routing.graph.Graph;
 import org.opentripplanner.routing.graph.Vertex;
 
 import com.vividsolutions.jts.geom.Coordinate;
+import com.vividsolutions.jts.geom.CoordinateFilter;
 import com.vividsolutions.jts.geom.Geometry;
 
 /**
@@ -54,14 +52,13 @@ public class ReprojectCoords implements GraphBuilder {
     graph = graph.getService(BaseGraph.class).getBaseGraph();
     graph
         .setVertexComparatorFactory(new SimpleVertexComparatorFactory());
-    final MathTransform transform = getCRSTransform();
+    
     try {
       for (final Vertex v : graph.getVertices()) {
         final AbstractVertex abv = ((AbstractVertex) v);
-        final Coordinate converted = new Coordinate();
-
-        // reversed coord
-        JTS.transform(abv.getCoordinate(), converted, transform);
+        final ProjectedCoordinate converted = GeoUtils.convertToEuclidean(
+            GeoUtils.reverseCoordinates(abv.getCoordinate()));
+        
         xfield.set(abv, converted.x);
         yfield.set(abv, converted.y);
         final ArrayList<Edge> toRemove = new ArrayList<Edge>();
@@ -71,7 +68,14 @@ public class ReprojectCoords implements GraphBuilder {
             toRemove.add(e);
             continue;
           }
-          final Geometry geom = JTS.transform(orig, transform);
+          final Geometry geom = GeoUtils.projectLonLatGeom(orig);
+          
+           // XXX: sets the user data in the geom object to the projection object
+          final ProjectedCoordinate tmpConv = GeoUtils.convertToEuclidean(
+             GeoUtils.reverseCoordinates(orig.getCoordinate()));
+          // TODO FIXME XXX: what about when the geoms cross zones?
+          geom.setUserData(new Integer(tmpConv.getUtmZone()));
+    
           geomfield.set(e, geom);
         }
         for (final Edge e : toRemove) {
@@ -79,10 +83,6 @@ public class ReprojectCoords implements GraphBuilder {
           e.getToVertex().removeIncoming(e);
         }
       }
-    } catch (final NoninvertibleTransformException e) {
-      throw new RuntimeException(e);
-    } catch (final TransformException e) {
-      throw new RuntimeException(e);
     } catch (final IllegalArgumentException e) {
       throw new RuntimeException(e);
     } catch (final IllegalAccessException e) {
