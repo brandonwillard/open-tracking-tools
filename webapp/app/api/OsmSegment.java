@@ -33,7 +33,8 @@ public class OsmSegment {
       this.length = null;
     }
     this.id = i;
-    this.geom = offset(g);
+//    this.geom = offset(g);
+    this.geom = g;
     this.name = name;
   }
 

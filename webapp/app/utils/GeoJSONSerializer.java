@@ -15,9 +15,6 @@
 
 package utils;
 
-import com.jhlabs.map.proj.Projection;
-import com.jhlabs.map.proj.ProjectionFactory;
-
 import java.io.IOException;
 
 import org.codehaus.jackson.JsonGenerator;
@@ -32,6 +29,7 @@ import org.opengis.referencing.operation.NoninvertibleTransformException;
 import org.opengis.referencing.operation.TransformException;
 import org.openplans.tools.tracking.impl.util.GeoUtils;
 
+import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 
 public class GeoJSONSerializer extends JsonSerializer<Geometry> {
@@ -52,8 +50,8 @@ public class GeoJSONSerializer extends JsonSerializer<Geometry> {
     }
 
     final GeometryJSON json = new GeometryJSON();
-    final Integer zone = (Integer)value.getUserData();
-    Projection transform = GeoUtils.getProjection(zone);
+    final Coordinate refLatLon = (Coordinate)value.getUserData();
+    MathTransform transform = GeoUtils.getTransform(refLatLon);
     final Geometry transformed = GeoUtils.invertGeom(value, transform);
     jgen.writeRawValue(json.toString(transformed));
 

@@ -1,33 +1,40 @@
 package org.openplans.tools.tracking.impl.util;
 
-import java.awt.geom.Point2D;
 
 import org.codehaus.jackson.annotate.JsonIgnore;
+import org.codehaus.jackson.map.annotate.JsonSerialize;
+import org.opengis.referencing.operation.MathTransform;
 
-import com.jhlabs.map.proj.Projection;
 import com.vividsolutions.jts.geom.Coordinate;
 
 public class ProjectedCoordinate extends Coordinate {
   
   private static final long serialVersionUID = 2905131060296578237L;
   
-  final private Projection projection;
-  final private int utmZone;
+  final private MathTransform transform;
+  final private Coordinate refLatLon;
 
-  public ProjectedCoordinate(Projection projection, int zone, Point2D.Double coords) {
-    this.projection = projection;
-    this.utmZone = zone;
-    this.x = coords.x;
-    this.y = coords.y;
+  public ProjectedCoordinate(MathTransform mathTransform, Coordinate to, Coordinate refLatLon) {
+    this.transform = mathTransform;
+    this.x = to.x;
+    this.y = to.y;
+    this.refLatLon = refLatLon; 
   }
 
   @JsonIgnore
-  public Projection getProjection() {
-    return projection;
+  public MathTransform getTransform() {
+    return transform;
   }
 
-  public int getUtmZone() {
-    return utmZone;
+  @JsonSerialize
+  public Coordinate getReferenceLatLon() {
+    return refLatLon;
+  }
+
+  @JsonSerialize
+  public String epsgCode() {
+    final String epsgCode = "EPSG:" + GeoUtils.getEPSGCodefromUTS(refLatLon);
+    return epsgCode;
   }
 
 }

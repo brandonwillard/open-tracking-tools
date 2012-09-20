@@ -191,8 +191,8 @@ function drawCoords(lat, lon, popupMessage, pan, justMarker, color, opacity) {
   return marker;
 }
 
-function drawProjectedCoords(x, y, popupMessage, pan, zone) {
-  var latLon = convertToLatLon(new Proj4js.Point(x, y), zone);
+function drawProjectedCoords(x, y, popupMessage, pan, epsgCode) {
+  var latLon = convertToLatLon(new Proj4js.Point(x, y), epsgCode);
   var marker = drawCoords(latLon.lat, latLon.lng, popupMessage, pan);
   map.invalidateSize();
 
@@ -330,10 +330,10 @@ function getUTMzone(lon) {
   return lonZone + 1;  
 }
 
-function convertToLatLon(srcPoint, zone) {
+function convertToLatLon(srcPoint, epsgCode) {
   var point = new Proj4js.Point(srcPoint.x, srcPoint.y);
-  Proj4js.defs["EPSG:9999"] = "+proj=utm +zone=" + zone + " +ellps=clrk66 +units=m +no_defs";
-  var source = new Proj4js.Proj("EPSG:9999");
+//  Proj4js.defs["EPSG:9999"] = "+proj=utm +zone=" + zone + " +ellps=clrk66 +units=m +no_defs";
+  var source = new Proj4js.Proj(epsgCode);
   Proj4js.transform(source, dest, point);
   return new L.LatLng(point.y, point.x);
 }
@@ -446,7 +446,7 @@ function renderMarker() {
     }
 
     var obsCoords = convertToLatLon(lines[i].observedPoint, 
-        lines[i].observedPoint.utmZone);
+        lines[i].observedPoint.epsgCode);
 //    var obsCoords = new L.LatLng(parseFloat(lines[i].observedCoords.x),
 //        parseFloat(lines[i].observedCoords.y));
     var obs = new L.Circle(obsCoords, 10, {
@@ -641,7 +641,7 @@ function renderParticles(isPrior) {
                   data,
                   function(_, particleData) {
 
-                    var zone = particleData.particle.observedPoint.utmZone;
+                    var epsgCode = particleData.particle.observedPoint.epsgCode;
                     var particleMeanLoc = particleData.particle.infResults.meanCoords;
                     var locLinkName = 'particle' + particleNumber + '_mean'
                         + isPrior;
@@ -689,7 +689,7 @@ function renderParticles(isPrior) {
                       }
                     });
 
-                    var particleMeanLatLon = convertToLatLon(particleMeanLoc, zone);
+                    var particleMeanLatLon = convertToLatLon(particleMeanLoc, epsgCode);
                     createHoverPointLink(locLinkName, particleMeanLatLon);
                     particleMeans.addLayer(drawCoords(particleMeanLatLon.lat,
                         particleMeanLatLon.lng, null, false, true, null, 
@@ -769,7 +769,7 @@ function renderParticles(isPrior) {
                             + '</li>');
                       }
 
-                      var parentMeanLatLon = convertToLatLon(parentParticleMeanLoc, zone);
+                      var parentMeanLatLon = convertToLatLon(parentParticleMeanLoc, epsgCode);
                       createHoverPointLink(parentLocLinkName, parentMeanLatLon);
                       particleParentMeans.addLayer(drawCoords(
                           parentMeanLatLon.lat, parentMeanLatLon.lng, null,

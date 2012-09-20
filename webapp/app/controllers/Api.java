@@ -20,6 +20,7 @@ import models.InferenceInstance;
 import org.codehaus.jackson.JsonGenerationException;
 import org.codehaus.jackson.map.JsonMappingException;
 import org.codehaus.jackson.map.ObjectMapper;
+import org.opengis.referencing.operation.MathTransform;
 import org.openplans.tools.tracking.impl.Observation;
 import org.openplans.tools.tracking.impl.VehicleState;
 import org.openplans.tools.tracking.impl.VehicleStatePerformanceResult;
@@ -49,18 +50,23 @@ public class Api extends Controller {
 
   public static ObjectMapper jsonMapper = new ObjectMapper();
 
-  public static void convertToLatLon(String x, String y, Integer zone)
+  public static void convertToLatLon(String x, String y, String lat, String lon)
       throws JsonGenerationException, JsonMappingException,
       IOException {
 
-    final Point2D.Double rawCoords =
-        new Point2D.Double(Double.parseDouble(x), Double.parseDouble(y));
-
-    Coordinate coords = GeoUtils.convertToLatLon(rawCoords, zone);
+    final Coordinate rawCoords =
+        new Coordinate(Double.parseDouble(x), Double.parseDouble(y));
+    
+    final Coordinate refLatLon =
+        new Coordinate(Double.parseDouble(lat), Double.parseDouble(lon));
+    
+    final MathTransform transform = GeoUtils.getTransform(refLatLon);
+    final String epsgCode = "EPSG:" + GeoUtils.getEPSGCodefromUTS(refLatLon);
+    Coordinate coords = GeoUtils.convertToLatLon(transform, rawCoords);
     Map<String, Object> jsonResults = Maps.newHashMap();
     jsonResults.put("x", coords.x);
     jsonResults.put("y", coords.y);
-    jsonResults.put("utmZone", zone);
+    jsonResults.put("epsgCode", epsgCode);
 
     renderJSON(jsonMapper.writeValueAsString(jsonResults));
   }
