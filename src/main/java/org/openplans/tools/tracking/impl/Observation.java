@@ -1,8 +1,10 @@
+
 package org.openplans.tools.tracking.impl;
 
 import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.math.matrix.VectorFactory;
 
+import java.io.Serializable;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -16,7 +18,7 @@ import com.google.common.collect.ComparisonChain;
 import com.google.common.collect.Maps;
 import com.vividsolutions.jts.geom.Coordinate;
 
-public class Observation implements Comparable<Observation> {
+public class Observation implements Comparable<Observation>, Serializable {
 
   private final String vehicleId;
   private final Date timestamp;
@@ -170,6 +172,11 @@ public class Observation implements Comparable<Observation> {
 
   public static void clearRecordData() {
     vehiclesToRecords.clear();
+  }
+  
+  public static  Observation createObservation(ObservationData obsData) throws TimeOrderException 
+  {
+	  return createObservation(obsData.getVehicleId(), obsData.getTimestamp(), obsData.getObsCoordsLatLon(), obsData.getVelocity(), obsData.getHeading(), obsData.getAccuracy());
   }
 
   public static synchronized Observation createObservation(
