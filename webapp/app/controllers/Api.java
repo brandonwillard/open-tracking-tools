@@ -7,6 +7,7 @@ import gov.sandia.cognition.statistics.DataDistribution;
 import inference.InferenceResultRecord;
 import inference.InferenceService;
 
+import java.awt.geom.Point2D;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Collection;
@@ -19,12 +20,14 @@ import models.InferenceInstance;
 import org.codehaus.jackson.JsonGenerationException;
 import org.codehaus.jackson.map.JsonMappingException;
 import org.codehaus.jackson.map.ObjectMapper;
+import org.opengis.referencing.operation.MathTransform;
 import org.openplans.tools.tracking.impl.Observation;
 import org.openplans.tools.tracking.impl.VehicleState;
 import org.openplans.tools.tracking.impl.VehicleStatePerformanceResult;
 import org.openplans.tools.tracking.impl.VehicleTrackingPerformanceEvaluator;
 import org.openplans.tools.tracking.impl.util.GeoUtils;
 import org.openplans.tools.tracking.impl.util.OtpGraph;
+import org.openplans.tools.tracking.impl.util.ProjectedCoordinate;
 import org.opentripplanner.routing.graph.Edge;
 
 import play.Logger;
@@ -47,22 +50,25 @@ public class Api extends Controller {
 
   public static ObjectMapper jsonMapper = new ObjectMapper();
 
-  public static void convertToLatLon(String x, String y)
+  public static void convertToLatLon(String x, String y, String lat, String lon)
       throws JsonGenerationException, JsonMappingException,
       IOException {
 
     final Coordinate rawCoords =
         new Coordinate(Double.parseDouble(x), Double.parseDouble(y));
+    
+    final Coordinate refLatLon =
+        new Coordinate(Double.parseDouble(lat), Double.parseDouble(lon));
+    
+    final MathTransform transform = GeoUtils.getTransform(refLatLon);
+    final String epsgCode = "EPSG:" + GeoUtils.getEPSGCodefromUTS(refLatLon);
+    Coordinate coords = GeoUtils.convertToLatLon(transform, rawCoords);
+    Map<String, Object> jsonResults = Maps.newHashMap();
+    jsonResults.put("x", coords.x);
+    jsonResults.put("y", coords.y);
+    jsonResults.put("epsgCode", epsgCode);
 
-    Coordinate coords;
-    // if (GeoUtils.isInLatLonCoords(rawCoords))
-    // coords = rawCoords;
-    // else if (GeoUtils.isInProjCoords(rawCoords))
-    coords = GeoUtils.convertToLatLon(rawCoords);
-    // else
-    // coords = null;
-
-    renderJSON(jsonMapper.writeValueAsString(coords));
+    renderJSON(jsonMapper.writeValueAsString(jsonResults));
   }
 
   public static void
@@ -332,7 +338,7 @@ public class Api extends Controller {
                   infState.getObservation(), instance, actualState,
                   infState, 
                   !isPrior ? belief : null, 
-                  isPrior ? belief : null);
+                  isPrior ? belief : null, false);
           results.add(result);
         }
       } else {
@@ -350,7 +356,7 @@ public class Api extends Controller {
         final InferenceResultRecord result =
             InferenceResultRecord.createInferenceResultRecord(
                 infState.getObservation(), instance, actualState,
-                infState, null, null);
+                infState, null, null, false);
         results.add(result);
       }
     }
@@ -365,7 +371,7 @@ public class Api extends Controller {
           parent =
               InferenceResultRecord.createInferenceResultRecord(
                   parentState.getObservation(), instance, null,
-                  parentState, null, null);
+                  parentState, null, null, false);
         } else {
           parent = null;
         }

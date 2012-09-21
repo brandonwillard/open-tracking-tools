@@ -135,17 +135,18 @@ public class CsvUploadActor extends UntypedActor {
 
       String[] line = gps_reader.readNext();
 
-      //      // clear previous trace for this data
-      //      InferenceService.remove("trace-" + line[3]);
-      //      Observation.remove("trace-" + line[3]);
 
       final Set<String> vehicleIds = Sets.newHashSet();
       final List<Observation> observations = Lists.newArrayList();
       try {
         do {
           try {
-            final String vehicleId = "trace" + line[3] + traceParams.hashCode();
+            final String vehicleId = "trace-" + line[3] + traceParams.hashCode();
             vehicleIds.add(vehicleId);
+            
+            // clear previous trace for this data
+            InferenceService.remove(vehicleId);
+            Observation.remove(vehicleId);
 
             final Observation obs =
                 Observation.createObservation(vehicleId, line[6],

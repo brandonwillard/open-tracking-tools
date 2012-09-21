@@ -333,7 +333,8 @@ public class Simulation {
             .getMeasurementCovariance();
     final Vector thisLoc =
         sampleObservation(currentLocBelief, gCov, newPathEdge);
-    final Coordinate obsCoord = GeoUtils.convertToLatLon(thisLoc);
+    final Coordinate obsCoord = GeoUtils.convertToLatLon(thisLoc, 
+        vehicleState.getObservation().getObsPoint());
     Observation thisObs;
     try {
       thisObs =

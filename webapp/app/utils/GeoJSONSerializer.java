@@ -29,6 +29,7 @@ import org.opengis.referencing.operation.NoninvertibleTransformException;
 import org.opengis.referencing.operation.TransformException;
 import org.openplans.tools.tracking.impl.util.GeoUtils;
 
+import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 
 public class GeoJSONSerializer extends JsonSerializer<Geometry> {
@@ -49,18 +50,10 @@ public class GeoJSONSerializer extends JsonSerializer<Geometry> {
     }
 
     final GeometryJSON json = new GeometryJSON();
-    MathTransform transform;
-    try {
-      transform = GeoUtils.getCRSTransform().inverse();
-      final Geometry transformed = JTS.transform(value, transform);
-      jgen.writeRawValue(json.toString(transformed));
+    final Coordinate refLatLon = (Coordinate)value.getUserData();
+    MathTransform transform = GeoUtils.getTransform(refLatLon);
+    final Geometry transformed = GeoUtils.invertGeom(value, transform);
+    jgen.writeRawValue(json.toString(transformed));
 
-    } catch (final NoninvertibleTransformException e) {
-      throw new RuntimeException(e);
-    } catch (final MismatchedDimensionException e) {
-      throw new RuntimeException(e);
-    } catch (final TransformException e) {
-      throw new RuntimeException(e);
-    }
   }
 }

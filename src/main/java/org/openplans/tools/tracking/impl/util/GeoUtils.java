@@ -1,176 +1,170 @@
 package org.openplans.tools.tracking.impl.util;
 
+import java.awt.geom.Point2D;
+import java.util.Collections;
+import java.util.Map;
+
 import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.math.matrix.VectorFactory;
 
 import org.geotools.geometry.jts.JTS;
 import org.geotools.referencing.CRS;
+import org.geotools.referencing.ReferencingFactoryFinder;
+import org.geotools.referencing.factory.ReferencingFactoryContainer;
 import org.geotools.referencing.operation.projection.PointOutsideEnvelopeException;
+import org.opengis.parameter.ParameterValueGroup;
+import org.opengis.referencing.FactoryException;
+import org.opengis.referencing.NoSuchIdentifierException;
 import org.opengis.referencing.crs.CRSAuthorityFactory;
 import org.opengis.referencing.crs.CoordinateReferenceSystem;
+import org.opengis.referencing.crs.GeographicCRS;
+import org.opengis.referencing.crs.ProjectedCRS;
+import org.opengis.referencing.cs.CartesianCS;
 import org.opengis.referencing.operation.MathTransform;
+import org.opengis.referencing.operation.MathTransformFactory;
 import org.opengis.referencing.operation.NoninvertibleTransformException;
 import org.opengis.referencing.operation.TransformException;
 
 import com.vividsolutions.jts.geom.Coordinate;
+import com.vividsolutions.jts.geom.CoordinateFilter;
+import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.Point;
 
+import com.jhlabs.map.proj.Projection;
+import com.jhlabs.map.proj.ProjectionFactory;
+
+
 public class GeoUtils {
-
-  public static class GeoSetup {
-
-    final CoordinateReferenceSystem mapCRS;
-    final CoordinateReferenceSystem dataCRS;
-    final MathTransform transform;
-
-    public GeoSetup(CoordinateReferenceSystem mapCRS,
-      CoordinateReferenceSystem dataCRS, MathTransform transform) {
-      this.mapCRS = mapCRS;
-      this.dataCRS = dataCRS;
-      this.transform = transform;
+  
+  /**
+   * From http://gis.stackexchange.com/questions/28986/geotoolkit-conversion-from-lat-long-to-utm
+   */
+  public static int getEPSGCodefromUTS(Coordinate refLatLon) {
+    // define base EPSG code value of all UTM zones;
+    int epsg_code = 32600;
+    // add 100 for all zones in southern hemisphere
+    if (refLatLon.x < 0) {
+       epsg_code += 100;
     }
-
-    public CoordinateReferenceSystem getLatLonCRS() {
-      return dataCRS;
-    }
-
-    public CoordinateReferenceSystem getProjCRS() {
-      return mapCRS;
-    }
-
-    public MathTransform getTransform() {
-      return transform;
-    }
-
+    // finally, add zone number to code
+    epsg_code += getUTMZoneForLongitude(refLatLon.y);  
+    
+    return epsg_code;
   }
-
-  public static ThreadLocal<GeoSetup> geoData =
-      new ThreadLocal<GeoSetup>() {
-
-        @Override
-        public GeoSetup get() {
-          return super.get();
-        }
-
-        @Override
-        protected GeoSetup initialValue() {
-          System.setProperty("org.geotools.referencing.forceXY",
-              "true");
-          try {
-            // EPSG:4326 -> WGS84
-            // EPSG:3785 is web mercator
-            final String googleWebMercatorCode = "EPSG:4326";
-
-            // Projected CRS
-            // CRS code: 3785
-            final String cartesianCode = "EPSG:4499";
-
-            // UTM zone 51N
-            // final String cartesianCode = "EPSG:3829";
-
-            final CRSAuthorityFactory crsAuthorityFactory =
-                CRS.getAuthorityFactory(true);
-
-            final CoordinateReferenceSystem mapCRS =
-                crsAuthorityFactory
-                    .createCoordinateReferenceSystem(googleWebMercatorCode);
-
-            final CoordinateReferenceSystem dataCRS =
-                crsAuthorityFactory
-                    .createCoordinateReferenceSystem(cartesianCode);
-
-            final boolean lenient = true; // allow for some error due to different
-                                          // datums
-            final MathTransform transform =
-                CRS.findMathTransform(mapCRS, dataCRS, lenient);
-
-            return new GeoSetup(mapCRS, dataCRS, transform);
-
-          } catch (final Exception e) {
-            e.printStackTrace();
-          }
-
-          return null;
-        }
-
-      };
-
-  public static Coordinate convertToEuclidean(Coordinate latlon) {
-    final Coordinate converted = new Coordinate();
-
+  
+  public static ProjectedCoordinate convertToEuclidean(Coordinate latlon) {
+    final MathTransform transform = getTransform(latlon);
+    Coordinate to = new Coordinate();
     try {
-      /*
-       * CRS is lon-lat order
-       */
-      final Coordinate lonlat = reverseCoordinates(latlon);
-      JTS.transform(lonlat, converted, getCRSTransform());
-    } catch (final NoninvertibleTransformException e) {
-      e.printStackTrace();
-    } catch (final TransformException e) {
+      JTS.transform(reverseCoordinates(latlon), to, transform);
+    } catch (TransformException e) {
       e.printStackTrace();
     }
 
-    return converted;
+    return new ProjectedCoordinate(transform, to, latlon);
   }
 
-  public static Coordinate convertToEuclidean(Vector vec) {
+  public static ProjectedCoordinate convertToEuclidean(Vector vec) {
     return convertToEuclidean(new Coordinate(vec.getElement(0),
         vec.getElement(1)));
   }
 
-  public static Coordinate convertToLatLon(Coordinate xy) {
-    final Coordinate converted = new Coordinate();
+  public static Coordinate convertToLatLon(MathTransform transform, Coordinate xy) {
+    Coordinate to = new Coordinate();
     try {
-      JTS.transform(xy, converted, getCRSTransform().inverse());
-    } catch (final NoninvertibleTransformException e) {
-      e.printStackTrace();
-    } catch (final TransformException e) {
+      JTS.transform(xy, to, transform.inverse());
+    } catch (TransformException e) {
       e.printStackTrace();
     }
-
-    return new Coordinate(converted.y, converted.x);
+    return new Coordinate(to.y, to.x);
   }
 
-  public static Coordinate convertToLatLon(Vector vec) {
-    return convertToLatLon(new Coordinate(vec.getElement(0),
-        vec.getElement(1)));
-  }
+  public static MathTransform getTransform(Coordinate refLatLon) {
+//    MathTransformFactory mtFactory = ReferencingFactoryFinder.getMathTransformFactory(null);
+//    ReferencingFactoryContainer factories = new ReferencingFactoryContainer(null);
 
-  public static Coordinate convertToLonLat(Coordinate xy) {
-    final Coordinate converted = new Coordinate();
+    GeographicCRS geoCRS = org.geotools.referencing.crs.DefaultGeographicCRS.WGS84;
+    CartesianCS cartCS = org.geotools.referencing.cs.DefaultCartesianCS.GENERIC_2D;
+
+    ParameterValueGroup parameters;
     try {
-      JTS.transform(xy, converted, getCRSTransform().inverse());
-    } catch (final NoninvertibleTransformException e) {
+      final CRSAuthorityFactory crsAuthorityFactory =
+              CRS.getAuthorityFactory(true);
+  
+//      final CoordinateReferenceSystem mapCRS =
+//          crsAuthorityFactory
+//              .createCoordinateReferenceSystem(googleWebMercatorCode);
+  
+      final CoordinateReferenceSystem dataCRS =
+          crsAuthorityFactory
+              .createCoordinateReferenceSystem("EPSG:" + getEPSGCodefromUTS(refLatLon));
+ 
+//      parameters = mtFactory.getDefaultParameters("Transverse_Mercator");
+//
+//      final double zoneNumber = zone;
+//      final double utmZoneCenterLongitude = (zoneNumber - 1) * 6 - 180 + 3; // +3 puts origin
+//      parameters.parameter("central_meridian").setValue(utmZoneCenterLongitude);
+//      parameters.parameter("latitude_of_origin").setValue(0.0);
+//      parameters.parameter("scale_factor").setValue(0.9996);
+//      parameters.parameter("false_easting").setValue(500000.0);
+//      parameters.parameter("false_northing").setValue(0.0);
+//  
+//      Map properties = Collections.singletonMap("name", "WGS 84 / UTM Zone " + zoneNumber);
+//      ProjectedCRS projCRS = factories.createProjectedCRS(properties, geoCRS, null, parameters, cartCS);
+  
+      MathTransform transform = CRS.findMathTransform(geoCRS, dataCRS);
+      return transform;
+    } catch (NoSuchIdentifierException e) {
+      // TODO Auto-generated catch block
       e.printStackTrace();
-    } catch (final TransformException e) {
+    } catch (FactoryException e) {
+      // TODO Auto-generated catch block
       e.printStackTrace();
     }
-
-    return new Coordinate(converted.x, converted.y);
+    
+    return null;
+//    String[] spec = new String[6];
+//    spec[0] = "+proj=utm";
+//    spec[1] = "+zone=" + zone;
+//    spec[2] = "+ellps=clrk66";
+//    spec[3] = "+units=m";
+//    spec[4] = "+datum=NAD83";
+//    spec[5] = "+no_defs";
+//    Projection projection = ProjectionFactory.fromPROJ4Specification(spec);
+//    return projection;
   }
-
-  public static Coordinate convertToLonLat(Vector vec) {
-    final Coordinate converted = new Coordinate();
-    try {
-      JTS.transform(
-          new Coordinate(vec.getElement(0), vec.getElement(1)),
-          converted, getCRSTransform().inverse());
-    } catch (final NoninvertibleTransformException e) {
-      e.printStackTrace();
-    } catch (final TransformException e) {
-      e.printStackTrace();
-    }
-
-    return converted;
+  
+  public static Coordinate convertToLatLon(Vector vec, ProjectedCoordinate projCoord) {
+    final Coordinate point = new Coordinate(vec.getElement(0),
+        vec.getElement(1));
+    return convertToLatLon(projCoord.getTransform(), point);
   }
+  
+  public static Coordinate convertToLatLon(Vector vec, MathTransform transform) {
+    final Coordinate  point = new Coordinate(vec.getElement(0),
+        vec.getElement(1));
+    return convertToLatLon(transform, point);
+  }
+  
+  /*
+   * Taken from OneBusAway's UTMLibrary class
+   */
+  public static int getUTMZoneForLongitude(double lon) {
 
+    if (lon < -180 || lon > 180)
+      throw new IllegalArgumentException(
+          "Coordinates not within UTM zone limits");
+
+    int lonZone = (int) ((lon + 180) / 6);
+
+    if (lonZone == 60)
+      lonZone--;
+    return lonZone + 1;
+  }
+  
   public static Object getCoordinates(Vector meanLocation) {
     return new Coordinate(meanLocation.getElement(0),
         meanLocation.getElement(1));
-  }
-
-  public static MathTransform getCRSTransform() {
-    return geoData.get().getTransform();
   }
 
   public static Vector getEuclideanVectorFromLatLon(
@@ -180,48 +174,14 @@ public class GeoUtils {
         resCoord.y);
   }
 
-  public static CoordinateReferenceSystem getLatLonCRS() {
-    return geoData.get().getLatLonCRS();
-  }
 
   public static double getMetersInAngleDegrees(double distance) {
     return distance / (Math.PI / 180d) / 6378137d;
   }
 
-  public static CoordinateReferenceSystem getProjCRS() {
-    return geoData.get().getProjCRS();
-  }
-
   public static Vector getVector(Coordinate coord) {
     return VectorFactory.getDefault()
         .createVector2D(coord.x, coord.y);
-  }
-
-  public static boolean isInLatLonCoords(Coordinate rawCoords) {
-    try {
-      JTS.checkCoordinatesRange(
-          JTS.toGeometry(JTS.toDirectPosition(rawCoords,
-              getLatLonCRS()).getDirectPosition()), getLatLonCRS());
-      return true;
-    } catch (final PointOutsideEnvelopeException e) {
-      return false;
-    }
-  }
-
-  public static boolean isInProjCoords(Coordinate rawCoords) {
-    try {
-      JTS.checkCoordinatesRange(JTS.toGeometry(JTS.toDirectPosition(
-          rawCoords, getProjCRS()).getDirectPosition()), getProjCRS());
-      return true;
-    } catch (final PointOutsideEnvelopeException e) {
-      return false;
-    }
-  }
-
-  public static Point lonlatToGeometry(Coordinate lonlat) {
-    return JTS
-        .toGeometry(JTS.toDirectPosition(lonlat, getLatLonCRS())
-            .getDirectPosition());
   }
 
   public static Coordinate makeCoordinate(Vector vec) {
@@ -230,5 +190,53 @@ public class GeoUtils {
 
   public static Coordinate reverseCoordinates(Coordinate startCoord) {
     return new Coordinate(startCoord.y, startCoord.x);
+  }
+  
+  /**
+   * Finds a UTM projection and applies it to all coordinates of the
+   * given geom.
+   * @param orig
+   * @return
+   */
+
+  public static Geometry projectLonLatGeom(Geometry orig) {
+    // TODO FIXME XXX: what about when the geoms cross zones?
+    final Geometry geom = (Geometry)orig.clone(); 
+    geom.apply(new CoordinateFilter() {
+      @Override
+      public void filter(Coordinate coord) {
+        final ProjectedCoordinate converted = GeoUtils.convertToEuclidean(
+           GeoUtils.reverseCoordinates(coord));
+        coord.setCoordinate(converted);
+      }
+    });
+    
+    geom.geometryChanged();
+    return geom;
+  }
+  
+  /**
+   * Inverts a geometry's projection.
+   * @param orig
+   * @param projection
+   * @return
+   */
+  public static Geometry invertGeom(Geometry orig, final MathTransform projection) {
+    // TODO FIXME XXX: what about when the geoms cross zones?
+    final Geometry geom = (Geometry)orig.clone(); 
+    geom.apply(new CoordinateFilter() {
+      @Override
+      public void filter(Coordinate coord) {
+        Coordinate to = new Coordinate(); 
+        try {
+          JTS.transform(coord, to, projection.inverse());
+        } catch (TransformException e) {
+          e.printStackTrace();
+        }
+        coord.setCoordinate(to);
+      }
+    });
+    geom.geometryChanged();
+    return geom;
   }
 }

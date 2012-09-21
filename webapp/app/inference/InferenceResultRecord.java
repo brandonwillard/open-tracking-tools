@@ -27,6 +27,7 @@ import org.openplans.tools.tracking.impl.graph.paths.PathEdge;
 import org.openplans.tools.tracking.impl.statistics.DefaultCountedDataDistribution;
 import org.openplans.tools.tracking.impl.statistics.filters.StandardRoadTrackingFilter;
 import org.openplans.tools.tracking.impl.util.GeoUtils;
+import org.openplans.tools.tracking.impl.util.ProjectedCoordinate;
 import org.opentripplanner.routing.graph.Edge;
 
 import api.OsmSegment;
@@ -44,7 +45,7 @@ public class InferenceResultRecord {
 
   private final String time;
 
-  private final Coordinate observedCoords;
+  private final ProjectedCoordinate observedPoint;
 
   private final ResultSet actualResults;
 
@@ -55,7 +56,7 @@ public class InferenceResultRecord {
   private final DataDistribution<VehicleState> resampleDistribution;
 
   public InferenceResultRecord(InferenceInstance instance, 
-    long time, Coordinate obsCoords,
+    long time, ProjectedCoordinate obsCoords,
     ResultSet actualResults, ResultSet infResults,
     DataDistribution<VehicleState> postDist,
     DataDistribution<VehicleState> priorDist) {
@@ -70,7 +71,7 @@ public class InferenceResultRecord {
 
     this.infResults = new InferenceResultSet(infResults, count, 
         instance.getStateToOffRoadPaths().get(infResults.state));
-    this.observedCoords = obsCoords;
+    this.observedPoint = obsCoords;
     this.time = Api.sdf.format(new Date(time));
     this.postDistribution = postDist;
     this.resampleDistribution = priorDist;
@@ -87,8 +88,8 @@ public class InferenceResultRecord {
   }
 
   @JsonSerialize
-  public Coordinate getObservedCoords() {
-    return observedCoords;
+  public ProjectedCoordinate getObservedPoint() {
+    return observedPoint;
   }
 
   @JsonIgnore
@@ -117,12 +118,20 @@ public class InferenceResultRecord {
             ? inferenceInstance.getResampleBelief() : null);
   }
 
-  
   public static InferenceResultRecord createInferenceResultRecord(
     Observation observation, InferenceInstance instance,
     VehicleState actualState, VehicleState inferredState,
     DataDistribution<VehicleState> postDist,
     DataDistribution<VehicleState> priorDist) {
+    return createInferenceResultRecord(observation, instance, actualState, 
+        inferredState, postDist, priorDist, true);
+  }
+  
+  public static InferenceResultRecord createInferenceResultRecord(
+    Observation observation, InferenceInstance instance,
+    VehicleState actualState, VehicleState inferredState,
+    DataDistribution<VehicleState> postDist,
+    DataDistribution<VehicleState> priorDist, boolean updateOffRoad) {
 
     Preconditions.checkNotNull(observation);
 
@@ -136,14 +145,16 @@ public class InferenceResultRecord {
     if (inferredState != null) {
       infResults =
           processVehicleStateResults(inferredState, instance);
-      updateOffRoadPaths(postDist, instance);
+      
+      if (updateOffRoad)
+        updateOffRoadPaths(postDist, instance);
     }
 
     /*
      * XXX distributions are cloned, if given.
      */
     return new InferenceResultRecord(instance, observation.getTimestamp()
-        .getTime(), observation.getObsCoordsLatLon(), actualResults,
+        .getTime(), observation.getObsPoint(), actualResults,
         infResults, postDist != null ? postDist.clone() : null,
         priorDist != null ? priorDist.clone() : null);
 
@@ -159,6 +170,12 @@ public class InferenceResultRecord {
     Map<VehicleState, List<OffRoadPath>> newMap = Maps.newHashMap();
     
     synchronized (instance) {
+      
+      // FIXME this shouldn't be true!
+      if (postDist == null) {
+        return;
+      }
+      
       for (VehicleState state : postDist.getDomain()) {
         
         /*
@@ -178,7 +195,9 @@ public class InferenceResultRecord {
         
         VehicleState parentState = state.getParentState();
         if (state.getPath().isEmptyPath()) {
-          if (parentState != null && parentState.getPath().isEmptyPath()) {
+          if (parentState != null && parentState.getPath().isEmptyPath()
+              // FIXME below shouldn't be true!
+              && !previousOffRoadPaths.isEmpty()) {
             /*
              * If this is the case, then we're continuing on an off-road
              * path, so just add the new mean location.

@@ -191,8 +191,8 @@ function drawCoords(lat, lon, popupMessage, pan, justMarker, color, opacity) {
   return marker;
 }
 
-function drawProjectedCoords(x, y, popupMessage, pan) {
-  var latLon = convertToLatLon(new Proj4js.Point(x, y));
+function drawProjectedCoords(x, y, popupMessage, pan, epsgCode) {
+  var latLon = convertToLatLon(new Proj4js.Point(x, y), epsgCode);
   var marker = drawCoords(latLon.lat, latLon.lng, popupMessage, pan);
   map.invalidateSize();
 
@@ -204,8 +204,8 @@ function addCoordinates() {
   var coordString = jQuery('#coordinate_data').val();
   var coordSplit = coordString.split(",");
 
-  if (coordSplit.length == 2) {
-    var coordGetString = "x=" + coordSplit[0] + "&y=" + coordSplit[1];
+  if (coordSplit.length == 3) {
+    var coordGetString = "x=" + coordSplit[0] + "&y=" + coordSplit[1] + "&zone=" + coordSplit[2];
 
     $.get(coordUrl + coordGetString, function(data) {
 
@@ -307,18 +307,38 @@ function moveMarker() {
  * information. TODO what about different zones? how will they be
  * detected/handled?
  */
-Proj4js.defs["EPSG:2335"] = "+proj=tmerc +lat_0=0 +lon_0=123 +k=1 +x_0=21500000 +y_0=0 +a=6378140 +b=6356755.288157528 +units=m +no_defs";
+//Proj4js.defs["EPSG:2335"] = "+proj=tmerc +lat_0=0 +lon_0=123 +k=1 +x_0=21500000 +y_0=0 +a=6378140 +b=6356755.288157528 +units=m +no_defs";
 
 var dest = new Proj4js.Proj("EPSG:4326");
-var source = new Proj4js.Proj("EPSG:2335");
+//var source = new Proj4js.Proj("EPSG:2335");
 
-function convertToLatLon(srcPoint) {
+function truncate(_value) {
+  if (_value<0) 
+    return Math.ceil(_value);
+  else 
+    return Math.floor(_value);
+}
+
+function getUTMzone(lon) {
+  if (lon < -180 || lon > 180)
+    return null;
+
+  var lonZone = truncate((lon + 180) / 6);
+
+  if (lonZone == 60)
+    lonZone--;
+  return lonZone + 1;  
+}
+
+function convertToLatLon(srcPoint, epsgCode) {
   var point = new Proj4js.Point(srcPoint.x, srcPoint.y);
+//  Proj4js.defs["EPSG:9999"] = "+proj=utm +zone=" + zone + " +ellps=clrk66 +units=m +no_defs";
+  var source = new Proj4js.Proj(epsgCode);
   Proj4js.transform(source, dest, point);
   return new L.LatLng(point.y, point.x);
 }
 
-function drawResults(mean, major, minor, pointType) {
+function drawResults(mean, major, minor, zone, pointType) {
 
   var color;
   var fill;
@@ -341,10 +361,10 @@ function drawResults(mean, major, minor, pointType) {
     groupType = actualGroup;
   }
 
-  var meanCoords = convertToLatLon(mean);
+  var meanCoords = convertToLatLon(mean, zone);
 
   if (major && minor) {
-    var majorLatLon = convertToLatLon(major);
+    var majorLatLon = convertToLatLon(major, zone);
     var majorAxis = new L.Polyline([ meanCoords, majorLatLon ], {
       fill : true,
       color : '#c00'
@@ -353,7 +373,7 @@ function drawResults(mean, major, minor, pointType) {
     pointsGroup.addLayer(majorAxis);
     groupType.addLayer(majorAxis);
 
-    var minorLatLon = convertToLatLon(minor);
+    var minorLatLon = convertToLatLon(minor, zone);
     var minorAxis = new L.Polyline([ meanCoords, minorLatLon ], {
       fill : true,
       color : '#c0c'
@@ -425,8 +445,10 @@ function renderMarker() {
           results.minorAxisCoords, pointType);
     }
 
-    var obsCoords = new L.LatLng(parseFloat(lines[i].observedCoords.x),
-        parseFloat(lines[i].observedCoords.y));
+    var obsCoords = convertToLatLon(lines[i].observedPoint, 
+        lines[i].observedPoint.epsgCode);
+//    var obsCoords = new L.LatLng(parseFloat(lines[i].observedCoords.x),
+//        parseFloat(lines[i].observedCoords.y));
     var obs = new L.Circle(obsCoords, 10, {
       fill : true,
       color : 'grey',
@@ -619,6 +641,7 @@ function renderParticles(isPrior) {
                   data,
                   function(_, particleData) {
 
+                    var epsgCode = particleData.particle.observedPoint.epsgCode;
                     var particleMeanLoc = particleData.particle.infResults.meanCoords;
                     var locLinkName = 'particle' + particleNumber + '_mean'
                         + isPrior;
@@ -666,7 +689,7 @@ function renderParticles(isPrior) {
                       }
                     });
 
-                    var particleMeanLatLon = convertToLatLon(particleMeanLoc);
+                    var particleMeanLatLon = convertToLatLon(particleMeanLoc, epsgCode);
                     createHoverPointLink(locLinkName, particleMeanLatLon);
                     particleMeans.addLayer(drawCoords(particleMeanLatLon.lat,
                         particleMeanLatLon.lng, null, false, true, null, 
@@ -746,7 +769,7 @@ function renderParticles(isPrior) {
                             + '</li>');
                       }
 
-                      var parentMeanLatLon = convertToLatLon(parentParticleMeanLoc);
+                      var parentMeanLatLon = convertToLatLon(parentParticleMeanLoc, epsgCode);
                       createHoverPointLink(parentLocLinkName, parentMeanLatLon);
                       particleParentMeans.addLayer(drawCoords(
                           parentMeanLatLon.lat, parentMeanLatLon.lng, null,
