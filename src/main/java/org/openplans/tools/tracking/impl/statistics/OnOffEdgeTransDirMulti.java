@@ -68,6 +68,15 @@ public class OnOffEdgeTransDirMulti extends
   private static final Vector stateOnToOff = VectorFactory
       .getDefault().copyValues(0d, 1d);
 
+  /**
+   * Initialize prior from the given hyper prior parameters, 
+   * using the hyper prior means (i.e. the given parameters).
+   *
+   * @param graph
+   * @param edgeMotionPriorParams
+   * @param freeMotionPriorParams
+   * @param rng 
+   */
   public OnOffEdgeTransDirMulti(OtpGraph graph,
     Vector edgeMotionPriorParams, Vector freeMotionPriorParams) {
     this.graph = graph;

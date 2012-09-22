@@ -250,9 +250,16 @@ public class Simulation {
             null, null, Double.NEGATIVE_INFINITY));
       }
 
+      final StandardRoadTrackingFilter trackingFilter = new StandardRoadTrackingFilter(
+          parameters.getObsVariance(), parameters.getOffRoadStateVariance(), 
+          parameters.getOnRoadStateVariance());
+      
+      final OnOffEdgeTransDirMulti edgeTransDist = new OnOffEdgeTransDirMulti(inferredGraph, 
+          parameters.getOnTransitionProbs(), parameters.getOffTransitionProbs());
+      
       final VehicleState vehicleState =
           new VehicleState(this.inferredGraph, initialObs,
-              currentInferredEdge, parameters, rng);
+              currentInferredEdge, trackingFilter, edgeTransDist, rng);
 
       return vehicleState;
 

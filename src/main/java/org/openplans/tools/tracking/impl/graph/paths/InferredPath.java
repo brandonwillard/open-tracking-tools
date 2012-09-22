@@ -18,6 +18,7 @@ import org.openplans.tools.tracking.impl.VehicleState;
 import org.openplans.tools.tracking.impl.WrappedWeightedValue;
 import org.openplans.tools.tracking.impl.graph.InferredEdge;
 import org.openplans.tools.tracking.impl.statistics.StatisticsUtil;
+import org.openplans.tools.tracking.impl.statistics.filters.AbstractRoadTrackingFilter;
 import org.openplans.tools.tracking.impl.statistics.filters.StandardRoadTrackingFilter;
 
 import com.google.common.annotations.Beta;
@@ -178,7 +179,7 @@ public class InferredPath implements Comparable<InferredPath> {
     if (!state.getInferredEdge().isEmptyEdge() && !this.isEmptyPath())
       this.normalizeToPath(beliefPrediction, state.getInferredEdge());
 
-    final StandardRoadTrackingFilter filter =
+    final AbstractRoadTrackingFilter filter =
         state.getMovementFilter();
 
     filter.predict(beliefPrediction, this.getEdges().get(0),
@@ -268,7 +269,7 @@ public class InferredPath implements Comparable<InferredPath> {
      */
     MultivariateGaussian beliefPrediction = null;
     PathEdge prevEdge = PathEdge.getEdge(state.getInferredEdge());
-    final StandardRoadTrackingFilter filter =
+    final AbstractRoadTrackingFilter filter =
         state.getMovementFilter();
 
     double pathLogLik = Double.NEGATIVE_INFINITY;

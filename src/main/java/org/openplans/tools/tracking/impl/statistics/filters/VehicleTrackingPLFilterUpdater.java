@@ -138,18 +138,18 @@ public class VehicleTrackingPLFilterUpdater implements
   public DataDistribution<VehicleState> createInitialParticles(
     int numParticles) {
 
-    final StandardRoadTrackingFilter trackingFilter =
+    final StandardRoadTrackingFilter tmpTrackingFilter =
         new StandardRoadTrackingFilter(parameters.getObsVariance(),
             parameters.getOffRoadStateVariance(),
             parameters.getOnRoadStateVariance());
-    final MultivariateGaussian initialBelief =
-        trackingFilter.createInitialLearnedObject();
+    final MultivariateGaussian tmpInitialBelief =
+        tmpTrackingFilter.createInitialLearnedObject();
     final Vector xyPoint = initialObservation.getProjectedPoint();
-    initialBelief.setMean(VectorFactory.getDefault().copyArray(
+    tmpInitialBelief.setMean(VectorFactory.getDefault().copyArray(
         new double[] { xyPoint.getElement(0), 0d,
             xyPoint.getElement(1), 0d }));
     final List<StreetEdge> initialEdges =
-        inferredGraph.getNearbyEdges(initialBelief, trackingFilter);
+        inferredGraph.getNearbyEdges(tmpInitialBelief, tmpTrackingFilter);
 
     final DataDistribution<VehicleState> initialDist =
         new DefaultDataDistribution<VehicleState>(numParticles);
@@ -165,10 +165,27 @@ public class VehicleTrackingPLFilterUpdater implements
         evaluatedPaths.add(new InferredPathEntry(path, null, null,
             null, Double.NEGATIVE_INFINITY));
 
+        final StandardRoadTrackingFilter trackingFilter = new StandardRoadTrackingFilter(
+            parameters.getObsVariance(), parameters.getOffRoadStateVariance(), 
+            parameters.getOnRoadStateVariance());
+        
+        final OnOffEdgeTransDirMulti edgeTransDist = new OnOffEdgeTransDirMulti(inferredGraph, 
+            parameters.getOnTransitionProbs(), parameters.getOffTransitionProbs());
+        
         final VehicleState state =
             new VehicleState(this.inferredGraph, initialObservation,
-                pathEdge.getInferredEdge(), parameters,
+                pathEdge.getInferredEdge(), trackingFilter, edgeTransDist, 
                 this.threadRandom.get());
+        
+        /*
+         * Sample an initial prior for the transition probabilities
+         */
+        Vector edgeDriorParams = state.getEdgeTransitionDist().getEdgeMotionTransProbPrior()
+          .sample(this.threadRandom.get());
+        Vector freeDriorParams = state.getEdgeTransitionDist().getFreeMotionTransProbPrior()
+          .sample(this.threadRandom.get());
+        state.getEdgeTransitionDist().getEdgeMotionTransPrior().setParameters(edgeDriorParams);
+        state.getEdgeTransitionDist().getFreeMotionTransPrior().setParameters(freeDriorParams);
 
         final double lik =
             state.getProbabilityFunction().evaluate(
@@ -181,11 +198,27 @@ public class VehicleTrackingPLFilterUpdater implements
     /*
      * Free-motion
      */
+    final StandardRoadTrackingFilter trackingFilter = new StandardRoadTrackingFilter(
+        parameters.getObsVariance(), parameters.getOffRoadStateVariance(), 
+        parameters.getOnRoadStateVariance());
+    
+    final OnOffEdgeTransDirMulti edgeTransDist = new OnOffEdgeTransDirMulti(inferredGraph, 
+        parameters.getOnTransitionProbs(), parameters.getOffTransitionProbs());
+    
     final VehicleState state =
         new VehicleState(this.inferredGraph, initialObservation,
-            InferredEdge.getEmptyEdge(), parameters,
+            InferredEdge.getEmptyEdge(), trackingFilter, edgeTransDist, 
             this.threadRandom.get());
-
+    /*
+     * Sample an initial prior for the transition probabilities
+     */
+    Vector edgeDriorParams = state.getEdgeTransitionDist().getEdgeMotionTransProbPrior()
+      .sample(this.threadRandom.get());
+    Vector freeDriorParams = state.getEdgeTransitionDist().getFreeMotionTransProbPrior()
+      .sample(this.threadRandom.get());
+    state.getEdgeTransitionDist().getEdgeMotionTransPrior().setParameters(edgeDriorParams);
+    state.getEdgeTransitionDist().getFreeMotionTransPrior().setParameters(freeDriorParams);
+    
     final double lik =
         state.getProbabilityFunction().evaluate(initialObservation);
 

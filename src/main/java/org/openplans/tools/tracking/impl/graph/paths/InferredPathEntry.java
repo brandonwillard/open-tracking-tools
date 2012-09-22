@@ -7,6 +7,7 @@ import java.util.Map;
 
 import org.openplans.tools.tracking.impl.WrappedWeightedValue;
 import org.openplans.tools.tracking.impl.graph.paths.InferredPath.EdgePredictiveResults;
+import org.openplans.tools.tracking.impl.statistics.filters.AbstractRoadTrackingFilter;
 import org.openplans.tools.tracking.impl.statistics.filters.StandardRoadTrackingFilter;
 
 import com.google.common.base.Objects;
@@ -16,7 +17,7 @@ import com.google.common.collect.ComparisonChain;
 public class InferredPathEntry implements
     Comparable<InferredPathEntry> {
 
-  private final StandardRoadTrackingFilter filter;
+  private final AbstractRoadTrackingFilter filter;
 
   /*
    * This maps edge's to their conditional prior predictive location/velocity states.
@@ -32,7 +33,7 @@ public class InferredPathEntry implements
   public InferredPathEntry(
     InferredPath path,
     Map<Pair<PathEdge, Boolean>, EdgePredictiveResults> edgeToPreBeliefAndLogLik,
-    StandardRoadTrackingFilter filter,
+    AbstractRoadTrackingFilter filter,
     List<WrappedWeightedValue<PathEdge>> weightedPathEdges,
     double totalLogLikelihood) {
     Preconditions.checkArgument(!Double.isNaN(totalLogLikelihood));
@@ -65,7 +66,7 @@ public class InferredPathEntry implements
     return edgeToPredictiveBelief;
   }
 
-  public StandardRoadTrackingFilter getFilter() {
+  public AbstractRoadTrackingFilter getFilter() {
     return filter;
   }
 

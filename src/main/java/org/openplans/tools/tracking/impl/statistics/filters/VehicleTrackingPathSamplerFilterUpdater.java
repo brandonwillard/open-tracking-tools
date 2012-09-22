@@ -138,18 +138,18 @@ public class VehicleTrackingPathSamplerFilterUpdater implements
   public DataDistribution<VehicleState> createInitialParticles(
     int numParticles) {
 
-    final StandardRoadTrackingFilter trackingFilter =
+    final StandardRoadTrackingFilter tmpTrackingFilter =
         new StandardRoadTrackingFilter(parameters.getObsVariance(),
             parameters.getOffRoadStateVariance(),
             parameters.getOnRoadStateVariance());
-    final MultivariateGaussian initialBelief =
-        trackingFilter.createInitialLearnedObject();
+    final MultivariateGaussian tmpInitialBelief =
+        tmpTrackingFilter.createInitialLearnedObject();
     final Vector xyPoint = initialObservation.getProjectedPoint();
-    initialBelief.setMean(VectorFactory.getDefault().copyArray(
+    tmpInitialBelief.setMean(VectorFactory.getDefault().copyArray(
         new double[] { xyPoint.getElement(0), 0d,
             xyPoint.getElement(1), 0d }));
     final List<StreetEdge> initialEdges =
-        inferredGraph.getNearbyEdges(initialBelief, trackingFilter);
+        inferredGraph.getNearbyEdges(tmpInitialBelief, tmpTrackingFilter);
 
     final DataDistribution<VehicleState> initialDist =
         new DefaultDataDistribution<VehicleState>(numParticles);
@@ -165,9 +165,16 @@ public class VehicleTrackingPathSamplerFilterUpdater implements
         evaluatedPaths.add(new InferredPathEntry(path, null, null,
             null, Double.NEGATIVE_INFINITY));
 
+        final StandardRoadTrackingFilter trackingFilter = new StandardRoadTrackingFilter(
+            parameters.getObsVariance(), parameters.getOffRoadStateVariance(), 
+            parameters.getOnRoadStateVariance());
+        
+        final OnOffEdgeTransDirMulti edgeTransDist = new OnOffEdgeTransDirMulti(inferredGraph, 
+            parameters.getOnTransitionProbs(), parameters.getOffTransitionProbs());
+        
         final VehicleState state =
             new VehicleState(this.inferredGraph, initialObservation,
-                pathEdge.getInferredEdge(), parameters,
+                pathEdge.getInferredEdge(), trackingFilter, edgeTransDist, 
                 this.threadRandom.get());
 
         final double lik =
@@ -181,9 +188,16 @@ public class VehicleTrackingPathSamplerFilterUpdater implements
     /*
      * Free-motion
      */
+    final StandardRoadTrackingFilter trackingFilter = new StandardRoadTrackingFilter(
+        parameters.getObsVariance(), parameters.getOffRoadStateVariance(), 
+        parameters.getOnRoadStateVariance());
+    
+    final OnOffEdgeTransDirMulti edgeTransDist = new OnOffEdgeTransDirMulti(inferredGraph, 
+        parameters.getOnTransitionProbs(), parameters.getOffTransitionProbs());
+    
     final VehicleState state =
         new VehicleState(this.inferredGraph, initialObservation,
-            InferredEdge.getEmptyEdge(), parameters,
+            InferredEdge.getEmptyEdge(), trackingFilter, edgeTransDist, 
             this.threadRandom.get());
 
     final double lik =
@@ -209,7 +223,7 @@ public class VehicleTrackingPathSamplerFilterUpdater implements
   public InferredPath traverseEdge(
     OnOffEdgeTransDirMulti edgeTransDist,
     final MultivariateGaussian belief, PathEdge startEdge,
-    StandardRoadTrackingFilter movementFilter) {
+    AbstractRoadTrackingFilter movementFilter) {
 
     /*
      * We project the road path
@@ -425,7 +439,7 @@ public class VehicleTrackingPathSamplerFilterUpdater implements
      */
     final OnOffEdgeTransDirMulti newTransDist = previousParameter.
         getEdgeTransitionDist().clone();
-    final StandardRoadTrackingFilter predictedFilter =
+    final AbstractRoadTrackingFilter predictedFilter =
         previousParameter.getMovementFilter().clone();
 
     final InferredPath newPath =

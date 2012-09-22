@@ -1,7 +1,10 @@
 package org.openplans.tools.tracking.impl.statistics.filters;
 
 import gov.sandia.cognition.math.LogMath;
+import gov.sandia.cognition.math.matrix.Matrix;
+import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.statistics.DataDistribution;
+import gov.sandia.cognition.statistics.distribution.InverseWishartDistribution;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 import gov.sandia.cognition.util.DefaultPair;
 import gov.sandia.cognition.util.Pair;
@@ -36,12 +39,12 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Sets;
 
-public class VehicleTrackingPLFilter extends
+public class VTErrorEstimatingPLFilter extends
     AbstractVehicleTrackingFilter {
 
   private static final long serialVersionUID = -8257075186193062150L;
 
-  public VehicleTrackingPLFilter(Observation obs,
+  public VTErrorEstimatingPLFilter(Observation obs,
     OtpGraph inferredGraph, VehicleStateInitialParameters parameters,
     @Nonnull Boolean isDebug) {
     super(obs, inferredGraph, parameters,
@@ -176,17 +179,11 @@ public class VehicleTrackingPLFilter extends
               .get(directionalSampledEdge)
               .getWeightedPredictiveDist().getValue().clone();
 
-      /*-
-       * Propagate sufficient stats (can be done off-line) Just the edge
-       * transitions for now.
-       */
       final AbstractRoadTrackingFilter updatedFilter =
           sampledPathEntry.getFilter().clone();
 
       final PathEdge actualPosteriorEdge;
       if (!sampledPathEntry.getPath().isEmptyPath()) {
-        //        final PathEdge actualPriorEdge = sampledPathEntry.getPath().getEdgeForDistance(
-        //            sampledBelief.getMean().getElement(0));
         updatedFilter.measure(sampledBelief, obs.getProjectedPoint(),
             sampledPathEntry.getPath());
 
@@ -200,6 +197,11 @@ public class VehicleTrackingPLFilter extends
       InferredEdge prevEdge =
           sampledPathEntry.getPath().getEdges().get(0)
               .getInferredEdge();
+      
+      /*-
+       * Propagate sufficient stats (can be done off-line) Just the edge
+       * transitions for now.
+       */
       final OnOffEdgeTransDirMulti updatedEdgeTransDist =
           newState.getEdgeTransitionDist().clone();
       for (final PathEdge edge : sampledPathEntry.getPath()
@@ -230,6 +232,47 @@ public class VehicleTrackingPLFilter extends
           break;
         prevEdge = edge.getInferredEdge();
       }
+      
+      /*
+       * Update covariances.
+       */
+      if (updatedFilter instanceof ErrorEstimatingRoadTrackingFilter) {
+        final ErrorEstimatingRoadTrackingFilter eeFilter = 
+            (ErrorEstimatingRoadTrackingFilter) updatedFilter;
+        
+        final Vector obsError = ;
+        updateInverseWishartPrior(eeFilter.getObsVariancePrior(), obsError);
+        eeFilter.setObsVariance(eeFilter.getObsVariancePrior().sample(rng));
+        
+        final Vector stateError;
+        final InverseWishartDistribution covarPrior;
+        if (sampledBelief.getInputDimensionality() == 2) {
+          covarPrior = eeFilter.getOnRoadStateVariancePrior();
+          
+          final Vector newStateSample = eeFilter.sampleStateBelief(rng); 
+          stateError = eeFilter.getCurrentStateSample().minus(newStateSample);
+          updateInverseWishartPrior(covarPrior, stateError);
+          
+          eeFilter.setCurrentStateSample(newStateSample);
+          
+          eeFilter.setQr(covarPrior.sample(rng));
+          eeFilter.setOnRoadStateVariance(covarPrior.sample(rng));
+          
+        } else {
+          covarPrior = eeFilter.getOffRoadStateVariancePrior();
+          
+          final Vector newStateSample = eeFilter.sampleStateBelief(rng); 
+          stateError = eeFilter.getCurrentStateSample().minus(newStateSample);
+          updateInverseWishartPrior(covarPrior, stateError);
+          
+          eeFilter.setCurrentStateSample(newStateSample);
+          
+          eeFilter.setQg(covarPrior.sample(rng));
+          eeFilter.setOffRoadStateVariance(covarPrior.sample(rng));
+        }
+        
+
+      }
 
       final VehicleState newTransState =
           new VehicleState(this.inferredGraph, obs, updatedFilter,
@@ -248,6 +291,11 @@ public class VehicleTrackingPLFilter extends
     assert ((DefaultCountedDataDistribution<VehicleState>) target)
         .getTotalCount() == this.numParticles;
 
+  }
+  
+  private void updateInverseWishartPrior(InverseWishartDistribution prior, Vector obsError) {
+    prior.setDegreesOfFreedom(prior.getDegreesOfFreedom()  + 1);
+    prior.setInverseScale(obsError.outerProduct(obsError));
   }
 
 }

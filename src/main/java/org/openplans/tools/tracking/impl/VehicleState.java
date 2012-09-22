@@ -19,8 +19,8 @@ import org.openplans.tools.tracking.impl.graph.paths.InferredPath;
 import org.openplans.tools.tracking.impl.graph.paths.PathEdge;
 import org.openplans.tools.tracking.impl.statistics.OnOffEdgeTransDirMulti;
 import org.openplans.tools.tracking.impl.statistics.StatisticsUtil;
+import org.openplans.tools.tracking.impl.statistics.filters.AbstractRoadTrackingFilter;
 import org.openplans.tools.tracking.impl.statistics.filters.AdjKalmanFilter;
-import org.openplans.tools.tracking.impl.statistics.filters.StandardRoadTrackingFilter;
 import org.openplans.tools.tracking.impl.util.OtpGraph;
 
 import com.google.common.annotations.Beta;
@@ -263,7 +263,7 @@ public class VehicleState implements
   /*
    * These members represent the state/parameter samples/sufficient statistics.
    */
-  private final StandardRoadTrackingFilter movementFilter;
+  private final AbstractRoadTrackingFilter movementFilter;
 
   /**
    * This could be the 4D ground-coordinates dist. for free motion, or the 2D
@@ -301,16 +301,13 @@ public class VehicleState implements
 
   public VehicleState(OtpGraph graph, Observation initialObservation,
     InferredEdge inferredEdge,
-    VehicleStateInitialParameters parameters, Random rng) {
+    AbstractRoadTrackingFilter movementFilter, 
+    OnOffEdgeTransDirMulti edgeTransDist, Random rng) {
 
     Preconditions.checkNotNull(initialObservation);
     Preconditions.checkNotNull(inferredEdge);
-    Preconditions.checkNotNull(parameters);
 
-    this.movementFilter =
-        new StandardRoadTrackingFilter(parameters.getObsVariance(),
-            parameters.getOffRoadStateVariance(),
-            parameters.getOnRoadStateVariance());
+    this.movementFilter = movementFilter;
 
     final double timeDiff;
     if (initialObservation.getPreviousObservation() != null) {
@@ -355,7 +352,7 @@ public class VehicleState implements
           belief.getMean(), rng));
       belief.getMean().setElement(0, lengthLocation);
 
-      StandardRoadTrackingFilter.normalizeBelief(
+      AbstractRoadTrackingFilter.normalizeBelief(
           this.belief.getMean(), PathEdge.getEdge(inferredEdge));
 
       assert Double.compare(
@@ -368,10 +365,7 @@ public class VehicleState implements
     this.path = InferredPath.getInferredPath(this.edge);
     this.observation = initialObservation;
     this.graph = graph;
-    this.edgeTransitionDist =
-        new OnOffEdgeTransDirMulti(this.graph,
-            parameters.getOnTransitionProbs(),
-            parameters.getOffTransitionProbs());
+    this.edgeTransitionDist = edgeTransDist;
     this.distanceFromPreviousState = 0d;
 
     // DEBUG
@@ -384,7 +378,7 @@ public class VehicleState implements
   }
 
   public VehicleState(OtpGraph graph, Observation observation,
-    StandardRoadTrackingFilter filter, MultivariateGaussian belief,
+    AbstractRoadTrackingFilter updatedFilter, MultivariateGaussian belief,
     OnOffEdgeTransDirMulti edgeTransitionDist,
     InferredPath path, VehicleState state) {
 
@@ -394,11 +388,11 @@ public class VehicleState implements
     Preconditions.checkNotNull(state);
     Preconditions.checkNotNull(graph);
     Preconditions.checkNotNull(observation);
-    Preconditions.checkNotNull(filter);
+    Preconditions.checkNotNull(updatedFilter);
     Preconditions.checkNotNull(belief);
 
     this.observation = observation;
-    this.movementFilter = filter;
+    this.movementFilter = updatedFilter;
     this.belief = belief.clone();
     this.graph = graph;
     this.path = path;
@@ -426,7 +420,7 @@ public class VehicleState implements
        */
       this.belief.getMean().setElement(0,
           distPosition - pathEdge.getDistToStartOfEdge());
-      StandardRoadTrackingFilter.normalizeBelief(
+      AbstractRoadTrackingFilter.normalizeBelief(
           this.belief.getMean(), PathEdge.getEdge(edge));
 
       assert Double.compare(
@@ -581,7 +575,7 @@ public class VehicleState implements
     if (belief.getInputDimensionality() == 2) {
       final MultivariateGaussian beliefProj =
           new MultivariateGaussian();
-      StandardRoadTrackingFilter.convertToGroundBelief(beliefProj,
+      AbstractRoadTrackingFilter.convertToGroundBelief(beliefProj,
           PathEdge.getEdge(this.edge, 0d, this.path.getIsBackward()));
       return beliefProj;
     } else {
@@ -613,7 +607,7 @@ public class VehicleState implements
     if (belief.getInputDimensionality() == 2) {
       Preconditions.checkArgument(!this.edge.isEmptyEdge());
       final MultivariateGaussian projBelief = belief.clone();
-      StandardRoadTrackingFilter.convertToGroundBelief(projBelief,
+      AbstractRoadTrackingFilter.convertToGroundBelief(projBelief,
           PathEdge.getEdge(this.edge, 0d, this.path.getIsBackward()));
       v = projBelief.getMean();
     } else {
@@ -623,7 +617,7 @@ public class VehicleState implements
         v.getElement(2));
   }
 
-  public StandardRoadTrackingFilter getMovementFilter() {
+  public AbstractRoadTrackingFilter getMovementFilter() {
     return movementFilter;
   }
 
@@ -703,9 +697,9 @@ public class VehicleState implements
   public static Vector getNonVelocityVector(Vector vector) {
     final Vector res;
     if (vector.getDimensionality() == 4)
-      res = StandardRoadTrackingFilter.getOg().times(vector);
+      res = AbstractRoadTrackingFilter.getOg().times(vector);
     else
-      res = StandardRoadTrackingFilter.getOr().times(vector);
+      res = AbstractRoadTrackingFilter.getOr().times(vector);
     return res;
   }
 
