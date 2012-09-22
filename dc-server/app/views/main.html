@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<link href="@{'/public/ui-lightness/jquery-ui-1.8.23.custom.css'}" rel="stylesheet">
+    <link href="@{'/public/bootstrap/css/bootstrap.css'}" rel="stylesheet">
+    <link href="@{'/public/bootstrap/css/bootstrap-responsive.min.css'}" rel="stylesheet">
+    <style type="text/css">
+      body {
+        padding: 0px;
+        background-color: #fff;	
+      }
+      
+      #content 
+      {
+      	padding: 0px;
+      	margin-top: 40px;
+      }
+      
+      #map
+      {
+      	width: 100%;
+      }
+    </style>
+    
+    <title>Cebu Traffic</title>
+
+	<!-- leaflet -->
+	<script type="text/javascript" src="@{'/public/javascripts/jquery-1.7.1.min.js'}"></script>
+	<script type="text/javascript" src="@{'/public/javascripts/jquery-ui-1.8.23.custom.min.js'}"></script>
+	<script type="text/javascript" src="@{'/public/javascripts/ember-0.9.8.1.min.js'}"></script>
+	<script src="@{'/public/javascripts/leaflet.js'}"></script>
+	<link rel="stylesheet" href="@{'/public/javascripts/leaflet.css'}" />
+	<!-- jquery -->
+	    
+</head>
+
+<body>
+
+	<div class="navbar navbar-fixed-top" id="header">
+      <div class="navbar-inner">
+        <div class="container">
+          <a class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </a>
+          <a class="brand" href="#">DC Traffic</a>
+          
+           <div class="btn-group pull-right">
+            <a class="btn dropdown-toggle" data-toggle="dropdown" href="#">
+              <i class="icon-user"></i> Admin
+              <span class="caret"></span>
+            </a>
+            <ul class="dropdown-menu">
+              <li><a href="#">Sign Out</a></li>
+            </ul>
+          </div>
+          
+          <div class="nav-collapse">
+            <ul class="nav">
+              <li #{if page == 'index'}class="active"#{/if}><a href="@{Application.index}">Map</a></li>
+              <li #{if page == 'taxi'}class="active"#{/if}><a href="@{Application.taxi}">Leader Board</a></li>
+              <li #{if page == 'citom'}class="active"#{/if}><a href="@{Application.citom}">Server Status</a></li>
+            </ul>
+          </div><!--/.nav-collapse -->
+        </div>
+      </div>
+    </div>
+    
+    
+    <div class="container-fluid" id="content" style="background-color: #ffa;">
+    
+    	#{doLayout /}
+    
+    </div>
+
+
+<script src="@{'/public/bootstrap/js/bootstrap.min.js'}"></script>
+
+</body>
+    
+</html>
