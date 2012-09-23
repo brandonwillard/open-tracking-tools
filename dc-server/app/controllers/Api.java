@@ -426,15 +426,15 @@ public class Api extends Controller {
     		future.onSuccess(new OnSuccess<Object>() {
     			public void onSuccess(Object result) {
     				
-    				Logger.info("update results returned");
-    				
     				if(result instanceof VehicleUpdateResponse)
     				{
     					//Application.updateVehicleStats((VehicleUpdateResponse)result);
     					
     					if(((VehicleUpdateResponse) result).pathList.size() == 0)
     						return;
-    						
+    					
+    					Logger.info("update results returned: " + ((VehicleUpdateResponse) result).pathList.size());
+    				
     					try 
     					{ 
     						// wrapping everything around a try catch
