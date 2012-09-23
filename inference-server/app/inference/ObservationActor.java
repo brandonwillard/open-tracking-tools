@@ -51,7 +51,7 @@ public class ObservationActor extends UntypedActor {
 				}
 				catch(Exception e)
 				{
-					// skipping out of order transactions
+					Logger.info(e.toString());
 				}
 		       	
 				Long endTime = System.nanoTime();
