@@ -163,7 +163,7 @@ public class Application extends Controller {
 	
 	public static void replay2() {
 		
-		List<LocationUpdate> locations  = LocationUpdate.find("where timestamp > ? order by timestamp", lastTime).fetch();
+		List<LocationUpdate> locations  = LocationUpdate.find("timestamp > ? order by timestamp", lastTime).fetch();
 		
 		VehicleUpdate updates = new VehicleUpdate(locations.get(0).imei);
 		
