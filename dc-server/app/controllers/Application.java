@@ -52,6 +52,8 @@ public class Application extends Controller {
 	
 	static Config myConfig = ConfigFactory.empty();
 	
+	static Date lastTime = new Date();
+	
 	static ActorSystem system = ActorSystem.create("LookupApplication", ConfigFactory.parseFile(new File("conf/akka.conf")));
 
 	static ActorRef remoteObservationActor = system.actorFor("akka://inferenceSystem@127.0.0.1:2552/user/observationActor");
@@ -113,6 +115,63 @@ public class Application extends Controller {
 		for(LocationUpdate location : locations)
 		{
 			updates.addObservation(location.getObservationData());
+		}
+		
+		Future<Object> future = ask(Application.remoteObservationActor, updates, 60000);
+		
+		future.onSuccess(new OnSuccess<Object>() {
+			public void onSuccess(Object result) {
+				
+				if(result instanceof VehicleUpdateResponse)
+				{
+					//Application.updateVehicleStats((VehicleUpdateResponse)result);
+					
+					if(((VehicleUpdateResponse) result).pathList.size() == 0)
+						return;
+						
+					try 
+					{ 
+						// wrapping everything around a try catch
+						if(JPA.local.get() == null)
+			            {
+							JPA.local.set(new JPA());
+							JPA.local.get().entityManager = JPA.newEntityManager();
+			            }
+						JPA.local.get().entityManager.getTransaction().begin();
+
+						for(ArrayList<Integer> edges : ((VehicleUpdateResponse) result).pathList)
+						{
+							String edgeIds = StringUtils.join(edges, ", ");
+							String sql = "UPDATE streetedge SET inpath = inpath + 1 WHERE edgeid IN (" + edgeIds + ") ";
+							
+							JPA.local.get().entityManager.createNativeQuery(sql).executeUpdate();
+						}
+						
+						JPA.local.get().entityManager.getTransaction().commit();	
+					}
+			        finally 
+			        {
+			            JPA.local.get().entityManager.close();
+			            JPA.local.remove();
+			        }
+				}
+			}
+		});
+		
+		index();
+	}
+	
+	public static void replay2() {
+		
+		List<LocationUpdate> locations  = LocationUpdate.find("where timestamp > ? order by timestamp", lastTime).fetch();
+		
+		VehicleUpdate updates = new VehicleUpdate(locations.get(0).imei);
+		
+		for(LocationUpdate location : locations)
+		{
+			updates.addObservation(location.getObservationData());
+			
+			lastTime = location.timestamp;
 		}
 		
 		Future<Object> future = ask(Application.remoteObservationActor, updates, 60000);
