@@ -161,37 +161,40 @@ public class Api extends Controller {
 		
 		Phone phone = Phone.find("imei = ?", imei).first();
 		
-		if(phone != null)
+		if(phone == null)
 		{
-			AuthResponse authResponse = new AuthResponse();
+			phone = new Phone();
 			
-			authResponse.id = new Long(100);
-			authResponse.name = phone.operator.name;
+			Operator operatorObj = Operator.findById(1);			
+			phone.operator = operatorObj;
 			
-			if(phone.driver != null)
-			{
-				authResponse.driverId = phone.driver.driverId;
-				authResponse.driverName = phone.driver.name;
-			}
-			
-			if(phone.vehicle != null)
-			{
-				authResponse.bodyNumber = phone.vehicle.bodyNumber;
-			}
-			
-			authResponse.gpsInterval = 5;
-			authResponse.updateInterval = 30;
-			
-			if(request.format == "xml")
-				renderXml(authResponse);
-			else
-				renderJSON(authResponse);
+			phone.save();
+
 		}
+		AuthResponse authResponse = new AuthResponse();
+		
+		authResponse.id = new Long(100);
+		authResponse.name = phone.operator.name;
+		
+		if(phone.driver != null)
+		{
+			authResponse.driverId = phone.driver.driverId;
+			authResponse.driverName = phone.driver.name;
+		}
+		
+		if(phone.vehicle != null)
+		{
+			authResponse.bodyNumber = phone.vehicle.bodyNumber;
+		}
+		
+		authResponse.gpsInterval = 5;
+		authResponse.updateInterval = 30;
+		
+		if(request.format == "xml")
+			renderXml(authResponse);
 		else
-		{
-			Logger.info("Unknown phone entry for IMEI " + imei); 
-			unauthorized("Unknown Phone IMEI");
-		}
+			renderJSON(authResponse);
+		
 	}
 	
 	public static void register(String imei, Long operator)
@@ -204,7 +207,12 @@ public class Api extends Controller {
 			{
 				Logger.info("Creating phone entry for IMEI " + imei); 
 				phone = new Phone();
-				phone.imei = imei;
+				
+				Operator operatorObj = Operator.findById(1);			
+				phone.operator = operatorObj;
+				
+	
+
 			}
 			
 			Operator operatorObj = Operator.findById(operator);
