@@ -428,6 +428,35 @@ public class Api extends Controller {
     				if(result instanceof VehicleUpdateResponse)
     				{
     					//Application.updateVehicleStats((VehicleUpdateResponse)result);
+    					
+    					if(((VehicleUpdateResponse) result).pathList.size() == 0)
+    						return;
+    						
+    					try 
+    					{ 
+    						// wrapping everything around a try catch
+    						if(JPA.local.get() == null)
+    			            {
+    							JPA.local.set(new JPA());
+    							JPA.local.get().entityManager = JPA.newEntityManager();
+    			            }
+    						JPA.local.get().entityManager.getTransaction().begin();
+
+    						for(ArrayList<Integer> edges : ((VehicleUpdateResponse) result).pathList)
+    						{
+    							String edgeIds = StringUtils.join(edges, ", ");
+    							String sql = "UPDATE streetedge SET inpath = inpath + 1 WHERE edgeid IN (" + edgeIds + ") ";
+    							
+    							JPA.local.get().entityManager.createNativeQuery(sql).executeUpdate();
+    						}
+    						
+    						JPA.local.get().entityManager.getTransaction().commit();	
+    					}
+    			        finally 
+    			        {
+    			            JPA.local.get().entityManager.close();
+    			            JPA.local.remove();
+    			        }
     				}
     			}
     		});
