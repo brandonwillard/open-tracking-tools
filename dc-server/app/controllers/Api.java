@@ -165,7 +165,7 @@ public class Api extends Controller {
 		{
 			phone = new Phone();
 			
-			Operator operatorObj = Operator.findById(1);			
+			Operator operatorObj = Operator.findById(new Long(1));			
 			phone.operator = operatorObj;
 			
 			phone.save();
@@ -194,7 +194,7 @@ public class Api extends Controller {
 			renderXml(authResponse);
 		else
 			renderJSON(authResponse);
-		
+			
 	}
 	
 	public static void register(String imei, Long operator)
@@ -208,7 +208,7 @@ public class Api extends Controller {
 				Logger.info("Creating phone entry for IMEI " + imei); 
 				phone = new Phone();
 				
-				Operator operatorObj = Operator.findById(1);			
+				Operator operatorObj = Operator.findById(new Long(1));			
 				phone.operator = operatorObj;
 				
 	
@@ -254,7 +254,7 @@ public class Api extends Controller {
 			
 			phone = new Phone();
 			
-			Operator operatorObj = Operator.findById(1);			
+			Operator operatorObj = Operator.findById(new Long(1));			
 			phone.operator = operatorObj;
 			
 			phone.save();
