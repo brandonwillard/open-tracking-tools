@@ -232,7 +232,7 @@ public class Api extends Controller {
 		}
 	}
 	
-	public static void login(String imei, String driver, String body)
+	public static void login(String imei, String driver, String vehicle)
 	{
 		if(imei == null)
 			unauthorized("IMEI Required");
@@ -241,8 +241,15 @@ public class Api extends Controller {
 		
 		if(phone == null)
 		{
-			Logger.info("Unknown phone entry for IMEI " + imei); 
-			unauthorized("Unknown Phone IMEI");
+			//Logger.info("Unknown phone entry for IMEI " + imei); 
+			//unauthorized("Unknown Phone IMEI");
+			
+			phone = new Phone();
+			
+			Operator operatorObj = Operator.findById(1);			
+			phone.operator = operatorObj;
+			
+			phone.save();
 		}
 		
 		if(driver == null)
@@ -260,17 +267,17 @@ public class Api extends Controller {
 		
 		}
 		
-		if(body == null)
+		if(vehicle == null)
 			badRequest();
 		
-		Vehicle veichie = Vehicle.find("bodyNumber = ?", body).first();
+		Vehicle veichie = Vehicle.find("bodyNumber = ?", vehicle).first();
 		
 		if(veichie == null)
 		{
-			Logger.info("Unknown vehicle, createing record for body number " + body); 
+			Logger.info("Unknown vehicle, createing record for body number " + vehicle); 
 			
 			veichie = new Vehicle();
-			veichie.bodyNumber = body;
+			veichie.bodyNumber = vehicle;
 			veichie.save();
 		}
 		
@@ -436,7 +443,7 @@ public class Api extends Controller {
     
     static public void traces()
     {
-    	List<LocationUpdate> updates = LocationUpdate.find("order by timestamp desc").fetch(200);
+    	List<LocationUpdate> updates = LocationUpdate.find("order by timestamp desc").fetch(1000);
     	
     	renderJSON(updates);
     }
