@@ -404,7 +404,7 @@ public class Api extends Controller {
 	    		Double gpsError = Double.parseDouble(lineParts[5]);
 	    		
 	    		ObservationData observation = new ObservationData(imei, dateTime, new Coordinate(lon, lat), velocity, heading, gpsError);
-	   
+	    		Logger.info(dateTime.toGMTString());
 	    		update.addObservation(observation);
 	    		
 	    		LocationUpdate.natveInsert(LocationUpdate.em(), observation);
