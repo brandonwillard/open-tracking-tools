@@ -41,11 +41,18 @@ public class ObservationActor extends UntypedActor {
 				
 				Long startTime = System.nanoTime();
 				
-				Observation obs = Observation.createObservation(obsData);
+				try
+				{
+					Observation obs = Observation.createObservation(obsData);
 				
-				ie.update(obs);
+					ie.update(obs);
 				
-				response.updateFromVehicleState(ie.getBestState());
+					response.updateFromVehicleState(ie.getBestState());
+				}
+				catch(Exception e)
+				{
+					// skipping out of order transactions
+				}
 		       	
 				Long endTime = System.nanoTime();
 				
