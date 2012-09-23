@@ -2,7 +2,7 @@
 
 var mbUrl = 'http://{s}.tiles.mapbox.com/v3/openplans.map-aesfcqp0/{z}/{x}/{y}.png';
 
-var overlayUrl = 'http://127.0.0.1:8020/{z}/{x}/{y}.png';
+var overlayUrl = 'http://cebutraffic.org/tiles/{z}/{x}/{y}.png';
 
 
 var mbAttrib = 'Traffic overlay powered by OpenPlans Vehicle Tracking Tools, Map tiles &copy; Mapbox (terms).';
@@ -65,6 +65,8 @@ $(document).ready(function() {
   L.tileLayer(overlayUrl, mbOptions).addTo(map);
   
   traceLayer.addTo(map);
+  
+  loadTraces();
   
   setInterval(loadTraces, 10000);
   setInterval(refreshTiles, 30000);
