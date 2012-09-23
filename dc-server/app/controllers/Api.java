@@ -486,7 +486,7 @@ public class Api extends Controller {
     
     static public void traces()
     {
-    	List<LocationUpdate> updates = LocationUpdate.find("order by timestamp desc").fetch(1000);
+    	List<LocationUpdate> updates = LocationUpdate.find("order by timestamp desc").fetch();
     	
     	renderJSON(updates);
     }
