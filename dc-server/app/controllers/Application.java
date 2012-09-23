@@ -116,7 +116,7 @@ public class Application extends Controller {
 		{
 			updates.addObservation(location.getObservationData());
 			
-			lastTime = location.timestamp;
+			lastTime = location.timestamp;	
 		}
 		
 		Future<Object> future = ask(Application.remoteObservationActor, updates, 60000);

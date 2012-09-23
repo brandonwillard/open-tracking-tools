@@ -421,7 +421,7 @@ public class Api extends Controller {
     	
     	if(update.getObservations().size() > 0)
     	{
-    		Future<Object> future = ask(Application.remoteObservationActor, update, 60000);
+    		/*Future<Object> future = ask(Application.remoteObservationActor, update, 60000);
     		
     		future.onSuccess(new OnSuccess<Object>() {
     			public void onSuccess(Object result) {
@@ -462,7 +462,7 @@ public class Api extends Controller {
     			        }
     				}
     			}
-    		});
+    		});*/
     		
     		//Application.remoteObservationActor.ak(update);
     		
