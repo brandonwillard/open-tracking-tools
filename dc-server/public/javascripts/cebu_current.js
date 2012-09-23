@@ -42,9 +42,8 @@ function updateTraces()
 		var error  = 2;
 		if(traceData[trace].gpsError > 0 )
 			error = traceData[trace].gpsError;
-		if (traceData[trace].gpsError > 50)
-			continue;
-		L.circle([traceData[trace].lat, traceData[trace].lon],  error).addTo(traceLayer);
+		if (traceData[trace].gpsError < 50)
+			L.circle([traceData[trace].lat, traceData[trace].lon],  error).addTo(traceLayer);
 		
 	}
 }
