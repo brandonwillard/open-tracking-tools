@@ -207,11 +207,12 @@ public class InferenceInstance {
         /*
          * Note: we're not resetting the off-road paths, yet.
          */
-        log.warn(" time diff (" + timeDiff + "s) is past update limit (" 
-         + _maxUpdateIntervalCutoff + "s).  resetting filter...");
-        postBelief = null;
-        filter = null;
-        return false;
+        log.warn(" time diff (" + timeDiff + "s) is past update limit..."; 
+        
+        // + _maxUpdateIntervalCutoff + "s).  resetting filter...");
+        // postBelief = null;
+        // filter = null;
+        // return false; 
       }
     }
     
@@ -264,9 +265,9 @@ public class InferenceInstance {
     watch.stop();
     averager.accumulate(new MutableDouble(watch.elapsedMillis()));
 
-    if (recordsProcessed > 0 && recordsProcessed % 20 == 0)
-      log.info("avg. records per sec = " + 1000d
-          / this.getAverager().getMean().value);
+    //if (recordsProcessed > 0 && recordsProcessed % 20 == 0)
+      //log.info("avg. records per sec = " + 1000d
+      //    / this.getAverager().getMean().value);
 
     if (postBelief != null)
       this.bestState = postBelief.getMaxValueKey();
