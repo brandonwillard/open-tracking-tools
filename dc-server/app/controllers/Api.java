@@ -165,7 +165,8 @@ public class Api extends Controller {
 		{
 			phone = new Phone();
 			
-			Operator operatorObj = Operator.findById(new Long(1));			
+			Operator operatorObj = Operator.findById(new Long(1));
+			phone.imei = imei;
 			phone.operator = operatorObj;
 			
 			phone.save();
@@ -210,6 +211,7 @@ public class Api extends Controller {
 				
 				Operator operatorObj = Operator.findById(new Long(1));			
 				phone.operator = operatorObj;
+				phone.imei = imei;
 				
 	
 
@@ -255,6 +257,7 @@ public class Api extends Controller {
 			phone = new Phone();
 			
 			Operator operatorObj = Operator.findById(new Long(1));			
+			phone.imei = imei;
 			phone.operator = operatorObj;
 			
 			phone.save();
