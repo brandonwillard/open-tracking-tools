@@ -23,6 +23,7 @@ import org.apache.commons.lang.StringUtils;
 
 import akka.dispatch.Future;
 import akka.dispatch.OnSuccess;
+import akka.event.Logging;
 import api.AuthResponse;
 import api.MessageResponse;
 
@@ -420,10 +421,12 @@ public class Api extends Controller {
     	
     	if(update.getObservations().size() > 0)
     	{
-    		Future<Object> future = ask(Application.remoteObservationActor, update, 10000);
+    		Future<Object> future = ask(Application.remoteObservationActor, update, 60000);
     		
     		future.onSuccess(new OnSuccess<Object>() {
     			public void onSuccess(Object result) {
+    				
+    				Logger.info("update results returned");
     				
     				if(result instanceof VehicleUpdateResponse)
     				{
@@ -446,7 +449,7 @@ public class Api extends Controller {
     						{
     							String edgeIds = StringUtils.join(edges, ", ");
     							String sql = "UPDATE streetedge SET inpath = inpath + 1 WHERE edgeid IN (" + edgeIds + ") ";
-    							
+    							Logger.info(edgeIds);
     							JPA.local.get().entityManager.createNativeQuery(sql).executeUpdate();
     						}
     						
