@@ -110,55 +110,75 @@ public class Application extends Controller {
 		
 		List<LocationUpdate> locations  = LocationUpdate.find("order by timestamp").fetch();
 		
-		VehicleUpdate updates = new VehicleUpdate(locations.get(0).imei);
+		HashMap<String, VehicleUpdate> traces = new HashMap<String, VehicleUpdate>(); 
+		
+		HashMap<String, Date> lastTimes = new HashMap<String, Date>();
+		
+		HashMap<String, Integer> duplicates = new HashMap<String, Integer>();
 		
 		for(LocationUpdate location : locations)
 		{
-			updates.addObservation(location.getObservationData());
+			if(!traces.containsKey(location.imei))
+			{
+				VehicleUpdate updates = new VehicleUpdate(location.imei);
+				traces.put(location.imei, updates);
+				duplicates.put(location.imei, 0);
+			}
+			
+			if(location.gpsError < 20 && (!lastTimes.containsKey(location.imei) || lastTimes.get(location.imei).before(location.timestamp)))
+				traces.get(location.imei).addObservation(location.getObservationData());
+			else
+				duplicates.put(location.imei, duplicates.get(location.imei) + 1 );
+			
+			lastTimes.put(location.imei, location.timestamp);
 			
 			lastTime = location.timestamp;	
 		}
 		
-		Future<Object> future = ask(Application.remoteObservationActor, updates, 60000);
-		
-		future.onSuccess(new OnSuccess<Object>() {
-			public void onSuccess(Object result) {
-				
-				if(result instanceof VehicleUpdateResponse)
-				{
-					//Application.updateVehicleStats((VehicleUpdateResponse)result);
+		for(VehicleUpdate updates : traces.values())
+		{
+			Logger.info("Sending " + updates.getVehicleId() + " " + updates.getObservations().size() + " (" + duplicates.get(updates.getVehicleId()) + ")" );
+			
+			Future<Object> future = ask(Application.remoteObservationActor, updates, 1000000);
+			
+			future.onSuccess(new OnSuccess<Object>() {
+				public void onSuccess(Object result) {
 					
-					if(((VehicleUpdateResponse) result).pathList.size() == 0)
-						return;
+					if(result instanceof VehicleUpdateResponse)
+					{
+						//Application.updateVehicleStats((VehicleUpdateResponse)result);
 						
-					try 
-					{ 
-						// wrapping everything around a try catch
-						if(JPA.local.get() == null)
-			            {
-							JPA.local.set(new JPA());
-							JPA.local.get().entityManager = JPA.newEntityManager();
-			            }
-						JPA.local.get().entityManager.getTransaction().begin();
-
-						for(ArrayList<Integer> edges : ((VehicleUpdateResponse) result).pathList)
-						{
-							String edgeIds = StringUtils.join(edges, ", ");
-							String sql = "UPDATE streetedge SET inpath = inpath + 1 WHERE edgeid IN (" + edgeIds + ") ";
+						Logger.info("Received " + ((VehicleUpdateResponse) result).vehicleId + " " + ((VehicleUpdateResponse) result).pathList.size());
 							
-							JPA.local.get().entityManager.createNativeQuery(sql).executeUpdate();
+						try 
+						{ 
+							// wrapping everything around a try catch
+							if(JPA.local.get() == null)
+				            {
+								JPA.local.set(new JPA());
+								JPA.local.get().entityManager = JPA.newEntityManager();
+				            }
+							JPA.local.get().entityManager.getTransaction().begin();
+	
+							for(ArrayList<Integer> edges : ((VehicleUpdateResponse) result).pathList)
+							{
+								String edgeIds = StringUtils.join(edges, ", ");
+								String sql = "UPDATE streetedge SET inpath = inpath + 1 WHERE edgeid IN (" + edgeIds + ") ";
+								
+								JPA.local.get().entityManager.createNativeQuery(sql).executeUpdate();
+							}
+							
+							JPA.local.get().entityManager.getTransaction().commit();	
 						}
-						
-						JPA.local.get().entityManager.getTransaction().commit();	
+				        finally 
+				        {
+				            JPA.local.get().entityManager.close();
+				            JPA.local.remove();
+				        }
 					}
-			        finally 
-			        {
-			            JPA.local.get().entityManager.close();
-			            JPA.local.remove();
-			        }
 				}
-			}
-		});
+			});
+		}
 		
 		index();
 	}
@@ -176,7 +196,8 @@ public class Application extends Controller {
 			lastTime = location.timestamp;
 		}
 		
-		Future<Object> future = ask(Application.remoteObservationActor, updates, 60000);
+		
+		Future<Object> future = ask(Application.remoteObservationActor, updates, 1000000);
 		
 		future.onSuccess(new OnSuccess<Object>() {
 			public void onSuccess(Object result) {

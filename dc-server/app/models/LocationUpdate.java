@@ -8,9 +8,11 @@ import javax.persistence.EntityManager;
 import javax.persistence.ManyToOne;
 import javax.persistence.Query;
 
+import org.hibernate.annotations.Type;
 import org.openplans.tools.tracking.impl.ObservationData;
 
 import com.vividsolutions.jts.geom.Coordinate;
+import com.vividsolutions.jts.geom.Point;
 
 import play.db.jpa.Model;
 
@@ -27,6 +29,9 @@ public class LocationUpdate extends Model {
     public Double velocity;
     public Double heading;
     public Double gpsError;
+    
+    @Type(type = "org.hibernatespatial.GeometryUserType")
+    public Point shape;
     
     public ObservationData getObservationData()
     {

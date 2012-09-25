@@ -1,6 +1,6 @@
 
 
-var mbUrl = 'http://{s}.tiles.mapbox.com/v3/openplans.map-aesfcqp0/{z}/{x}/{y}.png';
+var mbUrl = 'http://{s}.tiles.mapbox.com/v3/openplans.map-zugfpt95/{z}/{x}/{y}.png';
 
 var overlayUrl = 'http://cebutraffic.org/tiles/{z}/{x}/{y}.png';
 
@@ -61,13 +61,13 @@ $(document).ready(function() {
 
   L.tileLayer(mbUrl, mbOptions).addTo(map);
   
-  L.tileLayer(overlayUrl, mbOptions).addTo(map);
+  //L.tileLayer(overlayUrl, mbOptions).addTo(map);
   
-  traceLayer.addTo(map);
+  //traceLayer.addTo(map);
   
-  loadTraces();
+  //loadTraces();
   
-  setInterval(loadTraces, 10000);
-  setInterval(refreshTiles, 30000);
+  //setInterval(loadTraces, 10000);
+  //setInterval(refreshTiles, 30000);
 
 });
