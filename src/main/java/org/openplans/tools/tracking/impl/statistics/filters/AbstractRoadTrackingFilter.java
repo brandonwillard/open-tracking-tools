@@ -18,6 +18,8 @@ import java.util.Map.Entry;
 import java.util.Random;
 
 import no.uib.cipr.matrix.DenseCholesky;
+import no.uib.cipr.matrix.UpperSPDDenseMatrix;
+import no.uib.cipr.matrix.UpperTriangDenseMatrix;
 
 import org.openplans.tools.tracking.impl.Observation;
 import org.openplans.tools.tracking.impl.VehicleState;
@@ -398,16 +400,6 @@ public abstract class AbstractRoadTrackingFilter extends
         + ", currentTimeDiff=" + currentTimeDiff + "]";
   }
 
-  public static boolean checkPosDef(DenseMatrix covar) {
-    final EigenDecompositionRightMTJ decomp =
-        EigenDecompositionRightMTJ.create(covar);
-    for (final ComplexNumber eigenVal : decomp.getEigenValues()) {
-      if (eigenVal.getRealPart() < 0)
-        return false;
-    }
-    return true;
-  }
-
   public static void convertToGroundBelief(
     MultivariateGaussian belief, PathEdge edge) {
     convertToGroundBelief(belief, edge, false);
@@ -506,10 +498,35 @@ public abstract class AbstractRoadTrackingFilter extends
     final Vector projMean =
         projPair.getKey().times(positiveMean)
             .plus(projPair.getValue());
-    final Matrix projCov =
-        projPair.getKey().times(C)
-            .times(projPair.getKey().transpose());
-
+    
+    final UpperSPDDenseMatrix Cspd =
+        new UpperSPDDenseMatrix(
+           DenseMatrixFactoryMTJ.INSTANCE.copyMatrix(C).getInternalMatrix(), false);
+    final no.uib.cipr.matrix.Matrix P = ((AbstractMTJMatrix) projPair.getKey()).getInternalMatrix();
+    
+    DenseCholesky chol = DenseCholesky.factorize(Cspd);
+    /*
+     * CU.transpose().times(CU) = C
+     */
+    UpperTriangDenseMatrix CU = chol.getU();
+    final no.uib.cipr.matrix.DenseMatrix newCovU =
+        new no.uib.cipr.matrix.DenseMatrix(CU.numRows(), P.numRows());
+    CU.transBmult(P, newCovU);
+    
+    final no.uib.cipr.matrix.DenseMatrix newCov =
+        new no.uib.cipr.matrix.DenseMatrix(newCovU.numColumns(), newCovU.numColumns());
+    newCovU.transAmult(newCovU, newCov);
+    
+    final Matrix projCov  =
+        ((DenseMatrixFactoryMTJ) MatrixFactory.getDenseDefault())
+            .createWrapper(newCov);
+    
+//    final Matrix projCov =
+//        projPair.getKey().times(C)
+//            .times(projPair.getKey().transpose());
+    
+    assert StatisticsUtil.isPosSemiDefinite((DenseMatrix)projCov);
+    
     belief.setMean(projMean);
     belief.setCovariance(projCov);
   }
@@ -622,28 +639,21 @@ public abstract class AbstractRoadTrackingFilter extends
     final Matrix projCov =
         projPair.getKey().transpose().times(C)
             .times(projPair.getKey());
-
+    
+    assert StatisticsUtil.isPosSemiDefinite((DenseMatrix)projCov);
+    
     belief.setMean(projMean);
     belief.setCovariance(projCov);
   }
 
-  /**
-   * Creates either a diagonal matrix with diag = xa0Variance, yaVariance, or
-   * the aforementioned matrix rotated by the x-axis angle angle, with
-   * xa0Variance, yaVariance the perpendicular, parallel variances.
-   * 
-   * @param timeDiff
-   * @param yaVariance
-   * @param xa0Variance
-   * @param angle
-   * @return
-   */
   protected static Matrix createStateCovarianceMatrix(
     double timeDiff, Matrix Q, boolean isRoad) {
 
     final Matrix A_half = getCovarianceFactor(timeDiff, isRoad);
     final Matrix A = A_half.times(Q).times(A_half.transpose());
 
+    assert StatisticsUtil.isPosSemiDefinite((DenseMatrix)A);
+    
     return A;
   }
 
@@ -871,10 +881,13 @@ public abstract class AbstractRoadTrackingFilter extends
     AbstractRoadTrackingFilter filter) {
     final boolean isRoad = mean.getDimensionality() == 2;
     final Matrix Q = isRoad ? filter.getQr() : filter.getQg();
-
-    final Matrix covSqrt =
-        CholeskyDecompositionMTJ.create(
-            DenseMatrixFactoryMTJ.INSTANCE.copyMatrix(Q)).getR();
+    
+    DenseCholesky cholesky = DenseCholesky.factorize( 
+        DenseMatrixFactoryMTJ.INSTANCE.copyMatrix(Q).getInternalMatrix() );
+    
+    final Matrix covSqrt = DenseMatrixFactoryMTJ.INSTANCE.createWrapper( 
+            new no.uib.cipr.matrix.DenseMatrix( cholesky.getU() ) );
+    
     final Vector underlyingSample =
         MultivariateGaussian.sample(VectorFactory.getDefault()
             .createVector(covSqrt.getNumRows()), covSqrt, rng);
@@ -885,32 +898,27 @@ public abstract class AbstractRoadTrackingFilter extends
   }
 
   public void setQr(Matrix qr) {
-    assert DenseCholesky.factorize(
-        ((AbstractMTJMatrix) qr).getInternalMatrix()).isSPD(); 
+    assert StatisticsUtil.isPosSemiDefinite((DenseMatrix)qr);
     Qr = qr;
   }
 
   public void setQg(Matrix qg) {
-    assert DenseCholesky.factorize(
-        ((AbstractMTJMatrix) qg).getInternalMatrix()).isSPD(); 
+    assert StatisticsUtil.isPosSemiDefinite((DenseMatrix)qg);
     Qg = qg;
   }
 
   public void setOnRoadStateVariance(Matrix onRoadStateVariance) {
-    assert DenseCholesky.factorize(
-        ((AbstractMTJMatrix) onRoadStateVariance).getInternalMatrix()).isSPD(); 
+    assert StatisticsUtil.isPosSemiDefinite((DenseMatrix)onRoadStateVariance);
     this.onRoadStateVariance = onRoadStateVariance;
   }
 
   public void setOffRoadStateVariance(Matrix offRoadStateVariance) {
-    assert DenseCholesky.factorize(
-        ((AbstractMTJMatrix) offRoadStateVariance).getInternalMatrix()).isSPD(); 
+    assert StatisticsUtil.isPosSemiDefinite((DenseMatrix)offRoadStateVariance);
     this.offRoadStateVariance = offRoadStateVariance;
   }
 
   public void setObsVariance(Matrix obsVariance) {
-    assert DenseCholesky.factorize(
-        ((AbstractMTJMatrix) obsVariance).getInternalMatrix()).isSPD(); 
+    assert StatisticsUtil.isPosSemiDefinite((DenseMatrix)obsVariance);
     this.obsVariance = obsVariance;
   }
 

@@ -11,6 +11,8 @@ import java.util.List;
 import java.util.Random;
 import java.util.Set;
 
+import no.uib.cipr.matrix.DenseCholesky;
+
 import org.openplans.tools.tracking.impl.VehicleState.VehicleStateInitialParameters;
 import org.openplans.tools.tracking.impl.graph.InferredEdge;
 import org.openplans.tools.tracking.impl.graph.paths.InferredPath;
@@ -330,9 +332,13 @@ public class Simulation {
     AbstractRoadTrackingFilter.convertToGroundBelief(gbelief, edge);
     final Vector gMean =
         AbstractRoadTrackingFilter.getOg().times(gbelief.getMean());
-    final Matrix covSqrt =
-        CholeskyDecompositionMTJ.create(
-            DenseMatrixFactoryMTJ.INSTANCE.copyMatrix(obsCov)).getR();
+    
+    DenseCholesky cholesky = DenseCholesky.factorize( 
+        DenseMatrixFactoryMTJ.INSTANCE.copyMatrix(obsCov).getInternalMatrix() );
+    
+    final Matrix covSqrt = DenseMatrixFactoryMTJ.INSTANCE.createWrapper( 
+            new no.uib.cipr.matrix.DenseMatrix( cholesky.getU() ) );
+    
     final Vector thisStateSample =
         MultivariateGaussian.sample(gMean, covSqrt, rng);
     return thisStateSample;

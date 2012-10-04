@@ -58,9 +58,10 @@ public class StandardRoadTrackingFilter extends
     this.Qr =
         MatrixFactory.getDefault()
             .createDiagonal(onRoadStateVariance);
+    final Matrix roadStateCov = createStateCovarianceMatrix(
+            this.currentTimeDiff, Qr, true);
     this.roadFilter =
-        new AdjKalmanFilter(roadModel, createStateCovarianceMatrix(
-            this.currentTimeDiff, Qr, true), this.obsVariance);
+        new AdjKalmanFilter(roadModel, roadStateCov, this.obsVariance);
 
     /*
      * Create the ground-coordinates filter
@@ -80,9 +81,10 @@ public class StandardRoadTrackingFilter extends
     this.Qg =
         MatrixFactory.getDefault().createDiagonal(
             offRoadStateVariance);
+    final Matrix groundStateCov = createStateCovarianceMatrix(
+            this.currentTimeDiff, Qg, false);
     this.groundFilter =
-        new AdjKalmanFilter(groundModel, createStateCovarianceMatrix(
-            this.currentTimeDiff, Qg, false), this.obsVariance);
+        new AdjKalmanFilter(groundModel, groundStateCov, this.obsVariance);
 
   }
 

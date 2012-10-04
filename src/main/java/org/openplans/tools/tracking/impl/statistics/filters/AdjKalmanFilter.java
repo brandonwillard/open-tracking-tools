@@ -1,5 +1,7 @@
 package org.openplans.tools.tracking.impl.statistics.filters;
 
+import org.openplans.tools.tracking.impl.statistics.StatisticsUtil;
+
 import gov.sandia.cognition.math.matrix.Matrix;
 import gov.sandia.cognition.math.matrix.MatrixFactory;
 import gov.sandia.cognition.math.matrix.Vector;
@@ -167,8 +169,7 @@ public class AdjKalmanFilter extends AbstractKalmanFilter {
     final Matrix CC = R.minus(AtQtA);
     final Vector m = a.plus(Ate);
 
-    assert DenseCholesky.factorize(
-        ((AbstractMTJMatrix) CC).getInternalMatrix()).isSPD();
+    assert StatisticsUtil.isPosSemiDefinite((gov.sandia.cognition.math.matrix.mtj.DenseMatrix)CC);
 
     belief.setCovariance(CC);
     belief.setMean(m);
@@ -189,8 +190,7 @@ public class AdjKalmanFilter extends AbstractKalmanFilter {
     // Load the updated belief
     belief.setMean(xpred);
 
-    assert DenseCholesky.factorize(
-        ((AbstractMTJMatrix) P).getInternalMatrix()).isSPD();
+    assert StatisticsUtil.isPosSemiDefinite((gov.sandia.cognition.math.matrix.mtj.DenseMatrix)P);
 
     belief.setCovariance(P);
 

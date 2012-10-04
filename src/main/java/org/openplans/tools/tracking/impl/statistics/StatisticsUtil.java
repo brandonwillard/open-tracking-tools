@@ -1,11 +1,16 @@
 package org.openplans.tools.tracking.impl.statistics;
 
+import gov.sandia.cognition.math.ComplexNumber;
 import gov.sandia.cognition.math.LogMath;
 import gov.sandia.cognition.math.matrix.Matrix;
 import gov.sandia.cognition.math.matrix.MatrixFactory;
 import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.math.matrix.VectorFactory;
 import gov.sandia.cognition.math.matrix.mtj.AbstractMTJMatrix;
+import gov.sandia.cognition.math.matrix.mtj.DenseMatrix;
+import gov.sandia.cognition.math.matrix.mtj.DenseMatrixFactoryMTJ;
+import gov.sandia.cognition.math.matrix.mtj.decomposition.CholeskyDecompositionMTJ;
+import gov.sandia.cognition.math.matrix.mtj.decomposition.EigenDecompositionRightMTJ;
 import gov.sandia.cognition.statistics.distribution.ChiSquareDistribution;
 import gov.sandia.cognition.statistics.distribution.InverseWishartDistribution;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
@@ -18,6 +23,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Random;
 
+import no.uib.cipr.matrix.DenseCholesky;
 import no.uib.cipr.matrix.DenseVector;
 import no.uib.cipr.matrix.UpperSPDDenseMatrix;
 
@@ -498,4 +504,28 @@ public class StatisticsUtil {
       return Objects.equal(vec1, vec2);
   }
 
+  public static boolean isPosSemiDefinite(DenseMatrix covar) {
+    try {
+      DenseCholesky cholesky = DenseCholesky.factorize( 
+          DenseMatrixFactoryMTJ.INSTANCE.copyMatrix(covar).getInternalMatrix());
+    } catch(IllegalArgumentException ex) {
+      return false;
+    }
+    return true;
+  }
+
+  /**
+   * Returns, for A, an R s.t. R^T * R = A 
+   * @param matrix
+   * @return
+   */
+  public static Matrix getCholR(Matrix matrix) {
+    DenseCholesky cholesky = DenseCholesky.factorize( 
+        DenseMatrixFactoryMTJ.INSTANCE.copyMatrix(matrix).getInternalMatrix() );
+    
+    final Matrix covSqrt = DenseMatrixFactoryMTJ.INSTANCE.createWrapper( 
+            new no.uib.cipr.matrix.DenseMatrix( cholesky.getU() ) );
+    
+    return covSqrt;
+  }
 }

@@ -659,8 +659,7 @@ public class InferredPath implements Comparable<InferredPath> {
 
     belief.setMean(a);
 
-    assert DenseCholesky.factorize(
-        ((AbstractMTJMatrix) R).getInternalMatrix()).isSPD();
+    assert StatisticsUtil.isPosSemiDefinite((gov.sandia.cognition.math.matrix.mtj.DenseMatrix)R);
 
     belief.setCovariance(R);
   }

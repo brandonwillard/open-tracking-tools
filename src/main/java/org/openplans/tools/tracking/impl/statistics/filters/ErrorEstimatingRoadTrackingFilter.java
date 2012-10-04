@@ -188,7 +188,10 @@ public class ErrorEstimatingRoadTrackingFilter extends
        */
 
       final InferredPath newSamplePath = sampledPath;
-      final Vector newStateSample = sampledBelief.sample(rng);
+      
+      final Matrix sampledBeliefChol = StatisticsUtil.getCholR(sampledBelief.getCovariance());
+      final Vector newStateSample = MultivariateGaussian.sample(sampledBelief.getMean(), sampledBeliefChol, rng);
+      
       if (!newSamplePath.isOnPath(newStateSample.getElement(0))) {
         newStateSample.setElement(0,
             newSamplePath.clampToPath(newStateSample.getElement(0)));
@@ -252,7 +255,8 @@ public class ErrorEstimatingRoadTrackingFilter extends
       final InverseWishartDistribution covarPrior =
           this.getOffRoadStateVariancePrior();
 
-      final Vector newStateSample = sampledBelief.sample(rng);
+      final Matrix sampledBeliefChol = StatisticsUtil.getCholR(sampledBelief.getCovariance());
+      final Vector newStateSample = MultivariateGaussian.sample(sampledBelief.getMean(), sampledBeliefChol, rng);
 
       final InferredEdge oldEdge =
           this.getCurrentStateSample().getSecond();
@@ -289,7 +293,8 @@ public class ErrorEstimatingRoadTrackingFilter extends
     final int nNew = nOld + 1;
     covarPrior.setDegreesOfFreedom(nNew);
     final Matrix smplCov = stateError.outerProduct(stateError);
-    covarPrior.setInverseScale(covarPrior.getInverseScale().scale(((double)nOld)).plus(smplCov).scale(1d/(double)nNew));
+//    covarPrior.setInverseScale(covarPrior.getInverseScale().scale(((double)nOld)).plus(smplCov).scale(1d/(double)nNew));
+    covarPrior.setInverseScale(covarPrior.getInverseScale().plus(smplCov));
   }
 
 }
