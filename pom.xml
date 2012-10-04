@@ -263,12 +263,12 @@
       <artifactId>opentripplanner-graph-builder</artifactId>
       <version>${otp.version}</version>
     </dependency>
-    <dependency>
-      <groupId>ca.umontreal.iro</groupId>
-      <artifactId>ssj</artifactId>
-      <version>2.4</version>
-      <type>pom.lastUpdated</type>
-    </dependency>
+<!--     <dependency> -->
+<!--       <groupId>ca.umontreal.iro</groupId> -->
+<!--       <artifactId>ssj</artifactId> -->
+<!--       <version>2.4</version> -->
+<!--       <type>pom.lastUpdated</type> -->
+<!--     </dependency> -->
     <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>

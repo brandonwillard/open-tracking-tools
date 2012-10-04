@@ -142,10 +142,38 @@ public class ResultSet {
     }
 
     @JsonSerialize
+    public double[] getOffRoadTransProbs() {
+      return ((gov.sandia.cognition.math.matrix.mtj.DenseVector)
+          this.state.getEdgeTransitionDist().getFreeMotionTransPrior().getMean()).getArray();
+      
+    }
+    
+    @JsonSerialize
+    public double[] getOffRoadTransProbsPriorParams() {
+      return ((gov.sandia.cognition.math.matrix.mtj.DenseVector)
+          this.state.getEdgeTransitionDist().getFreeMotionTransProbPrior().getMean()).getArray();
+      
+    }
+    
+    @JsonSerialize
+    public double[] getOnRoadTransProbs() {
+      return ((gov.sandia.cognition.math.matrix.mtj.DenseVector)
+          this.state.getEdgeTransitionDist().getEdgeMotionTransPrior().getMean()).getArray();
+      
+    }
+    
+    @JsonSerialize
+    public double[] getOnRoadTransProbsPriorParams() {
+      return ((gov.sandia.cognition.math.matrix.mtj.DenseVector)
+          this.state.getEdgeTransitionDist().getEdgeMotionTransProbPrior().getMean()).getArray();
+    }
+    
+    @JsonSerialize
     public int getParticleCount() {
       return this.particleCount;
     }
 
+    @JsonSerialize
     public List<OffRoadPath> getOffRoadPaths() {
       return offRoadPaths;
     }
@@ -236,6 +264,11 @@ public class ResultSet {
   }
 
   @JsonSerialize
+  public String getEspgCode() {
+    return this.state.getObservation().getObsPoint().epsgCode();
+  }
+  
+  @JsonSerialize
   public OsmSegmentWithVelocity getInferredEdge() {
     return inferredEdge;
   }
@@ -275,11 +308,36 @@ public class ResultSet {
     return ((DenseMatrix) state.getBelief().getCovariance())
         .convertToVector().getArray().clone();
   }
-
-  //    @JsonSerialize
-  //    public List<EvaluatedPathInfo> getEvaluatedPaths() {
-  //      return evaluatedPaths;
-  //    }
+  
+  @JsonSerialize
+  public double[] getObsCovariance() {
+    return ((DenseMatrix) state.getMovementFilter().getObsVariance())
+        .convertToVector().getArray().clone();
+  }
+  
+  @JsonSerialize
+  public double[] getOffRoadStateCovariance() {
+    return ((DenseMatrix) state.getMovementFilter().getOffRoadStateVariance())
+        .convertToVector().getArray().clone();
+  }
+  
+  @JsonSerialize
+  public double[] getOnRoadStateCovariance() {
+    return ((DenseMatrix) state.getMovementFilter().getOffRoadStateVariance())
+        .convertToVector().getArray().clone();
+  }
+  
+  @JsonSerialize
+  public double[] getStateQgCovariance() {
+    return ((DenseMatrix) state.getMovementFilter().getQg())
+        .convertToVector().getArray().clone();
+  }
+  
+  @JsonSerialize
+  public double[] getStateQrCovariance() {
+    return ((DenseMatrix) state.getMovementFilter().getQr())
+        .convertToVector().getArray().clone();
+  }
 
   @JsonSerialize
   public double[] getStateMean() {

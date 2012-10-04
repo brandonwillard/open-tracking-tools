@@ -12,7 +12,6 @@ import org.opengis.referencing.operation.TransformException;
 import org.openplans.tools.tracking.impl.util.GeoUtils;
 import org.openplans.tools.tracking.impl.util.ProjectedCoordinate;
 
-import com.google.common.base.Preconditions;
 import com.google.common.collect.ComparisonChain;
 import com.google.common.collect.Maps;
 import com.vividsolutions.jts.geom.Coordinate;
@@ -42,9 +41,9 @@ public class Observation implements Comparable<Observation> {
       "yyyy-MM-dd hh:mm:ss");
 
   private Observation(String vehicleId, Date timestamp,
-    Coordinate obsCoords, ProjectedCoordinate obsPoint, Double velocity,
-    Double heading, Double accuracy, Observation prevObs,
-    int recordNumber) {
+    Coordinate obsCoords, ProjectedCoordinate obsPoint,
+    Double velocity, Double heading, Double accuracy,
+    Observation prevObs, int recordNumber) {
     this.recordNumber = recordNumber;
     this.vehicleId = vehicleId;
     this.timestamp = timestamp;

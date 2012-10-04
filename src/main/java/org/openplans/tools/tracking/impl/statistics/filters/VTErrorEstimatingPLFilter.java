@@ -1,10 +1,7 @@
 package org.openplans.tools.tracking.impl.statistics.filters;
 
 import gov.sandia.cognition.math.LogMath;
-import gov.sandia.cognition.math.matrix.Matrix;
-import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.statistics.DataDistribution;
-import gov.sandia.cognition.statistics.distribution.InverseWishartDistribution;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 import gov.sandia.cognition.util.DefaultPair;
 import gov.sandia.cognition.util.Pair;
@@ -20,8 +17,8 @@ import javax.annotation.Nonnull;
 
 import org.openplans.tools.tracking.impl.Observation;
 import org.openplans.tools.tracking.impl.VehicleState;
-import org.openplans.tools.tracking.impl.WrappedWeightedValue;
 import org.openplans.tools.tracking.impl.VehicleState.VehicleStateInitialParameters;
+import org.openplans.tools.tracking.impl.WrappedWeightedValue;
 import org.openplans.tools.tracking.impl.graph.InferredEdge;
 import org.openplans.tools.tracking.impl.graph.paths.InferredPath;
 import org.openplans.tools.tracking.impl.graph.paths.InferredPath.EdgePredictiveResults;
@@ -48,8 +45,8 @@ public class VTErrorEstimatingPLFilter extends
     OtpGraph inferredGraph, VehicleStateInitialParameters parameters,
     @Nonnull Boolean isDebug) {
     super(obs, inferredGraph, parameters,
-        new VehicleTrackingPathSamplerFilterUpdater(obs,
-            inferredGraph, parameters), isDebug);
+        new VTErrorEstimatingPLFilterUpdater(obs, inferredGraph,
+            parameters), isDebug);
   }
 
   @Override
@@ -174,30 +171,34 @@ public class VTErrorEstimatingPLFilter extends
                 .getPath().getEdges().get(0), sampledPathEntry
                 .getPath().getIsBackward());
       }
+
+      /*
+       * This belief is p(x_{t+1} | Z_t, ..., y_{t+1}).  The dependency
+       * on y_{t+1} obtained through resampling based on the likelihoods.
+       */
       final MultivariateGaussian sampledBelief =
           sampledPathEntry.getEdgeToPredictiveBelief()
               .get(directionalSampledEdge)
-              .getWeightedPredictiveDist().getValue().clone();
+              .getWeightedPredictiveDist().getValue();
 
       final AbstractRoadTrackingFilter updatedFilter =
           sampledPathEntry.getFilter().clone();
 
-      final PathEdge actualPosteriorEdge;
-      if (!sampledPathEntry.getPath().isEmptyPath()) {
-        updatedFilter.measure(sampledBelief, obs.getProjectedPoint(),
-            sampledPathEntry.getPath());
+      /*
+       * This is the belief that will be propagated.
+       */
+      final MultivariateGaussian updatedBelief =
+          sampledBelief.clone();
+      updatedFilter.measure(updatedBelief, obs.getProjectedPoint(),
+          sampledPathEntry.getPath());
 
-        actualPosteriorEdge = directionalSampledEdge.getFirst();
-      } else {
-        updatedFilter.measure(sampledBelief, obs.getProjectedPoint(),
-            sampledPathEntry.getPath());
-        actualPosteriorEdge = directionalSampledEdge.getFirst();
-      }
+      final PathEdge actualPosteriorEdge =
+          directionalSampledEdge.getFirst();
 
       InferredEdge prevEdge =
           sampledPathEntry.getPath().getEdges().get(0)
               .getInferredEdge();
-      
+
       /*-
        * Propagate sufficient stats (can be done off-line) Just the edge
        * transitions for now.
@@ -211,72 +212,42 @@ public class VTErrorEstimatingPLFilter extends
               edge.getInferredEdge());
 
         if (!edge.isEmptyEdge()) {
-        	
+
           edge.getInferredEdge()
               .getVelocityEstimator()
               .update(
                   edge.getInferredEdge().getVelocityPrecisionDist(),
-                  Math.abs(sampledBelief.getMean().getElement(1)));
-          
-          HashMap<String, Integer> attributes = new HashMap<String, Integer>();
-          
-          Integer interval = Math.round(((obs.getTimestamp().getHours() * 60) + obs.getTimestamp().getMinutes()) / DataCube.INTERVAL);
-          
+                  Math.abs(updatedBelief.getMean().getElement(1)));
+
+          final HashMap<String, Integer> attributes =
+              new HashMap<String, Integer>();
+
+          final Integer interval =
+              Math.round(((obs.getTimestamp().getHours() * 60) + obs
+                  .getTimestamp().getMinutes()) / DataCube.INTERVAL);
+
           attributes.put("interval", interval);
           attributes.put("edge", edge.getEdge().getEdgeId());
-          
-          inferredGraph.getDataCube().store(Math.abs(sampledBelief.getMean().getElement(1)), attributes);
+
+          inferredGraph.getDataCube().store(
+              Math.abs(updatedBelief.getMean().getElement(1)),
+              attributes);
         }
 
         if (edge.equals(actualPosteriorEdge))
           break;
         prevEdge = edge.getInferredEdge();
       }
-      
+
       /*
        * Update covariances.
        */
-      if (updatedFilter instanceof ErrorEstimatingRoadTrackingFilter) {
-        final ErrorEstimatingRoadTrackingFilter eeFilter = 
-            (ErrorEstimatingRoadTrackingFilter) updatedFilter;
-        
-        final Vector obsError = ;
-        updateInverseWishartPrior(eeFilter.getObsVariancePrior(), obsError);
-        eeFilter.setObsVariance(eeFilter.getObsVariancePrior().sample(rng));
-        
-        final Vector stateError;
-        final InverseWishartDistribution covarPrior;
-        if (sampledBelief.getInputDimensionality() == 2) {
-          covarPrior = eeFilter.getOnRoadStateVariancePrior();
-          
-          final Vector newStateSample = eeFilter.sampleStateBelief(rng); 
-          stateError = eeFilter.getCurrentStateSample().minus(newStateSample);
-          updateInverseWishartPrior(covarPrior, stateError);
-          
-          eeFilter.setCurrentStateSample(newStateSample);
-          
-          eeFilter.setQr(covarPrior.sample(rng));
-          eeFilter.setOnRoadStateVariance(covarPrior.sample(rng));
-          
-        } else {
-          covarPrior = eeFilter.getOffRoadStateVariancePrior();
-          
-          final Vector newStateSample = eeFilter.sampleStateBelief(rng); 
-          stateError = eeFilter.getCurrentStateSample().minus(newStateSample);
-          updateInverseWishartPrior(covarPrior, stateError);
-          
-          eeFilter.setCurrentStateSample(newStateSample);
-          
-          eeFilter.setQg(covarPrior.sample(rng));
-          eeFilter.setOffRoadStateVariance(covarPrior.sample(rng));
-        }
-        
-
-      }
+      updatedFilter.updateSufficientStatistics(obs, state,
+          sampledBelief, sampledPathEntry.getPath(), rng);
 
       final VehicleState newTransState =
           new VehicleState(this.inferredGraph, obs, updatedFilter,
-              sampledBelief, updatedEdgeTransDist,
+              updatedBelief, updatedEdgeTransDist,
               sampledPathEntry.getPath(), state);
 
       ((DefaultCountedDataDistribution<VehicleState>) posteriorDist)
@@ -292,10 +263,4 @@ public class VTErrorEstimatingPLFilter extends
         .getTotalCount() == this.numParticles;
 
   }
-  
-  private void updateInverseWishartPrior(InverseWishartDistribution prior, Vector obsError) {
-    prior.setDegreesOfFreedom(prior.getDegreesOfFreedom()  + 1);
-    prior.setInverseScale(obsError.outerProduct(obsError));
-  }
-
 }

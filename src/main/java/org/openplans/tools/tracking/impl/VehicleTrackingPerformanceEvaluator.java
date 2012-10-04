@@ -13,7 +13,7 @@ import java.util.Collection;
 import java.util.List;
 
 import org.openplans.tools.tracking.impl.graph.paths.PathEdge;
-import org.openplans.tools.tracking.impl.statistics.filters.StandardRoadTrackingFilter;
+import org.openplans.tools.tracking.impl.statistics.filters.AbstractRoadTrackingFilter;
 
 import com.google.common.collect.Lists;
 
@@ -46,7 +46,7 @@ public class VehicleTrackingPerformanceEvaluator extends
 
       final MultivariateGaussian targetBelief =
           pair.getTarget().getBelief().clone();
-      StandardRoadTrackingFilter.convertToGroundBelief(targetBelief,
+      AbstractRoadTrackingFilter.convertToGroundBelief(targetBelief,
           PathEdge.getEdge(pair.getTarget().getInferredEdge()));
 
       for (final VehicleState estimate : pair.getEstimate()
@@ -54,7 +54,7 @@ public class VehicleTrackingPerformanceEvaluator extends
 
         final MultivariateGaussian estimateBelief =
             estimate.getBelief().clone();
-        StandardRoadTrackingFilter.convertToGroundBelief(
+        AbstractRoadTrackingFilter.convertToGroundBelief(
             estimateBelief,
             PathEdge.getEdge(estimate.getInferredEdge()));
 

@@ -5,6 +5,7 @@ import models.InferenceInstance;
 
 import org.openplans.tools.tracking.impl.Simulation;
 import org.openplans.tools.tracking.impl.VehicleState;
+import org.openplans.tools.tracking.impl.statistics.filters.VehicleTrackingBootstrapFilter;
 
 import play.Logger;
 import akka.actor.UntypedActor;
@@ -46,6 +47,11 @@ public class SimulationActor extends UntypedActor {
     VehicleState vehicleState = this.sim.computeInitialState();
     long time = this.sim.getSimParameters().getStartTime().getTime();
 
+    /*
+     * TODO bootstrap filter does weird things with on/off-road, and
+     * the code for off-road tracking
+     */
+    final boolean updateOffRoad = (this.instance.getFilterType().equals(VehicleTrackingBootstrapFilter.class)) ? false : true;
     while (time < this.sim.getSimParameters().getEndTime().getTime()
         && InferenceService.getInferenceInstance(sim
             .getSimulationName()) != null) {
@@ -53,7 +59,7 @@ public class SimulationActor extends UntypedActor {
       time = vehicleState.getObservation().getTimestamp().getTime();
       this.instance.update(vehicleState, vehicleState
           .getObservation(), this.sim.getSimParameters()
-          .isPerformInference());
+          .isPerformInference(), updateOffRoad);
     }
 
     if (this.instance.getRecordsProcessed() > 0)

@@ -24,7 +24,6 @@ import org.openplans.tools.tracking.impl.statistics.filters.AdjKalmanFilter;
 import org.openplans.tools.tracking.impl.util.OtpGraph;
 
 import com.google.common.annotations.Beta;
-import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
 
 /**
@@ -67,15 +66,15 @@ public class VehicleState implements
     public double logEvaluate(Observation input) {
       double logLikelihood = 0d;
 
-//      /*
-//       * Edge transitions.
-//       * XXX: Very important!  This skips the edges in-between.
-//       */
-//      final InferredEdge parentEdge = this.getParentState() != null ? 
-//          this.getParentState().getInferredEdge() : null;
-//      logLikelihood +=
-//          this.edgeTransitionDist.logEvaluate(parentEdge,
-//              this.getInferredEdge());
+      //      /*
+      //       * Edge transitions.
+      //       * XXX: Very important!  This skips the edges in-between.
+      //       */
+      //      final InferredEdge parentEdge = this.getParentState() != null ? 
+      //          this.getParentState().getInferredEdge() : null;
+      //      logLikelihood +=
+      //          this.edgeTransitionDist.logEvaluate(parentEdge,
+      //              this.getInferredEdge());
 
       /*
        * Movement.
@@ -111,11 +110,12 @@ public class VehicleState implements
     private final long seed;
     private final int numParticles;
     private final String filterTypeName;
+    private final int initialObsFreq;
 
     public VehicleStateInitialParameters(Vector obsVariance,
       Vector onRoadStateVariance, Vector offRoadStateVariance,
-      Vector offProbs, Vector onProbs, String filterTypeName, 
-      int numParticles, long seed) {
+      Vector offProbs, Vector onProbs, String filterTypeName,
+      int numParticles, int initialObsFreq, long seed) {
       this.numParticles = numParticles;
       this.obsVariance = obsVariance;
       this.onRoadStateVariance = onRoadStateVariance;
@@ -124,6 +124,83 @@ public class VehicleState implements
       this.onTransitionProbs = onProbs;
       this.seed = seed;
       this.filterTypeName = filterTypeName;
+      this.initialObsFreq = initialObsFreq;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+      if (this == obj) {
+        return true;
+      }
+      if (obj == null) {
+        return false;
+      }
+      if (getClass() != obj.getClass()) {
+        return false;
+      }
+      final VehicleStateInitialParameters other =
+          (VehicleStateInitialParameters) obj;
+      if (filterTypeName == null) {
+        if (other.filterTypeName != null) {
+          return false;
+        }
+      } else if (!filterTypeName.equals(other.filterTypeName)) {
+        return false;
+      }
+      if (numParticles != other.numParticles) {
+        return false;
+      }
+      if (obsVariance == null) {
+        if (other.obsVariance != null) {
+          return false;
+        }
+      } else if (!StatisticsUtil.vectorEquals(obsVariance,
+          other.obsVariance)) {
+        return false;
+      }
+      if (offRoadStateVariance == null) {
+        if (other.offRoadStateVariance != null) {
+          return false;
+        }
+      } else if (!StatisticsUtil.vectorEquals(offRoadStateVariance,
+          other.offRoadStateVariance)) {
+        return false;
+      }
+      if (offTransitionProbs == null) {
+        if (other.offTransitionProbs != null) {
+          return false;
+        }
+      } else if (!StatisticsUtil.vectorEquals(offTransitionProbs,
+          other.offTransitionProbs)) {
+        return false;
+      }
+      if (onRoadStateVariance == null) {
+        if (other.onRoadStateVariance != null) {
+          return false;
+        }
+      } else if (!StatisticsUtil.vectorEquals(onRoadStateVariance,
+          other.onRoadStateVariance)) {
+        return false;
+      }
+      if (onTransitionProbs == null) {
+        if (other.onTransitionProbs != null) {
+          return false;
+        }
+      } else if (!StatisticsUtil.vectorEquals(onTransitionProbs,
+          other.onTransitionProbs)) {
+        return false;
+      }
+      if (seed != other.seed) {
+        return false;
+      }
+      if (initialObsFreq != other.initialObsFreq) {
+        return false;
+      }
+      return true;
+    }
+
+    public String getFilterTypeName() {
+      return filterTypeName;
     }
 
     public int getNumParticles() {
@@ -154,10 +231,6 @@ public class VehicleState implements
       return seed;
     }
 
-    public String getFilterTypeName() {
-      return filterTypeName;
-    }
-
     @Override
     public int hashCode() {
       final int prime = 31;
@@ -169,92 +242,26 @@ public class VehicleState implements
                   .hashCode());
       result = prime * result + numParticles;
       result =
-          prime * result
-              + StatisticsUtil.hashCodeVector(obsVariance);
+          prime * result + StatisticsUtil.hashCodeVector(obsVariance);
       result =
-          prime
-              * result
+          prime * result
               + StatisticsUtil.hashCodeVector(offRoadStateVariance);
       result =
-          prime
-              * result
+          prime * result
               + StatisticsUtil.hashCodeVector(offTransitionProbs);
       result =
-          prime
-              * result
+          prime * result
               + StatisticsUtil.hashCodeVector(onRoadStateVariance);
       result =
-          prime
-              * result
+          prime * result
               + StatisticsUtil.hashCodeVector(onTransitionProbs);
       result = prime * result + (int) (seed ^ (seed >>> 32));
+      result = prime * result + (int) (initialObsFreq ^ (initialObsFreq >>> 32));
       return result;
     }
 
-    @Override
-    public boolean equals(Object obj) {
-      if (this == obj) {
-        return true;
-      }
-      if (obj == null) {
-        return false;
-      }
-      if (getClass() != obj.getClass()) {
-        return false;
-      }
-      VehicleStateInitialParameters other =
-          (VehicleStateInitialParameters) obj;
-      if (filterTypeName == null) {
-        if (other.filterTypeName != null) {
-          return false;
-        }
-      } else if (!filterTypeName.equals(other.filterTypeName)) {
-        return false;
-      }
-      if (numParticles != other.numParticles) {
-        return false;
-      }
-      if (obsVariance == null) {
-        if (other.obsVariance != null) {
-          return false;
-        }
-      } else if (!StatisticsUtil.vectorEquals(obsVariance, other.obsVariance)) {
-        return false;
-      }
-      if (offRoadStateVariance == null) {
-        if (other.offRoadStateVariance != null) {
-          return false;
-        }
-      } else if (!StatisticsUtil
-          .vectorEquals(offRoadStateVariance, other.offRoadStateVariance)) {
-        return false;
-      }
-      if (offTransitionProbs == null) {
-        if (other.offTransitionProbs != null) {
-          return false;
-        }
-      } else if (!StatisticsUtil.vectorEquals(offTransitionProbs, other.offTransitionProbs)) {
-        return false;
-      }
-      if (onRoadStateVariance == null) {
-        if (other.onRoadStateVariance != null) {
-          return false;
-        }
-      } else if (!StatisticsUtil
-          .vectorEquals(onRoadStateVariance, other.onRoadStateVariance)) {
-        return false;
-      }
-      if (onTransitionProbs == null) {
-        if (other.onTransitionProbs != null) {
-          return false;
-        }
-      } else if (!StatisticsUtil.vectorEquals(onTransitionProbs, other.onTransitionProbs)) {
-        return false;
-      }
-      if (seed != other.seed) {
-        return false;
-      }
-      return true;
+    public int getInitialObsFreq() {
+      return this.initialObsFreq;
     }
   }
 
@@ -299,88 +306,11 @@ public class VehicleState implements
 
   private int hash = 0;
 
-  public VehicleState(OtpGraph graph, Observation initialObservation,
-    InferredEdge inferredEdge,
-    AbstractRoadTrackingFilter movementFilter, 
-    OnOffEdgeTransDirMulti edgeTransDist, Random rng) {
-
-    Preconditions.checkNotNull(initialObservation);
-    Preconditions.checkNotNull(inferredEdge);
-
-    this.movementFilter = movementFilter;
-
-    final double timeDiff;
-    if (initialObservation.getPreviousObservation() != null) {
-      timeDiff =
-          (initialObservation.getTimestamp().getTime() - initialObservation
-              .getPreviousObservation().getTimestamp().getTime()) / 1000d;
-    } else {
-      timeDiff = 30d;
-    }
-    Preconditions.checkArgument(timeDiff > 0d);
-    this.movementFilter.setCurrentTimeDiff(timeDiff);
-
-    if (inferredEdge.isEmptyEdge()) {
-      this.belief =
-          movementFilter.getGroundFilter()
-              .createInitialLearnedObject();
-      final Vector xyPoint = initialObservation.getProjectedPoint();
-
-      /*
-       * Sample the velocity
-       */
-      belief.setMean(this.movementFilter.sampleStateBelief(
-          belief.getMean(), rng));
-      belief.getMean().setElement(0, xyPoint.getElement(0));
-      belief.getMean().setElement(2, xyPoint.getElement(1));
-
-    } else {
-      /*
-       * Find our starting position on this edge
-       */
-      this.belief =
-          movementFilter.getRoadFilter().createInitialLearnedObject();
-
-      final double lengthLocation =
-          inferredEdge.getLengthIndexedLine().project(
-              initialObservation.getObsPoint());
-
-      /*
-       * Sample the velocity
-       */
-      belief.setMean(this.movementFilter.sampleStateBelief(
-          belief.getMean(), rng));
-      belief.getMean().setElement(0, lengthLocation);
-
-      AbstractRoadTrackingFilter.normalizeBelief(
-          this.belief.getMean(), PathEdge.getEdge(inferredEdge));
-
-      assert Double.compare(
-          Math.abs(this.belief.getMean().getElement(0)),
-          inferredEdge.getLength()) <= 0;
-    }
-
-    this.edge = inferredEdge;
-    this.initialBelief = belief.clone();
-    this.path = InferredPath.getInferredPath(this.edge);
-    this.observation = initialObservation;
-    this.graph = graph;
-    this.edgeTransitionDist = edgeTransDist;
-    this.distanceFromPreviousState = 0d;
-
-    // DEBUG
-    // this.initialHashCode = this.hashCode();
-    // this.edgeInitialHashCode = this.edge.hashCode();
-    // this.transInitialHashCode = this.edgeTransitionDist.hashCode();
-    // this.beliefInitialHashCode =
-    // Arrays.hashCode(((DenseVector)this.initialBelief.convertToVector()).getArray());
-    // this.obsInitialHashCode = this.observation.hashCode();
-  }
-
   public VehicleState(OtpGraph graph, Observation observation,
-    AbstractRoadTrackingFilter updatedFilter, MultivariateGaussian belief,
-    OnOffEdgeTransDirMulti edgeTransitionDist,
-    InferredPath path, VehicleState state) {
+    AbstractRoadTrackingFilter updatedFilter,
+    MultivariateGaussian belief,
+    OnOffEdgeTransDirMulti edgeTransitionDist, InferredPath path,
+    VehicleState state) {
 
     Preconditions
         .checkArgument(!(belief.getInputDimensionality() == 2 && path
@@ -456,6 +386,87 @@ public class VehicleState implements
       timeDiff = 30d;
     }
     this.movementFilter.setCurrentTimeDiff(timeDiff);
+
+    // DEBUG
+    // this.initialHashCode = this.hashCode();
+    // this.edgeInitialHashCode = this.edge.hashCode();
+    // this.transInitialHashCode = this.edgeTransitionDist.hashCode();
+    // this.beliefInitialHashCode =
+    // Arrays.hashCode(((DenseVector)this.initialBelief.convertToVector()).getArray());
+    // this.obsInitialHashCode = this.observation.hashCode();
+  }
+
+  public VehicleState(OtpGraph graph, Observation initialObservation,
+    InferredEdge inferredEdge,
+    AbstractRoadTrackingFilter movementFilter,
+    OnOffEdgeTransDirMulti edgeTransDist, Random rng) {
+
+    Preconditions.checkNotNull(initialObservation);
+    Preconditions.checkNotNull(inferredEdge);
+
+    this.movementFilter = movementFilter;
+
+    final double timeDiff;
+    if (initialObservation.getPreviousObservation() != null) {
+      timeDiff =
+          (initialObservation.getTimestamp().getTime() - initialObservation
+              .getPreviousObservation().getTimestamp().getTime()) / 1000d;
+    } else {
+      timeDiff = movementFilter.getCurrentTimeDiff();
+    }
+    Preconditions.checkArgument(timeDiff > 0d);
+    this.movementFilter.setCurrentTimeDiff(timeDiff);
+
+    this.path = InferredPath.getInferredPath(inferredEdge);
+
+    if (inferredEdge.isEmptyEdge()) {
+      this.belief =
+          movementFilter.getGroundFilter()
+              .createInitialLearnedObject();
+      final Vector xyPoint = initialObservation.getProjectedPoint();
+
+      /*
+       * Sample the velocity
+       */
+      final Vector stateSmpl = this.movementFilter.sampleStateTransition(
+          belief.getMean(), this.path, rng);
+      belief.setMean(stateSmpl);
+      belief.getMean().setElement(0, xyPoint.getElement(0));
+      belief.getMean().setElement(2, xyPoint.getElement(1));
+
+    } else {
+      /*
+       * Find our starting position on this edge
+       */
+      this.belief =
+          movementFilter.getRoadFilter().createInitialLearnedObject();
+
+      final double lengthLocation =
+          inferredEdge.getLengthIndexedLine().project(
+              initialObservation.getObsPoint());
+
+      /*
+       * Sample the velocity
+       */
+      final Vector stateSmpl = this.movementFilter.sampleStateTransition(
+          belief.getMean(), this.path, rng);
+      belief.setMean(stateSmpl);
+      belief.getMean().setElement(0, lengthLocation);
+
+      AbstractRoadTrackingFilter.normalizeBelief(
+          this.belief.getMean(), PathEdge.getEdge(inferredEdge));
+
+      assert Double.compare(
+          Math.abs(this.belief.getMean().getElement(0)),
+          inferredEdge.getLength()) <= 0;
+    }
+
+    this.edge = inferredEdge;
+    this.initialBelief = belief.clone();
+    this.observation = initialObservation;
+    this.graph = graph;
+    this.edgeTransitionDist = edgeTransDist;
+    this.distanceFromPreviousState = 0d;
 
     // DEBUG
     // this.initialHashCode = this.hashCode();

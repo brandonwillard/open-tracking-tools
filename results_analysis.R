@@ -1,6 +1,6 @@
 library("rjson")
 
-getSimJson <- function(simName) {
+getSimPerfJson <- function(simName) {
   json_file <-
     paste("http://localhost:9000/api/getPerformanceResults?vehicleId=", simName,
           sep="")
@@ -14,25 +14,25 @@ getSimJson <- function(simName) {
 }
 
 # avg. records per sec = 67.35140596059942
-pl_means_25_s1 <- unlist(lapply(getSimJson("sim-582243527"), function(x) sqrt(x$mean)))
+pl_means_25_s1 <- unlist(lapply(getSimPerfJson("sim-582243527"), function(x) sqrt(x$mean)))
 
 # avg. records per sec = 39.146604032100214  
-pl_means_50_s1 <- unlist(lapply(getSimJson("sim130512018"), function(x) sqrt(x$mean)))
+pl_means_50_s1 <- unlist(lapply(getSimPerfJson("sim130512018"), function(x) sqrt(x$mean)))
 
 # avg. records per sec = 11.59386684443929  
-pl_means_200_s1 <- unlist(lapply(getSimJson("sim112077992"), function(x) sqrt(x$mean)))
+pl_means_200_s1 <- unlist(lapply(getSimPerfJson("sim112077992"), function(x) sqrt(x$mean)))
 
 # avg. records per sec = 5.587866878384734 
-#pl_means_500_s1 <- unlist(lapply(getSimJson("sim75209940"), function(x) sqrt(x$mean)))
+#pl_means_500_s1 <- unlist(lapply(getSimPerfJson("sim75209940"), function(x) sqrt(x$mean)))
 
 # avg. records per sec = 1673.6401673640166
-bs_means_50_s1 <- unlist(lapply(getSimJson("sim1108672430"), function(x) sqrt(x$mean))) 
+bs_means_50_s1 <- unlist(lapply(getSimPerfJson("sim1108672430"), function(x) sqrt(x$mean))) 
 
 # avg. records per sec = 215.74973031283707
-bs_means_200_s1 <- unlist(lapply(getSimJson("sim1090238404"), function(x) sqrt(x$mean)))
+bs_means_200_s1 <- unlist(lapply(getSimPerfJson("sim1090238404"), function(x) sqrt(x$mean)))
 
 # avg. records per sec =51.49330587023687
-bs_means_500_s1 <- unlist(lapply(getSimJson("sim1053370352"), function(x) sqrt(x$mean)))
+bs_means_500_s1 <- unlist(lapply(getSimPerfJson("sim1053370352"), function(x) sqrt(x$mean)))
 
 
 library(ggplot2)
@@ -92,5 +92,64 @@ pdf(file="plbs-rmse-1200-series.pdf", pointsize=7)
   #       pch="l", col=c("black", "green", "red", "blue"))
 dev.off()
 
+getSimBestStatesJson <- function(simName) {
+  json_file <-
+    paste("http://localhost:9000/api/traces?vehicleId=", simName,
+          sep="")
 
+  json_data <- readLines(json_file)
+  #json_data <- sub('[^\\{]*', '', json_data) # remove function name and opening parenthesis
+  #json_data <- sub('\\)$', '', json_data) # remove closing parenthesis
+
+  json_data <- fromJSON(paste(json_data, collapse=""))
+  return(json_data)
+}
+                                         
+sim_res <- getSimBestStatesJson("sim2076162729")
+sim_res <- getSimBestStatesJson("sim1817961029")
+
+sim_res_on_correct <-  unlist(lapply(sim_res, function(x) {
+                     return((x$actualResults$inferredEdge$id != -1 
+                             && x$infResults$inferredEdge$id != -1) 
+                     || (x$actualResults$inferredEdge$id == -1 
+                         && x$infResults$inferredEdge$id == -1))
+                    }))
+sum(sim_res_on_correct)
+
+data.frame(matrix(1:4, 2,2), check.rows=F, check.names=F)
+as.POSIXct(as.integer(as.numeric(sim_res[[1]]$time)/1000), origin="1970-01-01", tz="GMT")
+
+
+library(plyr)
+sim_res_onroad_cov <- ldply(sim_res, function(x) {
+
+                        if (x$actualResults$inferredEdge$id != -1 
+                             && x$infResults$inferredEdge$id != -1) {                         
+                          timestr =  as.POSIXct(as.integer(
+                                    as.numeric(x$time)/1000), origin="1970-01-01")
+                          actual.df = data.frame(time=timestr, 
+                                                 type="actual",
+                                        mat.component=seq_along(x$actualResults$stateCovariance),
+                                        on.road.covariance=x$actualResults$stateCovariance,
+                                        check.rows=F, check.names=F);
+                          inf.df = data.frame(time=timestr, 
+                                              type="inferred",
+                                        mat.component=seq_along(x$infResults$stateCovariance),
+                                        on.road.covariance=x$infResults$stateCovariance,
+                                        check.rows=F, check.names=F);
+                          return(rbind(actual.df, inf.df));
+                        } else {
+                          return(NULL)
+                        }
+                    })
+head(sim_res_onroad_cov, 16)
+tail(sim_res_onroad_cov, 16)
+range(sim_res_onroad_cov$time)
+
+library(ggplot2)
+sim_p1 <- ggplot(sim_res_onroad_cov, aes(x=time, y=on.road.covariance, colour=type,
+                           group=type)) +
+      geom_line(alpha=1.0) + facet_grid( . ~ mat.component) + scale_y_log10() +
+      theme_bw(base_size=10)
+plot(sim_p1)     
 

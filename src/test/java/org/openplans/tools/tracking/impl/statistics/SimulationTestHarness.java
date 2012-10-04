@@ -12,6 +12,7 @@ import org.openplans.tools.tracking.impl.Observation;
 import org.openplans.tools.tracking.impl.Simulation;
 import org.openplans.tools.tracking.impl.Simulation.SimulationParameters;
 import org.openplans.tools.tracking.impl.VehicleState;
+import org.openplans.tools.tracking.impl.VehicleState.VehicleStateInitialParameters;
 import org.openplans.tools.tracking.impl.statistics.filters.VehicleTrackingFilter;
 import org.openplans.tools.tracking.impl.util.OtpGraph;
 
@@ -28,9 +29,10 @@ public class SimulationTestHarness {
 
   private SimulationTestHarness(String graphName, String simName,
     SimulationParameters simParams,
+    VehicleStateInitialParameters infParams,
     VehicleTrackingFilter<Observation, VehicleState> filter) {
     this.graph = new OtpGraph(graphName, null);
-    this.sim = new Simulation(simName, graph, simParams);
+    this.sim = new Simulation(simName, graph, simParams, infParams);
     this.filter = filter;
   }
 

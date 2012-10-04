@@ -204,8 +204,8 @@ function addCoordinates() {
   var coordString = jQuery('#coordinate_data').val();
   var coordSplit = coordString.split(",");
 
-  if (coordSplit.length == 3) {
-    var coordGetString = "x=" + coordSplit[0] + "&y=" + coordSplit[1] + "&zone=" + coordSplit[2];
+  if (coordSplit.length == 2) {
+    var coordGetString = "x=" + coordSplit[0] + "&y=" + coordSplit[1];
 
     $.get(coordUrl + coordGetString, function(data) {
 
@@ -302,12 +302,14 @@ function moveMarker() {
 }
 
 /*
+ * -No longer relevant
  * Xian 1980 / Gauss-Kruger zone 21 EPSG:2335 isn't saved locally. if we omit
  * this, then there will be an error followed by a query that should obtain this
  * information. TODO what about different zones? how will they be
  * detected/handled?
  */
 //Proj4js.defs["EPSG:2335"] = "+proj=tmerc +lat_0=0 +lon_0=123 +k=1 +x_0=21500000 +y_0=0 +a=6378140 +b=6356755.288157528 +units=m +no_defs";
+Proj4js.defs["EPSG:32618"] = "+proj=utm +zone=18 +ellps=WGS84 +datum=WGS84 +units=m +no_defs";
 
 var dest = new Proj4js.Proj("EPSG:4326");
 //var source = new Proj4js.Proj("EPSG:2335");
@@ -332,13 +334,12 @@ function getUTMzone(lon) {
 
 function convertToLatLon(srcPoint, epsgCode) {
   var point = new Proj4js.Point(srcPoint.x, srcPoint.y);
-//  Proj4js.defs["EPSG:9999"] = "+proj=utm +zone=" + zone + " +ellps=clrk66 +units=m +no_defs";
   var source = new Proj4js.Proj(epsgCode);
   Proj4js.transform(source, dest, point);
   return new L.LatLng(point.y, point.x);
 }
 
-function drawResults(mean, major, minor, zone, pointType) {
+function drawResults(mean, major, minor, pointType, epsgCode) {
 
   var color;
   var fill;
@@ -361,10 +362,10 @@ function drawResults(mean, major, minor, zone, pointType) {
     groupType = actualGroup;
   }
 
-  var meanCoords = convertToLatLon(mean, zone);
+  var meanCoords = convertToLatLon(mean, epsgCode);
 
   if (major && minor) {
-    var majorLatLon = convertToLatLon(major, zone);
+    var majorLatLon = convertToLatLon(major, epsgCode);
     var majorAxis = new L.Polyline([ meanCoords, majorLatLon ], {
       fill : true,
       color : '#c00'
@@ -373,7 +374,7 @@ function drawResults(mean, major, minor, zone, pointType) {
     pointsGroup.addLayer(majorAxis);
     groupType.addLayer(majorAxis);
 
-    var minorLatLon = convertToLatLon(minor, zone);
+    var minorLatLon = convertToLatLon(minor, epsgCode);
     var minorAxis = new L.Polyline([ meanCoords, minorLatLon ], {
       fill : true,
       color : '#c0c'
@@ -442,7 +443,7 @@ function renderMarker() {
 
       var results = lines[i].actualResults;
       drawResults(results.meanCoords, results.majorAxisCoords,
-          results.minorAxisCoords, pointType);
+          results.minorAxisCoords, pointType, results.espgCode);
     }
 
     var obsCoords = convertToLatLon(lines[i].observedPoint, 
@@ -563,17 +564,24 @@ MyIcon = L.Icon.extend({
   iconAnchor : new L.Point(10, 22)
 });
 
-function createMatrixString(matrix) {
-  var resStr = new Array();
-  // var covLen = matrix.length;
-  // var cols = Math.sqrt(covLen);
+function createMatrixString(matrix, isVector) {
+  var resStr = "";
+  var covLen = matrix.length;
+  var cols = isVector ? covLen : Math.sqrt(covLen);
   $.each(matrix, function(index, data) {
     var tmpStr = parseFloat(data).toFixed(2);
-    // if (index == 0)
-    // resStr = "[[" + resStr;
-    // if (index % cols == 0)
-    // resStr = resStr + "],[";
-    resStr.push(tmpStr);
+    if (index == 0) {
+      tmpStr = (isVector ? "[" : "[[") + tmpStr;
+      resStr = tmpStr + ",";
+    } else if (index + 1 == covLen) {
+      tmpStr = tmpStr + (isVector ? "]" : "]]");
+      resStr = resStr + tmpStr;
+    } else if ((index + 1) % cols == 0) {
+      tmpStr = tmpStr + "],<br>[";
+      resStr = resStr + tmpStr;
+    } else {
+      resStr = resStr + tmpStr + ",";
+    }
   });
 
   return resStr;
@@ -693,7 +701,7 @@ function renderParticles(isPrior) {
                     createHoverPointLink(locLinkName, particleMeanLatLon);
                     particleMeans.addLayer(drawCoords(particleMeanLatLon.lat,
                         particleMeanLatLon.lng, null, false, true, null, 
-                        particleData.weight * particleData.particle.infResults.particleCount));
+                        0.5 + particleData.weight * particleData.particle.infResults.particleCount));
 
                     particleEdges.addLayer(renderPath(
                         particleData.particle.infResults.pathSegments,
@@ -704,11 +712,11 @@ function renderParticles(isPrior) {
                     var collapsedDiv = subList.find(".subinfo");
                     optionDiv.append(subList);
 
-                    var stateMean = createMatrixString(particleData.particle.infResults.stateMean);
+                    var stateMean = createMatrixString(particleData.particle.infResults.stateMean, true);
                     collapsedDiv.append('<li>state=' + stateMean + '</li>');
 
-                    var stateCov = createMatrixString(particleData.particle.infResults.stateCovariance);
-                    collapsedDiv.append('<li>stateCov=' + stateCov + '</li>');
+                    var stateCov = createMatrixString(particleData.particle.infResults.stateCovariance, false);
+                    collapsedDiv.append('<li>stateCov:<br>' + stateCov + '</li>');
 
                     var pathName = getPathName(getEdgeIdsFromSegments(particleData.particle.infResults.pathSegments));
                     var pathData = $('#' + pathName).data('path');
@@ -756,12 +764,12 @@ function renderParticles(isPrior) {
                       parentList.append("<li>Parent:" + parentLocLink + ', '
                           + parentEdgeLink + "</li>");
 
-                      var parentStateMean = createMatrixString(particleData.parent.infResults.stateMean);
+                      var parentStateMean = createMatrixString(particleData.parent.infResults.stateMean, true);
                       parentList.append("<li>state=" + parentStateMean
                           + "</li>");
 
-                      var stateCov = createMatrixString(particleData.parent.infResults.stateCovariance);
-                      parentList.append('<li>stateCov=' + stateCov + '</li>');
+                      var stateCov = createMatrixString(particleData.parent.infResults.stateCovariance, false);
+                      parentList.append('<li>stateCov:<br>' + stateCov + '</li>');
 
                       var parentPathName = getPathName(getEdgeIdsFromSegments(particleData.parent.infResults.pathSegments));
                       if (parentPathName) {
@@ -975,7 +983,7 @@ function renderPath(pathSegments, pathDirection, edgeType, layerOnly) {
   } else if (edgeType == EdgeType.EVALUATED) {
     color = "blue";
     weight = 20;
-    opacity = 0.2;
+    opacity = 0.3;
     groupType = evaluatedGroup;
   } else if (edgeType == EdgeType.ADDED) {
     color = "green";
@@ -985,7 +993,7 @@ function renderPath(pathSegments, pathDirection, edgeType, layerOnly) {
   } else if (edgeType == EdgeType.INFERRED_ALL) {
     color = "green";
     weight = 10;
-    opacity = 0.06;
+    opacity = 0.26;
     groupType = allInfEdgesGroup;
   }
 

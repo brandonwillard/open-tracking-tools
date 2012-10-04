@@ -165,7 +165,7 @@ public class InferenceInstance {
   }
 
   synchronized public void update(VehicleState actualState, Observation obs,
-    boolean performInference) {
+    boolean performInference, boolean updateOffRoad) {
 
     if (!shouldProcessUpdate(obs))
       return;
@@ -178,9 +178,9 @@ public class InferenceInstance {
 
     final InferenceResultRecord result =
         InferenceResultRecord.createInferenceResultRecord(obs, this,
-            actualState, postBelief.getMaxValueKey(), postBelief
-                .clone(),
-            resampleBelief != null ? resampleBelief.clone() : null);
+            actualState, postBelief.getMaxValueKey(), postBelief.clone(),
+            resampleBelief != null ? resampleBelief.clone() : null,
+                updateOffRoad);
 
     if (infoLevel == INFO_LEVEL.SINGLE_RESULT
         && !this.resultRecords.isEmpty())

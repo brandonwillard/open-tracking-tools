@@ -144,9 +144,13 @@ public class CsvUploadActor extends UntypedActor {
             final String vehicleId = "trace-" + line[3] + traceParams.hashCode();
             vehicleIds.add(vehicleId);
             
-            // clear previous trace for this data
-            InferenceService.remove(vehicleId);
-            Observation.remove(vehicleId);
+            /*
+             * Clear previous trace runs
+             */
+            if (!vehicleId.contains(vehicleId)) {
+              InferenceService.remove(vehicleId);
+              Observation.remove(vehicleId);
+            }
 
             final Observation obs =
                 Observation.createObservation(vehicleId, line[6],

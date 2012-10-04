@@ -17,6 +17,7 @@ import org.openplans.tools.tracking.impl.graph.paths.InferredPath;
 import org.openplans.tools.tracking.impl.graph.paths.InferredPathEntry;
 import org.openplans.tools.tracking.impl.graph.paths.PathEdge;
 import org.openplans.tools.tracking.impl.statistics.OnOffEdgeTransDirMulti;
+import org.openplans.tools.tracking.impl.statistics.filters.AbstractRoadTrackingFilter;
 import org.openplans.tools.tracking.impl.statistics.filters.StandardRoadTrackingFilter;
 import org.openplans.tools.tracking.impl.statistics.filters.VehicleTrackingPathSamplerFilterUpdater;
 import org.openplans.tools.tracking.impl.util.GeoUtils;
@@ -55,59 +56,6 @@ public class Simulation {
       this.duration = duration;
     }
 
-    public long getDuration() {
-      return duration;
-    }
-
-    public Date getEndTime() {
-      return endTime;
-    }
-
-    public long getFrequency() {
-      return frequency;
-    }
-
-    public Coordinate getStartCoordinate() {
-      return startCoordinate;
-    }
-
-    public Date getStartTime() {
-      return startTime;
-    }
-
-    public VehicleStateInitialParameters getStateParams() {
-      return stateParams;
-    }
-
-    public boolean isPerformInference() {
-      return performInference;
-    }
-
-    @Override
-    public int hashCode() {
-      final int prime = 31;
-      int result = 1;
-      result = prime * result + (int) (duration ^ (duration >>> 32));
-      result =
-          prime * result
-              + ((endTime == null) ? 0 : endTime.hashCode());
-      result =
-          prime * result + (int) (frequency ^ (frequency >>> 32));
-      result = prime * result + (performInference ? 1231 : 1237);
-      result =
-          prime
-              * result
-              + ((startCoordinate == null) ? 0 : startCoordinate
-                  .hashCode());
-      result =
-          prime * result
-              + ((startTime == null) ? 0 : startTime.hashCode());
-      result =
-          prime * result
-              + ((stateParams == null) ? 0 : stateParams.hashCode());
-      return result;
-    }
-
     @Override
     public boolean equals(Object obj) {
       if (this == obj) {
@@ -119,7 +67,7 @@ public class Simulation {
       if (getClass() != obj.getClass()) {
         return false;
       }
-      SimulationParameters other = (SimulationParameters) obj;
+      final SimulationParameters other = (SimulationParameters) obj;
       if (duration != other.duration) {
         return false;
       }
@@ -159,6 +107,59 @@ public class Simulation {
       }
       return true;
     }
+
+    public long getDuration() {
+      return duration;
+    }
+
+    public Date getEndTime() {
+      return endTime;
+    }
+
+    public long getFrequency() {
+      return frequency;
+    }
+
+    public Coordinate getStartCoordinate() {
+      return startCoordinate;
+    }
+
+    public Date getStartTime() {
+      return startTime;
+    }
+
+    public VehicleStateInitialParameters getStateParams() {
+      return stateParams;
+    }
+
+    @Override
+    public int hashCode() {
+      final int prime = 31;
+      int result = 1;
+      result = prime * result + (int) (duration ^ (duration >>> 32));
+      result =
+          prime * result
+              + ((endTime == null) ? 0 : endTime.hashCode());
+      result =
+          prime * result + (int) (frequency ^ (frequency >>> 32));
+      result = prime * result + (performInference ? 1231 : 1237);
+      result =
+          prime
+              * result
+              + ((startCoordinate == null) ? 0 : startCoordinate
+                  .hashCode());
+      result =
+          prime * result
+              + ((startTime == null) ? 0 : startTime.hashCode());
+      result =
+          prime * result
+              + ((stateParams == null) ? 0 : stateParams.hashCode());
+      return result;
+    }
+
+    public boolean isPerformInference() {
+      return performInference;
+    }
   }
 
   private static final Logger _log = LoggerFactory
@@ -178,11 +179,12 @@ public class Simulation {
   private final VehicleTrackingPathSamplerFilterUpdater updater;
 
   public Simulation(String simulationName, OtpGraph graph,
-    SimulationParameters simParameters) {
+    SimulationParameters simParameters, VehicleStateInitialParameters infParams) {
 
     this.simParameters = simParameters;
-    this.parameters = simParameters.getStateParams();
-    this.filterTypeName = simParameters.getStateParams().getFilterTypeName();
+    this.parameters = infParams;
+    this.filterTypeName =
+        simParameters.getStateParams().getFilterTypeName();
 
     this.inferredGraph = graph;
     this.simulationName = simulationName;
@@ -197,26 +199,36 @@ public class Simulation {
     this.rng.setSeed(seed);
     Observation initialObs = null;
     try {
+      final Coordinate startCoord;
+      if (this.simParameters.getStartCoordinate() == null) {
+        startCoord = 
+           GeoUtils.reverseCoordinates(this.inferredGraph.getTurnGraph().getExtent().centre());
+      } else {
+        startCoord = this.simParameters.getStartCoordinate();
+      }
+      
       Observation.remove(simulationName);
       initialObs =
           Observation.createObservation(this.simulationName,
               this.simParameters.getStartTime(),
-              this.simParameters.getStartCoordinate(), null, null,
+              startCoord, null, null,
               null);
     } catch (final TimeOrderException e) {
       e.printStackTrace();
-    } 
-    
+    }
+
     if (initialObs != null) {
-      this.updater = new VehicleTrackingPathSamplerFilterUpdater(initialObs, graph, 
-          parameters, rng);
+      this.updater =
+          new VehicleTrackingPathSamplerFilterUpdater(initialObs,
+              graph, parameters);
+      this.updater.setRandom(rng);
     } else {
       this.updater = null;
     }
   }
 
   public VehicleState computeInitialState() {
-    
+
     /*
      * If the updater is null, then creation of the initial obs failed,
      * or something equally bad.
@@ -224,10 +236,11 @@ public class Simulation {
      */
     if (this.updater == null)
       return null;
-    
+
     try {
 
-      final Observation initialObs = this.updater.getInitialObservation();
+      final Observation initialObs =
+          this.updater.getInitialObservation();
       final List<InferredEdge> edges =
           Lists.newArrayList(InferredEdge.getEmptyEdge());
       for (final StreetEdge edge : this.inferredGraph.getNearbyEdges(
@@ -250,13 +263,17 @@ public class Simulation {
             null, null, Double.NEGATIVE_INFINITY));
       }
 
-      final StandardRoadTrackingFilter trackingFilter = new StandardRoadTrackingFilter(
-          parameters.getObsVariance(), parameters.getOffRoadStateVariance(), 
-          parameters.getOnRoadStateVariance());
-      
-      final OnOffEdgeTransDirMulti edgeTransDist = new OnOffEdgeTransDirMulti(inferredGraph, 
-          parameters.getOnTransitionProbs(), parameters.getOffTransitionProbs());
-      
+      final StandardRoadTrackingFilter trackingFilter =
+          new StandardRoadTrackingFilter(parameters.getObsVariance(),
+              parameters.getOffRoadStateVariance(),
+              parameters.getOnRoadStateVariance(),
+              parameters.getInitialObsFreq());
+
+      final OnOffEdgeTransDirMulti edgeTransDist =
+          new OnOffEdgeTransDirMulti(inferredGraph,
+              parameters.getOnTransitionProbs(),
+              parameters.getOffTransitionProbs());
+
       final VehicleState vehicleState =
           new VehicleState(this.inferredGraph, initialObs,
               currentInferredEdge, trackingFilter, edgeTransDist, rng);
@@ -268,6 +285,10 @@ public class Simulation {
     }
 
     return null;
+  }
+
+  public String getFilterTypeName() {
+    return filterTypeName;
   }
 
   public OtpGraph getInferredGraph() {
@@ -294,13 +315,21 @@ public class Simulation {
     return simulationName;
   }
 
+  /**
+   * Samples an observation for the given state vector (velLocBelief).
+   * Note: only the mean of the state vector is used.
+   * @param velLocBelief
+   * @param obsCov
+   * @param edge
+   * @return
+   */
   public Vector sampleObservation(MultivariateGaussian velLocBelief,
     Matrix obsCov, PathEdge edge) {
 
     final MultivariateGaussian gbelief = velLocBelief.clone();
-    StandardRoadTrackingFilter.convertToGroundBelief(gbelief, edge);
+    AbstractRoadTrackingFilter.convertToGroundBelief(gbelief, edge);
     final Vector gMean =
-        StandardRoadTrackingFilter.getOg().times(gbelief.getMean());
+        AbstractRoadTrackingFilter.getOg().times(gbelief.getMean());
     final Matrix covSqrt =
         CholeskyDecompositionMTJ.create(
             DenseMatrixFactoryMTJ.INSTANCE.copyMatrix(obsCov)).getR();
@@ -324,24 +353,36 @@ public class Simulation {
     /*
      * Run through the edges, predict movement and reset the belief.
      */
+    final MultivariateGaussian predictiveBelief = currentLocBelief.clone();
     final InferredPath newPath =
-        this.updater.traverseEdge(vehicleState.getEdgeTransitionDist(),
-            currentLocBelief, currentPathEdge,
-            vehicleState.getMovementFilter());
+        this.updater.traverseEdge(
+            vehicleState.getEdgeTransitionDist(), predictiveBelief,
+            currentPathEdge, vehicleState.getMovementFilter());
+    
 
     final PathEdge newPathEdge =
         Iterables.getLast(newPath.getEdges());
 
     /*
-     * Sample from the state and observation noise
+     * Sample from the observation noise, and reset our state
+     * position (the covariance really, since we're using the predicted
+     * location, but want to keep the same covariance).
      */
+    final MultivariateGaussian newBelief = predictiveBelief.clone();
+    if (newPathEdge.isEmptyEdge()) {
+      newBelief.setCovariance(vehicleState.getMovementFilter().getGroundFilter().getModelCovariance());
+    } else {
+      newBelief.setCovariance(vehicleState.getMovementFilter().getRoadFilter().getModelCovariance());
+    }
+    
     final Matrix gCov =
         vehicleState.getMovementFilter().getGroundFilter()
             .getMeasurementCovariance();
     final Vector thisLoc =
-        sampleObservation(currentLocBelief, gCov, newPathEdge);
-    final Coordinate obsCoord = GeoUtils.convertToLatLon(thisLoc, 
-        vehicleState.getObservation().getObsPoint());
+        sampleObservation(newBelief, gCov, newPathEdge);
+    final Coordinate obsCoord =
+        GeoUtils.convertToLatLon(thisLoc, vehicleState
+            .getObservation().getObsPoint());
     Observation thisObs;
     try {
       thisObs =
@@ -354,7 +395,7 @@ public class Simulation {
 
     final VehicleState newState =
         new VehicleState(this.inferredGraph, thisObs,
-            vehicleState.getMovementFilter(), currentLocBelief,
+            vehicleState.getMovementFilter(), newBelief,
             currentEdgeTrans, newPath, vehicleState);
 
     return newState;
@@ -369,10 +410,6 @@ public class Simulation {
         + recordsProcessed + ", " + time);
     recordsProcessed++;
     return vehicleState;
-  }
-  
-  public String getFilterTypeName() {
-    return filterTypeName;
   }
 
 }

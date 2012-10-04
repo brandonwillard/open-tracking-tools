@@ -3,6 +3,7 @@ package org.openplans.tools.tracking.impl.graph.paths;
 import gov.sandia.cognition.math.LogMath;
 import gov.sandia.cognition.math.matrix.Matrix;
 import gov.sandia.cognition.math.matrix.Vector;
+import gov.sandia.cognition.math.matrix.mtj.AbstractMTJMatrix;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 import gov.sandia.cognition.statistics.distribution.UnivariateGaussian;
 import gov.sandia.cognition.util.DefaultPair;
@@ -10,6 +11,8 @@ import gov.sandia.cognition.util.Pair;
 
 import java.util.List;
 import java.util.Map;
+
+import no.uib.cipr.matrix.DenseCholesky;
 
 import org.apache.commons.lang.builder.CompareToBuilder;
 import org.geotools.geometry.jts.JTSFactoryFinder;
@@ -19,7 +22,6 @@ import org.openplans.tools.tracking.impl.WrappedWeightedValue;
 import org.openplans.tools.tracking.impl.graph.InferredEdge;
 import org.openplans.tools.tracking.impl.statistics.StatisticsUtil;
 import org.openplans.tools.tracking.impl.statistics.filters.AbstractRoadTrackingFilter;
-import org.openplans.tools.tracking.impl.statistics.filters.StandardRoadTrackingFilter;
 
 import com.google.common.annotations.Beta;
 import com.google.common.base.Preconditions;
@@ -28,6 +30,7 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
+import com.vividsolutions.jts.linearref.LengthIndexedLine;
 
 /**
  * Inferred paths are collections of PathEdges that track the distance traveled
@@ -189,6 +192,14 @@ public class InferredPath implements Comparable<InferredPath> {
 
   }
 
+  public double clampToPath(final double distance) {
+    final double dir = this.getIsBackward() ? -1d : 1d;
+    final LengthIndexedLine lil =
+        new LengthIndexedLine(this.getGeometry());
+    final double clampedIndex = dir * lil.clampIndex(dir * distance);
+    return clampedIndex;
+  }
+
   @Override
   public int compareTo(InferredPath o) {
     final CompareToBuilder comparator = new CompareToBuilder();
@@ -234,6 +245,26 @@ public class InferredPath implements Comparable<InferredPath> {
     assert false;
 
     return null;
+  }
+
+  public List<Integer> getEdgeIds() {
+    return edgeIds;
+  }
+
+  public ImmutableList<PathEdge> getEdges() {
+    return edges;
+  }
+
+  public InferredEdge getEndSearchEdge() {
+    return endSearchEdge;
+  }
+
+  public Geometry getGeometry() {
+    return geometry;
+  }
+
+  public Boolean getIsBackward() {
+    return isBackward;
   }
 
   /**
@@ -334,8 +365,9 @@ public class InferredPath implements Comparable<InferredPath> {
                   edgeOfLocPrediction.getInferredEdge());
 
           final double localPosVelPredLogLik =
-              filter.priorPredictiveLogLikelihood(obs.getProjectedPoint(),
-                  locationPrediction, edgeOfLocPrediction);
+              filter.priorPredictiveLogLikelihood(
+                  obs.getProjectedPoint(), locationPrediction,
+                  edgeOfLocPrediction);
 
           assert !Double.isNaN(edgePredMarginalLogLik);
           assert !Double.isNaN(edgePredTransLogLik);
@@ -410,6 +442,14 @@ public class InferredPath implements Comparable<InferredPath> {
         filter, weightedPathEdges, pathLogLik);
   }
 
+  public InferredEdge getStartSearchEdge() {
+    return startSearchEdge;
+  }
+
+  public Double getTotalPathDistance() {
+    return totalPathDistance;
+  }
+
   @Beta
   private double getTruncatedMean(final double origMean,
     double stdDev, PathEdge edge) {
@@ -475,12 +515,11 @@ public class InferredPath implements Comparable<InferredPath> {
     //    MultivariateGaussian beliefPrediction, double pathEdgeDistNormFactor) {
     Preconditions.checkArgument(beliefPrediction
         .getInputDimensionality() == 2);
-    final Matrix Or = StandardRoadTrackingFilter.getOr();
+    final Matrix Or = AbstractRoadTrackingFilter.getOr();
     final double var =
         Or.times(beliefPrediction.getCovariance())
             .times(Or.transpose()).getElement(0, 0)
-            + Math.pow(edge.getInferredEdge().getLength(), 2d)
-            / 12d;
+            + Math.pow(edge.getInferredEdge().getLength(), 2d) / 12d;
     final double mean =
         Or.times(beliefPrediction.getMean()).getElement(0);
     final double direction = Math.signum(totalPathDistance);
@@ -500,7 +539,7 @@ public class InferredPath implements Comparable<InferredPath> {
     MultivariateGaussian beliefPrediction) {
     Preconditions.checkArgument(beliefPrediction
         .getInputDimensionality() == 2);
-    final Matrix Or = StandardRoadTrackingFilter.getOr();
+    final Matrix Or = AbstractRoadTrackingFilter.getOr();
     final double stdDev =
         Math.sqrt(Or.times(beliefPrediction.getCovariance())
             .times(Or.transpose()).getElement(0, 0));
@@ -596,7 +635,7 @@ public class InferredPath implements Comparable<InferredPath> {
      * TODO really, this should just be the truncated/conditional
      * mean and covariance for the given interval/edge
      */
-    final Matrix Or = StandardRoadTrackingFilter.getOr();
+    final Matrix Or = AbstractRoadTrackingFilter.getOr();
     final double S =
         Or.times(belief.getCovariance()).times(Or.transpose())
             .getElement(0, 0)
@@ -619,6 +658,10 @@ public class InferredPath implements Comparable<InferredPath> {
     final Vector a = belief.getMean().plus(W.getColumn(0).scale(e));
 
     belief.setMean(a);
+
+    assert DenseCholesky.factorize(
+        ((AbstractMTJMatrix) R).getInternalMatrix()).isSPD();
+
     belief.setCovariance(R);
   }
 
@@ -641,6 +684,10 @@ public class InferredPath implements Comparable<InferredPath> {
     else
       return "InferredPath [edges=" + edgeIds
           + ", totalPathDistance=" + totalPathDistance + "]";
+  }
+
+  public static double getEdgeDistTolerance() {
+    return edgeDistTolerance;
   }
 
   public static InferredPath getEmptyPath() {
@@ -672,38 +719,6 @@ public class InferredPath implements Comparable<InferredPath> {
       return emptyPath;
     else
       return new InferredPath(pathEdge);
-  }
-
-  public ImmutableList<PathEdge> getEdges() {
-    return edges;
-  }
-
-  public Double getTotalPathDistance() {
-    return totalPathDistance;
-  }
-
-  public List<Integer> getEdgeIds() {
-    return edgeIds;
-  }
-
-  public InferredEdge getStartSearchEdge() {
-    return startSearchEdge;
-  }
-
-  public InferredEdge getEndSearchEdge() {
-    return endSearchEdge;
-  }
-
-  public Boolean getIsBackward() {
-    return isBackward;
-  }
-
-  public Geometry getGeometry() {
-    return geometry;
-  }
-
-  public static double getEdgeDistTolerance() {
-    return edgeDistTolerance;
   }
 
 }

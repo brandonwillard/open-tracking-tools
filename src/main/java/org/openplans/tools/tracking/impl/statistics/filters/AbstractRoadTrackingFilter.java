@@ -5,17 +5,22 @@ import gov.sandia.cognition.math.matrix.Matrix;
 import gov.sandia.cognition.math.matrix.MatrixFactory;
 import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.math.matrix.VectorFactory;
+import gov.sandia.cognition.math.matrix.mtj.AbstractMTJMatrix;
 import gov.sandia.cognition.math.matrix.mtj.DenseMatrix;
 import gov.sandia.cognition.math.matrix.mtj.DenseMatrixFactoryMTJ;
 import gov.sandia.cognition.math.matrix.mtj.decomposition.CholeskyDecompositionMTJ;
 import gov.sandia.cognition.math.matrix.mtj.decomposition.EigenDecompositionRightMTJ;
 import gov.sandia.cognition.math.signals.LinearDynamicalSystem;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
-import gov.sandia.cognition.util.CloneableSerializable;
+import gov.sandia.cognition.util.AbstractCloneableSerializable;
 
 import java.util.Map.Entry;
 import java.util.Random;
 
+import no.uib.cipr.matrix.DenseCholesky;
+
+import org.openplans.tools.tracking.impl.Observation;
+import org.openplans.tools.tracking.impl.VehicleState;
 import org.openplans.tools.tracking.impl.graph.paths.InferredPath;
 import org.openplans.tools.tracking.impl.graph.paths.PathEdge;
 import org.openplans.tools.tracking.impl.statistics.StatisticsUtil;
@@ -31,8 +36,8 @@ import com.vividsolutions.jts.linearref.LengthLocationMap;
 import com.vividsolutions.jts.linearref.LinearLocation;
 import com.vividsolutions.jts.linearref.LocationIndexedLine;
 
-public class AbstractRoadTrackingFilter implements
-    CloneableSerializable {
+public abstract class AbstractRoadTrackingFilter extends
+    AbstractCloneableSerializable {
 
   /**
    * 
@@ -43,24 +48,6 @@ public class AbstractRoadTrackingFilter implements
    * Motion model of the underlying system.
    */
   protected LinearDynamicalSystem groundModel;
-  
-  protected AbstractRoadTrackingFilter() {};
-    
-  protected AbstractRoadTrackingFilter(
-    LinearDynamicalSystem groundModel, AdjKalmanFilter groundFilter,
-    LinearDynamicalSystem roadModel, AdjKalmanFilter roadFilter,
-    Matrix qr, Matrix qg, Matrix onRoadStateVariance,
-    Matrix offRoadStateVariance, Matrix obsVariance) {
-    this.groundModel = groundModel;
-    this.groundFilter = groundFilter;
-    this.roadModel = roadModel;
-    this.roadFilter = roadFilter;
-    Qr = qr;
-    Qg = qg;
-    this.onRoadStateVariance = onRoadStateVariance;
-    this.offRoadStateVariance = offRoadStateVariance;
-    this.obsVariance = obsVariance;
-  }
 
   protected AdjKalmanFilter groundFilter;
 
@@ -96,24 +83,29 @@ public class AbstractRoadTrackingFilter implements
     Or.setElement(0, 0, 1);
   }
 
-  protected double currentTimeDiff = 1d;
+  protected double currentTimeDiff = 0d;
 
-  protected double prevTimeDiff = 1d;
+  protected double prevTimeDiff = 0d;
 
   protected final static Vector zeros2D = VectorFactory.getDefault()
       .copyValues(0, 0);
 
   @Override
   public AbstractRoadTrackingFilter clone() {
-    AbstractRoadTrackingFilter filter;
-    try {
-      filter = (AbstractRoadTrackingFilter) super.clone();
-      return filter;
-    } catch (final CloneNotSupportedException e) {
-      // TODO Auto-generated catch block
-      e.printStackTrace();
-    }
-    return null;
+    final AbstractRoadTrackingFilter clone =
+        (AbstractRoadTrackingFilter) super.clone();
+    clone.currentTimeDiff = this.currentTimeDiff;
+    clone.groundFilter = this.groundFilter.clone();
+    clone.groundModel = this.groundModel.clone();
+    clone.obsVariance = this.obsVariance.clone();
+    clone.offRoadStateVariance = this.offRoadStateVariance.clone();
+    clone.onRoadStateVariance = this.onRoadStateVariance.clone();
+    clone.prevTimeDiff = this.prevTimeDiff;
+    clone.Qg = this.Qg.clone();
+    clone.Qr = this.Qr.clone();
+    clone.roadFilter = this.roadFilter.clone();
+    clone.roadModel = this.roadModel.clone();
+    return clone;
   }
 
   public MultivariateGaussian createInitialLearnedObject() {
@@ -213,7 +205,7 @@ public class AbstractRoadTrackingFilter implements
             Og.times(projBelief.getMean()), Q);
     return result;
   }
-  
+
   public double logLikelihood(Vector obs,
     MultivariateGaussian belief, PathEdge edge) {
     final MultivariateGaussian projBelief = belief.clone();
@@ -223,7 +215,8 @@ public class AbstractRoadTrackingFilter implements
 
     final double result =
         StatisticsUtil.logEvaluateNormal(obs,
-            Og.times(projBelief.getMean()), this.groundFilter.getMeasurementCovariance());
+            Og.times(projBelief.getMean()),
+            this.groundFilter.getMeasurementCovariance());
     return result;
   }
 
@@ -248,17 +241,17 @@ public class AbstractRoadTrackingFilter implements
               true);
       convertToGroundBelief(updatedBelief, startEdge);
 
-//      // TODO FIXME debug. remove
-//      final MultivariateGaussian debugBelief = updatedBelief.clone();
+      //      // TODO FIXME debug. remove
+      //      final MultivariateGaussian debugBelief = updatedBelief.clone();
 
       this.groundFilter.measure(updatedBelief, observation);
 
-//      // TODO FIXME debug. remove
-//      if (Og.times(debugBelief.getMean()).euclideanDistance(
-//          observation) < Og.times(updatedBelief.getMean())
-//          .euclideanDistance(observation)) {
-//        assert false;
-//      }
+      //      // TODO FIXME debug. remove
+      //      if (Og.times(debugBelief.getMean()).euclideanDistance(
+      //          observation) < Og.times(updatedBelief.getMean())
+      //          .euclideanDistance(observation)) {
+      //        assert false;
+      //      }
 
       /*
        * Convert back to road-coordinates
@@ -268,13 +261,13 @@ public class AbstractRoadTrackingFilter implements
       final MultivariateGaussian debugBelief2 = updatedBelief.clone();
       convertToGroundBelief(debugBelief2, startEdge);
 
-//      // TODO FIXME debug. remove
-//      if (Og.times(debugBelief.getMean()).euclideanDistance(
-//          observation)
-//          - Og.times(debugBelief2.getMean()).euclideanDistance(
-//              observation) <= -5) {
-//        assert false;
-//      }
+      //      // TODO FIXME debug. remove
+      //      if (Og.times(debugBelief.getMean()).euclideanDistance(
+      //          observation)
+      //          - Og.times(debugBelief2.getMean()).euclideanDistance(
+      //              observation) <= -5) {
+      //        assert false;
+      //      }
 
       belief.setMean(updatedBelief.getMean());
       belief.setCovariance(updatedBelief.getCovariance());
@@ -344,19 +337,38 @@ public class AbstractRoadTrackingFilter implements
    * @param vehicleState
    * @return
    */
-  public Vector sampleStateBelief(Vector mean, Random rng) {
+  public Vector sampleStateTransition(Vector mean, InferredPath path,
+    Random rng) {
     final boolean isRoad = mean.getDimensionality() == 2;
     final Matrix Q = isRoad ? this.getQr() : this.getQg();
+    final Matrix covSqrt;
+    if (!isRoad) {
+      covSqrt =
+          CholeskyDecompositionMTJ.create(
+              DenseMatrixFactoryMTJ.INSTANCE.copyMatrix(Q)).getR();
+    } else {
+      covSqrt = DenseMatrixFactoryMTJ.INSTANCE.copyMatrix(Q);
+      covSqrt.setElement(0, 0, Math.sqrt(Q.getElement(0, 0)));
+    }
 
-    final Matrix covSqrt =
-        CholeskyDecompositionMTJ.create(
-            DenseMatrixFactoryMTJ.INSTANCE.copyMatrix(Q)).getR();
     final Vector underlyingSample =
         MultivariateGaussian.sample(VectorFactory.getDefault()
-            .createVector(2), covSqrt, rng);
+            .createVector(isRoad ? 1 : 2), covSqrt, rng);
     final Matrix Gamma = this.getCovarianceFactor(isRoad);
     final Vector thisStateSample =
         Gamma.times(underlyingSample).plus(mean);
+
+    if (isRoad && !path.isOnPath(thisStateSample.getElement(0))) {
+
+      final double dir = path.getIsBackward() ? -1d : 1d;
+      final LengthIndexedLine lil =
+          new LengthIndexedLine(path.getGeometry());
+      final double clampedIndex =
+          dir * lil.clampIndex(dir * thisStateSample.getElement(0));
+      thisStateSample.setElement(0, clampedIndex);
+
+    }
+
     return thisStateSample;
   }
 
@@ -626,8 +638,8 @@ public class AbstractRoadTrackingFilter implements
    * @param angle
    * @return
    */
-  protected static Matrix createStateCovarianceMatrix(double timeDiff,
-    Matrix Q, boolean isRoad) {
+  protected static Matrix createStateCovarianceMatrix(
+    double timeDiff, Matrix Q, boolean isRoad) {
 
     final Matrix A_half = getCovarianceFactor(timeDiff, isRoad);
     final Matrix A = A_half.times(Q).times(A_half.transpose());
@@ -635,8 +647,8 @@ public class AbstractRoadTrackingFilter implements
     return A;
   }
 
-  protected static Matrix createStateTransitionMatrix(double timeDiff,
-    boolean isRoad) {
+  protected static Matrix createStateTransitionMatrix(
+    double timeDiff, boolean isRoad) {
 
     final int dim;
     if (isRoad) {
@@ -663,7 +675,7 @@ public class AbstractRoadTrackingFilter implements
       dim = 1;
     }
     final Matrix A_half =
-        MatrixFactory.getDefault().createMatrix(dim * 2, 2);
+        MatrixFactory.getDefault().createMatrix(dim * 2, dim);
     A_half.setElement(0, 0, Math.pow(timeDiff, 2) / 2d);
     A_half.setElement(1, 0, timeDiff);
     if (dim == 2) {
@@ -690,8 +702,8 @@ public class AbstractRoadTrackingFilter implements
     return Or;
   }
 
-  protected static Matrix getRotatedCovarianceMatrix(double aVariance,
-    double a0Variance, double angle) {
+  protected static Matrix getRotatedCovarianceMatrix(
+    double aVariance, double a0Variance, double angle) {
 
     final Matrix rotationMatrix =
         MatrixFactory.getDefault().createIdentity(2, 2);
@@ -865,7 +877,7 @@ public class AbstractRoadTrackingFilter implements
             DenseMatrixFactoryMTJ.INSTANCE.copyMatrix(Q)).getR();
     final Vector underlyingSample =
         MultivariateGaussian.sample(VectorFactory.getDefault()
-            .createVector(2), covSqrt, rng);
+            .createVector(covSqrt.getNumRows()), covSqrt, rng);
     final Matrix Gamma = filter.getCovarianceFactor(isRoad);
     final Vector thisStateSample =
         Gamma.times(underlyingSample).plus(mean);
@@ -873,23 +885,37 @@ public class AbstractRoadTrackingFilter implements
   }
 
   public void setQr(Matrix qr) {
+    assert DenseCholesky.factorize(
+        ((AbstractMTJMatrix) qr).getInternalMatrix()).isSPD(); 
     Qr = qr;
   }
 
   public void setQg(Matrix qg) {
+    assert DenseCholesky.factorize(
+        ((AbstractMTJMatrix) qg).getInternalMatrix()).isSPD(); 
     Qg = qg;
   }
 
   public void setOnRoadStateVariance(Matrix onRoadStateVariance) {
+    assert DenseCholesky.factorize(
+        ((AbstractMTJMatrix) onRoadStateVariance).getInternalMatrix()).isSPD(); 
     this.onRoadStateVariance = onRoadStateVariance;
   }
 
   public void setOffRoadStateVariance(Matrix offRoadStateVariance) {
+    assert DenseCholesky.factorize(
+        ((AbstractMTJMatrix) offRoadStateVariance).getInternalMatrix()).isSPD(); 
     this.offRoadStateVariance = offRoadStateVariance;
   }
 
   public void setObsVariance(Matrix obsVariance) {
+    assert DenseCholesky.factorize(
+        ((AbstractMTJMatrix) obsVariance).getInternalMatrix()).isSPD(); 
     this.obsVariance = obsVariance;
   }
+
+  public abstract void updateSufficientStatistics(Observation obs,
+    VehicleState state, MultivariateGaussian sampledBelief,
+    InferredPath sampledPath, Random rng);
 
 }

@@ -20,8 +20,8 @@ public class DefaultCountedDataDistribution<KeyType> extends
     AbstractDataDistribution<KeyType> {
 
   /**
-   * A factory for {@code DefaultCountedDataDistribution} objects using some given
-   * initial capacity for them.
+   * A factory for {@code DefaultCountedDataDistribution} objects using some
+   * given initial capacity for them.
    * 
    * @param <DataType>
    *          The type of data for the factory.
@@ -390,7 +390,7 @@ public class DefaultCountedDataDistribution<KeyType> extends
   public double increment(KeyType key, final double value) {
     return this.increment(key, value, 1);
   }
-  
+
   public double increment(KeyType key, final double value, int count) {
     // TODO FIXME terrible hack!
     final MutableDoubleCount entry =

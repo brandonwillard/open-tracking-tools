@@ -11,6 +11,7 @@ import gov.sandia.cognition.math.signals.LinearDynamicalSystem;
 import gov.sandia.cognition.statistics.bayesian.AbstractKalmanFilter;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 import gov.sandia.cognition.util.ObjectUtil;
+import no.uib.cipr.matrix.DenseCholesky;
 import no.uib.cipr.matrix.DenseMatrix;
 import no.uib.cipr.matrix.DenseVector;
 import no.uib.cipr.matrix.UpperSPDDenseMatrix;
@@ -165,6 +166,10 @@ public class AdjKalmanFilter extends AbstractKalmanFilter {
 
     final Matrix CC = R.minus(AtQtA);
     final Vector m = a.plus(Ate);
+
+    assert DenseCholesky.factorize(
+        ((AbstractMTJMatrix) CC).getInternalMatrix()).isSPD();
+
     belief.setCovariance(CC);
     belief.setMean(m);
   }
@@ -183,7 +188,12 @@ public class AdjKalmanFilter extends AbstractKalmanFilter {
 
     // Load the updated belief
     belief.setMean(xpred);
+
+    assert DenseCholesky.factorize(
+        ((AbstractMTJMatrix) P).getInternalMatrix()).isSPD();
+
     belief.setCovariance(P);
+
   }
 
   /**

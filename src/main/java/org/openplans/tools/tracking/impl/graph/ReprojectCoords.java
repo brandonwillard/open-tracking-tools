@@ -1,6 +1,5 @@
 package org.openplans.tools.tracking.impl.graph;
 
-
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -18,7 +17,6 @@ import org.opentripplanner.routing.graph.Graph;
 import org.opentripplanner.routing.graph.Vertex;
 
 import com.vividsolutions.jts.geom.Coordinate;
-import com.vividsolutions.jts.geom.CoordinateFilter;
 import com.vividsolutions.jts.geom.Geometry;
 
 /**
@@ -52,13 +50,14 @@ public class ReprojectCoords implements GraphBuilder {
     graph = graph.getService(BaseGraph.class).getBaseGraph();
     graph
         .setVertexComparatorFactory(new SimpleVertexComparatorFactory());
-    
+
     try {
       for (final Vertex v : graph.getVertices()) {
         final AbstractVertex abv = ((AbstractVertex) v);
-        final ProjectedCoordinate converted = GeoUtils.convertToEuclidean(
-            GeoUtils.reverseCoordinates(abv.getCoordinate()));
-        
+        final ProjectedCoordinate converted =
+            GeoUtils.convertToEuclidean(GeoUtils
+                .reverseCoordinates(abv.getCoordinate()));
+
         xfield.set(abv, converted.x);
         yfield.set(abv, converted.y);
         final ArrayList<Edge> toRemove = new ArrayList<Edge>();
@@ -69,14 +68,15 @@ public class ReprojectCoords implements GraphBuilder {
             continue;
           }
           final Geometry geom = GeoUtils.projectLonLatGeom(orig);
-          
-           // XXX: sets the user data in the geom object to the projection object
-          final Coordinate refLatLon = GeoUtils.reverseCoordinates(orig.getCoordinate());
-          
+
+          // XXX: sets the user data in the geom object to the projection object
+          final Coordinate refLatLon =
+              GeoUtils.reverseCoordinates(orig.getCoordinate());
+
           // TODO FIXME XXX: what about when the geoms cross zones?
           // why not just put the unprojected geom here?
           geom.setUserData(refLatLon);
-    
+
           geomfield.set(e, geom);
         }
         for (final Edge e : toRemove) {

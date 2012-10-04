@@ -2,14 +2,7 @@ package org.openplans.tools.tracking.impl.statistics.filters;
 
 import gov.sandia.cognition.statistics.DataDistribution;
 import gov.sandia.cognition.statistics.bayesian.AbstractParticleFilter;
-import gov.sandia.cognition.statistics.bayesian.ParticleFilter;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.net.URL;
-import java.util.Enumeration;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
@@ -50,13 +43,15 @@ public abstract class AbstractVehicleTrackingFilter extends
 
   public AbstractVehicleTrackingFilter(Observation obs,
     OtpGraph inferredGraph, VehicleStateInitialParameters parameters,
-    ParticleFilter.Updater<Observation, VehicleState> updater,
+    PLParticleFilterUpdater<Observation, VehicleState> updater,
     @Nonnull Boolean isDebug) {
     this.isDebug = isDebug;
     this.setNumParticles(parameters.getNumParticles());
     this.inferredGraph = inferredGraph;
     this.setUpdater(updater);
     this.initialObservation = obs;
+    this.random = new Random(parameters.getSeed());
+    updater.setRandom(random);
   }
 
   @Override
@@ -72,6 +67,9 @@ public abstract class AbstractVehicleTrackingFilter extends
       this.filterInfo.put(initialObservation, new FilterInformation(
           evaledPaths, dist));
     }
+    
+    this.prevTime = this.initialObservation.getTimestamp().getTime();
+    
     return dist;
   }
 
@@ -81,10 +79,13 @@ public abstract class AbstractVehicleTrackingFilter extends
   }
 
   @Override
+  public double getLastProcessedTime() {
+    return prevTime;
+  }
+
+  @Override
   public Random getRandom() {
-    final VehicleTrackingPathSamplerFilterUpdater updater =
-        (VehicleTrackingPathSamplerFilterUpdater) this.getUpdater();
-    return updater.getThreadRandom().get();
+    return this.random;
   }
 
   protected abstract void internalUpdate(
@@ -99,19 +100,14 @@ public abstract class AbstractVehicleTrackingFilter extends
     Observation obs) {
 
     final double timeDiff =
-        prevTime == 0 ? 1d
-            : (obs.getTimestamp().getTime() - prevTime) / 1000;
+        prevTime == 0d ? 0d
+            : (obs.getTimestamp().getTime() - prevTime) / 1000d;
 
-    if (timeDiff <= 0)
+    if (timeDiff <= 0d)
       return;
 
     internalUpdate(target, obs, timeDiff);
 
     prevTime = obs.getTimestamp().getTime();
-  }
-
-  @Override
-  public double getLastProcessedTime() {
-    return prevTime;
   }
 }

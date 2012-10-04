@@ -9,8 +9,8 @@ import javax.annotation.Nonnull;
 
 import org.openplans.tools.tracking.impl.Observation;
 import org.openplans.tools.tracking.impl.VehicleState;
-import org.openplans.tools.tracking.impl.WrappedWeightedValue;
 import org.openplans.tools.tracking.impl.VehicleState.VehicleStateInitialParameters;
+import org.openplans.tools.tracking.impl.WrappedWeightedValue;
 import org.openplans.tools.tracking.impl.graph.paths.InferredPath;
 import org.openplans.tools.tracking.impl.graph.paths.PathEdge;
 import org.openplans.tools.tracking.impl.statistics.DefaultCountedDataDistribution;
@@ -86,9 +86,7 @@ public class VehicleTrackingBootstrapFilter extends
       // TODO low variance resampling?
       final DataDistribution<VehicleState> resampleDist =
           new DefaultCountedDataDistribution<VehicleState>(
-              prePosteriorDist.sample(
-                  ((VehicleTrackingPathSamplerFilterUpdater) updater)
-                      .getThreadRandom().get(), numParticles));
+              prePosteriorDist.sample(this.random, numParticles));
       posteriorDist = resampleDist;
     } else {
       /*
@@ -96,12 +94,12 @@ public class VehicleTrackingBootstrapFilter extends
        * amount we need, so we need to sample the remainder. 
        */
       posteriorDist = prePosteriorDist;
-      final int numDiff = this.numParticles - prePosteriorDist.getTotalCount();
+      final int numDiff =
+          this.numParticles - prePosteriorDist.getTotalCount();
       if (numDiff != 0) {
         posteriorDist.incrementAll(prePosteriorDist.sample(
-                  ((VehicleTrackingPathSamplerFilterUpdater) updater)
-                      .getThreadRandom().get(), numDiff));
-      } 
+            this.random, numDiff));
+      }
     }
 
     target.clear();

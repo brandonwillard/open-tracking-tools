@@ -2,9 +2,12 @@ package org.openplans.tools.tracking.impl.statistics;
 
 import gov.sandia.cognition.math.LogMath;
 import gov.sandia.cognition.math.matrix.Matrix;
+import gov.sandia.cognition.math.matrix.MatrixFactory;
 import gov.sandia.cognition.math.matrix.Vector;
+import gov.sandia.cognition.math.matrix.VectorFactory;
 import gov.sandia.cognition.math.matrix.mtj.AbstractMTJMatrix;
-import gov.sandia.cognition.statistics.DataDistribution;
+import gov.sandia.cognition.statistics.distribution.ChiSquareDistribution;
+import gov.sandia.cognition.statistics.distribution.InverseWishartDistribution;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 import gov.sandia.cognition.util.Weighted;
 
@@ -15,11 +18,10 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Random;
 
-import org.openplans.tools.tracking.impl.WrappedWeightedValue;
-
 import no.uib.cipr.matrix.DenseVector;
 import no.uib.cipr.matrix.UpperSPDDenseMatrix;
 
+import org.openplans.tools.tracking.impl.WrappedWeightedValue;
 
 import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
@@ -120,8 +122,8 @@ public class StatisticsUtil {
       double weight = entry.getWeight() - totalLikelihood;
       if (weight > 0d)
         weight = 0d;
-      result
-          .increment(entry.getValue(), Math.exp(weight), entry.getCount());
+      result.increment(entry.getValue(), Math.exp(weight),
+          entry.getCount());
     }
 
     return result;
@@ -129,7 +131,8 @@ public class StatisticsUtil {
 
   public static
       <DistributionType, SupportType extends Comparable<SupportType>>
-      DefaultCountedDataDistribution<SupportType> getLogNormalizedDistribution(
+      DefaultCountedDataDistribution<SupportType>
+      getLogNormalizedDistribution(
         Map<SupportType, WrappedWeightedValue<DistributionType>> map) {
 
     /*-
@@ -167,35 +170,24 @@ public class StatisticsUtil {
     for (final Entry<SupportType, WrappedWeightedValue<DistributionType>> entry : entryList) {
       if (entry.getValue().getWeight() == Double.NEGATIVE_INFINITY)
         continue;
-      double weight =
-          entry.getValue().getWeight() - totalLikelihood;
+      double weight = entry.getValue().getWeight() - totalLikelihood;
       if (weight > 0d)
         weight = 0d;
-      result.increment(entry.getKey(), Math.exp(weight), entry.getValue()
-          .getCount());
+      result.increment(entry.getKey(), Math.exp(weight), entry
+          .getValue().getCount());
     }
 
     return result;
   }
-  
-  /**
-   * Uses the underlying arrays in these vector objects for comparison.
-   */
-  public static boolean vectorEquals(Vector vec1, Vector vec2) {
-    if ((vec1 instanceof gov.sandia.cognition.math.matrix.mtj.DenseVector)
-        && (vec2 instanceof gov.sandia.cognition.math.matrix.mtj.DenseVector))
-      return Arrays.equals(((gov.sandia.cognition.math.matrix.mtj.DenseVector) vec1).getArray(),
-          ((gov.sandia.cognition.math.matrix.mtj.DenseVector) vec2).getArray());
-    else
-      return Objects.equal(vec1, vec2);
-  }
-  
+
   /**
    * Uses the underlying arrays in these vector objects for a hash code.
    */
   public static int hashCodeVector(Vector vec) {
     if (vec instanceof gov.sandia.cognition.math.matrix.mtj.DenseVector)
-      return Arrays.hashCode(((gov.sandia.cognition.math.matrix.mtj.DenseVector) vec).getArray());
+      return Arrays
+          .hashCode(((gov.sandia.cognition.math.matrix.mtj.DenseVector) vec)
+              .getArray());
     else
       return vec.hashCode();
   }
@@ -455,11 +447,55 @@ public class StatisticsUtil {
 
   }
 
+  public static Matrix sampleInvWishart(
+    InverseWishartDistribution invWish, Random rng) {
+    final int p = invWish.getInverseScale().getNumRows();
+    final Vector Zdiag =
+        VectorFactory.getDenseDefault().createVector(p);
+    int ii = 0;
+    for (int i = invWish.getDegreesOfFreedom(); i >= invWish
+        .getDegreesOfFreedom() - p + 1; i--) {
+      final double chiSmpl =
+          Math.sqrt(ChiSquareDistribution.sample(i, rng, 1).get(0));
+      Zdiag.setElement(ii, chiSmpl);
+      ii++;
+    }
+    final Matrix Z =
+        MatrixFactory.getDenseDefault().createDiagonal(Zdiag);
+
+    for (int i = 0; i < p; i++) {
+      for (int j = i + 1; j < p; j++) {
+        final double normSample = rng.nextGaussian();
+        Z.setElement(j, i, normSample);
+      }
+    }
+
+    final Matrix k = Z.times(invWish.getScaleSqrt());
+    final Matrix wishSample = k.transpose().times(k);
+    final Matrix invWishSample = wishSample.inverse();
+    return invWishSample;
+  }
+
   public static int sum(int[] array) {
     int sum = 0;
     for (int i = 0; i < array.length; i++)
       sum += array[i];
     return sum;
+  }
+
+  /**
+   * Uses the underlying arrays in these vector objects for comparison.
+   */
+  public static boolean vectorEquals(Vector vec1, Vector vec2) {
+    if ((vec1 instanceof gov.sandia.cognition.math.matrix.mtj.DenseVector)
+        && (vec2 instanceof gov.sandia.cognition.math.matrix.mtj.DenseVector))
+      return Arrays.equals(
+          ((gov.sandia.cognition.math.matrix.mtj.DenseVector) vec1)
+              .getArray(),
+          ((gov.sandia.cognition.math.matrix.mtj.DenseVector) vec2)
+              .getArray());
+    else
+      return Objects.equal(vec1, vec2);
   }
 
 }

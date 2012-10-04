@@ -24,6 +24,8 @@ import org.openplans.tools.tracking.impl.Simulation;
 import org.openplans.tools.tracking.impl.Simulation.SimulationParameters;
 import org.openplans.tools.tracking.impl.VehicleState.VehicleStateInitialParameters;
 import org.openplans.tools.tracking.impl.statistics.filters.AbstractVehicleTrackingFilter;
+import org.openplans.tools.tracking.impl.statistics.filters.ErrorEstimatingRoadTrackingFilter;
+import org.openplans.tools.tracking.impl.statistics.filters.VTErrorEstimatingPLFilter;
 import org.openplans.tools.tracking.impl.statistics.filters.VehicleTrackingBootstrapFilter;
 import org.openplans.tools.tracking.impl.statistics.filters.VehicleTrackingFilter;
 import org.openplans.tools.tracking.impl.statistics.filters.VehicleTrackingPLFilter;
@@ -57,6 +59,7 @@ public class Application extends Controller {
 
   private static Map<String, Class<? extends VehicleTrackingFilter>> filtersMap = Maps.newHashMap();
   static {
+    filtersMap.put(VTErrorEstimatingPLFilter.class.getName(), VTErrorEstimatingPLFilter.class);
     filtersMap.put(VehicleTrackingPLFilter.class.getName(), VehicleTrackingPLFilter.class);
     filtersMap.put(VehicleTrackingBootstrapFilter.class.getName(), VehicleTrackingBootstrapFilter.class);
   }
@@ -66,7 +69,8 @@ public class Application extends Controller {
         InferenceService.getInferenceInstances();
       
     final Set<String> filters = filtersMap.keySet();
-    render(instances, filters);
+    final VehicleStateInitialParameters initialParams = InferenceService.getDefaultVehicleStateInitialParams();
+    render(instances, filters, initialParams);
   }
 
   public static void map(String vehicleId) {
@@ -81,10 +85,12 @@ public class Application extends Controller {
   }
 
   public static void setDefaultVehicleStateParams(
-    String obs_variance_pair, String road_state_variance_pair,
+    String obs_variance_pair, String road_state_variance,
     String ground_state_variance_pair, String off_prob_pair,
-    String on_prob_pair, String numParticles_str, String filterTypeName) {
+    String on_prob_pair, String numParticles_str, String filterTypeName,
+    String initialObsFreq_str) {
 
+    final int initialObsFreq = Integer.parseInt(initialObsFreq_str);
     final int numParticles = Integer.parseInt(numParticles_str);
     final String[] obsPair = obs_variance_pair.split(",");
     final Vector obsVariance =
@@ -92,12 +98,9 @@ public class Application extends Controller {
             Double.parseDouble(obsPair[0]),
             Double.parseDouble(obsPair[1]));
 
-    final String[] roadStatePair =
-        road_state_variance_pair.split(",");
     final Vector roadStateVariance =
-        VectorFactory.getDefault().createVector2D(
-            Double.parseDouble(roadStatePair[0]),
-            Double.parseDouble(roadStatePair[1]));
+        VectorFactory.getDefault().createVector1D(
+            Double.parseDouble(road_state_variance));
 
     final String[] groundStatePair =
         ground_state_variance_pair.split(",");
@@ -121,7 +124,8 @@ public class Application extends Controller {
     final VehicleStateInitialParameters parameters =
         new VehicleStateInitialParameters(obsVariance,
             roadStateVariance, groundStateVariance, offProbs,
-            onProbs, filterTypeName, numParticles, 0);
+            onProbs, filterTypeName, numParticles, 
+            initialObsFreq, 0);
 
     InferenceService.setDefaultVehicleStateInitialParams(parameters);
 
@@ -129,23 +133,31 @@ public class Application extends Controller {
   }
 
   public static void simulation(String obs_variance_pair,
-    String road_state_variance_pair,
+    String road_state_variance,
     String ground_state_variance_pair, String off_prob_pair,
-    String on_prob_pair, String performInference,
+    String on_prob_pair, String performInference, String useInitialSimParams,
     String start_coordinate_pair, String start_unix_time,
     String duration_str, String frequency_str,
-    String numParticles_str, String filterTypeName, String seed_str) {
-
-    final String[] startCoordPair = start_coordinate_pair.split(",");
-    final Coordinate startCoord =
-        new Coordinate(Double.parseDouble(startCoordPair[0]),
-            Double.parseDouble(startCoordPair[1]));
+    String numParticles_str, String initialObsFreq_str,
+    String filterTypeName, String seed_str) {
+    
+    final Coordinate startCoord;
+    if (!start_coordinate_pair.isEmpty()) {
+      final String[] startCoordPair = start_coordinate_pair.split(",");
+      startCoord =
+          new Coordinate(Double.parseDouble(startCoordPair[0]),
+              Double.parseDouble(startCoordPair[1]));
+    } else {
+      startCoord = null;
+    }
     final Date startTime = new Date(Long.parseLong(start_unix_time));
     final long seed = Long.parseLong(seed_str);
+    final int initialObsFreq = Integer.parseInt(initialObsFreq_str);
     final int numParticles = Integer.parseInt(numParticles_str);
     final long duration = Long.parseLong(duration_str);
     final long frequency = Long.parseLong(frequency_str);
     final boolean inference = Boolean.parseBoolean(performInference);
+    final boolean bUseInitialSimParams = Boolean.parseBoolean(useInitialSimParams);
 
     final String[] obsPair = obs_variance_pair.split(",");
     final Vector obsVariance =
@@ -153,12 +165,9 @@ public class Application extends Controller {
             Double.parseDouble(obsPair[0]),
             Double.parseDouble(obsPair[1]));
 
-    final String[] roadStatePair =
-        road_state_variance_pair.split(",");
     final Vector roadStateVariance =
-        VectorFactory.getDefault().createVector2D(
-            Double.parseDouble(roadStatePair[0]),
-            Double.parseDouble(roadStatePair[1]));
+        VectorFactory.getDefault().createVector1D(
+            Double.parseDouble(road_state_variance));
 
     final String[] groundStatePair =
         ground_state_variance_pair.split(",");
@@ -182,7 +191,8 @@ public class Application extends Controller {
     final VehicleStateInitialParameters parameters =
         new VehicleStateInitialParameters(obsVariance,
             roadStateVariance, groundStateVariance, offProbs,
-            onProbs, filterTypeName, numParticles, seed);
+            onProbs, filterTypeName, numParticles, 
+            initialObsFreq, seed);
 
     final SimulationParameters simParams =
         new SimulationParameters(startCoord, startTime, duration,
@@ -195,7 +205,9 @@ public class Application extends Controller {
       InferenceService.remove(simulationName);
     }
     final Simulation sim =
-        new Simulation(simulationName, Api.getGraph(), simParams);
+        new Simulation(simulationName, Api.getGraph(), simParams,
+            bUseInitialSimParams ? simParams.getStateParams() : 
+              InferenceService.getDefaultVehicleStateInitialParams());
     Logger.info("starting simulation " + sim.getSimulationName());
 
     Application.simActor.tell(sim);
@@ -204,10 +216,11 @@ public class Application extends Controller {
   }
 
   public static void uploadHandler(File csv,
-    String obs_variance_pair, String road_state_variance_pair,
+    String obs_variance_pair, String road_state_variance,
     String ground_state_variance_pair, String off_prob_pair,
     String on_prob_pair, String numParticles_str, String seed_str,
-    String filterTypeName, String debugEnabled) {
+    String filterTypeName, String debugEnabled,
+    String initialObsFreq_str) {
 
     if (csv != null) {
       final String[] obsPair = obs_variance_pair.split(",");
@@ -216,12 +229,9 @@ public class Application extends Controller {
               Double.parseDouble(obsPair[0]),
               Double.parseDouble(obsPair[1]));
 
-      final String[] roadStatePair =
-          road_state_variance_pair.split(",");
       final Vector roadStateVariance =
-          VectorFactory.getDefault().createVector2D(
-              Double.parseDouble(roadStatePair[0]),
-              Double.parseDouble(roadStatePair[1]));
+          VectorFactory.getDefault().createVector1D(
+              Double.parseDouble(road_state_variance));
 
       final String[] groundStatePair =
           ground_state_variance_pair.split(",");
@@ -244,11 +254,13 @@ public class Application extends Controller {
 
       final long seed = Long.parseLong(seed_str);
       final int numParticles = Integer.parseInt(numParticles_str);
+      final int initialObsFreq = Integer.parseInt(initialObsFreq_str);
 
       final VehicleStateInitialParameters parameters =
           new VehicleStateInitialParameters(obsVariance,
               roadStateVariance, groundStateVariance, offProbs,
-              onProbs, filterTypeName, numParticles, seed);
+              onProbs, filterTypeName, numParticles, 
+              initialObsFreq, seed);
 
       final boolean debug_enabled =
           Boolean.parseBoolean(debugEnabled);

@@ -51,7 +51,7 @@ public class MutableDoubleCount extends MutableDouble {
     this.value += value;
     this.count++;
   }
-  
+
   public void plusEquals(double value, int count) {
     this.value += value;
     this.count += count;

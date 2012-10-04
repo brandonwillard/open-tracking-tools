@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 
@@ -28,6 +29,7 @@ import org.openplans.tools.tracking.impl.VehicleTrackingPerformanceEvaluator;
 import org.openplans.tools.tracking.impl.util.GeoUtils;
 import org.openplans.tools.tracking.impl.util.OtpGraph;
 import org.openplans.tools.tracking.impl.util.ProjectedCoordinate;
+import org.opentripplanner.common.geometry.GeometryUtils;
 import org.opentripplanner.routing.graph.Edge;
 
 import play.Logger;
@@ -38,6 +40,7 @@ import api.OsmSegment;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.sun.xml.internal.bind.v2.schemagen.xmlschema.Particle;
 import com.vividsolutions.jts.geom.Coordinate;
 
 public class Api extends Controller {
@@ -50,16 +53,35 @@ public class Api extends Controller {
 
   public static ObjectMapper jsonMapper = new ObjectMapper();
 
-  public static void convertToLatLon(String x, String y, String lat, String lon)
+//  public static void convertToLatLon(String x, String y, String lat, String lon)
+//      throws JsonGenerationException, JsonMappingException,
+//      IOException {
+//
+//    final Coordinate rawCoords =
+//        new Coordinate(Double.parseDouble(x), Double.parseDouble(y));
+//    
+//    final Coordinate refLatLon =
+//        new Coordinate(Double.parseDouble(lat), Double.parseDouble(lon));
+//    
+//    final MathTransform transform = GeoUtils.getTransform(refLatLon);
+//    final String epsgCode = "EPSG:" + GeoUtils.getEPSGCodefromUTS(refLatLon);
+//    Coordinate coords = GeoUtils.convertToLatLon(transform, rawCoords);
+//    Map<String, Object> jsonResults = Maps.newHashMap();
+//    jsonResults.put("x", coords.x);
+//    jsonResults.put("y", coords.y);
+//    jsonResults.put("epsgCode", epsgCode);
+//
+//    renderJSON(jsonMapper.writeValueAsString(jsonResults));
+//  }
+  
+  public static void convertToLatLon(String x, String y)
       throws JsonGenerationException, JsonMappingException,
       IOException {
 
     final Coordinate rawCoords =
         new Coordinate(Double.parseDouble(x), Double.parseDouble(y));
     
-    final Coordinate refLatLon =
-        new Coordinate(Double.parseDouble(lat), Double.parseDouble(lon));
-    
+    final Coordinate refLatLon = GeoUtils.reverseCoordinates(graph.getTurnGraph().getExtent().centre());
     final MathTransform transform = GeoUtils.getTransform(refLatLon);
     final String epsgCode = "EPSG:" + GeoUtils.getEPSGCodefromUTS(refLatLon);
     Coordinate coords = GeoUtils.convertToLatLon(transform, rawCoords);
@@ -393,6 +415,19 @@ public class Api extends Controller {
 
       mapResults.add(mapResult);
     }
+    
+    /*
+     * Sort by likelihood
+     */
+    Collections.sort(mapResults, new Comparator<Map<String, Object>>() {
+      @Override
+      public int compare(Map<String, Object> o1,
+        Map<String, Object> o2) {
+        final Double p1 = (Double) o1.get("weight");
+        final Double p2 = (Double) o2.get("weight");
+        return -p1.compareTo(p2);
+      }
+    });
 
     renderJSON(jsonMapper.writeValueAsString(mapResults));
   }

@@ -3,15 +3,12 @@ package org.openplans.tools.tracking.impl.statistics.filters;
 import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.math.matrix.VectorFactory;
 import gov.sandia.cognition.statistics.DataDistribution;
-import gov.sandia.cognition.statistics.bayesian.ParticleFilter;
 import gov.sandia.cognition.statistics.distribution.DefaultDataDistribution;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
-
-import javax.annotation.Nonnull;
 
 import org.apache.commons.lang.NotImplementedException;
 import org.openplans.tools.tracking.impl.Observation;
@@ -32,88 +29,23 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 
 public class VehicleTrackingPathSamplerFilterUpdater implements
-    ParticleFilter.Updater<Observation, VehicleState> {
-
-  private static class UpdaterThreadLocal extends ThreadLocal<Random> {
-
-    private long seed;
-
-    public UpdaterThreadLocal(long seed) {
-      super();
-      this.seed = seed;
-    }
-
-    @Override
-    public Random get() {
-      return super.get();
-    }
-
-    public long getSeed() {
-      return seed;
-    }
-
-    @Override
-    protected Random initialValue() {
-      final Random rng = new Random();
-      if (this.seed == 0l) {
-        this.seed = rng.nextLong();
-      }
-      rng.setSeed(this.seed);
-
-      return rng;
-    }
-
-    public void setSeed(long nextLong) {
-      this.seed = nextLong;
-    }
-
-  }
+    PLParticleFilterUpdater<Observation, VehicleState> {
 
   private static final long serialVersionUID = 2884138088944317656L;
+
   private final Observation initialObservation;
 
   private final OtpGraph inferredGraph;
 
   private final VehicleStateInitialParameters parameters;
 
-  private final ThreadLocal<Random> threadRandom;
+  private Random random;
 
-  public VehicleTrackingPathSamplerFilterUpdater(Observation obs,
-    OtpGraph inferredGraph, VehicleStateInitialParameters parameters, 
-    @Nonnull Random rng) {
-    this.initialObservation = obs;
-    this.inferredGraph = inferredGraph;
-    this.parameters = parameters;
-    
-    /*
-     * If we passed a Random then we don't want thread local values.
-     */
-    this.threadRandom = new ThreadLocal<Random>() {
-      
-      private Random rng;
-
-      @Override
-      public Random get() {
-        return rng;
-      }
-
-      @Override
-      public void set(Random value) {
-        rng = value;
-      }
-      
-    };
-    
-    this.threadRandom.set(rng);
-    
-  }
-  
   public VehicleTrackingPathSamplerFilterUpdater(Observation obs,
     OtpGraph inferredGraph, VehicleStateInitialParameters parameters) {
     this.initialObservation = obs;
     this.inferredGraph = inferredGraph;
     this.parameters = parameters;
-    this.threadRandom = new UpdaterThreadLocal(parameters.getSeed());
   }
 
   @Override
@@ -141,7 +73,8 @@ public class VehicleTrackingPathSamplerFilterUpdater implements
     final StandardRoadTrackingFilter tmpTrackingFilter =
         new StandardRoadTrackingFilter(parameters.getObsVariance(),
             parameters.getOffRoadStateVariance(),
-            parameters.getOnRoadStateVariance());
+            parameters.getOnRoadStateVariance(),
+            parameters.getInitialObsFreq());
     final MultivariateGaussian tmpInitialBelief =
         tmpTrackingFilter.createInitialLearnedObject();
     final Vector xyPoint = initialObservation.getProjectedPoint();
@@ -149,7 +82,8 @@ public class VehicleTrackingPathSamplerFilterUpdater implements
         new double[] { xyPoint.getElement(0), 0d,
             xyPoint.getElement(1), 0d }));
     final List<StreetEdge> initialEdges =
-        inferredGraph.getNearbyEdges(tmpInitialBelief, tmpTrackingFilter);
+        inferredGraph.getNearbyEdges(tmpInitialBelief,
+            tmpTrackingFilter);
 
     final DataDistribution<VehicleState> initialDist =
         new DefaultDataDistribution<VehicleState>(numParticles);
@@ -165,17 +99,22 @@ public class VehicleTrackingPathSamplerFilterUpdater implements
         evaluatedPaths.add(new InferredPathEntry(path, null, null,
             null, Double.NEGATIVE_INFINITY));
 
-        final StandardRoadTrackingFilter trackingFilter = new StandardRoadTrackingFilter(
-            parameters.getObsVariance(), parameters.getOffRoadStateVariance(), 
-            parameters.getOnRoadStateVariance());
-        
-        final OnOffEdgeTransDirMulti edgeTransDist = new OnOffEdgeTransDirMulti(inferredGraph, 
-            parameters.getOnTransitionProbs(), parameters.getOffTransitionProbs());
-        
+        final StandardRoadTrackingFilter trackingFilter =
+            new StandardRoadTrackingFilter(
+                parameters.getObsVariance(),
+                parameters.getOffRoadStateVariance(),
+                parameters.getOnRoadStateVariance(),
+                parameters.getInitialObsFreq());
+
+        final OnOffEdgeTransDirMulti edgeTransDist =
+            new OnOffEdgeTransDirMulti(inferredGraph,
+                parameters.getOnTransitionProbs(),
+                parameters.getOffTransitionProbs());
+
         final VehicleState state =
             new VehicleState(this.inferredGraph, initialObservation,
-                pathEdge.getInferredEdge(), trackingFilter, edgeTransDist, 
-                this.threadRandom.get());
+                pathEdge.getInferredEdge(), trackingFilter,
+                edgeTransDist, this.random);
 
         final double lik =
             state.getProbabilityFunction().evaluate(
@@ -188,17 +127,21 @@ public class VehicleTrackingPathSamplerFilterUpdater implements
     /*
      * Free-motion
      */
-    final StandardRoadTrackingFilter trackingFilter = new StandardRoadTrackingFilter(
-        parameters.getObsVariance(), parameters.getOffRoadStateVariance(), 
-        parameters.getOnRoadStateVariance());
-    
-    final OnOffEdgeTransDirMulti edgeTransDist = new OnOffEdgeTransDirMulti(inferredGraph, 
-        parameters.getOnTransitionProbs(), parameters.getOffTransitionProbs());
-    
+    final StandardRoadTrackingFilter trackingFilter =
+        new StandardRoadTrackingFilter(parameters.getObsVariance(),
+            parameters.getOffRoadStateVariance(),
+            parameters.getOnRoadStateVariance(),
+            parameters.getInitialObsFreq());
+
+    final OnOffEdgeTransDirMulti edgeTransDist =
+        new OnOffEdgeTransDirMulti(inferredGraph,
+            parameters.getOnTransitionProbs(),
+            parameters.getOffTransitionProbs());
+
     final VehicleState state =
         new VehicleState(this.inferredGraph, initialObservation,
-            InferredEdge.getEmptyEdge(), trackingFilter, edgeTransDist, 
-            this.threadRandom.get());
+            InferredEdge.getEmptyEdge(), trackingFilter,
+            edgeTransDist, this.random);
 
     final double lik =
         state.getProbabilityFunction().evaluate(initialObservation);
@@ -207,7 +150,7 @@ public class VehicleTrackingPathSamplerFilterUpdater implements
 
     final DataDistribution<VehicleState> retDist =
         new DefaultCountedDataDistribution<VehicleState>(
-            initialDist.sample(threadRandom.get(), numParticles));
+            initialDist.sample(this.random, numParticles));
 
     return retDist;
   }
@@ -216,10 +159,26 @@ public class VehicleTrackingPathSamplerFilterUpdater implements
     return initialObservation;
   }
 
-  public ThreadLocal<Random> getThreadRandom() {
-    return threadRandom;
+  @Override
+  public Random getRandom() {
+    return random;
   }
 
+  @Override
+  public void setRandom(Random rng) {
+    this.random = rng;
+  }
+
+  /**
+   * Sample a path for the given parameters.
+   * Note: the passed belief will be the resulting predictive belief.
+   * 
+   * @param edgeTransDist
+   * @param belief
+   * @param startEdge
+   * @param movementFilter
+   * @return
+   */
   public InferredPath traverseEdge(
     OnOffEdgeTransDirMulti edgeTransDist,
     final MultivariateGaussian belief, PathEdge startEdge,
@@ -228,13 +187,13 @@ public class VehicleTrackingPathSamplerFilterUpdater implements
     /*
      * We project the road path
      */
-    
+
     /*
      * TODO FIXME there should probably be a flag for this debug stuff
      */
-    final Random rng = this.threadRandom.get();
+    final Random rng = this.random;
     rng.setSeed(rng.nextLong());
-    
+
     PathEdge currentEdge = startEdge;
     PathEdge previousEdge = null;
     final MultivariateGaussian newBelief = belief.clone();
@@ -251,7 +210,7 @@ public class VehicleTrackingPathSamplerFilterUpdater implements
       if (currentEdge.getInferredEdge() == InferredEdge
           .getEmptyEdge()) {
         final Vector projLocation =
-            StandardRoadTrackingFilter.getOg().times(
+            AbstractRoadTrackingFilter.getOg().times(
                 newBelief.getMean());
         for (final StreetEdge edge : this.inferredGraph
             .getNearbyEdges(projLocation,
@@ -298,15 +257,15 @@ public class VehicleTrackingPathSamplerFilterUpdater implements
            * edge, so that the converted ground coordinates emulate driving
            * off of a road (most of the time, perhaps).
            */
-          StandardRoadTrackingFilter.convertToGroundBelief(newBelief,
+          AbstractRoadTrackingFilter.convertToGroundBelief(newBelief,
               currentEdge, true);
         }
-        
+
         /*
          * Add some transition noise.
          */
         final Vector transStateSample =
-            StandardRoadTrackingFilter.sampleMovementBelief(rng,
+            AbstractRoadTrackingFilter.sampleMovementBelief(rng,
                 newBelief.getMean(), movementFilter);
         newBelief.setMean(transStateSample);
 
@@ -350,7 +309,7 @@ public class VehicleTrackingPathSamplerFilterUpdater implements
         currentEdge = initialEdge;
 
         if (newBelief.getInputDimensionality() == 4) {
-          StandardRoadTrackingFilter.convertToRoadBelief(newBelief,
+          AbstractRoadTrackingFilter.convertToRoadBelief(newBelief,
               InferredPath.getInferredPath(initialEdge));
         }
 
@@ -358,7 +317,7 @@ public class VehicleTrackingPathSamplerFilterUpdater implements
         movementFilter.predict(newBelief, initialEdge, initialEdge);
 
         final Vector transStateSample =
-            StandardRoadTrackingFilter.sampleMovementBelief(rng,
+            AbstractRoadTrackingFilter.sampleMovementBelief(rng,
                 newBelief.getMean(), movementFilter);
         newBelief.setMean(transStateSample);
         totalDistToTravel =
@@ -420,36 +379,50 @@ public class VehicleTrackingPathSamplerFilterUpdater implements
     throw new NotImplementedException();
   }
 
-  public VehicleState update(VehicleState previousParameter,
+  public VehicleState update(VehicleState previousState,
     Observation obs) {
     final MultivariateGaussian currentLocBelief =
-        previousParameter.getBelief().clone();
+        previousState.getBelief().clone();
     final PathEdge currentPathEdge =
-        PathEdge.getEdge(previousParameter.getInferredEdge());
+        PathEdge.getEdge(previousState.getInferredEdge());
 
     /*
      * TODO FIXME again, a flag for this debug?
      */
-    final Random rng = this.threadRandom.get();
+    final Random rng = this.random;
     rng.setSeed(rng.nextLong());
 
     /*
      * Nothing to update in this filter, besides the sampled path
      * and state.
      */
-    final OnOffEdgeTransDirMulti newTransDist = previousParameter.
-        getEdgeTransitionDist().clone();
+    final OnOffEdgeTransDirMulti newTransDist =
+        previousState.getEdgeTransitionDist().clone();
     final AbstractRoadTrackingFilter predictedFilter =
-        previousParameter.getMovementFilter().clone();
+        previousState.getMovementFilter().clone();
 
+    final MultivariateGaussian predictiveBelief = currentLocBelief.clone();
     final InferredPath newPath =
-        traverseEdge(newTransDist, currentLocBelief,
-            currentPathEdge, predictedFilter);
+        traverseEdge(newTransDist, predictiveBelief, currentPathEdge,
+            predictedFilter);
+    
+    final PathEdge newPathEdge =
+        Iterables.getLast(newPath.getEdges());
+    /*
+     * We don't really need to keep the gaussian distributions,
+     * however, we do, so we must construct a valid posterior state now.
+     */
+    final MultivariateGaussian newBelief = predictiveBelief.clone();
+    if (newPathEdge.isEmptyEdge()) {
+      newBelief.setCovariance(previousState.getMovementFilter().getGroundFilter().getModelCovariance());
+    } else {
+      newBelief.setCovariance(previousState.getMovementFilter().getRoadFilter().getModelCovariance());
+    }
 
     final VehicleState newState =
         new VehicleState(this.inferredGraph, obs, predictedFilter,
-            currentLocBelief, newTransDist, newPath,
-            previousParameter);
+            newBelief, newTransDist, newPath,
+            previousState);
 
     return newState;
   }

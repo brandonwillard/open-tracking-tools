@@ -57,14 +57,13 @@ public class InferenceService extends UntypedActor {
 
   private static VehicleStateInitialParameters defaultVehicleStateInitialParams =
       new VehicleStateInitialParameters(VectorFactory.getDefault()
-          .createVector2D(150d, 150d), VectorFactory.getDefault()
+          .createVector2D(100d, 100d), VectorFactory.getDefault()
           .createVector2D(0.000625, 0.000625), VectorFactory
           .getDefault().createVector2D(0.000625, 0.000625),
           VectorFactory.getDefault().createVector2D(0.05d, 1d),
           VectorFactory.getDefault().createVector2D(1d, 0.05d), 
           VehicleTrackingPLFilter.class.getName(),
-          50,
-          0l);
+          50, 30, 0l);
 
   static public final int THREAD_COUNT;
 

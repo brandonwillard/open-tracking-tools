@@ -17,8 +17,8 @@ import javax.annotation.Nonnull;
 
 import org.openplans.tools.tracking.impl.Observation;
 import org.openplans.tools.tracking.impl.VehicleState;
-import org.openplans.tools.tracking.impl.WrappedWeightedValue;
 import org.openplans.tools.tracking.impl.VehicleState.VehicleStateInitialParameters;
+import org.openplans.tools.tracking.impl.WrappedWeightedValue;
 import org.openplans.tools.tracking.impl.graph.InferredEdge;
 import org.openplans.tools.tracking.impl.graph.paths.InferredPath;
 import org.openplans.tools.tracking.impl.graph.paths.InferredPath.EdgePredictiveResults;
@@ -209,21 +209,26 @@ public class VehicleTrackingPLFilter extends
               edge.getInferredEdge());
 
         if (!edge.isEmptyEdge()) {
-        	
+
           edge.getInferredEdge()
               .getVelocityEstimator()
               .update(
                   edge.getInferredEdge().getVelocityPrecisionDist(),
                   Math.abs(sampledBelief.getMean().getElement(1)));
-          
-          HashMap<String, Integer> attributes = new HashMap<String, Integer>();
-          
-          Integer interval = Math.round(((obs.getTimestamp().getHours() * 60) + obs.getTimestamp().getMinutes()) / DataCube.INTERVAL);
-          
+
+          final HashMap<String, Integer> attributes =
+              new HashMap<String, Integer>();
+
+          final Integer interval =
+              Math.round(((obs.getTimestamp().getHours() * 60) + obs
+                  .getTimestamp().getMinutes()) / DataCube.INTERVAL);
+
           attributes.put("interval", interval);
           attributes.put("edge", edge.getEdge().getEdgeId());
-          
-          inferredGraph.getDataCube().store(Math.abs(sampledBelief.getMean().getElement(1)), attributes);
+
+          inferredGraph.getDataCube().store(
+              Math.abs(sampledBelief.getMean().getElement(1)),
+              attributes);
         }
 
         if (edge.equals(actualPosteriorEdge))

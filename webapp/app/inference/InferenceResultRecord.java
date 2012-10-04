@@ -11,6 +11,7 @@ import inference.InferenceService.INFO_LEVEL;
 import inference.ResultSet.InferenceResultSet;
 import inference.ResultSet.OffRoadPath;
 
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -47,7 +48,7 @@ public class InferenceResultRecord {
 
   private final ProjectedCoordinate observedPoint;
 
-  private final ResultSet actualResults;
+  private final InferenceResultSet actualResults;
 
   private final InferenceResultSet infResults;
 
@@ -60,7 +61,8 @@ public class InferenceResultRecord {
     ResultSet actualResults, ResultSet infResults,
     DataDistribution<VehicleState> postDist,
     DataDistribution<VehicleState> priorDist) {
-    this.actualResults = actualResults;
+    this.actualResults = actualResults != null 
+        ? new InferenceResultSet(actualResults, 0, Collections.<OffRoadPath>emptyList()) : null;
     final int count;
     if (postDist != null)
       count =
@@ -72,7 +74,7 @@ public class InferenceResultRecord {
     this.infResults = new InferenceResultSet(infResults, count, 
         instance.getStateToOffRoadPaths().get(infResults.state));
     this.observedPoint = obsCoords;
-    this.time = Api.sdf.format(new Date(time));
+    this.time = Long.toString(time);//Api.sdf.format(new Date(time));
     this.postDistribution = postDist;
     this.resampleDistribution = priorDist;
   }
@@ -239,7 +241,8 @@ public class InferenceResultRecord {
           previousPath.getPointsBetween().add(GeoUtils.makeCoordinate(
               state.getMeanLocation()));
           previousPath.setEndEdge(new OsmSegment(state.getEdge().getEdgeId(), 
-                  state.getEdge().getGeometry(), state.getEdge().getEdge().getName()));
+                  state.getEdge().getGeometry(), 
+                  state.getEdge().getEdge().getName()));
           previousPath.setEndObs(state.getObservation());
           /*
            * Replace the last entry
