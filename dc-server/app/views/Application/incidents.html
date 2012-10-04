@@ -1,0 +1,40 @@
+<html>
+
+<head>
+<title>cebutraffic.org</title>
+
+<!-- leaflet -->
+
+<script type="text/javascript" src="@{'/public/javascripts/jquery-1.7.1.min.js'}"></script>
+<script src="@{'/public/javascripts/leaflet.js'}"></script>
+<script src="@{'/public/javascripts/handlebars-1.0.0.beta.6.js'}"></script>
+<script src="@{'/public/javascripts/ember.min.js'}"></script>
+<script src="@{'/public/javascripts/ember-data.js'}"></script>
+
+<link rel="stylesheet" href="@{'/public/javascripts/leaflet.css'}" />
+<!-- jquery -->
+
+
+<script src="@{'/public/javascripts/ember_test.js'}"></script>
+
+
+</head>	
+
+
+	
+	<body style="margin: 0px; padding: 0px;">
+	
+	
+		<script type="text/x-handlebars">
+  			<ul class="alerts">
+  				{{#each alertController}}
+ 				   <li class="alert">{{title}}</li>
+  				{{/each}}
+ 			</ul>
+		</script>
+		
+		
+		
+	
+	</body>
+</html>
