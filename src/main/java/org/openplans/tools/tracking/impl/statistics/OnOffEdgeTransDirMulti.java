@@ -292,8 +292,6 @@ public class OnOffEdgeTransDirMulti extends
   public InferredEdge sample(Random rng,
     List<InferredEdge> transferEdges, InferredEdge currentEdge) {
 
-    Preconditions.checkArgument(!transferEdges.contains(InferredEdge
-        .getEmptyEdge()));
     Preconditions.checkNotNull(currentEdge);
     Preconditions.checkNotNull(transferEdges);
 
@@ -309,7 +307,9 @@ public class OnOffEdgeTransDirMulti extends
             this.getFreeMotionTransPrior().sample(rng);
 
         if (sample.equals(stateOffToOn)) {
-          return transferEdges.get(rng.nextInt(transferEdges.size()));
+          List<InferredEdge> support = Lists.newArrayList(transferEdges); 
+          support.remove(InferredEdge.getEmptyEdge());
+          return support.get(rng.nextInt(support.size()));
         } else {
           return InferredEdge.getEmptyEdge();
         }
@@ -318,16 +318,18 @@ public class OnOffEdgeTransDirMulti extends
       /*
        * We're on an edge, so sample whether we go off-road, or transfer/stay
        * on.
+       * If the empty edge is contained in the support (transferEdges)
+       * then we sample for that.
        */
-      final Vector sample =
-          this.getEdgeMotionTransPrior().sample(rng);
+      final Vector sample = transferEdges.contains(InferredEdge.getEmptyEdge()) ?
+          this.getEdgeMotionTransPrior().sample(rng) : stateOnToOn;
 
       if (sample.equals(stateOnToOff) || transferEdges.isEmpty()) {
         return InferredEdge.getEmptyEdge();
       } else {
-        final List<InferredEdge> support =
-            Lists.newArrayList(transferEdges);
-        return support.get(rng.nextInt(transferEdges.size()));
+        final List<InferredEdge> support = Lists.newArrayList(transferEdges); 
+        support.remove(InferredEdge.getEmptyEdge());
+        return support.get(rng.nextInt(support.size()));
       }
 
     }

@@ -222,6 +222,13 @@ public class OtpGraph {
   private final StreetVertexIndexServiceImpl baseIndexService;
   private final static RoutingRequest defaultOptions =
       new RoutingRequest(new TraverseModeSet(TraverseMode.CAR, TraverseMode.WALK));
+
+  /*
+   * Maximum radius we're willing to search around a given
+   * point when snapping (for path search destination edges)
+   */
+  private static final double MAX_SNAP_RADIUS = 70d;
+  
   private final STRtree turnEdgeIndex = new STRtree();
   private final STRtree baseEdgeIndex = new STRtree();
 
@@ -318,9 +325,9 @@ public class OtpGraph {
 
     final Set<Edge> endEdges = Sets.newHashSet();
 
-    final double obsStdDevDistance = StatisticsUtil.getLargeNormalCovRadius(
+    final double obsStdDevDistance = Math.min(StatisticsUtil.getLargeNormalCovRadius(
         (DenseMatrix) currentState.getMovementFilter()
-            .getObsVariance());
+            .getObsVariance()), MAX_SNAP_RADIUS);
 
     double maxEndEdgeLength = Double.NEGATIVE_INFINITY;
     for (final Object obj : getNearbyEdges(toCoord, obsStdDevDistance)) {

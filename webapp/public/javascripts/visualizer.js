@@ -138,6 +138,19 @@ function showParticlesMeans() {
       map.invalidateSize();
     }
   });
+  $("#priorParticleMeans").hover(function() {
+    var markers = $(this).data("particleMeans");
+    if (markers) {
+      allInfMeansGroup.addLayer(markers);
+      map.invalidateSize();
+    }
+  }, function() {
+    var markers = $(this).data("particleMeans");
+    if (markers) {
+      allInfMeansGroup.removeLayer(markers);
+      map.invalidateSize();
+    }
+  });
 }
 
 function getEdgeFromId(id) {
@@ -461,7 +474,8 @@ function renderMarker() {
 
     map.panTo(obsCoords);
 
-    $("#count_display").html(lines[i].time + ' (' + i + ')');
+    var theDate = new Date(parseFloat(lines[i].time));
+    $("#count_display").html(theDate.toUTCString() + ' - ' + lines[i].time + ' (' + i + ')');
     return false;
   } else {
     clearInterval(interval);

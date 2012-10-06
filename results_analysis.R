@@ -14,10 +14,11 @@ getSimPerfJson <- function(simName) {
 }
 
 # avg. records per sec = 67.35140596059942
-pl_means_25_s1 <- unlist(lapply(getSimPerfJson("sim-582243527"), function(x) sqrt(x$mean)))
+pl_means_25_s1 <- unlist(lapply(getSimPerfJson("sim-1200318255"), function(x) sqrt(x$mean)))
 
+plot(pl_means_25_s1, type='l') 
 # avg. records per sec = 39.146604032100214  
-pl_means_50_s1 <- unlist(lapply(getSimPerfJson("sim130512018"), function(x) sqrt(x$mean)))
+pl_means_50_s1 <- unlist(lapply(getSimPerfJson("sim14917717"), function(x) sqrt(x$mean)))
 
 # avg. records per sec = 11.59386684443929  
 pl_means_200_s1 <- unlist(lapply(getSimPerfJson("sim112077992"), function(x) sqrt(x$mean)))
@@ -26,7 +27,10 @@ pl_means_200_s1 <- unlist(lapply(getSimPerfJson("sim112077992"), function(x) sqr
 #pl_means_500_s1 <- unlist(lapply(getSimPerfJson("sim75209940"), function(x) sqrt(x$mean)))
 
 # avg. records per sec = 1673.6401673640166
-bs_means_50_s1 <- unlist(lapply(getSimPerfJson("sim1108672430"), function(x) sqrt(x$mean))) 
+bs_means_50_s1 <- unlist(lapply(getSimPerfJson("sim1391934297"), function(x) sqrt(x$mean))) 
+plot(bs_means_50_s1, type='l', log='y')
+abline(b=0, a=0)
+matplot(cbind(pl_means_50_s1[1:590], bs_means_50_s1[1:590]), type='l', log='y')
 
 # avg. records per sec = 215.74973031283707
 bs_means_200_s1 <- unlist(lapply(getSimPerfJson("sim1090238404"), function(x) sqrt(x$mean)))
@@ -123,10 +127,9 @@ library(plyr)
 # creates data frames for a matrix to be plotted
 #
 matrix_record_maker <- function(time, type, matrix) {
-  n = length(matrix)/2
-  indx = expand.grid(col=1:n, row=1:n)
-  timestr =  as.POSIXct(as.integer(
-                                   as.numeric(time)/1000), origin="1970-01-01")
+  n = length(matrix)/2;
+  indx = expand.grid(col=1:n, row=1:n);
+  timestr =  as.POSIXct(as.numeric(time)/1000, origin="1970-01-01", tz="GMT");
   df = data.frame(time=timestr, 
                          type,
                          indx,
@@ -137,6 +140,13 @@ matrix_record_maker <- function(time, type, matrix) {
 
 sim_res_obs_cov <- ldply(sim_res, function(x) {
                          return(rbind(matrix_record_maker(x$time, "inferred", x$infResults$obsCovariance),
+                                      matrix_record_maker(x$time, "actual", x$actualResults$obsCovariance)))
+                    })
+
+sim_res_obs_prior_mean_cov <- ldply(sim_res, function(x) {
+                         return(rbind(matrix_record_maker(x$time, "inferred",
+                                x$infResults$obsCovarPrior$scale
+                                  /(x$infResults$obsCovarPrior$dof -2 -1)),
                                       matrix_record_maker(x$time, "actual", x$actualResults$obsCovariance)))
                     })
 
@@ -173,11 +183,44 @@ sim_res_qr_cov <- ldply(sim_res, function(x) {
                                                           x$actualResults$stateQrCovariance)))
                     })
 
+sim_res_qg_cov <- ldply(sim_res, function(x) {
+                         return(rbind(matrix_record_maker(x$time, "inferred",
+                                                          x$infResults$stateQgCovariance),
+                                      matrix_record_maker(x$time, "actual", 
+                                                          x$actualResults$stateQgCovariance)))
+                    })
+
 head(sim_res_obs_cov, 8*2)
 tail(sim_res_obs_cov, 8*2)
 range(sim_res_obs_cov$time)
 
+sim_obs_scales <- ldply(sim_res, function(x) {
+  timestr =  as.POSIXct(as.numeric(x$time)/1000, origin="1970-01-01", tz="GMT");
+  return( data.frame(time=timestr,
+    scale=max(eigen(matrix(x$infResults$obsCovarPrior$scale, 2, 2), 
+      symmetric=T, only.values = T)$values)
+  ))
+})
+
+scale_diffs = data.frame(
+  time=sim_obs_scales$time[-1],
+  diffs=diff(sim_obs_scales$scale))
+head(scale_diffs)
+scale_diffs_plot <- ggplot(scale_diffs, aes(x=time, y=scale)) +
+      geom_line(alpha=1.0) + scale_y_continuous() + 
+      theme_bw(base_size=10)
+plot(scale_diffs_plot)
+
+biggest.diff = which.max(abs(diff(sim_obs_scales)))
+sim_res[[biggest.diff+1]]$time
+
 library(ggplot2)
+
+sim_obs_prior_mean_plot <- ggplot(sim_res_obs_prior_mean_cov, aes(x=time, y=matrix, colour=type,
+                           group=type)) +
+      geom_line(alpha=1.0) + facet_grid(row ~ col, scales="free") + scale_y_continuous() + 
+      theme_bw(base_size=10)
+plot(sim_obs_prior_mean_plot)
 
 sim_obs_cov_plot <- ggplot(sim_res_obs_cov, aes(x=time, y=matrix, colour=type,
                            group=type)) +
@@ -190,6 +233,12 @@ sim_obs_qr_plot <- ggplot(sim_res_qr_cov, aes(x=time, y=matrix, colour=type,
       geom_line(alpha=1.0) + facet_grid(row ~ col, scales="free") + scale_y_continuous() + 
       theme_bw(base_size=10)
 plot(sim_obs_qr_plot)     
+
+sim_obs_qg_plot <- ggplot(sim_res_qg_cov, aes(x=time, y=matrix, colour=type,
+                           group=type)) +
+      geom_line(alpha=1.0) + facet_grid(row ~ col, scales="free") + scale_y_continuous() + 
+      theme_bw(base_size=10)
+plot(sim_obs_qg_plot)     
 
 sim_onroad_cov_plot <- ggplot(sim_res_onroad_cov, aes(x=time, y=matrix, colour=type,
                            group=type)) +

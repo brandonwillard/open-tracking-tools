@@ -14,6 +14,8 @@ import java.util.Set;
 import javax.annotation.Nullable;
 
 import org.apache.commons.lang.NotImplementedException;
+import org.geotools.geometry.jts.JTS;
+import org.geotools.geometry.jts.JTSFactoryFinder;
 import org.openplans.tools.tracking.impl.Observation;
 import org.openplans.tools.tracking.impl.VehicleState;
 import org.openplans.tools.tracking.impl.VehicleState.VehicleStateInitialParameters;
@@ -32,6 +34,9 @@ import com.google.common.base.Predicate;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
+import com.vividsolutions.jts.geom.Coordinate;
+import com.vividsolutions.jts.geom.Geometry;
+import com.vividsolutions.jts.geom.Polygon;
 
 public class VehicleTrackingPathSamplerFilterUpdater implements
     PLParticleFilterUpdater<Observation, VehicleState> {
@@ -205,10 +210,14 @@ public class VehicleTrackingPathSamplerFilterUpdater implements
 
     final List<PathEdge> currentPath = Lists.newArrayList();
 
+    /*
+     * This will signify the start distance on the
+     * initial edge in the new direction of motion.
+     */
+    double initialLocation = 0d;
     double distTraveled = 0d;
     Double totalDistToTravel = null;
     while (totalDistToTravel == null ||
-    // the following case is when we're truly on the edge
         Math.abs(totalDistToTravel) > Math.abs(distTraveled)) {
 
       final List<InferredEdge> transferEdges = Lists.newArrayList();
@@ -226,6 +235,10 @@ public class VehicleTrackingPathSamplerFilterUpdater implements
       } else {
         if (totalDistToTravel == null) {
           transferEdges.add(startEdge.getInferredEdge());
+          /*
+           * We only allow going off-road when starting a path.
+           */
+          transferEdges.add(InferredEdge.getEmptyEdge());
         } else {
           if (newBelief.getMean().getElement(0) < 0d) {
             transferEdges.addAll(currentEdge.getInferredEdge()
@@ -243,7 +256,6 @@ public class VehicleTrackingPathSamplerFilterUpdater implements
            *  Make sure we don't move back and forth,
            *  even if it's on a different edge.
            */
-//          transferEdges.remove(currentEdge.getInferredEdge());
           final InferredEdge thisCurrentEdge = currentEdge.getInferredEdge();
           Iterables.removeIf(transferEdges, new Predicate<InferredEdge>() {
             @Override
@@ -251,6 +263,15 @@ public class VehicleTrackingPathSamplerFilterUpdater implements
               return input.getGeometry().equalsTopo(thisCurrentEdge.getGeometry());
             }
           });
+          
+          if (transferEdges.isEmpty()) {
+            /*
+             * We've got nowhere else to go, so stop here.
+             */
+            newBelief.getMean().setElement(0, initialLocation + distTraveled);
+            newBelief.getMean().setElement(1, 0d);
+            break;
+          }
         }
       }
 
@@ -261,22 +282,19 @@ public class VehicleTrackingPathSamplerFilterUpdater implements
 
       if (sampledEdge == InferredEdge.getEmptyEdge()) {
 
-        if (totalDistToTravel == null) {
+        if (totalDistToTravel != null) {
           /*
-           * Off-road, so just return/add the empty path and be done
+           * XXX TODO We don't allow this anymore.  Too complicated for now.
            */
-          movementFilter.predict(newBelief,
-              PathEdge.getEmptyPathEdge(), startEdge);
-        } else {
-          /*
-           * This belief should/could extend past the length of the current
-           * edge, so that the converted ground coordinates emulate driving
-           * off of a road (most of the time, perhaps).
-           */
-          AbstractRoadTrackingFilter.convertToGroundBelief(newBelief,
-              currentEdge, true);
+          throw new IllegalStateException("unsupported off-road movement");
         }
-
+              
+        /*
+         * Project like a normal Kalman filter 
+         */
+        movementFilter.predict(newBelief,
+            PathEdge.getEmptyPathEdge(), startEdge);
+        
         /*
          * Add some transition noise.
          */
@@ -284,19 +302,48 @@ public class VehicleTrackingPathSamplerFilterUpdater implements
             AbstractRoadTrackingFilter.sampleMovementBelief(rng,
                 newBelief.getMean(), movementFilter);
         newBelief.setMean(transStateSample);
+        
+        /*
+         * Adjust for graph bounds.
+         */
+        final Coordinate newLoc = new Coordinate(newBelief.getMean().getElement(0),
+            newBelief.getMean().getElement(2));
+        if (!this.inferredGraph.getBaseGraph().getExtent().contains(newLoc)) {
+          /*
+           * We're outside the bounds, so truncate at the bound edge.
+           * TODO FIXME: This is an abrupt stop, and most filters won't
+           * handle it well.  For comparisons, it's fine, since both
+           * filters will likely suffer, no?
+           */
+          final Polygon extent = JTS.toGeometry(this.inferredGraph.getBaseGraph().getExtent());
+          final Geometry intersection = extent.intersection(
+              JTSFactoryFinder.getGeometryFactory().createLineString(new Coordinate[] {
+               new Coordinate(startEdge.getEdge().getCenterPointCoord()), 
+               newLoc 
+              }));
+          newBelief.getMean().setElement(0, intersection.getCoordinates()[1].x);
+          newBelief.getMean().setElement(1, 0d);
+          newBelief.getMean().setElement(2, intersection.getCoordinates()[1].y);
+          newBelief.getMean().setElement(3, 0d);
+        } 
 
         currentEdge = PathEdge.getEmptyPathEdge();
         currentPath.add(PathEdge.getEmptyPathEdge());
         break;
       }
+      
+      /*
+       * If we're here, then we're moving along edges.
+       */
 
       double direction =
           newBelief.getMean().getElement(0) >= 0d ? 1d : -1d;
+      final double sampledPathEdgeDistToStart = 
+          previousEdge == null || previousEdge.isEmptyEdge() ? 0d : 
+            direction * previousEdge.getInferredEdge().getLength() 
+              + previousEdge.getDistToStartOfEdge();
       final PathEdge sampledPathEdge =
-          PathEdge.getEdge(sampledEdge, previousEdge == null
-              || previousEdge.isEmptyEdge() ? 0d : direction
-              * previousEdge.getInferredEdge().getLength()
-              + previousEdge.getDistToStartOfEdge(), direction < 0d);
+          PathEdge.getEdge(sampledEdge, sampledPathEdgeDistToStart, direction < 0d);
 
       if (sampledPathEdge == null) {
         /*-
@@ -329,7 +376,7 @@ public class VehicleTrackingPathSamplerFilterUpdater implements
               InferredPath.getInferredPath(initialEdge));
         }
 
-        double previousLocation = newBelief.getMean().getElement(0);
+        initialLocation = newBelief.getMean().getElement(0);
         movementFilter.predict(newBelief, initialEdge, initialEdge);
 
         final Vector transStateSample =
@@ -337,7 +384,7 @@ public class VehicleTrackingPathSamplerFilterUpdater implements
                 newBelief.getMean(), movementFilter);
         newBelief.setMean(transStateSample);
         totalDistToTravel =
-            newBelief.getMean().getElement(0) - previousLocation;
+            newBelief.getMean().getElement(0) - initialLocation;
 
         double newLocation = newBelief.getMean().getElement(0);
         final double L = initialEdge.getInferredEdge().getLength();
@@ -346,13 +393,13 @@ public class VehicleTrackingPathSamplerFilterUpdater implements
          * Adjust reference locations to be the same, wrt the new
          * location's direction.
          */
-        if (newLocation < 0d && previousLocation > 0d) {
-          previousLocation = -L + previousLocation;
-          newLocation = previousLocation + totalDistToTravel;
+        if (newLocation < 0d && initialLocation > 0d) {
+          initialLocation = -L + initialLocation;
+          newLocation = initialLocation + totalDistToTravel;
           newBelief.getMean().setElement(0, newLocation);
-        } else if (newLocation >= 0d && previousLocation < 0d) {
-          previousLocation = L + previousLocation;
-          newLocation = previousLocation + totalDistToTravel;
+        } else if (newLocation >= 0d && initialLocation < 0d) {
+          initialLocation = L + initialLocation;
+          newLocation = initialLocation + totalDistToTravel;
           newBelief.getMean().setElement(0, newLocation);
         }
 
@@ -362,7 +409,7 @@ public class VehicleTrackingPathSamplerFilterUpdater implements
          */
         direction = totalDistToTravel >= 0d ? 1d : -1d;
         if (L < Math.abs(newLocation)) {
-          final double r = L - Math.abs(previousLocation);
+          final double r = L - Math.abs(initialLocation);
           distTraveled += r * direction;
         } else {
           distTraveled += totalDistToTravel;

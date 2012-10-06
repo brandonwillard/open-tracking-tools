@@ -204,6 +204,15 @@ public class VehicleState implements
       if (initialObsFreq != other.initialObsFreq) {
         return false;
       }
+      if (obsCovDof != other.obsCovDof) {
+        return false;
+      }
+      if (onRoadCovDof != other.onRoadCovDof) {
+        return false;
+      }  
+      if (offRoadCovDof != other.offRoadCovDof) {
+        return false;
+      }     
       return true;
     }
 
@@ -265,6 +274,9 @@ public class VehicleState implements
               + StatisticsUtil.hashCodeVector(onTransitionProbs);
       result = prime * result + (int) (seed ^ (seed >>> 32));
       result = prime * result + (int) (initialObsFreq ^ (initialObsFreq >>> 32));
+      result = prime * result + (int) (obsCovDof ^ (obsCovDof >>> 32));
+      result = prime * result + (int) (offRoadCovDof ^ (offRoadCovDof >>> 32));
+      result = prime * result + (int) (onRoadCovDof ^ (onRoadCovDof >>> 32));
       return result;
     }
 
