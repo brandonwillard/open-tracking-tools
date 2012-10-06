@@ -266,9 +266,9 @@ public class Simulation {
       }
 
       final StandardRoadTrackingFilter trackingFilter =
-          new StandardRoadTrackingFilter(parameters.getObsVariance(),
-              parameters.getOffRoadStateVariance(),
-              parameters.getOnRoadStateVariance(),
+          new StandardRoadTrackingFilter(parameters.getObsCov(),
+              parameters.getOffRoadStateCov(),
+              parameters.getOnRoadStateCov(),
               parameters.getInitialObsFreq());
 
       final OnOffEdgeTransDirMulti edgeTransDist =

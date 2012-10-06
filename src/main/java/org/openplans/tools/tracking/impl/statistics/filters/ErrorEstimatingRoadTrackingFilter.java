@@ -37,15 +37,22 @@ public class ErrorEstimatingRoadTrackingFilter extends
     final int onRoadVarDof, int initialObsFreq, Random rng) {
 
     this.currentTimeDiff = initialObsFreq;
+    /*
+     * Initialize the priors with an expectation of the given "prior"
+     * values.
+     */
+    final int obsInitialDof = obsVarDof - obsVarPrior.getDimensionality() - 1;
     this.obsVariancePrior =
         new InverseWishartDistribution(MatrixFactory.getDefault()
-            .createDiagonal(obsVarPrior), obsVarDof);
+            .createDiagonal(obsVarPrior).scale(obsInitialDof), obsVarDof);
+    final int offInitialDof = offRoadVarDof - offRoadStateVarPrior.getDimensionality() - 1;
     this.offRoadStateVariancePrior =
         new InverseWishartDistribution(MatrixFactory.getDefault()
-            .createDiagonal(offRoadStateVarPrior), offRoadVarDof);
+            .createDiagonal(offRoadStateVarPrior).scale(offInitialDof), offRoadVarDof);
+    final int onInitialDof = onRoadVarDof - onRoadStateVarPrior.getDimensionality() - 1;
     this.onRoadStateVariancePrior =
         new InverseWishartDistribution(MatrixFactory.getDefault()
-            .createDiagonal(onRoadStateVarPrior), onRoadVarDof);
+            .createDiagonal(onRoadStateVarPrior).scale(onInitialDof), onRoadVarDof);
 
     if (rng != null) {
       this.obsVariance =
@@ -293,7 +300,6 @@ public class ErrorEstimatingRoadTrackingFilter extends
     final int nNew = nOld + 1;
     covarPrior.setDegreesOfFreedom(nNew);
     final Matrix smplCov = stateError.outerProduct(stateError);
-//    covarPrior.setInverseScale(covarPrior.getInverseScale().scale(((double)nOld)).plus(smplCov).scale(1d/(double)nNew));
     covarPrior.setInverseScale(covarPrior.getInverseScale().plus(smplCov));
   }
 

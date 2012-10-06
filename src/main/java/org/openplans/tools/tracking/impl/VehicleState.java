@@ -102,24 +102,32 @@ public class VehicleState implements
   }
 
   public static class VehicleStateInitialParameters {
-    private final Vector obsVariance;
-    private final Vector onRoadStateVariance;
-    private final Vector offRoadStateVariance;
+    private final Vector obsCov;
+    private final Vector onRoadStateCov;
+    private final Vector offRoadStateCov;
     private final Vector offTransitionProbs;
     private final Vector onTransitionProbs;
     private final long seed;
     private final int numParticles;
     private final String filterTypeName;
     private final int initialObsFreq;
+    private final int obsCovDof;
+    private final int onRoadCovDof;
+    private final int offRoadCovDof;
 
-    public VehicleStateInitialParameters(Vector obsVariance,
-      Vector onRoadStateVariance, Vector offRoadStateVariance,
+    public VehicleStateInitialParameters(
+      Vector obsCov, int obsCovDof,
+      Vector onRoadStateCov, int onRoadCovDof, 
+      Vector offRoadStateCov, int offRoadCovDof,
       Vector offProbs, Vector onProbs, String filterTypeName,
       int numParticles, int initialObsFreq, long seed) {
+      this.obsCovDof = obsCovDof;
+      this.onRoadCovDof = onRoadCovDof;
+      this.offRoadCovDof = offRoadCovDof;
       this.numParticles = numParticles;
-      this.obsVariance = obsVariance;
-      this.onRoadStateVariance = onRoadStateVariance;
-      this.offRoadStateVariance = offRoadStateVariance;
+      this.obsCov = obsCov;
+      this.onRoadStateCov = onRoadStateCov;
+      this.offRoadStateCov = offRoadStateCov;
       this.offTransitionProbs = offProbs;
       this.onTransitionProbs = onProbs;
       this.seed = seed;
@@ -150,20 +158,20 @@ public class VehicleState implements
       if (numParticles != other.numParticles) {
         return false;
       }
-      if (obsVariance == null) {
-        if (other.obsVariance != null) {
+      if (obsCov == null) {
+        if (other.obsCov != null) {
           return false;
         }
-      } else if (!StatisticsUtil.vectorEquals(obsVariance,
-          other.obsVariance)) {
+      } else if (!StatisticsUtil.vectorEquals(obsCov,
+          other.obsCov)) {
         return false;
       }
-      if (offRoadStateVariance == null) {
-        if (other.offRoadStateVariance != null) {
+      if (offRoadStateCov == null) {
+        if (other.offRoadStateCov != null) {
           return false;
         }
-      } else if (!StatisticsUtil.vectorEquals(offRoadStateVariance,
-          other.offRoadStateVariance)) {
+      } else if (!StatisticsUtil.vectorEquals(offRoadStateCov,
+          other.offRoadStateCov)) {
         return false;
       }
       if (offTransitionProbs == null) {
@@ -174,12 +182,12 @@ public class VehicleState implements
           other.offTransitionProbs)) {
         return false;
       }
-      if (onRoadStateVariance == null) {
-        if (other.onRoadStateVariance != null) {
+      if (onRoadStateCov == null) {
+        if (other.onRoadStateCov != null) {
           return false;
         }
-      } else if (!StatisticsUtil.vectorEquals(onRoadStateVariance,
-          other.onRoadStateVariance)) {
+      } else if (!StatisticsUtil.vectorEquals(onRoadStateCov,
+          other.onRoadStateCov)) {
         return false;
       }
       if (onTransitionProbs == null) {
@@ -207,20 +215,20 @@ public class VehicleState implements
       return numParticles;
     }
 
-    public Vector getObsVariance() {
-      return obsVariance;
+    public Vector getObsCov() {
+      return obsCov;
     }
 
-    public Vector getOffRoadStateVariance() {
-      return offRoadStateVariance;
+    public Vector getOffRoadStateCov() {
+      return offRoadStateCov;
     }
 
     public Vector getOffTransitionProbs() {
       return offTransitionProbs;
     }
 
-    public Vector getOnRoadStateVariance() {
-      return onRoadStateVariance;
+    public Vector getOnRoadStateCov() {
+      return onRoadStateCov;
     }
 
     public Vector getOnTransitionProbs() {
@@ -242,16 +250,16 @@ public class VehicleState implements
                   .hashCode());
       result = prime * result + numParticles;
       result =
-          prime * result + StatisticsUtil.hashCodeVector(obsVariance);
+          prime * result + StatisticsUtil.hashCodeVector(obsCov);
       result =
           prime * result
-              + StatisticsUtil.hashCodeVector(offRoadStateVariance);
+              + StatisticsUtil.hashCodeVector(offRoadStateCov);
       result =
           prime * result
               + StatisticsUtil.hashCodeVector(offTransitionProbs);
       result =
           prime * result
-              + StatisticsUtil.hashCodeVector(onRoadStateVariance);
+              + StatisticsUtil.hashCodeVector(onRoadStateCov);
       result =
           prime * result
               + StatisticsUtil.hashCodeVector(onTransitionProbs);
@@ -262,6 +270,18 @@ public class VehicleState implements
 
     public int getInitialObsFreq() {
       return this.initialObsFreq;
+    }
+
+    public int getObsCovDof() {
+      return this.obsCovDof;
+    }
+
+    public int getOnRoadCovDof() {
+      return onRoadCovDof;
+    }
+
+    public int getOffRoadCovDof() {
+      return offRoadCovDof;
     }
   }
 

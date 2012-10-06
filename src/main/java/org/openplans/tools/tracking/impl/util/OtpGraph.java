@@ -1,6 +1,7 @@
 package org.openplans.tools.tracking.impl.util;
 
 import gov.sandia.cognition.math.matrix.Vector;
+import gov.sandia.cognition.math.matrix.mtj.DenseMatrix;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 
 import java.io.File;
@@ -20,9 +21,11 @@ import org.openplans.tools.tracking.impl.graph.paths.InferredPath;
 import org.openplans.tools.tracking.impl.graph.paths.PathEdge;
 import org.openplans.tools.tracking.impl.graph.paths.algorithms.MultiDestinationAStar;
 import org.openplans.tools.tracking.impl.statistics.DataCube;
+import org.openplans.tools.tracking.impl.statistics.StatisticsUtil;
 import org.openplans.tools.tracking.impl.statistics.filters.AbstractRoadTrackingFilter;
 import org.opentripplanner.routing.core.RoutingRequest;
 import org.opentripplanner.routing.core.TraverseMode;
+import org.opentripplanner.routing.core.TraverseModeSet;
 import org.opentripplanner.routing.edgetype.StreetEdge;
 import org.opentripplanner.routing.edgetype.TurnEdge;
 import org.opentripplanner.routing.graph.Edge;
@@ -218,12 +221,14 @@ public class OtpGraph {
   //base index service is in projected coords
   private final StreetVertexIndexServiceImpl baseIndexService;
   private final static RoutingRequest defaultOptions =
-      new RoutingRequest(TraverseMode.CAR);
+      new RoutingRequest(new TraverseModeSet(TraverseMode.CAR, TraverseMode.WALK));
   private final STRtree turnEdgeIndex = new STRtree();
   private final STRtree baseEdgeIndex = new STRtree();
 
   private final STRtree turnVertexIndex = new STRtree();
-  private final Multimap<Geometry, Edge> geomEdgeMap = HashMultimap
+  private final Multimap<Geometry, Edge> geomBaseEdgeMap = HashMultimap
+      .create();
+  private final Multimap<Geometry, Edge> geomTurnEdgeMap = HashMultimap
       .create();
 
   private final Map<VertexPair, InferredEdge> edgeToInfo = Maps
@@ -258,8 +263,8 @@ public class OtpGraph {
     baseGraph = turnGraph.getService(BaseGraph.class).getBaseGraph();
 
     baseIndexService = new StreetVertexIndexServiceImpl(baseGraph);
-    createIndices(baseGraph, baseEdgeIndex, null, geomEdgeMap);
-    createIndices(turnGraph, turnEdgeIndex, turnVertexIndex, null);
+    createIndices(baseGraph, baseEdgeIndex, null, geomBaseEdgeMap);
+    createIndices(turnGraph, turnEdgeIndex, turnVertexIndex, geomTurnEdgeMap);
 
     if (dcPath == null)
       dc = new DataCube();
@@ -291,16 +296,11 @@ public class OtpGraph {
       /*
        * Make sure we get the non-base edges corresponding to our
        * current edge and the reverse.
+       * XXX This violates all directionality and graph structure.
        */
-      final Collection<Edge> baseEdges = getOppositeEdge(edge);
-      for (final Edge baseEdge : baseEdges) {
-        final PlainStreetEdgeWithOSMData plainBaseEdge =
-            (PlainStreetEdgeWithOSMData) baseEdge;
-        for (final Edge outgoing : plainBaseEdge.getTurnVertex()
-            .getOutgoing()) {
-          startEdges.add(outgoing);
-        }
-      }
+      final Collection<Edge> turnEdges = geomTurnEdgeMap.get(
+          edge.getTurnVertex().geometry);
+      startEdges.addAll(turnEdges);
     } else {
       final double stateStdDevDistance =
           1.98d * Math.sqrt(currentState.getBelief().getCovariance()
@@ -318,17 +318,21 @@ public class OtpGraph {
 
     final Set<Edge> endEdges = Sets.newHashSet();
 
-    final double obsStdDevDistance =
-        currentState.getMovementFilter()
-            .getObservationErrorAbsRadius();
+    final double obsStdDevDistance = StatisticsUtil.getLargeNormalCovRadius(
+        (DenseMatrix) currentState.getMovementFilter()
+            .getObsVariance());
 
     double maxEndEdgeLength = Double.NEGATIVE_INFINITY;
     for (final Object obj : getNearbyEdges(toCoord, obsStdDevDistance)) {
+      
       final PlainStreetEdgeWithOSMData edge =
           (PlainStreetEdgeWithOSMData) obj;
       if (edge.getLength() > maxEndEdgeLength)
         maxEndEdgeLength = edge.getLength();
-      endEdges.addAll(edge.getTurnVertex().getOutgoing());
+      
+      final Collection<Edge> turnEdges = geomTurnEdgeMap.get(
+          edge.getTurnVertex().geometry);
+      endEdges.addAll(turnEdges);
     }
 
     if (endEdges.isEmpty())
@@ -430,7 +434,7 @@ public class OtpGraph {
   }
 
   private void createIndices(Graph graph, STRtree edgeIndex,
-    STRtree vertexIndex, Multimap<Geometry, Edge> geomEdgeMap2) {
+    STRtree vertexIndex, Multimap<Geometry, Edge> geomEdgeMap) {
 
     for (final Vertex v : graph.getVertices()) {
       if (vertexIndex != null) {
@@ -440,19 +444,20 @@ public class OtpGraph {
       }
 
       for (final Edge e : v.getOutgoing()) {
-        if (graph.getIdForEdge(e) != null) {
-          final Geometry geometry = e.getGeometry();
-
-          if (geomEdgeMap2 != null) {
-            geomEdgeMap2.put(geometry, e);
+        final Geometry geometry = e.getGeometry();
+        if (geometry != null) {
+          if (geomEdgeMap != null) {
+            geomEdgeMap.put(geometry, e);
             // TODO reverse shouldn't make a difference
             // if topological equality is used.  Is that
             // what's happening here?
-            geomEdgeMap2.put(geometry.reverse(), e);
+            geomEdgeMap.put(geometry.reverse(), e);
           }
-
-          final Envelope envelope = geometry.getEnvelopeInternal();
-          edgeIndex.insert(envelope, e);
+          
+          if (graph.getIdForEdge(e) != null) {
+            final Envelope envelope = geometry.getEnvelopeInternal();
+            edgeIndex.insert(envelope, e);
+          }
         }
       }
     }
@@ -548,11 +553,9 @@ public class OtpGraph {
         new Envelope(
             GeoUtils.makeCoordinate(AbstractRoadTrackingFilter
                 .getOg().times(initialBelief.getMean())));
-    final double varDistance =
-        trackingFilter.getObservationErrorAbsRadius();
-    //        1.98d * Math.sqrt(trackingFilter
-    //        .getObsVariance().normFrobenius()
-    //        / Math.sqrt(initialBelief.getInputDimensionality()));
+    final double varDistance = StatisticsUtil.getLargeNormalCovRadius(
+        (DenseMatrix) trackingFilter.getObsVariance());
+    
     toEnv.expandBy(varDistance);
 
     final List<StreetEdge> streetEdges = Lists.newArrayList();
@@ -566,20 +569,6 @@ public class OtpGraph {
   public Set<StreetEdge> getNearbyEdges(Vector loc, double radius) {
     Preconditions.checkArgument(loc.getDimensionality() == 2);
     return getNearbyEdges(GeoUtils.makeCoordinate(loc), radius);
-  }
-
-  public Collection<Edge> getOppositeEdge(
-    PlainStreetEdgeWithOSMData edge) {
-    //    @SuppressWarnings("unchecked")
-    //    List<PlainStreetEdgeWithOSMData> baseEdgesWithThisGeom = this.baseEdgeIndex.query(
-    //        edge.getGeometry().getEnvelopeInternal());
-    //    List<PlainStreetEdgeWithOSMData> oppositeEdges = Lists.newArrayList();
-    //    for (PlainStreetEdgeWithOSMData baseEdge : baseEdgesWithThisGeom) { 
-    //      if (baseEdge.getGeometry().reverse().equalsExact(edge.getGeometry()))
-    //        oppositeEdges.add(baseEdge);
-    //    }
-    //    return oppositeEdges;
-    return geomEdgeMap.get(edge.getGeometry());
   }
 
   public RoutingRequest getOptions() {

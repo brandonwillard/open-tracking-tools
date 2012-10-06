@@ -2,11 +2,13 @@ package inference;
 
 import gov.sandia.cognition.math.matrix.mtj.DenseMatrix;
 import gov.sandia.cognition.math.matrix.mtj.DenseVector;
+import gov.sandia.cognition.statistics.distribution.InverseWishartDistribution;
 
 import inference.ResultSet.OffRoadPath;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.codehaus.jackson.annotate.JsonIgnore;
@@ -16,6 +18,7 @@ import org.openplans.tools.tracking.impl.VehicleState;
 import org.openplans.tools.tracking.impl.graph.InferredEdge;
 import org.openplans.tools.tracking.impl.graph.paths.InferredPath;
 import org.openplans.tools.tracking.impl.graph.paths.PathEdge;
+import org.openplans.tools.tracking.impl.statistics.filters.ErrorEstimatingRoadTrackingFilter;
 import org.openplans.tools.tracking.impl.statistics.filters.FilterInformation;
 import org.openplans.tools.tracking.impl.statistics.filters.VehicleTrackingFilter;
 import org.openplans.tools.tracking.impl.util.GeoUtils;
@@ -25,6 +28,7 @@ import api.OsmSegment;
 
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import com.vividsolutions.jts.geom.Coordinate;
 
 public class ResultSet {
@@ -168,6 +172,46 @@ public class ResultSet {
           this.state.getEdgeTransitionDist().getEdgeMotionTransProbPrior().getMean()).getArray();
     }
     
+    @JsonIgnore
+    private static Map<String, Object> getJsonForInvWishart(InverseWishartDistribution dist) {
+      Map<String, Object> jsonData = Maps.newHashMap();
+      jsonData.put("dof", dist.getDegreesOfFreedom());
+      jsonData.put("scale", 
+         ((gov.sandia.cognition.math.matrix.mtj.DenseVector) 
+             dist.getInverseScale().convertToVector()).getArray());
+      return jsonData;
+    }
+    
+    @JsonSerialize
+    public Map<String, Object> getOffRoadCovarPrior() {
+      if (this.state.getMovementFilter() instanceof ErrorEstimatingRoadTrackingFilter) {
+        final ErrorEstimatingRoadTrackingFilter eeFilter = (ErrorEstimatingRoadTrackingFilter) state.getMovementFilter();
+        return getJsonForInvWishart(eeFilter.getOffRoadStateVariancePrior());
+      } else {
+        return null;
+      }
+    }
+    
+    @JsonSerialize
+    public Map<String, Object> getOnRoadCovarPrior() {
+      if (state.getMovementFilter() instanceof ErrorEstimatingRoadTrackingFilter) {
+        final ErrorEstimatingRoadTrackingFilter eeFilter = (ErrorEstimatingRoadTrackingFilter) state.getMovementFilter();
+        return getJsonForInvWishart(eeFilter.getOnRoadStateVariancePrior());
+      } else {
+        return null;
+      }
+    }
+    
+    @JsonSerialize
+    public Map<String, Object> getObsCovarPrior() {
+      if (state.getMovementFilter() instanceof ErrorEstimatingRoadTrackingFilter) {
+        final ErrorEstimatingRoadTrackingFilter eeFilter = (ErrorEstimatingRoadTrackingFilter) state.getMovementFilter();
+        return getJsonForInvWishart(eeFilter.getObsVariancePrior());
+      } else {
+        return null;
+      }
+    }
+    
     @JsonSerialize
     public int getParticleCount() {
       return this.particleCount;
@@ -263,6 +307,20 @@ public class ResultSet {
     return filter;
   }
 
+  @JsonSerialize
+  public List<OsmSegmentWithVelocity> getTraveledSegments() {
+    List<OsmSegmentWithVelocity> traveled = Lists.newArrayList();
+    for (OsmSegmentWithVelocity segment : this.pathSegments) {
+      if (segment.getId() == this.inferredEdge.getId()) {
+        traveled.add(segment);
+        break;
+      } else {
+        traveled.add(segment);
+      }
+    }
+    return traveled;
+  }
+  
   @JsonSerialize
   public String getEspgCode() {
     return this.state.getObservation().getObsPoint().epsgCode();

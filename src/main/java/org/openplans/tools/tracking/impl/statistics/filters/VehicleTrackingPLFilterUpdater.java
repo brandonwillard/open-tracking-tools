@@ -137,9 +137,9 @@ public class VehicleTrackingPLFilterUpdater implements
     int numParticles) {
 
     final StandardRoadTrackingFilter tmpTrackingFilter =
-        new StandardRoadTrackingFilter(parameters.getObsVariance(),
-            parameters.getOffRoadStateVariance(),
-            parameters.getOnRoadStateVariance(),
+        new StandardRoadTrackingFilter(parameters.getObsCov(),
+            parameters.getOffRoadStateCov(),
+            parameters.getOnRoadStateCov(),
             parameters.getInitialObsFreq());
     final MultivariateGaussian tmpInitialBelief =
         tmpTrackingFilter.createInitialLearnedObject();
@@ -167,9 +167,9 @@ public class VehicleTrackingPLFilterUpdater implements
 
         final StandardRoadTrackingFilter trackingFilter =
             new StandardRoadTrackingFilter(
-                parameters.getObsVariance(),
-                parameters.getOffRoadStateVariance(),
-                parameters.getOnRoadStateVariance(),
+                parameters.getObsCov(),
+                parameters.getOffRoadStateCov(),
+                parameters.getOnRoadStateCov(),
                 parameters.getInitialObsFreq());
 
         final OnOffEdgeTransDirMulti edgeTransDist =
@@ -210,9 +210,9 @@ public class VehicleTrackingPLFilterUpdater implements
      * Free-motion
      */
     final StandardRoadTrackingFilter trackingFilter =
-        new StandardRoadTrackingFilter(parameters.getObsVariance(),
-            parameters.getOffRoadStateVariance(),
-            parameters.getOnRoadStateVariance(),
+        new StandardRoadTrackingFilter(parameters.getObsCov(),
+            parameters.getOffRoadStateCov(),
+            parameters.getOnRoadStateCov(),
             parameters.getInitialObsFreq());
 
     final OnOffEdgeTransDirMulti edgeTransDist =

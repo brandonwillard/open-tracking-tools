@@ -13,6 +13,7 @@ import org.opentripplanner.routing.algorithm.strategies.SkipTraverseResultStrate
 import org.opentripplanner.routing.core.RoutingRequest;
 import org.opentripplanner.routing.core.State;
 import org.opentripplanner.routing.core.TraverseMode;
+import org.opentripplanner.routing.core.TraverseModeSet;
 import org.opentripplanner.routing.graph.Edge;
 import org.opentripplanner.routing.graph.Graph;
 import org.opentripplanner.routing.graph.Vertex;
@@ -82,7 +83,8 @@ public class MultiDestinationAStar implements
     astar.setSkipTraverseResultStrategy(this);
     astar.setTraverseVisitor(this);
 
-    final RoutingRequest req = new RoutingRequest(TraverseMode.CAR);
+    TraverseModeSet modes = new TraverseModeSet(TraverseMode.CAR, TraverseMode.WALK);
+    final RoutingRequest req = new RoutingRequest(modes);
     req.setArriveBy(arriveBy);
 
     final Vertex startVertex =

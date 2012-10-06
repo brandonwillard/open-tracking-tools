@@ -71,9 +71,9 @@ public class VTErrorEstimatingPLFilterUpdater implements
 
     final ErrorEstimatingRoadTrackingFilter tmpTrackingFilter =
         new ErrorEstimatingRoadTrackingFilter(
-            parameters.getObsVariance(), 5,
-            parameters.getOffRoadStateVariance(), 5,
-            parameters.getOnRoadStateVariance(), 5, 
+            parameters.getObsCov(), parameters.getObsCovDof(),
+            parameters.getOffRoadStateCov(), parameters.getOffRoadCovDof(),
+            parameters.getOnRoadStateCov(), parameters.getOnRoadCovDof(), 
             parameters.getInitialObsFreq() , this.random);
 
     final MultivariateGaussian tmpInitialBelief =
@@ -102,10 +102,10 @@ public class VTErrorEstimatingPLFilterUpdater implements
 
         final ErrorEstimatingRoadTrackingFilter trackingFilter =
             new ErrorEstimatingRoadTrackingFilter(
-                parameters.getObsVariance(), 5,
-                parameters.getOffRoadStateVariance(), 5,
-                parameters.getOnRoadStateVariance(), 5, 
-                parameters.getInitialObsFreq(), this.random);
+              parameters.getObsCov(), parameters.getObsCovDof(),
+              parameters.getOffRoadStateCov(), parameters.getOffRoadCovDof(),
+              parameters.getOnRoadStateCov(), parameters.getOnRoadCovDof(), 
+              parameters.getInitialObsFreq() , this.random);
 
         final OnOffEdgeTransDirMulti edgeTransDist =
             new OnOffEdgeTransDirMulti(inferredGraph,
@@ -154,10 +154,10 @@ public class VTErrorEstimatingPLFilterUpdater implements
      */
     final ErrorEstimatingRoadTrackingFilter trackingFilter =
         new ErrorEstimatingRoadTrackingFilter(
-            parameters.getObsVariance(), 5,
-            parameters.getOffRoadStateVariance(), 5,
-            parameters.getOnRoadStateVariance(), 5, 
-            parameters.getInitialObsFreq(), this.random);
+              parameters.getObsCov(), parameters.getObsCovDof(),
+              parameters.getOffRoadStateCov(), parameters.getOffRoadCovDof(),
+              parameters.getOnRoadStateCov(), parameters.getOnRoadCovDof(), 
+              parameters.getInitialObsFreq() , this.random);
 
     final OnOffEdgeTransDirMulti edgeTransDist =
         new OnOffEdgeTransDirMulti(inferredGraph,

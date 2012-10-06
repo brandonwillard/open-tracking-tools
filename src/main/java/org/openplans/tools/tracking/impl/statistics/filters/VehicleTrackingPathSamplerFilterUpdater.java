@@ -2,6 +2,7 @@ package org.openplans.tools.tracking.impl.statistics.filters;
 
 import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.math.matrix.VectorFactory;
+import gov.sandia.cognition.math.matrix.mtj.DenseMatrix;
 import gov.sandia.cognition.statistics.DataDistribution;
 import gov.sandia.cognition.statistics.distribution.DefaultDataDistribution;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
@@ -9,6 +10,8 @@ import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
+
+import javax.annotation.Nullable;
 
 import org.apache.commons.lang.NotImplementedException;
 import org.openplans.tools.tracking.impl.Observation;
@@ -20,10 +23,12 @@ import org.openplans.tools.tracking.impl.graph.paths.InferredPathEntry;
 import org.openplans.tools.tracking.impl.graph.paths.PathEdge;
 import org.openplans.tools.tracking.impl.statistics.DefaultCountedDataDistribution;
 import org.openplans.tools.tracking.impl.statistics.OnOffEdgeTransDirMulti;
+import org.openplans.tools.tracking.impl.statistics.StatisticsUtil;
 import org.openplans.tools.tracking.impl.util.OtpGraph;
 import org.opentripplanner.routing.edgetype.StreetEdge;
 import org.opentripplanner.routing.graph.Edge;
 
+import com.google.common.base.Predicate;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
@@ -71,9 +76,9 @@ public class VehicleTrackingPathSamplerFilterUpdater implements
     int numParticles) {
 
     final StandardRoadTrackingFilter tmpTrackingFilter =
-        new StandardRoadTrackingFilter(parameters.getObsVariance(),
-            parameters.getOffRoadStateVariance(),
-            parameters.getOnRoadStateVariance(),
+        new StandardRoadTrackingFilter(parameters.getObsCov(),
+            parameters.getOffRoadStateCov(),
+            parameters.getOnRoadStateCov(),
             parameters.getInitialObsFreq());
     final MultivariateGaussian tmpInitialBelief =
         tmpTrackingFilter.createInitialLearnedObject();
@@ -101,9 +106,9 @@ public class VehicleTrackingPathSamplerFilterUpdater implements
 
         final StandardRoadTrackingFilter trackingFilter =
             new StandardRoadTrackingFilter(
-                parameters.getObsVariance(),
-                parameters.getOffRoadStateVariance(),
-                parameters.getOnRoadStateVariance(),
+                parameters.getObsCov(),
+                parameters.getOffRoadStateCov(),
+                parameters.getOnRoadStateCov(),
                 parameters.getInitialObsFreq());
 
         final OnOffEdgeTransDirMulti edgeTransDist =
@@ -128,9 +133,9 @@ public class VehicleTrackingPathSamplerFilterUpdater implements
      * Free-motion
      */
     final StandardRoadTrackingFilter trackingFilter =
-        new StandardRoadTrackingFilter(parameters.getObsVariance(),
-            parameters.getOffRoadStateVariance(),
-            parameters.getOnRoadStateVariance(),
+        new StandardRoadTrackingFilter(parameters.getObsCov(),
+            parameters.getOffRoadStateCov(),
+            parameters.getOnRoadStateCov(),
             parameters.getInitialObsFreq());
 
     final OnOffEdgeTransDirMulti edgeTransDist =
@@ -212,9 +217,10 @@ public class VehicleTrackingPathSamplerFilterUpdater implements
         final Vector projLocation =
             AbstractRoadTrackingFilter.getOg().times(
                 newBelief.getMean());
+        final double radius = StatisticsUtil.getLargeNormalCovRadius(
+            (DenseMatrix) movementFilter.getObsVariance());
         for (final StreetEdge edge : this.inferredGraph
-            .getNearbyEdges(projLocation,
-                movementFilter.getObservationErrorAbsRadius())) {
+            .getNearbyEdges(projLocation, radius)) {
           transferEdges.add(this.inferredGraph.getInferredEdge(edge));
         }
       } else {
@@ -233,8 +239,18 @@ public class VehicleTrackingPathSamplerFilterUpdater implements
             transferEdges.addAll(currentEdge.getInferredEdge()
                 .getOutgoingTransferableEdges());
           }
-          // Make sure we don't move back and forth
-          transferEdges.remove(currentEdge.getInferredEdge());
+          /*
+           *  Make sure we don't move back and forth,
+           *  even if it's on a different edge.
+           */
+//          transferEdges.remove(currentEdge.getInferredEdge());
+          final InferredEdge thisCurrentEdge = currentEdge.getInferredEdge();
+          Iterables.removeIf(transferEdges, new Predicate<InferredEdge>() {
+            @Override
+            public boolean apply(@Nullable InferredEdge input) {
+              return input.getGeometry().equalsTopo(thisCurrentEdge.getGeometry());
+            }
+          });
         }
       }
 

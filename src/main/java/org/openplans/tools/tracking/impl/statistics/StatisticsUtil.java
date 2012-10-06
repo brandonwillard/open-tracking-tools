@@ -25,15 +25,20 @@ import java.util.Random;
 
 import no.uib.cipr.matrix.DenseCholesky;
 import no.uib.cipr.matrix.DenseVector;
+import no.uib.cipr.matrix.NotConvergedException;
+import no.uib.cipr.matrix.SymmDenseEVD;
 import no.uib.cipr.matrix.UpperSPDDenseMatrix;
+import no.uib.cipr.matrix.UpperSymmDenseMatrix;
 
 import org.openplans.tools.tracking.impl.WrappedWeightedValue;
 
 import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.HashMultiset;
+import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Multiset;
+import com.google.common.primitives.Doubles;
 
 public class StatisticsUtil {
 
@@ -504,6 +509,27 @@ public class StatisticsUtil {
       return Objects.equal(vec1, vec2);
   }
 
+  /**
+   * Returns a ~99% confidence interval/credibility region by using
+   * the largest eigen value for a normal covariance.
+   * @param covar
+   * @return
+   */
+  public static double getLargeNormalCovRadius(DenseMatrix covar) {
+    try {
+      no.uib.cipr.matrix.Matrix covarMtj = DenseMatrixFactoryMTJ.INSTANCE.copyMatrix(covar).getInternalMatrix();
+      SymmDenseEVD evd = 
+         new SymmDenseEVD(covarMtj.numRows(), true, false)
+                .factor(new UpperSymmDenseMatrix(covarMtj));
+      final Double largestEigenval = Iterables.getLast(Doubles.asList(evd.getEigenvalues()));
+      final double varDistance =
+          2.32d * Math.sqrt(largestEigenval);
+      return varDistance;
+    } catch (NotConvergedException e) {
+      return Double.NaN;
+    }
+  }
+  
   public static boolean isPosSemiDefinite(DenseMatrix covar) {
     try {
       DenseCholesky cholesky = DenseCholesky.factorize( 

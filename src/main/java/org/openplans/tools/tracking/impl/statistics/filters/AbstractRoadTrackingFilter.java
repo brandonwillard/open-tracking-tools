@@ -147,13 +147,6 @@ public abstract class AbstractRoadTrackingFilter extends
     return res;
   }
 
-  public double getObservationErrorAbsRadius() {
-    final double varDistance =
-        1.98d * Math.sqrt(this.getObsVariance().normFrobenius()
-            / Math.sqrt(2));
-    return varDistance;
-  }
-
   public Matrix getObsVariance() {
     return obsVariance;
   }

@@ -107,6 +107,7 @@ getSimBestStatesJson <- function(simName) {
                                          
 sim_res <- getSimBestStatesJson("sim2076162729")
 sim_res <- getSimBestStatesJson("sim1817961029")
+sim_res <- getSimBestStatesJson("sim-1200318255")
 
 sim_res_on_correct <-  unlist(lapply(sim_res, function(x) {
                      return((x$actualResults$inferredEdge$id != -1 
@@ -114,42 +115,91 @@ sim_res_on_correct <-  unlist(lapply(sim_res, function(x) {
                      || (x$actualResults$inferredEdge$id == -1 
                          && x$infResults$inferredEdge$id == -1))
                     }))
-sum(sim_res_on_correct)
-
-data.frame(matrix(1:4, 2,2), check.rows=F, check.names=F)
-as.POSIXct(as.integer(as.numeric(sim_res[[1]]$time)/1000), origin="1970-01-01", tz="GMT")
-
+mean(sim_res_on_correct)
 
 library(plyr)
-sim_res_onroad_cov <- ldply(sim_res, function(x) {
 
-                        if (x$actualResults$inferredEdge$id != -1 
-                             && x$infResults$inferredEdge$id != -1) {                         
-                          timestr =  as.POSIXct(as.integer(
-                                    as.numeric(x$time)/1000), origin="1970-01-01")
-                          actual.df = data.frame(time=timestr, 
-                                                 type="actual",
-                                        mat.component=seq_along(x$actualResults$stateCovariance),
-                                        on.road.covariance=x$actualResults$stateCovariance,
-                                        check.rows=F, check.names=F);
-                          inf.df = data.frame(time=timestr, 
-                                              type="inferred",
-                                        mat.component=seq_along(x$infResults$stateCovariance),
-                                        on.road.covariance=x$infResults$stateCovariance,
-                                        check.rows=F, check.names=F);
-                          return(rbind(actual.df, inf.df));
+#
+# creates data frames for a matrix to be plotted
+#
+matrix_record_maker <- function(time, type, matrix) {
+  n = length(matrix)/2
+  indx = expand.grid(col=1:n, row=1:n)
+  timestr =  as.POSIXct(as.integer(
+                                   as.numeric(time)/1000), origin="1970-01-01")
+  df = data.frame(time=timestr, 
+                         type,
+                         indx,
+                         matrix,
+                         check.rows=F, check.names=F);
+  return(df);
+}
+
+sim_res_obs_cov <- ldply(sim_res, function(x) {
+                         return(rbind(matrix_record_maker(x$time, "inferred", x$infResults$obsCovariance),
+                                      matrix_record_maker(x$time, "actual", x$actualResults$obsCovariance)))
+                    })
+
+sim_res_offroad_cov <- ldply(sim_res, function(x) {
+
+                        if (x$actualResults$inferredEdge$id == -1 
+                             && x$infResults$inferredEdge$id == -1) {                         
+                          return(rbind(matrix_record_maker(x$time, "inferred",
+                                                           x$infResults$stateCovariance),
+                                        matrix_record_maker(x$time, "actual",
+                                                            x$actualResults$stateCovariance)))
                         } else {
                           return(NULL)
                         }
                     })
-head(sim_res_onroad_cov, 16)
-tail(sim_res_onroad_cov, 16)
-range(sim_res_onroad_cov$time)
+
+sim_res_onroad_cov <- ldply(sim_res, function(x) {
+
+                        if (x$actualResults$inferredEdge$id != -1 
+                             && x$infResults$inferredEdge$id != -1) {                         
+                          return(rbind(matrix_record_maker(x$time, "inferred",
+                                                           x$infResults$stateCovariance),
+                                        matrix_record_maker(x$time, "actual",
+                                                            x$actualResults$stateCovariance)))
+                        } else {
+                          return(NULL)
+                        }
+                    })
+
+sim_res_qr_cov <- ldply(sim_res, function(x) {
+                         return(rbind(matrix_record_maker(x$time, "inferred",
+                                                          x$infResults$stateQrCovariance),
+                                      matrix_record_maker(x$time, "actual", 
+                                                          x$actualResults$stateQrCovariance)))
+                    })
+
+head(sim_res_obs_cov, 8*2)
+tail(sim_res_obs_cov, 8*2)
+range(sim_res_obs_cov$time)
 
 library(ggplot2)
-sim_p1 <- ggplot(sim_res_onroad_cov, aes(x=time, y=on.road.covariance, colour=type,
+
+sim_obs_cov_plot <- ggplot(sim_res_obs_cov, aes(x=time, y=matrix, colour=type,
                            group=type)) +
-      geom_line(alpha=1.0) + facet_grid( . ~ mat.component) + scale_y_log10() +
+      geom_line(alpha=1.0) + facet_grid(row ~ col, scales="free") + scale_y_continuous() + 
       theme_bw(base_size=10)
-plot(sim_p1)     
+plot(sim_obs_cov_plot)     
+
+sim_obs_qr_plot <- ggplot(sim_res_qr_cov, aes(x=time, y=matrix, colour=type,
+                           group=type)) +
+      geom_line(alpha=1.0) + facet_grid(row ~ col, scales="free") + scale_y_continuous() + 
+      theme_bw(base_size=10)
+plot(sim_obs_qr_plot)     
+
+sim_onroad_cov_plot <- ggplot(sim_res_onroad_cov, aes(x=time, y=matrix, colour=type,
+                           group=type)) +
+      geom_line(alpha=1.0) + facet_grid(row ~ col, scales="free") + scale_y_continuous() +
+      theme_bw(base_size=10)
+plot(sim_onroad_cov_plot)     
+
+sim_offroad_cov_plot <- ggplot(sim_res_offroad_cov, aes(x=time, y=matrix, colour=type,
+                           group=type)) +
+      geom_line(alpha=1.0) + facet_grid(row ~ col, scales="free") + scale_y_log10() +
+      theme_bw(base_size=10)
+plot(sim_offroad_cov_plot)     
 

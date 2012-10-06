@@ -73,7 +73,9 @@ $(document).ready(function() {
   layersControl.addOverlay(allInfMeansGroup, "all inf. means");
 
   map.addControl(layersControl);
-
+  
+  L.control.scale().addTo(map);
+  
   $("#controls").hide();
   $("#pause").hide();
 
@@ -533,14 +535,19 @@ function drawEdge(edge, edgeType, layerOnly) {
   };
 
   var layers = new Array(geojson);
-  geojson.addGeoJSON(data.geom);
+  geojson.addData(data.geom);
 
   var angle = data.angle;
   if (angle != null) {
     var lonlat = data.geom.coordinates[data.geom.coordinates.length - 1];
-    var myicon = new MyIcon();
+    var myIcon = L.icon({
+      iconUrl : '/public/images/tab_right.png',
+      shadowUrl: null,
+      shadowSize: null,
+      iconSize: [80, 30]
+    }); 
     var arrowhead = new L.Marker.Compass(new L.LatLng(lonlat[1], lonlat[0]), {
-      icon : myicon,
+      icon : myIcon,
       clickable : false
     });
     arrowhead.setIconAngle(angle);
@@ -571,13 +578,16 @@ function createMatrixString(matrix, isVector) {
   $.each(matrix, function(index, data) {
     var tmpStr = parseFloat(data).toFixed(2);
     if (index == 0) {
-      tmpStr = (isVector ? "[" : "[[") + tmpStr;
+      //tmpStr = (isVector ? "[" : "[[") + tmpStr;
+      tmpStr = "[" + tmpStr;
       resStr = tmpStr + ",";
     } else if (index + 1 == covLen) {
-      tmpStr = tmpStr + (isVector ? "]" : "]]");
+      //tmpStr = tmpStr + (isVector ? "]" : "]]");
+      tmpStr = tmpStr + "]";
       resStr = resStr + tmpStr;
     } else if ((index + 1) % cols == 0) {
-      tmpStr = tmpStr + "],<br>[";
+      //tmpStr = tmpStr + "],<br>[";
+      tmpStr = tmpStr + ",<br>";
       resStr = resStr + tmpStr;
     } else {
       resStr = resStr + tmpStr + ",";
@@ -704,7 +714,7 @@ function renderParticles(isPrior) {
                         0.5 + particleData.weight * particleData.particle.infResults.particleCount));
 
                     particleEdges.addLayer(renderPath(
-                        particleData.particle.infResults.pathSegments,
+                        particleData.particle.infResults.traveledSegments,
                         particleData.particle.infResults.pathDirection,
                         EdgeType.INFERRED_ALL, true));
 
@@ -712,6 +722,9 @@ function renderParticles(isPrior) {
                     var collapsedDiv = subList.find(".subinfo");
                     optionDiv.append(subList);
 
+                    var obsCovar = createMatrixString(particleData.particle.infResults.obsCovariance, false);
+                    collapsedDiv.append('<li>obsCov:<br>' + obsCovar + '</li>');
+                    
                     var stateMean = createMatrixString(particleData.particle.infResults.stateMean, true);
                     collapsedDiv.append('<li>state=' + stateMean + '</li>');
 
@@ -763,6 +776,9 @@ function renderParticles(isPrior) {
                           + '" style="color : black" href="javascript:void(0)">mean</a>';
                       parentList.append("<li>Parent:" + parentLocLink + ', '
                           + parentEdgeLink + "</li>");
+                      
+                      var parentObsCovar = createMatrixString(particleData.parent.infResults.obsCovariance, false);
+                      parentList.append('<li>obsCov:<br>' + parentObsCovar + '</li>');
 
                       var parentStateMean = createMatrixString(particleData.parent.infResults.stateMean, true);
                       parentList.append("<li>state=" + parentStateMean
@@ -959,7 +975,7 @@ function renderGraph() {
   renderParticles(true);
 
   if (lines[i].actualResults) {
-    renderPath(lines[i].actualResults.pathSegments,
+    renderPath(lines[i].actualResults.traveledSegments,
         lines[i].actualResults.pathDirection, EdgeType.ACTUAL);
   }
 }
