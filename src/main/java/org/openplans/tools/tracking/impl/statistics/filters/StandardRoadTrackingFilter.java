@@ -13,7 +13,7 @@ import org.openplans.tools.tracking.impl.VehicleState;
 import org.openplans.tools.tracking.impl.graph.paths.InferredPath;
 
 public class StandardRoadTrackingFilter extends
-    AbstractRoadTrackingFilter {
+    AbstractRoadTrackingFilter<StandardRoadTrackingFilter> {
 
   private static final long serialVersionUID = -7872007182966059657L;
 
@@ -29,17 +29,12 @@ public class StandardRoadTrackingFilter extends
    * @param a0Variance
    * @param angle
    */
-  public StandardRoadTrackingFilter(Vector obsVariance,
-    Vector offRoadStateVariance, Vector onRoadStateVariance, int initialObsFreq) {
+  public StandardRoadTrackingFilter(Vector obsCov,
+    Vector unscaledOffRoadStateCov, 
+    Vector unscaledOnRoadStateCov, int initialObsFreq) {
 
-    this.obsVariance =
-        MatrixFactory.getDefault().createDiagonal(obsVariance);
-    this.offRoadStateVariance =
-        MatrixFactory.getDefault().createDiagonal(
-            offRoadStateVariance);
-    this.onRoadStateVariance =
-        MatrixFactory.getDefault()
-            .createDiagonal(onRoadStateVariance);
+    this.setObsCovar(
+        MatrixFactory.getDefault().createDiagonal(obsCov));
     
     this.currentTimeDiff = initialObsFreq;
 
@@ -55,13 +50,14 @@ public class StandardRoadTrackingFilter extends
     roadModel.setC(Or);
     this.roadModel = roadModel;
 
-    this.Qr =
+    this.setQr(
         MatrixFactory.getDefault()
-            .createDiagonal(onRoadStateVariance);
+            .createDiagonal(unscaledOnRoadStateCov));
     final Matrix roadStateCov = createStateCovarianceMatrix(
-            this.currentTimeDiff, Qr, true);
+            this.currentTimeDiff, this.getQr(), true);
     this.roadFilter =
-        new AdjKalmanFilter(roadModel, roadStateCov, this.obsVariance);
+        new AdjKalmanFilter(roadModel, roadStateCov, this.getObsCovar());
+    this.setOnRoadStateTransCovar(roadStateCov);
 
     /*
      * Create the ground-coordinates filter
@@ -78,25 +74,31 @@ public class StandardRoadTrackingFilter extends
 
     this.groundModel = groundModel;
 
-    this.Qg =
+    this.setQg(
         MatrixFactory.getDefault().createDiagonal(
-            offRoadStateVariance);
+            unscaledOffRoadStateCov));
     final Matrix groundStateCov = createStateCovarianceMatrix(
-            this.currentTimeDiff, Qg, false);
+            this.currentTimeDiff, this.getQg(), false);
     this.groundFilter =
-        new AdjKalmanFilter(groundModel, groundStateCov, this.obsVariance);
+        new AdjKalmanFilter(groundModel, groundStateCov, this.getObsCovar());
+    this.setOffRoadStateTransCovar(groundStateCov);
 
   }
 
   @Override
-  public void updateSufficientStatistics(Observation obs,
-    VehicleState state, MultivariateGaussian sampledBelief,
-    InferredPath sampledPath, Random rng) {
+  public int compareTo(StandardRoadTrackingFilter o) {
     /*
-     * Nothing to update, since this model believes that the parameters in
-     * this filter are constant.
+     * In this case, all road tracking filters should be equal
      */
+    return 0;
+  }
 
+  @Override
+  void updateSufficientStatistics(Observation obs,
+    PathStateBelief posteriorState,
+    PathStateBelief priorPredictiveState, Random rng) {
+    // TODO Auto-generated method stub
+    
   }
 
 }

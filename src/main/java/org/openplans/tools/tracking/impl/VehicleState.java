@@ -1,11 +1,14 @@
 package org.openplans.tools.tracking.impl;
 
+import gov.sandia.cognition.math.matrix.Matrix;
 import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.math.matrix.VectorFactory;
 import gov.sandia.cognition.math.matrix.mtj.DenseVector;
 import gov.sandia.cognition.statistics.ComputableDistribution;
 import gov.sandia.cognition.statistics.ProbabilityFunction;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
+import gov.sandia.cognition.util.AbstractCloneableSerializable;
+import gov.sandia.cognition.util.CloneableSerializable;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -61,29 +64,30 @@ public class VehicleState implements
       return this;
     }
 
-    @Beta
     @Override
     public double logEvaluate(Observation input) {
       double logLikelihood = 0d;
 
-      //      /*
-      //       * Edge transitions.
-      //       * XXX: Very important!  This skips the edges in-between.
-      //       */
-      //      final InferredEdge parentEdge = this.getParentState() != null ? 
-      //          this.getParentState().getInferredEdge() : null;
-      //      logLikelihood +=
-      //          this.edgeTransitionDist.logEvaluate(parentEdge,
-      //              this.getInferredEdge());
+      /*
+       * This doesn't belong in the likelihood, naturally,
+       * because it has nothing to do with the observation.
+       */
+//      /*
+//       * Edge transitions.
+//       */
+//      final InferredEdge parentEdge = this.getParentState() != null ? 
+//          this.getParentState().getInferredEdge() : null;
+//      logLikelihood +=
+//          this.edgeTransitionDist.logEvaluate(parentEdge,
+//              this.getInferredEdge());
 
       /*
        * Movement.
-       * XXX: this does not include the state transition likelihood.
        */
       logLikelihood +=
           this.getMovementFilter().logLikelihood(
-              input.getProjectedPoint(), this.belief,
-              PathEdge.getEdge(this.getInferredEdge()));
+              input.getProjectedPoint(), this.belief.getMean(),
+              PathEdge.getEdge(this.getInferredEdge(), 0d, this.getPath().getIsBackward()));
 
       return logLikelihood;
     }
@@ -101,7 +105,8 @@ public class VehicleState implements
 
   }
 
-  public static class VehicleStateInitialParameters {
+  public static class VehicleStateInitialParameters extends AbstractCloneableSerializable {
+    private static final long serialVersionUID = 3613725475525876941L;
     private final Vector obsCov;
     private final Vector onRoadStateCov;
     private final Vector offRoadStateCov;
@@ -146,13 +151,16 @@ public class VehicleState implements
       if (getClass() != obj.getClass()) {
         return false;
       }
-      final VehicleStateInitialParameters other =
+      VehicleStateInitialParameters other =
           (VehicleStateInitialParameters) obj;
       if (filterTypeName == null) {
         if (other.filterTypeName != null) {
           return false;
         }
       } else if (!filterTypeName.equals(other.filterTypeName)) {
+        return false;
+      }
+      if (initialObsFreq != other.initialObsFreq) {
         return false;
       }
       if (numParticles != other.numParticles) {
@@ -162,57 +170,49 @@ public class VehicleState implements
         if (other.obsCov != null) {
           return false;
         }
-      } else if (!StatisticsUtil.vectorEquals(obsCov,
-          other.obsCov)) {
+      } else if (!obsCov.equals(other.obsCov)) {
+        return false;
+      }
+      if (obsCovDof != other.obsCovDof) {
+        return false;
+      }
+      if (offRoadCovDof != other.offRoadCovDof) {
         return false;
       }
       if (offRoadStateCov == null) {
         if (other.offRoadStateCov != null) {
           return false;
         }
-      } else if (!StatisticsUtil.vectorEquals(offRoadStateCov,
-          other.offRoadStateCov)) {
+      } else if (!offRoadStateCov.equals(other.offRoadStateCov)) {
         return false;
       }
       if (offTransitionProbs == null) {
         if (other.offTransitionProbs != null) {
           return false;
         }
-      } else if (!StatisticsUtil.vectorEquals(offTransitionProbs,
-          other.offTransitionProbs)) {
+      } else if (!offTransitionProbs.equals(other.offTransitionProbs)) {
+        return false;
+      }
+      if (onRoadCovDof != other.onRoadCovDof) {
         return false;
       }
       if (onRoadStateCov == null) {
         if (other.onRoadStateCov != null) {
           return false;
         }
-      } else if (!StatisticsUtil.vectorEquals(onRoadStateCov,
-          other.onRoadStateCov)) {
+      } else if (!onRoadStateCov.equals(other.onRoadStateCov)) {
         return false;
       }
       if (onTransitionProbs == null) {
         if (other.onTransitionProbs != null) {
           return false;
         }
-      } else if (!StatisticsUtil.vectorEquals(onTransitionProbs,
-          other.onTransitionProbs)) {
+      } else if (!onTransitionProbs.equals(other.onTransitionProbs)) {
         return false;
       }
       if (seed != other.seed) {
         return false;
       }
-      if (initialObsFreq != other.initialObsFreq) {
-        return false;
-      }
-      if (obsCovDof != other.obsCovDof) {
-        return false;
-      }
-      if (onRoadCovDof != other.onRoadCovDof) {
-        return false;
-      }  
-      if (offRoadCovDof != other.offRoadCovDof) {
-        return false;
-      }     
       return true;
     }
 
@@ -257,26 +257,34 @@ public class VehicleState implements
               * result
               + ((filterTypeName == null) ? 0 : filterTypeName
                   .hashCode());
+      result = prime * result + initialObsFreq;
       result = prime * result + numParticles;
       result =
-          prime * result + StatisticsUtil.hashCodeVector(obsCov);
+          prime * result + ((obsCov == null) ? 0 : obsCov.hashCode());
+      result = prime * result + obsCovDof;
+      result = prime * result + offRoadCovDof;
       result =
-          prime * result
-              + StatisticsUtil.hashCodeVector(offRoadStateCov);
+          prime
+              * result
+              + ((offRoadStateCov == null) ? 0 : offRoadStateCov
+                  .hashCode());
       result =
-          prime * result
-              + StatisticsUtil.hashCodeVector(offTransitionProbs);
+          prime
+              * result
+              + ((offTransitionProbs == null) ? 0
+                  : offTransitionProbs.hashCode());
+      result = prime * result + onRoadCovDof;
       result =
-          prime * result
-              + StatisticsUtil.hashCodeVector(onRoadStateCov);
+          prime
+              * result
+              + ((onRoadStateCov == null) ? 0 : onRoadStateCov
+                  .hashCode());
       result =
-          prime * result
-              + StatisticsUtil.hashCodeVector(onTransitionProbs);
+          prime
+              * result
+              + ((onTransitionProbs == null) ? 0 : onTransitionProbs
+                  .hashCode());
       result = prime * result + (int) (seed ^ (seed >>> 32));
-      result = prime * result + (int) (initialObsFreq ^ (initialObsFreq >>> 32));
-      result = prime * result + (int) (obsCovDof ^ (obsCovDof >>> 32));
-      result = prime * result + (int) (offRoadCovDof ^ (offRoadCovDof >>> 32));
-      result = prime * result + (int) (onRoadCovDof ^ (onRoadCovDof >>> 32));
       return result;
     }
 
@@ -295,6 +303,32 @@ public class VehicleState implements
     public int getOffRoadCovDof() {
       return offRoadCovDof;
     }
+
+    @Override
+    public VehicleStateInitialParameters clone() {
+      VehicleStateInitialParameters clone = (VehicleStateInitialParameters) super.clone();
+      // TODO
+      return clone;
+    }
+
+    @Override
+    public String toString() {
+      StringBuilder builder = new StringBuilder();
+      builder.append("VehicleStateInitialParameters [obsCov=")
+          .append(obsCov).append(", onRoadStateCov=")
+          .append(onRoadStateCov).append(", offRoadStateCov=")
+          .append(offRoadStateCov).append(", offTransitionProbs=")
+          .append(offTransitionProbs).append(", onTransitionProbs=")
+          .append(onTransitionProbs).append(", seed=").append(seed)
+          .append(", numParticles=").append(numParticles)
+          .append(", filterTypeName=").append(filterTypeName)
+          .append(", initialObsFreq=").append(initialObsFreq)
+          .append(", obsCovDof=").append(obsCovDof)
+          .append(", onRoadCovDof=").append(onRoadCovDof)
+          .append(", offRoadCovDof=").append(offRoadCovDof)
+          .append("]");
+      return builder.toString();
+    }
   }
 
   private static final long serialVersionUID = 3229140254421801273L;
@@ -302,7 +336,7 @@ public class VehicleState implements
   /*
    * These members represent the state/parameter samples/sufficient statistics.
    */
-  private final AbstractRoadTrackingFilter movementFilter;
+  private final AbstractRoadTrackingFilter<?> movementFilter;
 
   /**
    * This could be the 4D ground-coordinates dist. for free motion, or the 2D
@@ -339,7 +373,7 @@ public class VehicleState implements
   private int hash = 0;
 
   public VehicleState(OtpGraph graph, Observation observation,
-    AbstractRoadTrackingFilter updatedFilter,
+    AbstractRoadTrackingFilter<?> updatedFilter,
     MultivariateGaussian belief,
     OnOffEdgeTransDirMulti edgeTransitionDist, InferredPath path,
     VehicleState state) {
@@ -369,25 +403,35 @@ public class VehicleState implements
        */
       final double distPosition = this.belief.getMean().getElement(0);
       final PathEdge pathEdge =
-          path.getEdgeForDistance(distPosition, true);
+          path.getEdgeForDistance(distPosition, false);
 
       assert !path.isEmptyPath() && !pathEdge.isEmptyEdge();
 
       this.edge = pathEdge.getInferredEdge();
-      this.distanceFromPreviousState =
-          pathEdge.getDistToStartOfEdge();
+      
+      if (state != null && !state.path.isEmptyPath()) {
+        final Vector startState = path.convertToStateOnPath(
+            state.belief.getMean(), state.getInferredEdge());
+        this.distanceFromPreviousState =
+            distPosition - startState.getElement(0);
+      } else {
+        this.distanceFromPreviousState = null;
+      }
 
       /*
        * We normalized the position relative to the direction of motion.
        */
+      final InferredPath tmpPath = InferredPath.getInferredPath(
+          PathEdge.getEdge(pathEdge.getEdge(), 0d, pathEdge.isBackward()));
       this.belief.getMean().setElement(0,
-          distPosition - pathEdge.getDistToStartOfEdge());
-      AbstractRoadTrackingFilter.normalizeBelief(
-          this.belief.getMean(), PathEdge.getEdge(edge));
+          tmpPath.clampToPath(distPosition - pathEdge.getDistToStartOfEdge()));
+      
+//      AbstractRoadTrackingFilter.normalizeBelief(
+//          this.belief.getMean(), 
+//          PathEdge.getEdge(edge, 0d, this.belief.getMean().getElement(0) < 0d));
 
-      assert Double.compare(
-          Math.abs(this.belief.getMean().getElement(0)),
-          edge.getLength() + 0.9) <= 0;
+      assert PathEdge.getEdge(edge, 0d, this.path.getIsBackward())
+        .isOnEdge(this.belief.getMean().getElement(0));
 
     } else {
 
@@ -430,7 +474,7 @@ public class VehicleState implements
 
   public VehicleState(OtpGraph graph, Observation initialObservation,
     InferredEdge inferredEdge,
-    AbstractRoadTrackingFilter movementFilter,
+    AbstractRoadTrackingFilter<?> movementFilter,
     OnOffEdgeTransDirMulti edgeTransDist, Random rng) {
 
     Preconditions.checkNotNull(initialObservation);
@@ -449,7 +493,6 @@ public class VehicleState implements
     Preconditions.checkArgument(timeDiff > 0d);
     this.movementFilter.setCurrentTimeDiff(timeDiff);
 
-    this.path = InferredPath.getInferredPath(inferredEdge);
 
     if (inferredEdge.isEmptyEdge()) {
       this.belief =
@@ -458,13 +501,20 @@ public class VehicleState implements
       final Vector xyPoint = initialObservation.getProjectedPoint();
 
       /*
-       * Sample the velocity
+       * Sample the velocity from the initial prior.
+       * TODO: does this initial dist make sense?  the covar
+       * is the transition variance...
        */
-      final Vector stateSmpl = this.movementFilter.sampleStateTransition(
-          belief.getMean(), this.path, rng);
+//      final Matrix beliefCov = belief.getCovariance().clone();
+//      final Vector stateSmpl = MultivariateGaussian.sample(belief.getMean(), 
+//          StatisticsUtil.getCholR(beliefCov).transpose(), rng);
+      final Vector stateSmpl = movementFilter.sampleStateTransDist(belief.getMean(), rng);
+      
       belief.setMean(stateSmpl);
       belief.getMean().setElement(0, xyPoint.getElement(0));
       belief.getMean().setElement(2, xyPoint.getElement(1));
+      
+      this.path = InferredPath.getEmptyPath();
 
     } else {
       /*
@@ -480,17 +530,19 @@ public class VehicleState implements
       /*
        * Sample the velocity
        */
-      final Vector stateSmpl = this.movementFilter.sampleStateTransition(
-          belief.getMean(), this.path, rng);
+//      final Matrix beliefCov = belief.getCovariance().clone();
+//      final Vector stateSmpl = MultivariateGaussian.sample(belief.getMean(), 
+//          StatisticsUtil.getCholR(beliefCov), rng);
+      final Vector stateSmpl = this.movementFilter.sampleStateTransDist(belief.getMean(),
+          rng);
       belief.setMean(stateSmpl);
       belief.getMean().setElement(0, lengthLocation);
 
-      AbstractRoadTrackingFilter.normalizeBelief(
-          this.belief.getMean(), PathEdge.getEdge(inferredEdge));
+      final PathEdge pathEdge = PathEdge.getEdge(inferredEdge, 0d, lengthLocation < 0d);
+      this.path = InferredPath.getInferredPath(pathEdge);
 
-      assert Double.compare(
-          Math.abs(this.belief.getMean().getElement(0)),
-          inferredEdge.getLength()) <= 0;
+      assert pathEdge.isOnEdge(lengthLocation);
+      
     }
 
     this.edge = inferredEdge;
@@ -543,46 +595,76 @@ public class VehicleState implements
 
   @Override
   public boolean equals(Object obj) {
-    if (this == obj) {
+    /*
+     * We do this to avoid evaluating every parent down the chain.
+     */
+    if (!oneStateEquals(this, obj))
+      return false;
+  
+    VehicleState other = (VehicleState) obj;
+    if (parentState == null) {
+      if (other.parentState != null) {
+        return false;
+      }
+    } else if ( !oneStateEquals(parentState, other.parentState)) {
+      return false;
+    }
+    
+    return true;
+  }
+  
+  protected static boolean oneStateEquals(Object thisObj, Object obj) {
+    if (thisObj == obj) {
       return true;
     }
     if (obj == null) {
       return false;
     }
-    if (getClass() != obj.getClass()) {
+    if (thisObj.getClass() != obj.getClass()) {
       return false;
     }
-    final VehicleState other = (VehicleState) obj;
-    final DenseVector thisV =
-        (DenseVector) initialBelief.convertToVector();
-    final DenseVector otherV =
-        (DenseVector) other.initialBelief.convertToVector();
-    if (initialBelief == null) {
-      if (other.initialBelief != null) {
+    VehicleState thisState = (VehicleState) obj;
+    VehicleState other = (VehicleState) obj;
+    if (thisState.belief == null) {
+      if (other.belief != null) {
         return false;
       }
-    } else if (!Arrays.equals(thisV.getArray(), otherV.getArray())) {
+    } else if (!thisState.belief.equals(other.belief)) {
       return false;
     }
-    if (edge == null) {
+    if (thisState.edge == null) {
       if (other.edge != null) {
         return false;
       }
-    } else if (!edge.equals(other.edge)) {
+    } else if (!thisState.edge.equals(other.edge)) {
       return false;
     }
-    if (edgeTransitionDist == null) {
+    if (thisState.edgeTransitionDist == null) {
       if (other.edgeTransitionDist != null) {
         return false;
       }
-    } else if (!edgeTransitionDist.equals(other.edgeTransitionDist)) {
+    } else if (!thisState.edgeTransitionDist.equals(other.edgeTransitionDist)) {
       return false;
     }
-    if (observation == null) {
+    if (thisState.movementFilter == null) {
+      if (other.movementFilter != null) {
+        return false;
+      }
+    } else if (!thisState.movementFilter.equals(other.movementFilter)) {
+      return false;
+    }
+    if (thisState.observation == null) {
       if (other.observation != null) {
         return false;
       }
-    } else if (!observation.equals(other.observation)) {
+    } else if (!thisState.observation.equals(other.observation)) {
+      return false;
+    }
+    if (thisState.path == null) {
+      if (other.path != null) {
+        return false;
+      }
+    } else if (!thisState.path.equals(other.path)) {
       return false;
     }
     return true;
@@ -619,7 +701,8 @@ public class VehicleState implements
       final MultivariateGaussian beliefProj =
           new MultivariateGaussian();
       AbstractRoadTrackingFilter.convertToGroundBelief(beliefProj,
-          PathEdge.getEdge(this.edge, 0d, this.path.getIsBackward()));
+          PathEdge.getEdge(this.edge, 0d, this.path.getIsBackward()),
+          true);
       return beliefProj;
     } else {
       return belief;
@@ -651,7 +734,8 @@ public class VehicleState implements
       Preconditions.checkArgument(!this.edge.isEmptyEdge());
       final MultivariateGaussian projBelief = belief.clone();
       AbstractRoadTrackingFilter.convertToGroundBelief(projBelief,
-          PathEdge.getEdge(this.edge, 0d, this.path.getIsBackward()));
+          PathEdge.getEdge(this.edge, 0d, this.path.getIsBackward()),
+          true);
       v = projBelief.getMean();
     } else {
       v = belief.getMean();
@@ -660,7 +744,7 @@ public class VehicleState implements
         v.getElement(2));
   }
 
-  public AbstractRoadTrackingFilter getMovementFilter() {
+  public AbstractRoadTrackingFilter<?> getMovementFilter() {
     return movementFilter;
   }
 
@@ -687,28 +771,42 @@ public class VehicleState implements
 
   @Override
   public int hashCode() {
-    if (hash != 0)
+    /*
+     * We do this to avoid evaluating every parent down the chain.
+     */
+    if (hash != 0) {
       return hash;
-
+    } else {
+      final int prime = 31;
+      int result = 1;
+      result = prime *result + oneStateHashCode(this);
+      if (this.parentState != null)
+        result = prime *result + oneStateHashCode(this.parentState);
+      hash = result;
+      return result;
+    }
+  }
+  
+  protected static int oneStateHashCode(VehicleState state) {
     final int prime = 31;
     int result = 1;
-    final DenseVector thisV =
-        (DenseVector) initialBelief.convertToVector();
+    result =
+        prime * result + ((state.belief == null) ? 0 : state.belief.hashCode());
+    result = prime * result + ((state.edge == null) ? 0 : state.edge.hashCode());
     result =
         prime
             * result
-            + ((initialBelief == null) ? 0 : Arrays.hashCode(thisV
-                .getArray()));
-    result = prime * result + ((edge == null) ? 0 : edge.hashCode());
+            + ((state.edgeTransitionDist == null) ? 0 : state.edgeTransitionDist
+                .hashCode());
     result =
         prime
             * result
-            + ((edgeTransitionDist == null) ? 0 : edgeTransitionDist
+            + ((state.movementFilter == null) ? 0 : state.movementFilter
                 .hashCode());
     result =
         prime * result
-            + ((observation == null) ? 0 : observation.hashCode());
-    hash = result;
+            + ((state.observation == null) ? 0 : state.observation.hashCode());
+    result = prime * result + ((state.path == null) ? 0 : state.path.hashCode());
     return result;
   }
 
@@ -728,13 +826,12 @@ public class VehicleState implements
 
   @Override
   public String toString() {
-    return "VehicleState [movementFilter=" + movementFilter
-        + ", belief=" + belief + ", initialBelief=" + initialBelief
-        + ", edgeTransitionDist=" + edgeTransitionDist
-        + ", observation=" + observation + ", edge=" + edge
-        + ", parentState=" + parentState
-        + ", distanceFromPreviousState=" + distanceFromPreviousState
-        + ", graph=" + graph + ", path=" + path + "]";
+    StringBuilder builder = new StringBuilder();
+    builder.append("VehicleState [belief=").append(belief)
+        .append(", observation=").append(observation)
+        .append(", edge=").append(edge).append(", path=")
+        .append(path).append("]");
+    return builder.toString();
   }
 
   public static Vector getNonVelocityVector(Vector vector) {

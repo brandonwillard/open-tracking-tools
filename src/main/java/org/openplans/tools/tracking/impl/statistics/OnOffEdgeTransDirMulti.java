@@ -249,18 +249,14 @@ public class OnOffEdgeTransDirMulti extends
   }
 
   public double logEvaluate(InferredEdge from, InferredEdge to) {
+    
     if (from == null) {
+      
       /*
-       * This corresponds to the initialization/prior
-       * XXX FIXME: use the to -> to transition
+       * This model assumes uniform priors over edges
+       * TODO FIXME: as an interface/design force specifying the priors
        */
-      if (to.isEmptyEdge()) {
-        return getFreeMotionTransPrior().getProbabilityFunction()
-            .logEvaluate(getTransitionType(to, to));
-      } else {
-        return getEdgeMotionTransPrior().getProbabilityFunction()
-            .logEvaluate(getTransitionType(to, to));
-      }
+      return 0d;
 
     } else {
       if (from.isEmptyEdge()) {
@@ -273,21 +269,21 @@ public class OnOffEdgeTransDirMulti extends
     }
   }
 
-  public double predictiveLogLikelihood(InferredEdge from,
-    InferredEdge to) {
-    final Vector state = getTransitionType(from, to);
-    if (from.isEmptyEdge()) {
-      final MultivariatePolyaDistribution predDist =
-          freeMotionTransEstimator
-              .createPredictiveDistribution(getFreeMotionTransProbPrior());
-      return predDist.getProbabilityFunction().logEvaluate(state);
-    } else {
-      final MultivariatePolyaDistribution predDist =
-          edgeMotionTransEstimator
-              .createPredictiveDistribution(getEdgeMotionTransProbPrior());
-      return predDist.getProbabilityFunction().logEvaluate(state);
-    }
-  }
+//  public double predictiveLogLikelihood(InferredEdge from,
+//    InferredEdge to) {
+//    final Vector state = getTransitionType(from, to);
+//    if (from.isEmptyEdge()) {
+//      final MultivariatePolyaDistribution predDist =
+//          freeMotionTransEstimator
+//              .createPredictiveDistribution(getFreeMotionTransProbPrior());
+//      return predDist.getProbabilityFunction().logEvaluate(state);
+//    } else {
+//      final MultivariatePolyaDistribution predDist =
+//          edgeMotionTransEstimator
+//              .createPredictiveDistribution(getEdgeMotionTransProbPrior());
+//      return predDist.getProbabilityFunction().logEvaluate(state);
+//    }
+//  }
 
   public InferredEdge sample(Random rng,
     List<InferredEdge> transferEdges, InferredEdge currentEdge) {
@@ -369,9 +365,11 @@ public class OnOffEdgeTransDirMulti extends
     if (from.isEmptyEdge()) {
       freeMotionTransEstimator.update(getFreeMotionTransProbPrior(),
           transType);
+      freeMotionTransPrior.setParameters(freeMotionTransProbPrior.getMean());
     } else {
       edgeMotionTransEstimator.update(getEdgeMotionTransProbPrior(),
           transType);
+      edgeMotionTransPrior.setParameters(edgeMotionTransProbPrior.getMean());
     }
   }
 

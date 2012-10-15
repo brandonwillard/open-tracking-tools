@@ -1,6 +1,7 @@
 package api;
 
 import org.codehaus.jackson.map.annotate.JsonSerialize;
+import org.openplans.tools.tracking.impl.graph.InferredEdge;
 
 import utils.GeoJSONSerializer;
 
@@ -18,6 +19,12 @@ public class OsmSegment {
   private final Double angle;
   private final String name;
   private final Double length;
+  
+  public OsmSegment(InferredEdge edge) {
+    this(edge.getEdgeId() != null ? edge.getEdgeId() : -1, 
+        edge.isEmptyEdge() ? null : edge.getGeometry(), 
+        edge.isEmptyEdge() ? "empty" : edge.getEdge().getName());
+  }
 
   public OsmSegment(Integer i, Geometry g, String name) {
     if (g != null) {

@@ -83,7 +83,7 @@ public class MultiDestinationAStar implements
     astar.setSkipTraverseResultStrategy(this);
     astar.setTraverseVisitor(this);
 
-    TraverseModeSet modes = new TraverseModeSet(TraverseMode.CAR, TraverseMode.WALK);
+    TraverseModeSet modes = new TraverseModeSet(TraverseMode.CAR);
     final RoutingRequest req = new RoutingRequest(modes);
     req.setArriveBy(arriveBy);
 

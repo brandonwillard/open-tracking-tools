@@ -4,6 +4,7 @@ import gov.sandia.cognition.evaluator.Evaluator;
 import gov.sandia.cognition.learning.data.InputOutputPair;
 import gov.sandia.cognition.learning.data.TargetEstimatePair;
 import gov.sandia.cognition.learning.performance.SupervisedPerformanceEvaluator;
+import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.statistics.DataDistribution;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 import gov.sandia.cognition.statistics.distribution.UnivariateGaussian;
@@ -44,23 +45,23 @@ public class VehicleTrackingPerformanceEvaluator extends
       final UnivariateGaussian.SufficientStatistic stat =
           new UnivariateGaussian.SufficientStatistic();
 
-      final MultivariateGaussian targetBelief =
-          pair.getTarget().getBelief().clone();
-      AbstractRoadTrackingFilter.convertToGroundBelief(targetBelief,
-          PathEdge.getEdge(pair.getTarget().getInferredEdge()));
+      final Vector targetBeliefMean = AbstractRoadTrackingFilter
+          .convertToGroundState(pair.getTarget().getBelief().getMean(), 
+              PathEdge.getEdge(pair.getTarget().getInferredEdge(), 
+                  0d, pair.getTarget().getPath().getIsBackward()), 
+                  true);
 
       for (final VehicleState estimate : pair.getEstimate()
           .getDomain()) {
 
-        final MultivariateGaussian estimateBelief =
-            estimate.getBelief().clone();
-        AbstractRoadTrackingFilter.convertToGroundBelief(
-            estimateBelief,
-            PathEdge.getEdge(estimate.getInferredEdge()));
+        final Vector estimateBeliefMean = AbstractRoadTrackingFilter.convertToGroundState(
+            estimate.getBelief().getMean(),
+            PathEdge.getEdge(estimate.getInferredEdge(), 0d, estimate.getPath().getIsBackward()), true);
 
         final double se =
-            targetBelief.getMean().euclideanDistanceSquared(
-                estimateBelief.getMean());
+            pair.getEstimate().getProbabilityFunction().evaluate(estimate) *
+            targetBeliefMean.euclideanDistanceSquared(
+                estimateBeliefMean);
         stat.update(se);
       }
       stats.add(stat);

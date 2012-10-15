@@ -9,8 +9,9 @@ import gov.sandia.cognition.math.matrix.VectorFactory;
 import gov.sandia.cognition.math.matrix.mtj.AbstractMTJMatrix;
 import gov.sandia.cognition.math.matrix.mtj.DenseMatrix;
 import gov.sandia.cognition.math.matrix.mtj.DenseMatrixFactoryMTJ;
-import gov.sandia.cognition.math.matrix.mtj.decomposition.CholeskyDecompositionMTJ;
-import gov.sandia.cognition.math.matrix.mtj.decomposition.EigenDecompositionRightMTJ;
+import gov.sandia.cognition.math.matrix.mtj.DiagonalMatrixFactoryMTJ;
+import gov.sandia.cognition.math.matrix.mtj.DiagonalMatrixMTJ;
+import gov.sandia.cognition.math.matrix.mtj.decomposition.SingularValueDecompositionMTJ;
 import gov.sandia.cognition.statistics.distribution.ChiSquareDistribution;
 import gov.sandia.cognition.statistics.distribution.InverseWishartDistribution;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
@@ -29,7 +30,6 @@ import no.uib.cipr.matrix.NotConvergedException;
 import no.uib.cipr.matrix.SymmDenseEVD;
 import no.uib.cipr.matrix.UpperSPDDenseMatrix;
 import no.uib.cipr.matrix.UpperSymmDenseMatrix;
-
 import org.openplans.tools.tracking.impl.WrappedWeightedValue;
 
 import com.google.common.base.Objects;
@@ -539,7 +539,23 @@ public class StatisticsUtil {
     }
     return true;
   }
-
+  
+  public static Matrix rootOfSemiDefinite(Matrix matrix) {
+    SingularValueDecompositionMTJ svd = SingularValueDecompositionMTJ.create(matrix);
+    final int effRank = svd.effectiveRank(1e-5);
+    DiagonalMatrixMTJ roots = DiagonalMatrixFactoryMTJ.INSTANCE.createMatrix(matrix.getNumColumns());
+    for (int i = 0; i < effRank; i++) {
+      roots.setElement(i, Math.sqrt(svd.getS().getElement(i, i)));
+    }
+    
+//    Preconditions.checkState(effVt.equals(svd.getVtranspose().getSubMatrix(
+//        0, effRank - 1,
+//        0, svd.getVtranspose().getNumColumns() - 1), 1e-6));
+       
+    final Matrix result = svd.getU().times(roots);
+    return result;
+  }
+  
   /**
    * Returns, for A, an R s.t. R^T * R = A 
    * @param matrix
@@ -551,6 +567,8 @@ public class StatisticsUtil {
     
     final Matrix covSqrt = DenseMatrixFactoryMTJ.INSTANCE.createWrapper( 
             new no.uib.cipr.matrix.DenseMatrix( cholesky.getU() ) );
+    
+    assert covSqrt.transpose().times(covSqrt).equals(matrix, 1e-4);
     
     return covSqrt;
   }

@@ -216,9 +216,9 @@ public class InferredEdge implements Comparable<InferredEdge> {
     return result;
   }
 
-  public double getLength() {
+  public Double getLength() {
     if (edge == null) {
-      return 0;
+      return null;
     }
     return geometry.getLength();
   }
@@ -244,7 +244,8 @@ public class InferredEdge implements Comparable<InferredEdge> {
    */
   public List<InferredEdge> getOutgoingTransferableEdges() {
     final List<InferredEdge> result = Lists.newArrayList();
-    for (final Edge edge : this.endVertex.getOutgoingStreetEdges()) {
+    for (final Edge edge : OtpGraph
+        .filterForStreetEdges(this.endVertex.getOutgoingStreetEdges())) {
       result.add(graph.getInferredEdge(edge));
     }
 

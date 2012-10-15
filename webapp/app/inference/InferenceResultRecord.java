@@ -26,7 +26,7 @@ import org.openplans.tools.tracking.impl.graph.InferredEdge;
 import org.openplans.tools.tracking.impl.graph.paths.InferredPath;
 import org.openplans.tools.tracking.impl.graph.paths.PathEdge;
 import org.openplans.tools.tracking.impl.statistics.DefaultCountedDataDistribution;
-import org.openplans.tools.tracking.impl.statistics.filters.StandardRoadTrackingFilter;
+import org.openplans.tools.tracking.impl.statistics.filters.AbstractRoadTrackingFilter;
 import org.openplans.tools.tracking.impl.util.GeoUtils;
 import org.openplans.tools.tracking.impl.util.ProjectedCoordinate;
 import org.opentripplanner.routing.graph.Edge;
@@ -224,9 +224,7 @@ public class InferenceResultRecord {
             newPath.setStartObs(state.getObservation());
             
             InferredEdge parentStateEdge = parentState != null ? parentState.getEdge() : null;
-            newPath.setStartEdge(parentStateEdge != null ? 
-                new OsmSegment(parentStateEdge.getEdgeId(), 
-                    parentStateEdge.getGeometry(), parentStateEdge.getEdge().getName()) : null);
+            newPath.setStartEdge(parentStateEdge != null ? new OsmSegment(parentStateEdge) : null);
             newPath.setPointsBetween(coordList);
             previousOffRoadPaths.add(newPath);
             
@@ -286,17 +284,23 @@ public class InferenceResultRecord {
     final MultivariateGaussian gbelief =
         cloneState.getBelief().clone();
     final Matrix O =
-        StandardRoadTrackingFilter.getGroundObservationMatrix();
+        AbstractRoadTrackingFilter.getGroundObservationMatrix();
     final Vector mean;
     final Vector minorAxis;
     final Vector majorAxis;
 
-    StandardRoadTrackingFilter.convertToGroundBelief(gbelief,
-        currentEdge);
-
+    if (!gbelief.getCovariance().isZero()) {
+      AbstractRoadTrackingFilter.convertToGroundBelief(gbelief,
+          currentEdge, true);
+    } else {
+      gbelief.setMean(AbstractRoadTrackingFilter.convertToGroundState(gbelief.getMean(),
+          currentEdge, true));
+    }
+      
     mean = O.times(gbelief.getMean().clone());
 
-    if (currentEdge.isEmptyEdge()) {
+    if (currentEdge.isEmptyEdge()
+        && !gbelief.getCovariance().isZero()) {
       /*-
        * TODO only implemented for off-road
        * FIXME results look fishy
@@ -345,18 +349,9 @@ public class InferenceResultRecord {
       final double edgeMean =
           edge.getInferredEdge().getVelocityPrecisionDist()
               .getLocation();
-      final int edgeId =
-          edge.getInferredEdge().getEdgeId() != null ? edge
-              .getInferredEdge().getEdgeId() : -1;
-      final Geometry geom =
-          edge.isEmptyEdge() ? null : edge.getInferredEdge()
-              .getGeometry();
-      final String name =
-          edge.isEmptyEdge() ? "empty" : edge.getInferredEdge()
-              .getEdge().getName();
 
       final OsmSegmentWithVelocity osmSegment =
-          new OsmSegmentWithVelocity(edgeId, geom, name, edgeMean);
+          new OsmSegmentWithVelocity(edge.getInferredEdge(), edgeMean);
 
       pathSegmentIds.add(osmSegment);
     }

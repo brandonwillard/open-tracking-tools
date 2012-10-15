@@ -62,7 +62,7 @@ public class GeoUtils {
     return convertToLatLon(projCoord.getTransform(), point);
   }
 
-  public static Object getCoordinates(Vector meanLocation) {
+  public static Coordinate getCoordinates(Vector meanLocation) {
     return new Coordinate(meanLocation.getElement(0),
         meanLocation.getElement(1));
   }

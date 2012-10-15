@@ -1,5 +1,6 @@
 package inference;
 
+import gov.sandia.cognition.math.matrix.mtj.AbstractMTJMatrix;
 import gov.sandia.cognition.math.matrix.mtj.DenseMatrix;
 import gov.sandia.cognition.math.matrix.mtj.DenseVector;
 import gov.sandia.cognition.statistics.distribution.InverseWishartDistribution;
@@ -148,28 +149,25 @@ public class ResultSet {
     @JsonSerialize
     public double[] getOffRoadTransProbs() {
       return ((gov.sandia.cognition.math.matrix.mtj.DenseVector)
-          this.state.getEdgeTransitionDist().getFreeMotionTransPrior().getMean()).getArray();
-      
+          this.state.getEdgeTransitionDist().getFreeMotionTransPrior().getParameters()).getArray();
     }
     
     @JsonSerialize
     public double[] getOffRoadTransProbsPriorParams() {
       return ((gov.sandia.cognition.math.matrix.mtj.DenseVector)
-          this.state.getEdgeTransitionDist().getFreeMotionTransProbPrior().getMean()).getArray();
-      
+          this.state.getEdgeTransitionDist().getFreeMotionTransProbPrior().getParameters()).getArray();
     }
     
     @JsonSerialize
     public double[] getOnRoadTransProbs() {
       return ((gov.sandia.cognition.math.matrix.mtj.DenseVector)
-          this.state.getEdgeTransitionDist().getEdgeMotionTransPrior().getMean()).getArray();
-      
+          this.state.getEdgeTransitionDist().getEdgeMotionTransPrior().getParameters()).getArray();
     }
     
     @JsonSerialize
     public double[] getOnRoadTransProbsPriorParams() {
       return ((gov.sandia.cognition.math.matrix.mtj.DenseVector)
-          this.state.getEdgeTransitionDist().getEdgeMotionTransProbPrior().getMean()).getArray();
+          this.state.getEdgeTransitionDist().getEdgeMotionTransProbPrior().getParameters()).getArray();
     }
     
     @JsonIgnore
@@ -178,8 +176,27 @@ public class ResultSet {
       jsonData.put("dof", dist.getDegreesOfFreedom());
       jsonData.put("scale", 
          ((gov.sandia.cognition.math.matrix.mtj.DenseVector) 
-             dist.getInverseScale().convertToVector()).getArray());
+             dist.getInverseScale().convertToVector()).getArray().clone());
       return jsonData;
+    }
+    
+    @JsonSerialize
+    public Map<String, Object> getStateSample() {
+      if (this.state.getMovementFilter() instanceof ErrorEstimatingRoadTrackingFilter) {
+        final ErrorEstimatingRoadTrackingFilter eeFilter = (ErrorEstimatingRoadTrackingFilter) state.getMovementFilter();
+        if (eeFilter.getCurrentStateSample() != null) {
+          Map<String, Object> jsonResult = Maps.newHashMap();
+          jsonResult.put("state",
+              ((gov.sandia.cognition.math.matrix.mtj.DenseVector) 
+                eeFilter.getCurrentStateSample().getState()).getArray().clone());
+          jsonResult.put("stateLoc",
+              ((gov.sandia.cognition.math.matrix.mtj.DenseVector) 
+                eeFilter.getCurrentStateSample().getStateLocation()).getArray().clone());
+          jsonResult.put("isBackward", eeFilter.getCurrentStateSample().getIsBackward());
+          return jsonResult;
+        } 
+      } 
+      return null;
     }
     
     @JsonSerialize
@@ -263,9 +280,7 @@ public class ResultSet {
         for (final PathEdge edge : pathEntry.getEdges()) {
           if (edge.getInferredEdge().getEdgeId() != null) {
             final OsmSegment segment =
-                new OsmSegment(edge.getInferredEdge().getEdgeId(),
-                    edge.getInferredEdge().getGeometry(), edge
-                        .getInferredEdge().getEdge().getName());
+                new OsmSegment(edge.getInferredEdge());
             edges.add(segment);
           }
         }
@@ -292,9 +307,7 @@ public class ResultSet {
     final InferredEdge edge = state.getInferredEdge();
     if (edge != InferredEdge.getEmptyEdge()) {
       osmSegment =
-          new OsmSegmentWithVelocity(edge.getEdgeId(),
-              edge.getGeometry(), edge.getEdge().getName(), edge
-                  .getVelocityPrecisionDist().getLocation());
+          new OsmSegmentWithVelocity(edge, edge.getVelocityPrecisionDist().getLocation());
     } else {
       osmSegment =
           new OsmSegmentWithVelocity(-1, null, "empty", null);
@@ -307,6 +320,11 @@ public class ResultSet {
     return filter;
   }
 
+  @JsonSerialize
+  public Double getDistanceFromPreviousState() {
+    return this.state.getDistanceFromPreviousState();
+  }
+  
   @JsonSerialize
   public List<OsmSegmentWithVelocity> getTraveledSegments() {
     List<OsmSegmentWithVelocity> traveled = Lists.newArrayList();
@@ -363,25 +381,25 @@ public class ResultSet {
 
   @JsonSerialize
   public double[] getStateCovariance() {
-    return ((DenseMatrix) state.getBelief().getCovariance())
+    return ((AbstractMTJMatrix) state.getBelief().getCovariance())
         .convertToVector().getArray().clone();
   }
   
   @JsonSerialize
   public double[] getObsCovariance() {
-    return ((DenseMatrix) state.getMovementFilter().getObsVariance())
+    return ((DenseMatrix) state.getMovementFilter().getObsCovar())
         .convertToVector().getArray().clone();
   }
   
   @JsonSerialize
   public double[] getOffRoadStateCovariance() {
-    return ((DenseMatrix) state.getMovementFilter().getOffRoadStateVariance())
+    return ((DenseMatrix) state.getMovementFilter().getOffRoadStateTransCovar())
         .convertToVector().getArray().clone();
   }
   
   @JsonSerialize
   public double[] getOnRoadStateCovariance() {
-    return ((DenseMatrix) state.getMovementFilter().getOffRoadStateVariance())
+    return ((DenseMatrix) state.getMovementFilter().getOnRoadStateTransCovar())
         .convertToVector().getArray().clone();
   }
   

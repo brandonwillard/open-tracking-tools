@@ -206,4 +206,36 @@ public class AdjKalmanFilter extends AbstractKalmanFilter {
     this.model = model;
   }
 
+  @Override
+  public int hashCode() {
+    final int prime = 31;
+    int result = super.hashCode();
+    result =
+        prime * result + ((model == null) ? 0 : StatisticsUtil.hashCodeVector(model.convertToVector()));
+    return result;
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj) {
+      return true;
+    }
+    if (obj == null) {
+      return false;
+    }
+    if (getClass() != obj.getClass()) {
+      return false;
+    }
+    AdjKalmanFilter other = (AdjKalmanFilter) obj;
+    if (model == null) {
+      if (other.model != null) {
+        return false;
+      }
+    } else if (!StatisticsUtil.vectorEquals(model.convertToVector(), 
+        other.model.convertToVector())) {
+      return false;
+    }
+    return true;
+  }
+
 }

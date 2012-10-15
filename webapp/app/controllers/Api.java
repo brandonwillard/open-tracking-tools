@@ -4,6 +4,10 @@ import gov.sandia.cognition.collection.ScalarMap.Entry;
 import gov.sandia.cognition.learning.data.DefaultTargetEstimatePair;
 import gov.sandia.cognition.learning.data.TargetEstimatePair;
 import gov.sandia.cognition.statistics.DataDistribution;
+import gov.sandia.cognition.statistics.bayesian.BayesianCredibleInterval;
+import gov.sandia.cognition.statistics.distribution.BernoulliDistribution;
+import gov.sandia.cognition.statistics.distribution.BetaDistribution;
+import gov.sandia.cognition.statistics.distribution.UnivariateGaussian;
 import inference.InferenceResultRecord;
 import inference.InferenceService;
 
@@ -40,7 +44,6 @@ import api.OsmSegment;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
-import com.sun.xml.internal.bind.v2.schemagen.xmlschema.Particle;
 import com.vividsolutions.jts.geom.Coordinate;
 
 public class Api extends Controller {
@@ -117,6 +120,7 @@ public class Api extends Controller {
     renderJSON(jsonMapper.writeValueAsString(tmpResult
         .getInfResults().createEvaluatedPaths()));
   }
+  
   public static void
       getOffRoadPaths(String vehicleId, int recordNumber)
           throws JsonGenerationException, JsonMappingException,
@@ -194,6 +198,79 @@ public class Api extends Controller {
 
     return observations;
   }
+  
+  public static void getEdgeTransitionStats(String vehicleId)
+      throws JsonGenerationException, JsonMappingException,
+      IOException {
+
+    final InferenceInstance instance =
+        InferenceService.getInferenceInstance(vehicleId);
+    if (instance == null)
+      renderJSON(jsonMapper.writeValueAsString(null));
+
+    final Collection<InferenceResultRecord> resultRecords =
+        instance.getResultRecords();
+    if (resultRecords.isEmpty())
+      renderJSON(jsonMapper.writeValueAsString(null));
+
+    List<Map<String, Object>> results = Lists.newArrayList();
+    for (final InferenceResultRecord record : resultRecords) {
+      
+      /*
+       * Only take stats for the diagonals, since the others
+       * are degenerate (i.e. 1 - diag).
+       */
+//      final UnivariateGaussian.SufficientStatistic edgeTransOnOnStat =
+//          new UnivariateGaussian.SufficientStatistic();
+//      final UnivariateGaussian.SufficientStatistic freeTransOnOnStat =
+//          new UnivariateGaussian.SufficientStatistic();
+//    
+//      for (VehicleState state : record.getPostDistribution().getDomain()) {
+//        edgeTransOnOnStat.update(state.getEdgeTransitionDist().getEdgeMotionTransPrior().getMean().getElement(0));
+//        freeTransOnOnStat.update(state.getEdgeTransitionDist().getFreeMotionTransPrior().getMean().getElement(0));
+//      }
+      VehicleState state = record.getPostDistribution().getMaxValueKey();
+      
+      BayesianCredibleInterval onInterval = BayesianCredibleInterval.compute(
+          new BetaDistribution(state.getEdgeTransitionDist()
+              .getEdgeMotionTransProbPrior().getParameters().getElement(0),
+              state.getEdgeTransitionDist()
+              .getEdgeMotionTransProbPrior().getParameters().getElement(1))
+          , 0.95);
+      
+      BayesianCredibleInterval offInterval = BayesianCredibleInterval.compute(
+          new BetaDistribution(state.getEdgeTransitionDist()
+              .getFreeMotionTransProbPrior().getParameters().getElement(0),
+              state.getEdgeTransitionDist()
+              .getFreeMotionTransProbPrior().getParameters().getElement(1))
+          , 0.95);
+      
+      Map<String, Object> recResults = Maps.newHashMap();
+      recResults.put("time", new Long(record.getActualResults().getState().getObservation().getTimestamp().getTime()));
+      recResults.put("actualEdgeDiagonal", new Double(record.getActualResults().getState()
+          .getEdgeTransitionDist().getEdgeMotionTransPrior().getMean().getElement(0)));
+      recResults.put("actualFreeDiagonal", new Double(record.getActualResults().getState()
+          .getEdgeTransitionDist().getFreeMotionTransPrior().getMean().getElement(0)));
+      
+      recResults.put("infEdgeDiagonalMean", new Double(onInterval.getCentralValue()));
+      recResults.put("infEdgeDiagonalUpper", new Double(onInterval.getUpperBound()));
+      recResults.put("infEdgeDiagonalLower", new Double(onInterval.getLowerBound()));
+      
+      recResults.put("infFreeDiagonalMean", new Double(offInterval.getCentralValue()));
+      recResults.put("infFreeDiagonalUpper", new Double(offInterval.getUpperBound()));
+      recResults.put("infFreeDiagonalLower", new Double(offInterval.getLowerBound()));
+      
+//      recResults.put("infEdgeDiagonalMean", new Double(edgeTransOnOnStat.getMean()));
+//      recResults.put("infEdgeDiagonalVar", new Double(edgeTransOnOnStat.getVariance()));
+//      recResults.put("infFreeDiagonalMean", new Double(freeTransOnOnStat.getMean()));
+//      recResults.put("infFreeDiagonalVar", new Double(freeTransOnOnStat.getVariance()));
+      
+      results.add(recResults);
+    }
+
+    renderJSON(jsonMapper.writeValueAsString(results));
+  }
+
 
   public static void getPerformanceResults(String vehicleId)
       throws JsonGenerationException, JsonMappingException,

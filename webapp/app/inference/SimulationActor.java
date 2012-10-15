@@ -28,7 +28,7 @@ public class SimulationActor extends UntypedActor {
     // TODO info level should be a parameter
     this.instance =
         InferenceService.getOrCreateInferenceInstance(
-            sim.getSimulationName(), sim.getParameters(), sim.getFilterTypeName(), true,
+            sim.getSimulationName(), sim.getInfParameters(), sim.getFilterTypeName(), true,
             INFO_LEVEL.DEBUG);
 
     this.instance.simSeed = sim.getSeed();
@@ -51,25 +51,29 @@ public class SimulationActor extends UntypedActor {
      * TODO bootstrap filter does weird things with on/off-road, and
      * the code for off-road tracking
      */
-    final boolean updateOffRoad = (this.instance.getFilterType().equals(VehicleTrackingBootstrapFilter.class)) ? false : true;
-    while (time < this.sim.getSimParameters().getEndTime().getTime()
-        && InferenceService.getInferenceInstance(sim
-            .getSimulationName()) != null) {
-      vehicleState = this.sim.stepSimulation(vehicleState);
-      time = vehicleState.getObservation().getTimestamp().getTime();
-      this.instance.update(vehicleState, vehicleState
-          .getObservation(), this.sim.getSimParameters()
-          .isPerformInference(), updateOffRoad);
-    }
-
-    if (this.instance.getRecordsProcessed() > 0)
-      Logger.info("avg. records per sec = " + 1000d
-          / instance.getAverager().getMean().value);
-
-    if (InferenceService
-        .getInferenceInstance(sim.getSimulationName()) != null) {
-      this.instance = null;
-      this.sim = null;
+    try {
+      final boolean updateOffRoad = (this.instance.getFilterType().equals(VehicleTrackingBootstrapFilter.class)) ? false : true;
+      while (time < this.sim.getSimParameters().getEndTime().getTime()
+          && InferenceService.getInferenceInstance(sim
+              .getSimulationName()) != null) {
+        vehicleState = this.sim.stepSimulation(vehicleState);
+        time = vehicleState.getObservation().getTimestamp().getTime();
+        this.instance.update(vehicleState, vehicleState
+            .getObservation(), this.sim.getSimParameters()
+            .isPerformInference(), updateOffRoad);
+      }
+      
+      if (this.instance.getRecordsProcessed() > 0)
+        Logger.info("avg. records per sec = " + 1000d
+            / instance.getAverager().getMean().value);
+  
+      if (InferenceService
+          .getInferenceInstance(sim.getSimulationName()) != null) {
+        this.instance = null;
+        this.sim = null;
+      }
+    } catch (Exception ex) {
+      ex.printStackTrace();
     }
 
   }

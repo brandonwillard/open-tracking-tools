@@ -86,6 +86,7 @@ $(document).ready(function() {
   $('#filterControls').tabs({
     selected : index
   });
+  jQuery("#filterControls").tabs('disable', 0); 
 
   $("#loadDataLink").click(loadData);
   showParticlesMeans();
@@ -675,7 +676,7 @@ function renderParticles(isPrior) {
 
                     var epsgCode = particleData.particle.observedPoint.epsgCode;
                     var particleMeanLoc = particleData.particle.infResults.meanCoords;
-                    var locLinkName = 'particle' + particleNumber + '_mean'
+                    var locLinkName = 'particle_' + particleNumber + '_mean_'
                         + isPrior;
                     var coordPair = particleMeanLoc.x + ',' + particleMeanLoc.y;
                     var locLink = '<a name="'
@@ -690,7 +691,7 @@ function renderParticles(isPrior) {
                       edgeDesc = edgeId + " (" 
                         + parseFloat(particleData.particle.infResults.inferredEdge.length).toFixed(2) + ")";
                     }
-                    var edgeLinkName = 'particle' + particleNumber + '_edge'
+                    var edgeLinkName = 'particle_' + particleNumber + '_edge_'
                         + isPrior;
                     var edgeLink = '<a name="' + edgeLinkName + '" title="'
                         + edgeDesc
@@ -735,16 +736,27 @@ function renderParticles(isPrior) {
                     var subList = jQuery('<ul><li><div class="subinfo"></div></li></ul>');
                     var collapsedDiv = subList.find(".subinfo");
                     optionDiv.append(subList);
-
-                    var obsCovar = createMatrixString(particleData.particle.infResults.obsCovariance, false);
-                    collapsedDiv.append('<li>obsCov:<br>' + obsCovar + '</li>');
                     
-                    var stateMean = createMatrixString(particleData.particle.infResults.stateMean, true);
-                    collapsedDiv.append('<li>state=' + stateMean + '</li>');
-
-                    var stateCov = createMatrixString(particleData.particle.infResults.stateCovariance, false);
-                    collapsedDiv.append('<li>stateCov:<br>' + stateCov + '</li>');
-
+                    var stateSample = particleData.particle.infResults.stateSample;
+                    if (stateSample !== null) {
+                      var smplLocLinkName = 'stateSample_' + particleNumber + '_mean_'
+                          + isPrior;
+                      var smplCoordPair = stateSample.stateLoc[0] + ',' + stateSample.stateLoc[1];
+                      var smplLocLink = '<a name="'
+                          + smplLocLinkName
+                          + '" title="'
+                          + smplCoordPair
+                          + '" style="color : black" href="javascript:void(0)">state sample</a>';
+                      var stateVec = createMatrixString(stateSample.state, true);
+                      
+                      var smplMeanLoc = {};
+                      smplMeanLoc.x = stateSample.stateLoc[0];
+                      smplMeanLoc.y = stateSample.stateLoc[1];
+                      var smplMeanLatLon = convertToLatLon(smplMeanLoc, epsgCode);
+                      collapsedDiv.append('<li>' + smplLocLink  + ", " + stateVec + '</li>');
+                      createHoverPointLink(smplLocLinkName, smplMeanLatLon);
+                    }
+                    
                     var pathName = getPathName(getEdgeIdsFromSegments(particleData.particle.infResults.pathSegments));
                     var pathData = $('#' + pathName).data('path');
                     if (pathData) {
@@ -753,6 +765,30 @@ function renderParticles(isPrior) {
                       collapsedDiv.append('<li>' + pathName + ', '
                           + pathLikelihood + '</li>');
                     }
+                    collapsedDiv.append('<li>distFromPrevState=' 
+                        + parseFloat(particleData.particle
+                            .infResults.distanceFromPreviousState).toFixed(2)  + '</li>');
+                    collapsedDiv.append('<li>path=' 
+                        + getEdgeIdsFromSegments(particleData.particle.infResults.traveledSegments)  + '</li>');
+
+                    var stateMean = createMatrixString(particleData.particle.infResults.stateMean, true);
+                    collapsedDiv.append('state:<ul><li>' + stateMean + '</li></ul>');
+
+                    var obsCovar = createMatrixString(particleData.particle.infResults.obsCovariance, false);
+                    collapsedDiv.append('obsCov:<ul><li>' + obsCovar + '</li></ul>');
+                    
+                    var stateCov = createMatrixString(particleData.particle.infResults.stateCovariance, false);
+                    collapsedDiv.append('stateCov:<ul><li>' + stateCov + '</li></ul>');
+                    
+                    var offTransPrior = createMatrixString(particleData.particle.infResults.offRoadTransProbsPriorParams, true);
+                    var offTransProbs = createMatrixString(particleData.particle.infResults.offRoadTransProbs, true);
+                    offTransPrior = offTransPrior + " (" + offTransProbs + ")" 
+                    collapsedDiv.append('offTransPriorParams:<ul><li>' + offTransPrior + '</li></ul>');                   
+                    
+                    var onTransPrior = createMatrixString(particleData.particle.infResults.onRoadTransProbsPriorParams, true);
+                    var onTransProbs = createMatrixString(particleData.particle.infResults.onRoadTransProbs, true);
+                    onTransPrior = onTransPrior + " (" + onTransProbs + ")" 
+                    collapsedDiv.append('onTransPriorParams:<ul><li>' + onTransPrior + '</li></ul>');
 
                     var edge = particleData.particle.infResults.inferredEdge;
                     if (edge != null) {
@@ -761,7 +797,6 @@ function renderParticles(isPrior) {
 
                     if (particleData.parent) {
                       var parentList = jQuery("<ul></ul>");
-                      collapsedDiv.append(parentList);
 
                       var parentEdgeDesc = "free";
                       var parentEdgeId = particleData.parent.infResults.inferredEdge.id;
@@ -788,23 +823,52 @@ function renderParticles(isPrior) {
                           + '" title="'
                           + parentCoordPair
                           + '" style="color : black" href="javascript:void(0)">mean</a>';
-                      parentList.append("<li>Parent:" + parentLocLink + ', '
+                      collapsedDiv.append("<li>Parent:" + parentLocLink + ', '
                           + parentEdgeLink + "</li>");
+                      collapsedDiv.append(parentList);
+                      
+                      var parentStateSample = particleData.parent.infResults.stateSample;
+                      if (parentStateSample !== null) {
+                        var smplLocLinkName = 'parent_stateSample_' + particleNumber + '_mean_'
+                            + isPrior;
+                        var smplCoordPair = parentStateSample.stateLoc[0] + ',' + parentStateSample.stateLoc[1];
+                        var smplLocLink = '<a name="'
+                            + smplLocLinkName
+                            + '" title="'
+                            + smplCoordPair
+                            + '" style="color : black" href="javascript:void(0)">state sample</a>';
+                        var stateVec = createMatrixString(parentStateSample.state, true);
+                        
+                        var smplMeanLoc = {};
+                        smplMeanLoc.x = parentStateSample.stateLoc[0];
+                        smplMeanLoc.y = parentStateSample.stateLoc[1];
+                        var smplMeanLatLon = convertToLatLon(smplMeanLoc, epsgCode);
+                        parentList.append('<li>' + smplLocLink  + ", " + stateVec + '</li>');
+                        createHoverPointLink(smplLocLinkName, smplMeanLatLon);
+                      }
+                      
+                      var parentStateMean = createMatrixString(particleData.parent.infResults.stateMean, true);
+                      parentList.append("state:<ul><li>" + parentStateMean + "</li></ul>");
                       
                       var parentObsCovar = createMatrixString(particleData.parent.infResults.obsCovariance, false);
-                      parentList.append('<li>obsCov:<br>' + parentObsCovar + '</li>');
-
-                      var parentStateMean = createMatrixString(particleData.parent.infResults.stateMean, true);
-                      parentList.append("<li>state=" + parentStateMean
-                          + "</li>");
+                      parentList.append('obsCov:<ul><li>' + parentObsCovar + '</li></ul>');
 
                       var stateCov = createMatrixString(particleData.parent.infResults.stateCovariance, false);
-                      parentList.append('<li>stateCov:<br>' + stateCov + '</li>');
+                      parentList.append('stateCov:<ul><li>' + stateCov + '</li></ul>');                    
+                      
+                      var poffTransPrior = createMatrixString(particleData.parent.infResults.offRoadTransProbsPriorParams, true);
+                      var poffTransProbs = createMatrixString(particleData.parent.infResults.offRoadTransProbs, true);
+                      poffTransPrior = poffTransPrior + " (" + poffTransProbs + ")" 
+                      parentList.append('offTransPriorParams:<ul><li>' + poffTransPrior + '</li></ul>');                   
+                      
+                      var ponTransPrior = createMatrixString(particleData.parent.infResults.onRoadTransProbsPriorParams, true);
+                      var ponTransProbs = createMatrixString(particleData.parent.infResults.onRoadTransProbs, true);
+                      ponTransPrior = ponTransPrior + " (" + ponTransProbs + ")" 
+                      parentList.append('onTransPriorParams:<ul><li>' + ponTransPrior + '</li></ul>');
 
                       var parentPathName = getPathName(getEdgeIdsFromSegments(particleData.parent.infResults.pathSegments));
                       if (parentPathName) {
-                        parentList.append('<li>path=' + parentPathName
-                            + '</li>');
+                        parentList.append('<li>path=' + parentPathName + '</li>');
                       }
 
                       var parentMeanLatLon = convertToLatLon(parentParticleMeanLoc, epsgCode);
@@ -876,6 +940,7 @@ function createHoverPointLink(linkName, latlon) {
     }
   });
 }
+
 function arrayHash(array) {
   var prime = 31;
   var result = 1;
@@ -991,6 +1056,26 @@ function renderGraph() {
   if (lines[i].actualResults) {
     renderPath(lines[i].actualResults.traveledSegments,
         lines[i].actualResults.pathDirection, EdgeType.ACTUAL);
+    
+    jQuery("#filterControls").tabs({ disabled: [] });
+    
+    var actualResultsDiv = jQuery("#actualResults");
+    actualResultsDiv.empty();
+    
+    var actualResultsList = jQuery("<ul></ul>");
+    var state = createMatrixString(lines[i].actualResults.stateMean, true);
+    actualResultsList.append('state:<ul><li>' + state + '</li></ul>');
+//    var stateCov = createMatrixString(lines[i].actualResults.stateCovariance, false);
+//    actualResultsList.append('<li>stateCov:' + stateCov + '</li>');
+    var obsCov = createMatrixString(lines[i].actualResults.obsCovariance, false);
+    actualResultsList.append('obsCov:<ul><li>' + obsCov + '</li></ul>');
+    var onRoadCov = createMatrixString(lines[i].actualResults.onRoadStateCovariance, false);
+    actualResultsList.append('onRoadCov:<ul><li>' + onRoadCov + '</li></ul>');
+    var offRoadCov = createMatrixString(lines[i].actualResults.offRoadStateCovariance, false);
+    actualResultsList.append('offRoadCov:<ul><li>' + offRoadCov + '</li></ul>');
+    var traveledSegments = getEdgeIdsFromSegments(lines[i].actualResults.traveledSegments);
+    actualResultsList.append('traveledSegments:<ul><li>' + traveledSegments + '</li></ul>');
+    actualResultsDiv.append(actualResultsList);
   }
 }
 
@@ -1023,7 +1108,7 @@ function renderPath(pathSegments, pathDirection, edgeType, layerOnly) {
   } else if (edgeType == EdgeType.INFERRED_ALL) {
     color = "green";
     weight = 10;
-    opacity = 0.26;
+    opacity = 0.10;
     groupType = allInfEdgesGroup;
   }
 

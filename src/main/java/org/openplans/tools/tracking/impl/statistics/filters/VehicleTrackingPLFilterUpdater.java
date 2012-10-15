@@ -30,7 +30,7 @@ import org.opentripplanner.routing.graph.Edge;
 import com.google.common.collect.Sets;
 
 public class VehicleTrackingPLFilterUpdater implements
-    ParticleFilter.Updater<Observation, VehicleState> {
+    PLParticleFilterUpdater<Observation, VehicleState> {
 
   private static class UpdaterThreadLocal extends ThreadLocal<Random> {
 
@@ -74,14 +74,14 @@ public class VehicleTrackingPLFilterUpdater implements
 
   private final VehicleStateInitialParameters parameters;
 
-  private final ThreadLocal<Random> threadRandom;
+  private Random random;
 
   public VehicleTrackingPLFilterUpdater(Observation obs,
     OtpGraph inferredGraph, VehicleStateInitialParameters parameters) {
     this.initialObservation = obs;
     this.inferredGraph = inferredGraph;
     this.parameters = parameters;
-    this.threadRandom = new UpdaterThreadLocal(parameters.getSeed());
+    this.random = new Random(parameters.getSeed());
   }
 
   public VehicleTrackingPLFilterUpdater(Observation obs,
@@ -90,28 +90,7 @@ public class VehicleTrackingPLFilterUpdater implements
     this.initialObservation = obs;
     this.inferredGraph = inferredGraph;
     this.parameters = parameters;
-
-    /*
-     * If we passed a Random then we don't want thread local values.
-     */
-    this.threadRandom = new ThreadLocal<Random>() {
-
-      private Random rng;
-
-      @Override
-      public Random get() {
-        return rng;
-      }
-
-      @Override
-      public void set(Random value) {
-        rng = value;
-      }
-
-    };
-
-    this.threadRandom.set(rng);
-
+    this.random = rng;
   }
 
   @Override
@@ -136,116 +115,119 @@ public class VehicleTrackingPLFilterUpdater implements
   public DataDistribution<VehicleState> createInitialParticles(
     int numParticles) {
 
-    final StandardRoadTrackingFilter tmpTrackingFilter =
-        new StandardRoadTrackingFilter(parameters.getObsCov(),
-            parameters.getOffRoadStateCov(),
-            parameters.getOnRoadStateCov(),
-            parameters.getInitialObsFreq());
-    final MultivariateGaussian tmpInitialBelief =
-        tmpTrackingFilter.createInitialLearnedObject();
-    final Vector xyPoint = initialObservation.getProjectedPoint();
-    tmpInitialBelief.setMean(VectorFactory.getDefault().copyArray(
-        new double[] { xyPoint.getElement(0), 0d,
-            xyPoint.getElement(1), 0d }));
-    final List<StreetEdge> initialEdges =
-        inferredGraph.getNearbyEdges(tmpInitialBelief,
-            tmpTrackingFilter);
-
-    final DataDistribution<VehicleState> initialDist =
-        new DefaultDataDistribution<VehicleState>(numParticles);
-
-    final Set<InferredPathEntry> evaluatedPaths = Sets.newHashSet();
-    if (!initialEdges.isEmpty()) {
-      for (final Edge nativeEdge : initialEdges) {
-        final InferredEdge edge =
-            inferredGraph.getInferredEdge(nativeEdge);
-        final PathEdge pathEdge = PathEdge.getEdge(edge, 0d, false);
-        final InferredPath path =
-            InferredPath.getInferredPath(pathEdge);
-        evaluatedPaths.add(new InferredPathEntry(path, null, null,
-            null, Double.NEGATIVE_INFINITY));
-
-        final StandardRoadTrackingFilter trackingFilter =
-            new StandardRoadTrackingFilter(
-                parameters.getObsCov(),
-                parameters.getOffRoadStateCov(),
-                parameters.getOnRoadStateCov(),
-                parameters.getInitialObsFreq());
-
-        final OnOffEdgeTransDirMulti edgeTransDist =
-            new OnOffEdgeTransDirMulti(inferredGraph,
-                parameters.getOnTransitionProbs(),
-                parameters.getOffTransitionProbs());
-
-        final VehicleState state =
-            new VehicleState(this.inferredGraph, initialObservation,
-                pathEdge.getInferredEdge(), trackingFilter,
-                edgeTransDist, this.threadRandom.get());
-
-        /*
-         * Sample an initial prior for the transition probabilities
-         */
-        final Vector edgeDriorParams =
-            state.getEdgeTransitionDist()
-                .getEdgeMotionTransProbPrior()
-                .sample(this.threadRandom.get());
-        final Vector freeDriorParams =
-            state.getEdgeTransitionDist()
-                .getFreeMotionTransProbPrior()
-                .sample(this.threadRandom.get());
-        state.getEdgeTransitionDist().getEdgeMotionTransPrior()
-            .setParameters(edgeDriorParams);
-        state.getEdgeTransitionDist().getFreeMotionTransPrior()
-            .setParameters(freeDriorParams);
-
-        final double lik =
-            state.getProbabilityFunction().evaluate(
-                initialObservation);
-
-        initialDist.increment(state, lik);
-      }
-    }
-
-    /*
-     * Free-motion
-     */
-    final StandardRoadTrackingFilter trackingFilter =
-        new StandardRoadTrackingFilter(parameters.getObsCov(),
-            parameters.getOffRoadStateCov(),
-            parameters.getOnRoadStateCov(),
-            parameters.getInitialObsFreq());
-
-    final OnOffEdgeTransDirMulti edgeTransDist =
-        new OnOffEdgeTransDirMulti(inferredGraph,
-            parameters.getOnTransitionProbs(),
-            parameters.getOffTransitionProbs());
-
-    final VehicleState state =
-        new VehicleState(this.inferredGraph, initialObservation,
-            InferredEdge.getEmptyEdge(), trackingFilter,
-            edgeTransDist, this.threadRandom.get());
-    /*
-     * Sample an initial prior for the transition probabilities
-     */
-    final Vector edgeDriorParams =
-        state.getEdgeTransitionDist().getEdgeMotionTransProbPrior()
-            .sample(this.threadRandom.get());
-    final Vector freeDriorParams =
-        state.getEdgeTransitionDist().getFreeMotionTransProbPrior()
-            .sample(this.threadRandom.get());
-    state.getEdgeTransitionDist().getEdgeMotionTransPrior()
-        .setParameters(edgeDriorParams);
-    state.getEdgeTransitionDist().getFreeMotionTransPrior()
-        .setParameters(freeDriorParams);
-
-    final double lik =
-        state.getProbabilityFunction().evaluate(initialObservation);
-
-    initialDist.increment(state, lik);
-
     final DataDistribution<VehicleState> retDist =
-        new DefaultCountedDataDistribution<VehicleState>(
-            initialDist.sample(threadRandom.get(), numParticles));
+        new DefaultCountedDataDistribution<VehicleState>();
+
+    for (int i = 0; i < numParticles; i++) {
+      final StandardRoadTrackingFilter tmpTrackingFilter =
+          new StandardRoadTrackingFilter(parameters.getObsCov(),
+              parameters.getOffRoadStateCov(),
+              parameters.getOnRoadStateCov(),
+              parameters.getInitialObsFreq());
+      final MultivariateGaussian tmpInitialBelief =
+          tmpTrackingFilter.createInitialLearnedObject();
+      final Vector xyPoint = initialObservation.getProjectedPoint();
+      tmpInitialBelief.setMean(VectorFactory.getDefault().copyArray(
+          new double[] { xyPoint.getElement(0), 0d,
+              xyPoint.getElement(1), 0d }));
+      final List<StreetEdge> initialEdges =
+          inferredGraph.getNearbyEdges(tmpInitialBelief,
+              tmpTrackingFilter);
+  
+      final DataDistribution<VehicleState> initialDist =
+          new DefaultDataDistribution<VehicleState>(numParticles);
+  
+      final Set<InferredPathEntry> evaluatedPaths = Sets.newHashSet();
+      if (!initialEdges.isEmpty()) {
+        for (final Edge nativeEdge : initialEdges) {
+          final InferredEdge edge =
+              inferredGraph.getInferredEdge(nativeEdge);
+          final PathEdge pathEdge = PathEdge.getEdge(edge, 0d, false);
+          final InferredPath path =
+              InferredPath.getInferredPath(pathEdge);
+          evaluatedPaths.add(new InferredPathEntry(path, null, null,
+              null, Double.NEGATIVE_INFINITY));
+  
+          final StandardRoadTrackingFilter trackingFilter =
+              new StandardRoadTrackingFilter(
+                  parameters.getObsCov(),
+                  parameters.getOffRoadStateCov(),
+                  parameters.getOnRoadStateCov(),
+                  parameters.getInitialObsFreq());
+  
+          final OnOffEdgeTransDirMulti edgeTransDist =
+              new OnOffEdgeTransDirMulti(inferredGraph,
+                  parameters.getOnTransitionProbs(),
+                  parameters.getOffTransitionProbs());
+  
+          final VehicleState state =
+              new VehicleState(this.inferredGraph, initialObservation,
+                  pathEdge.getInferredEdge(), trackingFilter,
+                  edgeTransDist, this.random);
+  
+          /*
+           * Sample an initial prior for the transition probabilities
+           */
+          final Vector edgeDriorParams =
+              state.getEdgeTransitionDist()
+                  .getEdgeMotionTransProbPrior()
+                  .sample(this.random);
+          final Vector freeDriorParams =
+              state.getEdgeTransitionDist()
+                  .getFreeMotionTransProbPrior()
+                  .sample(this.random);
+          state.getEdgeTransitionDist().getEdgeMotionTransPrior()
+              .setParameters(edgeDriorParams);
+          state.getEdgeTransitionDist().getFreeMotionTransPrior()
+              .setParameters(freeDriorParams);
+  
+          final double lik =
+              state.getProbabilityFunction().evaluate(
+                  initialObservation);
+  
+          initialDist.increment(state, lik);
+        }
+      }
+  
+      /*
+       * Free-motion
+       */
+      final StandardRoadTrackingFilter trackingFilter =
+          new StandardRoadTrackingFilter(parameters.getObsCov(),
+              parameters.getOffRoadStateCov(),
+              parameters.getOnRoadStateCov(),
+              parameters.getInitialObsFreq());
+  
+      final OnOffEdgeTransDirMulti edgeTransDist =
+          new OnOffEdgeTransDirMulti(inferredGraph,
+              parameters.getOnTransitionProbs(),
+              parameters.getOffTransitionProbs());
+  
+      final VehicleState state =
+          new VehicleState(this.inferredGraph, initialObservation,
+              InferredEdge.getEmptyEdge(), trackingFilter,
+              edgeTransDist, this.random);
+      /*
+       * Sample an initial prior for the transition probabilities
+       */
+      final Vector edgeDriorParams =
+          state.getEdgeTransitionDist().getEdgeMotionTransProbPrior()
+              .sample(this.random);
+      final Vector freeDriorParams =
+          state.getEdgeTransitionDist().getFreeMotionTransProbPrior()
+              .sample(this.random);
+      state.getEdgeTransitionDist().getEdgeMotionTransPrior()
+          .setParameters(edgeDriorParams);
+      state.getEdgeTransitionDist().getFreeMotionTransPrior()
+          .setParameters(freeDriorParams);
+  
+      final double lik =
+          state.getProbabilityFunction().evaluate(initialObservation);
+  
+      initialDist.increment(state, lik);
+      
+      retDist.increment(initialDist.sample(random));
+    }
 
     return retDist;
   }
@@ -254,13 +236,19 @@ public class VehicleTrackingPLFilterUpdater implements
     return initialObservation;
   }
 
-  public ThreadLocal<Random> getThreadRandom() {
-    return threadRandom;
-  }
-
   @Override
   public VehicleState update(VehicleState previousParameter) {
     throw new NotImplementedException();
+  }
+
+  @Override
+  public Random getRandom() {
+    return this.random;
+  }
+
+  @Override
+  public void setRandom(Random rng) {
+    this.random = rng;
   }
 
 }

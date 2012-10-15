@@ -61,12 +61,19 @@ public class VehicleTrackingBootstrapFilter extends
             ((VehicleTrackingPathSamplerFilterUpdater) this.updater)
                 .update(state, obs);
 
-        evaledPaths.add(state.getPath());
+        if (this.isDebug)
+          evaledPaths.add(predictedState.getPath());
 
+        /*
+         * Previous particle weight times new state likelihood
+         */
         final double totalLogLik =
-            predictedState.getMovementFilter().logLikelihood(
-                obs.getProjectedPoint(), predictedState.getBelief(),
-                PathEdge.getEdge(predictedState.getInferredEdge()));
+            target.getProbabilityFunction().logEvaluate(state) + 
+            predictedState.getProbabilityFunction().logEvaluate(obs);
+//              predictedState.getMovementFilter().logLikelihood(
+//                  obs.getProjectedPoint(), predictedState.getBelief().getMean(),
+//                  PathEdge.getEdge(predictedState.getInferredEdge(), 0d, 
+//                      predictedState.getPath().getIsBackward()));
 
         resampler.add(new WrappedWeightedValue<VehicleState>(
             predictedState, totalLogLik, 1));
@@ -109,8 +116,9 @@ public class VehicleTrackingBootstrapFilter extends
     assert ((DefaultCountedDataDistribution<VehicleState>) target)
         .getTotalCount() == this.numParticles;
 
-    this.filterInfo.put(obs, new FilterInformation(evaledPaths,
-        prePosteriorDist));
+    if (this.isDebug)
+      this.filterInfo.put(obs, new FilterInformation(evaledPaths,
+          prePosteriorDist));
 
   }
 

@@ -221,7 +221,7 @@ public class OtpGraph {
   //base index service is in projected coords
   private final StreetVertexIndexServiceImpl baseIndexService;
   private final static RoutingRequest defaultOptions =
-      new RoutingRequest(new TraverseModeSet(TraverseMode.CAR, TraverseMode.WALK));
+      new RoutingRequest(new TraverseModeSet(TraverseMode.CAR));
 
   /*
    * Maximum radius we're willing to search around a given
@@ -267,6 +267,10 @@ public class OtpGraph {
     gs.refreshGraphs();
 
     turnGraph = gs.getGraph();
+    if (turnGraph == null) {
+      throw new RuntimeException("Could not load graph (path=" + path + ")");
+    } 
+    
     baseGraph = turnGraph.getService(BaseGraph.class).getBaseGraph();
 
     baseIndexService = new StreetVertexIndexServiceImpl(baseGraph);
@@ -327,7 +331,7 @@ public class OtpGraph {
 
     final double obsStdDevDistance = Math.min(StatisticsUtil.getLargeNormalCovRadius(
         (DenseMatrix) currentState.getMovementFilter()
-            .getObsVariance()), MAX_SNAP_RADIUS);
+            .getObsCovar()), MAX_SNAP_RADIUS);
 
     double maxEndEdgeLength = Double.NEGATIVE_INFINITY;
     for (final Object obj : getNearbyEdges(toCoord, obsStdDevDistance)) {
@@ -351,12 +355,13 @@ public class OtpGraph {
      */
     final double timeDiff =
         currentState.getMovementFilter().getCurrentTimeDiff();
+    final double edgeLength = currentEdge.isEmptyEdge() ? 0d : currentEdge.getLength();
     final double distanceMax =
         Math.max(
             MAX_DISTANCE_SPEED * timeDiff,
             currentState.getMeanLocation().euclideanDistance(
                 currentState.getObservation().getProjectedPoint()))
-            + currentEdge.getLength() + maxEndEdgeLength;
+            + edgeLength + maxEndEdgeLength;
 
     for (final Edge startEdge : startEdges) {
       final MultiDestinationAStar forwardAStar =
@@ -420,10 +425,8 @@ public class OtpGraph {
     final double direction = isReverse ? -1d : 1d;
     double pathDist = 0d;
     final List<PathEdge> path = Lists.newArrayList();
-    final PathEdge startPathEdge =
-        PathEdge.getEdge(this.getInferredEdge(startEdge));
     if (gpath.edges.isEmpty()) {
-      path.add(startPathEdge);
+      path.add(PathEdge.getEdge(this.getInferredEdge(startEdge), 0d, isReverse));
     } else {
       for (final Edge edge : isReverse ? Lists.reverse(gpath.edges)
           : gpath.edges) {
@@ -544,7 +547,9 @@ public class OtpGraph {
     toEnv.expandBy(radius);
     final Set<StreetEdge> streetEdges = Sets.newHashSet();
     for (final Object obj : baseEdgeIndex.query(toEnv)) {
-      if (((StreetEdge) obj).canTraverse(defaultOptions))
+      if (((StreetEdge) obj).canTraverse(defaultOptions)
+//          && defaultOptions.getModes().contains(((StreetEdge) obj).getMode())
+          )
         streetEdges.add((StreetEdge) obj);
     }
     return streetEdges;
@@ -561,14 +566,17 @@ public class OtpGraph {
             GeoUtils.makeCoordinate(AbstractRoadTrackingFilter
                 .getOg().times(initialBelief.getMean())));
     final double varDistance = StatisticsUtil.getLargeNormalCovRadius(
-        (DenseMatrix) trackingFilter.getObsVariance());
+        (DenseMatrix) trackingFilter.getObsCovar());
     
     toEnv.expandBy(varDistance);
 
     final List<StreetEdge> streetEdges = Lists.newArrayList();
     for (final Object obj : baseEdgeIndex.query(toEnv)) {
       final Edge edge = (Edge) obj;
-      streetEdges.add((StreetEdge) edge);
+      if (((StreetEdge) edge).canTraverse(defaultOptions)
+//          && defaultOptions.getModes().contains(((StreetEdge) edge).getMode())
+          )
+        streetEdges.add((StreetEdge) edge);
     }
     return streetEdges;
   }
@@ -663,7 +671,9 @@ public class OtpGraph {
     final List<Edge> result = Lists.newArrayList();
     for (final Edge out : edges) {
       if ((out instanceof StreetEdge)
-          && ((StreetEdge) out).canTraverse(defaultOptions)) {
+          && ((StreetEdge) out).canTraverse(defaultOptions)
+//          && defaultOptions.getModes().contains(out.getMode())
+          ) {
         result.add(out);
       }
     }

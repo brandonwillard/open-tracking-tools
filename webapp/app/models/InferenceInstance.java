@@ -171,7 +171,7 @@ public class InferenceInstance {
       return;
     
     if (performInference) {
-      updateFilter(obs);
+        updateFilter(obs);
     }
 
     this.recordsProcessed++;

@@ -21,7 +21,7 @@ public class InferredPathEntry implements
   /*
    * This maps edge's to their conditional prior predictive location/velocity states.
    */
-  private final Map<Pair<PathEdge, Boolean>, EdgePredictiveResults> edgeToPredictiveBelief;
+  private final Map<PathEdge, EdgePredictiveResults> edgeToPredictiveBelief;
 
   private final InferredPath path;
 
@@ -31,7 +31,7 @@ public class InferredPathEntry implements
 
   public InferredPathEntry(
     InferredPath path,
-    Map<Pair<PathEdge, Boolean>, EdgePredictiveResults> edgeToPreBeliefAndLogLik,
+    Map<PathEdge, EdgePredictiveResults> edgeToPreBeliefAndLogLik,
     AbstractRoadTrackingFilter filter,
     List<WrappedWeightedValue<PathEdge>> weightedPathEdges,
     double totalLogLikelihood) {
@@ -60,7 +60,7 @@ public class InferredPathEntry implements
     return false;
   }
 
-  public Map<Pair<PathEdge, Boolean>, EdgePredictiveResults>
+  public Map<PathEdge, EdgePredictiveResults>
       getEdgeToPredictiveBelief() {
     return edgeToPredictiveBelief;
   }

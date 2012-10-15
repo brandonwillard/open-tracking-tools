@@ -14,6 +14,7 @@ import java.util.Random;
 import java.util.Set;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 
 import org.openplans.tools.tracking.impl.Observation;
 import org.openplans.tools.tracking.impl.VehicleState;
@@ -30,11 +31,15 @@ import org.openplans.tools.tracking.impl.statistics.OnOffEdgeTransDirMulti;
 import org.openplans.tools.tracking.impl.statistics.StatisticsUtil;
 import org.openplans.tools.tracking.impl.util.OtpGraph;
 
+import com.google.common.base.Objects;
+import com.google.common.base.Predicate;
 import com.google.common.collect.HashMultimap;
+import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Sets;
+import com.google.common.primitives.Doubles;
 
 public class VTErrorEstimatingPLFilter extends
     AbstractVehicleTrackingFilter {
@@ -80,7 +85,7 @@ public class VTErrorEstimatingPLFilter extends
        * overlapping paths.
        * TODO determine if sharing this map between states is useful.
        */
-      final Map<Pair<PathEdge, Boolean>, EdgePredictiveResults> edgeToPreBeliefAndLogLik =
+      final Map<PathEdge, EdgePredictiveResults> edgeToPreBeliefAndLogLik =
           Maps.newHashMap();
 
       for (final InferredPath path : instStateTransitions) {
@@ -128,23 +133,11 @@ public class VTErrorEstimatingPLFilter extends
      */
     for (final VehicleState state : smoothedStates) {
 
-      //      final int count = ((LogDefaultDataDistribution)resampleDist).getCount(state);
-      final VehicleState newState = state.clone();
       final DataDistribution<InferredPathEntry> instStateDist =
           StatisticsUtil.getLogNormalizedDistribution(Lists
-              .newArrayList(stateToPaths.get(newState)));
+              .newArrayList(stateToPaths.get(state)));
       final InferredPathEntry sampledPathEntry =
           instStateDist.sample(rng);
-
-      /*-
-       * Now, if you need to, propagate/sample a predictive location state. 
-       * TODO don't need to now, but will when estimating state covariance/precision
-       * parameters
-       */
-
-      /*
-       * State suffient stats are next (e.g. kalman params)
-       */
 
       /*
        * This is a bit confusing, so really try to understand this:
@@ -155,22 +148,42 @@ public class VTErrorEstimatingPLFilter extends
        * it would've/could've been to be on each edge.  Essentially, this is kind of like saying
        * that we have to walk to that better edge relative to how fast we are, not simply teleport.
        */
-      final Pair<PathEdge, Boolean> directionalSampledEdge;
+      final PathEdge posteriorEdge;
       if (sampledPathEntry.getPath().getEdges().size() > 1) {
         final DataDistribution<PathEdge> pathEdgeDist =
             StatisticsUtil
                 .getLogNormalizedDistribution(sampledPathEntry
                     .getWeightedPathEdges());
-        directionalSampledEdge =
-            new DefaultPair<PathEdge, Boolean>(
-                pathEdgeDist.sample(rng), sampledPathEntry.getPath()
-                    .getIsBackward());
+        posteriorEdge = pathEdgeDist.sample(rng);
+        
       } else {
-        directionalSampledEdge =
-            new DefaultPair<PathEdge, Boolean>(sampledPathEntry
-                .getPath().getEdges().get(0), sampledPathEntry
-                .getPath().getIsBackward());
+        posteriorEdge = sampledPathEntry
+                .getPath().getEdges().get(0);
       }
+      
+      final InferredPath posteriorPath;
+      if (!posteriorEdge.isEmptyEdge()) {
+        /*
+         * IMPORTANT:
+         * We need to construct the subpath that will actually be used, otherwise
+         * we can end up on parts of the path not corresponding to the likelihood
+         * that got us this sample.
+         */
+        posteriorPath = InferredPath.getInferredPath(
+            Lists.newArrayList(
+              Iterables.filter(sampledPathEntry.getPath().getEdges(), new Predicate<PathEdge>() {
+                @Override
+                public boolean apply(@Nullable PathEdge input) {
+                  return Double.compare(Math.abs(input.getDistToStartOfEdge()), 
+                      Math.abs(posteriorEdge.getDistToStartOfEdge())) <= 0;
+                }
+                
+              })), 
+            sampledPathEntry.getPath().getIsBackward());
+      } else {
+        posteriorPath = InferredPath.getEmptyPath();
+      }
+      
 
       /*
        * This belief is p(x_{t+1} | Z_t, ..., y_{t+1}).  The dependency
@@ -178,46 +191,26 @@ public class VTErrorEstimatingPLFilter extends
        */
       final MultivariateGaussian sampledBelief =
           sampledPathEntry.getEdgeToPredictiveBelief()
-              .get(directionalSampledEdge)
+              .get(posteriorEdge)
               .getWeightedPredictiveDist().getValue();
-
-      final AbstractRoadTrackingFilter updatedFilter =
-          sampledPathEntry.getFilter().clone();
 
       /*
        * This is the belief that will be propagated.
        */
-      final MultivariateGaussian updatedBelief =
-          sampledBelief.clone();
-      updatedFilter.measure(updatedBelief, obs.getProjectedPoint(),
-          sampledPathEntry.getPath());
+      final PathStateBelief priorPathStateBelief = PathStateBelief.getPathStateBelief(
+          posteriorPath, sampledBelief.clone());
+      final PathStateBelief updatedBelief  = sampledPathEntry
+          .getFilter().measure(priorPathStateBelief, 
+              obs.getProjectedPoint(), posteriorEdge);
 
-      final PathEdge actualPosteriorEdge =
-          directionalSampledEdge.getFirst();
-
-      InferredEdge prevEdge =
-          sampledPathEntry.getPath().getEdges().get(0)
-              .getInferredEdge();
-
-      /*-
-       * Propagate sufficient stats (can be done off-line) Just the edge
-       * transitions for now.
-       */
-      final OnOffEdgeTransDirMulti updatedEdgeTransDist =
-          newState.getEdgeTransitionDist().clone();
-      for (final PathEdge edge : sampledPathEntry.getPath()
-          .getEdges()) {
-        if (prevEdge != null)
-          updatedEdgeTransDist.update(prevEdge,
-              edge.getInferredEdge());
-
+      for (final PathEdge edge : posteriorPath.getEdges()) {
         if (!edge.isEmptyEdge()) {
 
           edge.getInferredEdge()
               .getVelocityEstimator()
               .update(
                   edge.getInferredEdge().getVelocityPrecisionDist(),
-                  Math.abs(updatedBelief.getMean().getElement(1)));
+                  Math.abs(updatedBelief.getState().getElement(1)));
 
           final HashMap<String, Integer> attributes =
               new HashMap<String, Integer>();
@@ -230,29 +223,37 @@ public class VTErrorEstimatingPLFilter extends
           attributes.put("edge", edge.getEdge().getEdgeId());
 
           inferredGraph.getDataCube().store(
-              Math.abs(updatedBelief.getMean().getElement(1)),
+              Math.abs(updatedBelief.getState().getElement(1)),
               attributes);
         }
-
-        if (edge.equals(actualPosteriorEdge))
-          break;
-        prevEdge = edge.getInferredEdge();
       }
+  
+      /*
+       * Update edge transition priors.
+       */
+      final OnOffEdgeTransDirMulti updatedEdgeTransDist =
+          state.getEdgeTransitionDist().clone();
+      
+      updatedEdgeTransDist.update(state.getInferredEdge(),
+            posteriorEdge.getInferredEdge());
+      
+      final AbstractRoadTrackingFilter<?> updatedFilter =
+          sampledPathEntry.getFilter().clone();
 
       /*
        * Update covariances.
        */
-      updatedFilter.updateSufficientStatistics(obs, state,
-          sampledBelief, sampledPathEntry.getPath(), rng);
+      updatedFilter.updateSufficientStatistics(obs, 
+          updatedBelief, priorPathStateBelief, rng);
 
       final VehicleState newTransState =
           new VehicleState(this.inferredGraph, obs, updatedFilter,
-              updatedBelief, updatedEdgeTransDist,
-              sampledPathEntry.getPath(), state);
+              updatedBelief.getStateBelief().clone(), updatedEdgeTransDist.clone(),
+              posteriorPath, state);
 
       ((DefaultCountedDataDistribution<VehicleState>) posteriorDist)
           .increment(newTransState, 1d / numParticles);
-
+  
     }
 
     target.clear();

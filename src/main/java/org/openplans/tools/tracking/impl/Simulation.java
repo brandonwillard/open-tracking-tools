@@ -1,6 +1,7 @@
 package org.openplans.tools.tracking.impl;
 
 import gov.sandia.cognition.math.matrix.Matrix;
+import gov.sandia.cognition.math.matrix.MatrixFactory;
 import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.math.matrix.mtj.DenseMatrixFactoryMTJ;
 import gov.sandia.cognition.math.matrix.mtj.decomposition.CholeskyDecompositionMTJ;
@@ -19,7 +20,9 @@ import org.openplans.tools.tracking.impl.graph.paths.InferredPath;
 import org.openplans.tools.tracking.impl.graph.paths.InferredPathEntry;
 import org.openplans.tools.tracking.impl.graph.paths.PathEdge;
 import org.openplans.tools.tracking.impl.statistics.OnOffEdgeTransDirMulti;
+import org.openplans.tools.tracking.impl.statistics.StatisticsUtil;
 import org.openplans.tools.tracking.impl.statistics.filters.AbstractRoadTrackingFilter;
+import org.openplans.tools.tracking.impl.statistics.filters.PathState;
 import org.openplans.tools.tracking.impl.statistics.filters.StandardRoadTrackingFilter;
 import org.openplans.tools.tracking.impl.statistics.filters.VehicleTrackingPathSamplerFilterUpdater;
 import org.openplans.tools.tracking.impl.util.GeoUtils;
@@ -171,7 +174,7 @@ public class Simulation {
   private final Random rng;
   private final OtpGraph inferredGraph;
   private final String simulationName;
-  private final VehicleStateInitialParameters parameters;
+  private final VehicleStateInitialParameters infParameters;
 
   private int recordsProcessed = 0;
 
@@ -184,7 +187,7 @@ public class Simulation {
     SimulationParameters simParameters, VehicleStateInitialParameters infParams) {
 
     this.simParameters = simParameters;
-    this.parameters = infParams;
+    this.infParameters = infParams;
     this.filterTypeName =
         simParameters.getStateParams().getFilterTypeName();
 
@@ -192,8 +195,8 @@ public class Simulation {
     this.simulationName = simulationName;
 
     this.rng = new Random();
-    if (parameters.getSeed() != 0l) {
-      this.seed = parameters.getSeed();
+    if (this.simParameters.getStateParams().getSeed() != 0l) {
+      this.seed = this.simParameters.getStateParams().getSeed();
     } else {
       this.seed = rng.nextLong();
     }
@@ -222,7 +225,7 @@ public class Simulation {
     if (initialObs != null) {
       this.updater =
           new VehicleTrackingPathSamplerFilterUpdater(initialObs,
-              graph, parameters);
+              graph, this.simParameters.getStateParams());
       this.updater.setRandom(rng);
     } else {
       this.updater = null;
@@ -235,58 +238,17 @@ public class Simulation {
      * If the updater is null, then creation of the initial obs failed,
      * or something equally bad.
      * 
+     * Otherwise, we just get the initial state from the updater.  
+     * This method is effectively pointless unless we're doing something
+     * special for simulations...
+     * 
      */
     if (this.updater == null)
       return null;
+    
+    final VehicleState vehicleState = this.updater.createInitialParticles(1).getMaxValueKey();
 
-    try {
-
-      final Observation initialObs =
-          this.updater.getInitialObservation();
-      final List<InferredEdge> edges =
-          Lists.newArrayList(InferredEdge.getEmptyEdge());
-      for (final StreetEdge edge : this.inferredGraph.getNearbyEdges(
-          initialObs.getProjectedPoint(), 25d)) {
-        edges.add(this.inferredGraph.getInferredEdge(edge));
-      }
-      final Set<InferredPathEntry> evaluatedPaths = Sets.newHashSet();
-      final InferredEdge currentInferredEdge =
-          edges.get(rng.nextInt(edges.size()));
-      for (final InferredEdge edge : edges) {
-        final InferredPath thisPath;
-        if (edge.isEmptyEdge()) {
-          thisPath = InferredPath.getEmptyPath();
-        } else {
-          thisPath = InferredPath.getInferredPath(edge);
-        }
-        if (edge == currentInferredEdge) {
-        }
-        evaluatedPaths.add(new InferredPathEntry(thisPath, null,
-            null, null, Double.NEGATIVE_INFINITY));
-      }
-
-      final StandardRoadTrackingFilter trackingFilter =
-          new StandardRoadTrackingFilter(parameters.getObsCov(),
-              parameters.getOffRoadStateCov(),
-              parameters.getOnRoadStateCov(),
-              parameters.getInitialObsFreq());
-
-      final OnOffEdgeTransDirMulti edgeTransDist =
-          new OnOffEdgeTransDirMulti(inferredGraph,
-              parameters.getOnTransitionProbs(),
-              parameters.getOffTransitionProbs());
-
-      final VehicleState vehicleState =
-          new VehicleState(this.inferredGraph, initialObs,
-              currentInferredEdge, trackingFilter, edgeTransDist, rng);
-
-      return vehicleState;
-
-    } catch (final NumberFormatException e) {
-      e.printStackTrace();
-    }
-
-    return null;
+    return vehicleState;
   }
 
   public String getFilterTypeName() {
@@ -297,8 +259,8 @@ public class Simulation {
     return inferredGraph;
   }
 
-  public VehicleStateInitialParameters getParameters() {
-    return parameters;
+  public VehicleStateInitialParameters getInfParameters() {
+    return infParameters;
   }
 
   public Random getRng() {
@@ -325,19 +287,14 @@ public class Simulation {
    * @param edge
    * @return
    */
-  public Vector sampleObservation(MultivariateGaussian velLocBelief,
+  public Vector sampleObservation(Vector state,
     Matrix obsCov, PathEdge edge) {
 
-    final MultivariateGaussian gbelief = velLocBelief.clone();
-    AbstractRoadTrackingFilter.convertToGroundBelief(gbelief, edge);
+    final Vector groundState = AbstractRoadTrackingFilter.convertToGroundState(state, edge, false);
     final Vector gMean =
-        AbstractRoadTrackingFilter.getOg().times(gbelief.getMean());
+        AbstractRoadTrackingFilter.getOg().times(groundState);
     
-    DenseCholesky cholesky = DenseCholesky.factorize( 
-        DenseMatrixFactoryMTJ.INSTANCE.copyMatrix(obsCov).getInternalMatrix() );
-    
-    final Matrix covSqrt = DenseMatrixFactoryMTJ.INSTANCE.createWrapper( 
-            new no.uib.cipr.matrix.DenseMatrix( cholesky.getU() ) );
+    final Matrix covSqrt = StatisticsUtil.rootOfSemiDefinite(obsCov);
     
     final Vector thisStateSample =
         MultivariateGaussian.sample(gMean, covSqrt, rng);
@@ -347,48 +304,45 @@ public class Simulation {
   private VehicleState sampleState(VehicleState vehicleState,
     long time) {
 
-    vehicleState.getMovementFilter().setCurrentTimeDiff(
-        this.simParameters.getFrequency());
+    final AbstractRoadTrackingFilter<?> trackingFilter = 
+        vehicleState.getMovementFilter().clone();
+    
+    trackingFilter.setCurrentTimeDiff(this.simParameters.getFrequency());
+    
     final MultivariateGaussian currentLocBelief =
         vehicleState.getBelief();
     final OnOffEdgeTransDirMulti currentEdgeTrans =
-        vehicleState.getEdgeTransitionDist();
+        vehicleState.getEdgeTransitionDist().clone();
     final PathEdge currentPathEdge =
-        PathEdge.getEdge(vehicleState.getInferredEdge());
+        PathEdge.getEdge(vehicleState.getInferredEdge(), 0d, vehicleState.getPath().getIsBackward());
 
     /*
      * Run through the edges, predict movement and reset the belief.
      */
-    final MultivariateGaussian predictiveBelief = currentLocBelief.clone();
-    final InferredPath newPath =
-        this.updater.traverseEdge(
-            vehicleState.getEdgeTransitionDist(), predictiveBelief,
+    final MultivariateGaussian predictedBelief = currentLocBelief.clone();
+    
+    this.updater.seed = this.rng.nextLong();
+    final PathState newPathState =
+        this.updater.sampleNextState(
+            vehicleState.getEdgeTransitionDist(), predictedBelief.getMean(),
             currentPathEdge, vehicleState.getMovementFilter());
     
+    final InferredPath newPath = newPathState.getPath();
+    
+    predictedBelief.setMean(newPathState.getState());
 
     final PathEdge newPathEdge =
         Iterables.getLast(newPath.getEdges());
 
-    /*
-     * Sample from the observation noise, and reset our state
-     * position (the covariance really, since we're using the predicted
-     * location, but want to keep the same covariance).
-     */
-    final MultivariateGaussian newBelief = predictiveBelief.clone();
-    if (newPathEdge.isEmptyEdge()) {
-      newBelief.setCovariance(vehicleState.getMovementFilter().getGroundFilter().getModelCovariance());
-    } else {
-      newBelief.setCovariance(vehicleState.getMovementFilter().getRoadFilter().getModelCovariance());
-    }
-    
     final Matrix gCov =
-        vehicleState.getMovementFilter().getGroundFilter()
-            .getMeasurementCovariance();
+        vehicleState.getMovementFilter().getObsCovar();
     final Vector thisLoc =
-        sampleObservation(newBelief, gCov, newPathEdge);
+        sampleObservation(predictedBelief.getMean(), gCov, newPathEdge);
+    
     final Coordinate obsCoord =
         GeoUtils.convertToLatLon(thisLoc, vehicleState
             .getObservation().getObsPoint());
+    
     Observation thisObs;
     try {
       thisObs =
@@ -401,7 +355,7 @@ public class Simulation {
 
     final VehicleState newState =
         new VehicleState(this.inferredGraph, thisObs,
-            vehicleState.getMovementFilter(), newBelief,
+            trackingFilter, predictedBelief,
             currentEdgeTrans, newPath, vehicleState);
 
     return newState;

@@ -10,4 +10,5 @@ public interface PLParticleFilterUpdater<OBS, STATE> extends
   public Random getRandom();
 
   public void setRandom(Random rng);
+  
 }

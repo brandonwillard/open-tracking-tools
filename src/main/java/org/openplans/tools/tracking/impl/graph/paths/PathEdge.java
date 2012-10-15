@@ -1,6 +1,9 @@
 package org.openplans.tools.tracking.impl.graph.paths;
 
+import gov.sandia.cognition.math.matrix.Vector;
+
 import org.openplans.tools.tracking.impl.graph.InferredEdge;
+import org.openplans.tools.tracking.impl.statistics.filters.AbstractRoadTrackingFilter;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ComparisonChain;
@@ -15,8 +18,6 @@ public class PathEdge implements Comparable<PathEdge> {
   private static PathEdge emptyPathEdge = new PathEdge(
       InferredEdge.getEmptyEdge());
 
-  private static double edgeLengthTolerance = 1e-6;
-
   private PathEdge(InferredEdge edge) {
     this.edge = edge;
     this.distToStartOfEdge = null;
@@ -26,6 +27,7 @@ public class PathEdge implements Comparable<PathEdge> {
   private PathEdge(InferredEdge edge, double distToStartOfEdge,
     Boolean isBackward) {
     Preconditions.checkArgument(!edge.isEmptyEdge());
+    Preconditions.checkState(!isBackward || distToStartOfEdge <= 0d);
     this.edge = edge;
     this.distToStartOfEdge = distToStartOfEdge;
     this.isBackward = isBackward;
@@ -51,7 +53,7 @@ public class PathEdge implements Comparable<PathEdge> {
     if (getClass() != obj.getClass()) {
       return false;
     }
-    final PathEdge other = (PathEdge) obj;
+    PathEdge other = (PathEdge) obj;
     if (distToStartOfEdge == null) {
       if (other.distToStartOfEdge != null) {
         return false;
@@ -64,6 +66,13 @@ public class PathEdge implements Comparable<PathEdge> {
         return false;
       }
     } else if (!edge.equals(other.edge)) {
+      return false;
+    }
+    if (isBackward == null) {
+      if (other.isBackward != null) {
+        return false;
+      }
+    } else if (!isBackward.equals(other.isBackward)) {
       return false;
     }
     return true;
@@ -91,6 +100,9 @@ public class PathEdge implements Comparable<PathEdge> {
             + ((distToStartOfEdge == null) ? 0 : distToStartOfEdge
                 .hashCode());
     result = prime * result + ((edge == null) ? 0 : edge.hashCode());
+    result =
+        prime * result
+            + ((isBackward == null) ? 0 : isBackward.hashCode());
     return result;
   }
 
@@ -104,43 +116,51 @@ public class PathEdge implements Comparable<PathEdge> {
 
   /**
    * Based on the path that this edge is contained in, determine if the given
-   * distance is on this edge. We allow 0 and +- the edge length to qualify for
-   * being on the edge.
+   * distance is on this edge. 
    * 
    * @param distance
    * @return
    */
   public boolean isOnEdge(double distance) {
+    final double direction = this.isBackward ? -1d : 1d;
     final double posDistToStart = Math.abs(distToStartOfEdge);
-    final double posDistToEnd = posDistToStart + edge.getLength();
-    final double posDist = Math.abs(distance);
+    final double posDistOffset = direction * distance - posDistToStart;
 
-    if (posDist <= posDistToEnd + edgeLengthTolerance
-        && posDist >= posDistToStart)
-      return true;
+    if (posDistOffset - edge.getLength() > AbstractRoadTrackingFilter.getEdgelengthtolerance()) {
+      return false;
+    } else if (posDistOffset < 
+        -AbstractRoadTrackingFilter.getEdgelengthtolerance()) {
+      return false;
+    }
 
-    return false;
+    return true;
   }
 
   @Override
   public String toString() {
-    if (this == emptyPathEdge)
+    if (this == emptyPathEdge) {
       return "PathEdge [empty edge]";
-    else
+    } else {
+      final double distToStart = distToStartOfEdge == 0d
+          && this.isBackward ? -0d : distToStartOfEdge.longValue();
       return "PathEdge [edge=" + edge.getEdgeId() + " ("
-          + (long) edge.getLength() + ")" + ", distToStart="
-          + distToStartOfEdge.longValue() + "]";
+          + edge.getLength().longValue() + ")" + ", distToStart="
+          + distToStart + "]";
+    }
   }
 
-  public static PathEdge getEdge(InferredEdge infEdge) {
-    PathEdge edge;
-    if (infEdge.isEmptyEdge()) {
-      edge = PathEdge.getEmptyPathEdge();
-    } else {
-      edge = new PathEdge(infEdge, 0d, false);
-    }
-    return edge;
-  }
+  /*
+   * This method is problematic, since it discards/ignores direction.
+   */
+//  public static PathEdge getEdge(InferredEdge infEdge) {
+//    PathEdge edge;
+//    if (infEdge.isEmptyEdge()) {
+//      edge = PathEdge.getEmptyPathEdge();
+//    } else {
+//      edge = new PathEdge(infEdge, 0d, false);
+//    }
+//    return edge;
+//  }
 
   public static PathEdge getEdge(InferredEdge infEdge,
     double distToStart, Boolean isBackward) {
@@ -158,5 +178,33 @@ public class PathEdge implements Comparable<PathEdge> {
 
   public static PathEdge getEmptyPathEdge() {
     return emptyPathEdge;
+  }
+
+  public Vector getCheckedStateOnEdge(Vector state,
+    double tolerance) {
+    Preconditions.checkState(!isEmptyEdge());
+    Preconditions.checkArgument(tolerance >= 0d);
+    Preconditions.checkArgument(state.getDimensionality() == 2);
+
+    final Vector newState = state.clone();
+    final double distance = newState.getElement(0);
+    final double direction = isBackward ? -1d : 1d;
+    final double posDistAdj = direction * distance - Math.abs(distToStartOfEdge);
+    final double overEndDist = posDistAdj - this.edge.getLength();
+    if (overEndDist > 0d) {
+      if (overEndDist > tolerance) {
+        return null;
+      } else {
+        newState.setElement(0, direction * this.edge.getLength() + distToStartOfEdge); 
+      }
+    } else if (posDistAdj < 0d) {
+      if (posDistAdj < tolerance) {
+        return null;
+      } else {
+        newState.setElement(0, distToStartOfEdge); 
+      }
+    }
+
+    return newState;
   }
 }
