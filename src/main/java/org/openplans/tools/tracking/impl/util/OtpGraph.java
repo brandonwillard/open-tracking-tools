@@ -225,9 +225,15 @@ public class OtpGraph {
 
   /*
    * Maximum radius we're willing to search around a given
-   * point when snapping (for path search destination edges)
+   * observation when snapping (for path search destination edges)
    */
-  private static final double MAX_SNAP_RADIUS = 70d;
+  private static final double MAX_OBS_SNAP_RADIUS = 200d;
+  
+  /*
+   * Maximum radius we're willing to search around a given
+   * state when snapping (for path search off -> on-road edges)
+   */
+  private static final double MAX_STATE_SNAP_RADIUS = 350d;
   
   private final STRtree turnEdgeIndex = new STRtree();
   private final STRtree baseEdgeIndex = new STRtree();
@@ -313,14 +319,15 @@ public class OtpGraph {
           edge.getTurnVertex().geometry);
       startEdges.addAll(turnEdges);
     } else {
-      final double stateStdDevDistance =
-          1.98d * Math.sqrt(currentState.getBelief().getCovariance()
-              .normFrobenius()
-              / Math.sqrt(currentState.getBelief()
-                  .getInputDimensionality()));
+      
+      final MultivariateGaussian obsBelief = currentState.getMovementFilter().getObservationBelief(currentState.getBelief(), 
+          PathEdge.getEdge(currentEdge, 0, currentState.getPath().getIsBackward()));
+      
+      final double beliefDistance = Math.min(StatisticsUtil.getLargeNormalCovRadius(
+          (DenseMatrix)obsBelief.getCovariance()), MAX_STATE_SNAP_RADIUS);
+      
       final Coordinate fromCoord = key.getStartCoord();
-      for (final Object obj : getNearbyEdges(fromCoord,
-          stateStdDevDistance)) {
+      for (final Object obj : getNearbyEdges(fromCoord, beliefDistance)) {
         final PlainStreetEdgeWithOSMData edge =
             (PlainStreetEdgeWithOSMData) obj;
         startEdges.addAll(edge.getTurnVertex().getOutgoing());
@@ -331,7 +338,7 @@ public class OtpGraph {
 
     final double obsStdDevDistance = Math.min(StatisticsUtil.getLargeNormalCovRadius(
         (DenseMatrix) currentState.getMovementFilter()
-            .getObsCovar()), MAX_SNAP_RADIUS);
+            .getObsCovar()), MAX_OBS_SNAP_RADIUS);
 
     double maxEndEdgeLength = Double.NEGATIVE_INFINITY;
     for (final Object obj : getNearbyEdges(toCoord, obsStdDevDistance)) {
@@ -506,6 +513,16 @@ public class OtpGraph {
     return edgeInfo;
   }
 
+  public Set<InferredEdge> getTopoEquivEdges(InferredEdge edge) {
+    final Collection<Edge> baseEdges = geomBaseEdgeMap.get(
+        edge.getGeometry());
+    Set<InferredEdge> results = Sets.newHashSet();
+    for (Edge bEdge : baseEdges) {
+      results.add(this.getInferredEdge(bEdge));
+    }
+    return results;
+  }
+  
   public GraphServiceImpl getGs() {
     return gs;
   }

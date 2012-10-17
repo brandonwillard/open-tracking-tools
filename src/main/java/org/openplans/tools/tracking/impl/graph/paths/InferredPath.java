@@ -4,12 +4,14 @@ import gov.sandia.cognition.math.LogMath;
 import gov.sandia.cognition.math.matrix.Matrix;
 import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.math.matrix.mtj.AbstractMTJMatrix;
+import gov.sandia.cognition.statistics.bayesian.BayesianCredibleInterval;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 import gov.sandia.cognition.statistics.distribution.UnivariateGaussian;
 import gov.sandia.cognition.util.DefaultPair;
 import gov.sandia.cognition.util.Pair;
 
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -21,10 +23,11 @@ import org.openplans.tools.tracking.impl.Observation;
 import org.openplans.tools.tracking.impl.VehicleState;
 import org.openplans.tools.tracking.impl.WrappedWeightedValue;
 import org.openplans.tools.tracking.impl.graph.InferredEdge;
+import org.openplans.tools.tracking.impl.statistics.DataCube;
 import org.openplans.tools.tracking.impl.statistics.StatisticsUtil;
 import org.openplans.tools.tracking.impl.statistics.filters.AbstractRoadTrackingFilter;
 import org.openplans.tools.tracking.impl.statistics.filters.AbstractVehicleTrackingFilter;
-import org.openplans.tools.tracking.impl.statistics.filters.PathState;
+import org.openplans.tools.tracking.impl.util.OtpGraph;
 
 import com.google.common.annotations.Beta;
 import com.google.common.base.Preconditions;
@@ -326,7 +329,6 @@ public class InferredPath implements Comparable<InferredPath> {
      * Lazily load this so we don't repeat work for dups.
      */
     MultivariateGaussian beliefPrediction = null;
-    PathEdge prevEdge = PathEdge.getEdge(state.getInferredEdge(), 0d, state.getPath().isBackward);
     final AbstractRoadTrackingFilter<?> filter =
         state.getMovementFilter();
 
@@ -453,7 +455,6 @@ public class InferredPath implements Comparable<InferredPath> {
 
       assert !Double.isNaN(edgePredMarginalLogLik);
 
-      prevEdge = edge;
     }
 
     if (Double.isInfinite(pathLogLik)
@@ -803,4 +804,43 @@ public class InferredPath implements Comparable<InferredPath> {
       return new InferredPath(pathEdge);
   }
 
+  public void updateEdges(Observation obs, MultivariateGaussian stateBelief, OtpGraph graph) {
+    
+    if (this.isEmptyPath())
+      return;
+    
+    BayesianCredibleInterval ciInterval = BayesianCredibleInterval.compute(
+        new UnivariateGaussian(stateBelief.getMean().getElement(1),
+           stateBelief.getCovariance().getElement(1, 1))
+        , 0.95);
+    
+    /*
+     * If we could be stopped, then don't update this
+     */
+    if (ciInterval.withinInterval(0d))
+      return;
+    
+    final double velocity = stateBelief.getMean().getElement(1);
+    for (final PathEdge edge : this.getEdges()) {
+      if (!edge.isEmptyEdge()) {
+        edge.getInferredEdge()
+            .getVelocityEstimator()
+            .update(
+                edge.getInferredEdge().getVelocityPrecisionDist(),
+                Math.abs(velocity));
+
+        final HashMap<String, Integer> attributes =
+            new HashMap<String, Integer>();
+
+        final Integer interval =
+            Math.round(((obs.getTimestamp().getHours() * 60) + obs
+                .getTimestamp().getMinutes()) / DataCube.INTERVAL);
+
+        attributes.put("interval", interval);
+        attributes.put("edge", edge.getEdge().getEdgeId());
+
+        graph.getDataCube().store( Math.abs(velocity), attributes);
+      }
+    }
+  }
 }

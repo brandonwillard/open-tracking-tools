@@ -101,8 +101,10 @@ public class StatisticsUtil {
      */
     double totalLikelihood = Double.NEGATIVE_INFINITY;
     for (final WrappedWeightedValue<SupportType> weight : map) {
-      totalLikelihood =
-          LogMath.add(weight.getWeight(), totalLikelihood);
+      for (int i = 0; i < weight.getCount(); i++) {
+        totalLikelihood =
+            LogMath.add(weight.getWeight(), totalLikelihood);
+      }
       assert !Double.isNaN(totalLikelihood);
     }
 
@@ -135,57 +137,6 @@ public class StatisticsUtil {
         weight = 0d;
       result.increment(entry.getValue(), Math.exp(weight),
           entry.getCount());
-    }
-
-    return result;
-  }
-
-  public static
-      <DistributionType, SupportType extends Comparable<SupportType>>
-      DefaultCountedDataDistribution<SupportType>
-      getLogNormalizedDistribution(
-        Map<SupportType, WrappedWeightedValue<DistributionType>> map) {
-
-    /*-
-     * Normalize to avoid zero probs.
-     */
-    double totalLikelihood = Double.NEGATIVE_INFINITY;
-    for (final WrappedWeightedValue<DistributionType> weight : map
-        .values()) {
-      totalLikelihood =
-          LogMath.add(weight.getWeight(), totalLikelihood);
-    }
-
-    if (totalLikelihood == Double.NEGATIVE_INFINITY)
-      return null;
-
-    /*
-     * Sort before putting in the data distribution
-     */
-    final List<Entry<SupportType, WrappedWeightedValue<DistributionType>>> entryList =
-        Lists.newArrayList(map.entrySet());
-    // Collections.sort(entryList, new Comparator<Entry<SupportType,
-    // DefaultWeightedValue<DistributionType>>> () {
-    //
-    // @Override
-    // public int compare(Entry<SupportType,
-    // DefaultWeightedValue<DistributionType>> arg0,
-    // Entry<SupportType, DefaultWeightedValue<DistributionType>> arg1) {
-    // return arg0.getKey().compareTo(arg1.getKey());
-    // }
-    //
-    // });
-
-    final DefaultCountedDataDistribution<SupportType> result =
-        new DefaultCountedDataDistribution<SupportType>();
-    for (final Entry<SupportType, WrappedWeightedValue<DistributionType>> entry : entryList) {
-      if (entry.getValue().getWeight() == Double.NEGATIVE_INFINITY)
-        continue;
-      double weight = entry.getValue().getWeight() - totalLikelihood;
-      if (weight > 0d)
-        weight = 0d;
-      result.increment(entry.getKey(), Math.exp(weight), entry
-          .getValue().getCount());
     }
 
     return result;

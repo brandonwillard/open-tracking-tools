@@ -10,6 +10,7 @@ import gov.sandia.cognition.statistics.distribution.BetaDistribution;
 import gov.sandia.cognition.statistics.distribution.UnivariateGaussian;
 import inference.InferenceResultRecord;
 import inference.InferenceService;
+import inference.OsmSegmentWithVelocity;
 
 import java.awt.geom.Point2D;
 import java.io.IOException;
@@ -30,6 +31,7 @@ import org.openplans.tools.tracking.impl.Observation;
 import org.openplans.tools.tracking.impl.VehicleState;
 import org.openplans.tools.tracking.impl.VehicleStatePerformanceResult;
 import org.openplans.tools.tracking.impl.VehicleTrackingPerformanceEvaluator;
+import org.openplans.tools.tracking.impl.graph.InferredEdge;
 import org.openplans.tools.tracking.impl.util.GeoUtils;
 import org.openplans.tools.tracking.impl.util.OtpGraph;
 import org.openplans.tools.tracking.impl.util.ProjectedCoordinate;
@@ -96,6 +98,29 @@ public class Api extends Controller {
     renderJSON(jsonMapper.writeValueAsString(jsonResults));
   }
 
+  public static void
+      bestCumulativePath(String vehicleId)
+          throws JsonGenerationException, JsonMappingException,
+          IOException {
+    final InferenceInstance instance =
+        InferenceService.getInferenceInstance(vehicleId);
+    if (instance == null)
+      renderJSON(jsonMapper.writeValueAsString(null));
+
+    List<Map<String, Object>> results = Lists.newArrayList();
+    VehicleState state = instance.getBestState();
+    List<java.util.Map.Entry<Long, InferredEdge>> edges = instance.getStateCumulativePath(state);
+    
+    for (java.util.Map.Entry<Long, InferredEdge> edgeEntry : edges) {
+      Map<String, Object> jsonResult = Maps.newHashMap();
+      jsonResult.put("time", edgeEntry.getKey());
+      jsonResult.put("edge", new OsmSegment(edgeEntry.getValue()));
+      results.add(jsonResult);
+    }
+
+    renderJSON(jsonMapper.writeValueAsString(results));
+  }
+  
   public static void
       evaluatedPaths(String vehicleId, int recordNumber)
           throws JsonGenerationException, JsonMappingException,
@@ -271,20 +296,17 @@ public class Api extends Controller {
     renderJSON(jsonMapper.writeValueAsString(results));
   }
 
-
-  public static void getPerformanceResults(String vehicleId)
-      throws JsonGenerationException, JsonMappingException,
-      IOException {
-
+  public static VehicleStatePerformanceResult getPerformanceResultsData(String vehicleId) {
     final InferenceInstance instance =
         InferenceService.getInferenceInstance(vehicleId);
+    
     if (instance == null)
-      renderJSON(jsonMapper.writeValueAsString(null));
+      return null;
 
     final Collection<InferenceResultRecord> resultRecords =
         instance.getResultRecords();
     if (resultRecords.isEmpty())
-      renderJSON(jsonMapper.writeValueAsString(null));
+      return null;
 
     final VehicleTrackingPerformanceEvaluator evaluator =
         new VehicleTrackingPerformanceEvaluator();
@@ -298,7 +320,19 @@ public class Api extends Controller {
     }
     final VehicleStatePerformanceResult result =
         evaluator.evaluatePerformance(pairs);
+    
+    return result;
+  }
 
+  public static void getPerformanceResults(String vehicleId)
+      throws JsonGenerationException, JsonMappingException,
+      IOException {
+
+    VehicleStatePerformanceResult result = getPerformanceResultsData(vehicleId);
+    
+    if (result == null)
+      renderJSON(jsonMapper.writeValueAsString(null));
+    
     renderJSON(jsonMapper.writeValueAsString(result));
   }
 

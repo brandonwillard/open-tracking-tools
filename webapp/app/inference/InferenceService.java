@@ -99,7 +99,7 @@ public class InferenceService extends UntypedActor {
         final Observation observation = (Observation) location;
         if (!processRecord(observation)) {
 
-          new InferenceInstance(observation.getVehicleId(), false,
+          new InferenceInstance(observation.getVehicleId(), null,
               defaultInfoLevel, defaultVehicleStateInitialParams, defaultFilterName);
         }
 
@@ -141,13 +141,13 @@ public class InferenceService extends UntypedActor {
     String vehicleId,
     VehicleStateInitialParameters initialParameters,
     String filterTypeName,
-    boolean isSimulation, INFO_LEVEL infoLevel) {
+    VehicleStateInitialParameters simParameters, INFO_LEVEL infoLevel) {
 
     InferenceInstance ie = vehicleToInstance.get(vehicleId);
 
     if (ie == null) {
       ie =
-          new InferenceInstance(vehicleId, isSimulation, infoLevel,
+          new InferenceInstance(vehicleId, simParameters, infoLevel,
               initialParameters, filterTypeName);
       vehicleToInstance.put(vehicleId, ie);
     }
@@ -185,7 +185,7 @@ public class InferenceService extends UntypedActor {
     for (final Observation obs : observations) {
       final InferenceInstance ie =
           getOrCreateInferenceInstance(obs.getVehicleId(),
-              initialParameters, filterTypeName, false, level);
+              initialParameters, filterTypeName, null, level);
       tasks.add(Executors.callable(new UpdateRunnable(obs, ie)));
     }
 

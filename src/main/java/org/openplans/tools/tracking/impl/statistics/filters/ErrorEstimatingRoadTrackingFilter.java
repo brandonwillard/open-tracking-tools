@@ -16,6 +16,8 @@ import org.openplans.tools.tracking.impl.Observation;
 import org.openplans.tools.tracking.impl.VehicleState;
 import org.openplans.tools.tracking.impl.graph.paths.InferredPath;
 import org.openplans.tools.tracking.impl.graph.paths.PathEdge;
+import org.openplans.tools.tracking.impl.graph.paths.PathState;
+import org.openplans.tools.tracking.impl.graph.paths.PathStateBelief;
 import org.openplans.tools.tracking.impl.statistics.StatisticsUtil;
 
 public class ErrorEstimatingRoadTrackingFilter extends

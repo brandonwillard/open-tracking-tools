@@ -22,6 +22,7 @@ import java.util.Collections;
 import java.util.Enumeration;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
@@ -29,6 +30,9 @@ import org.apache.log4j.Logger;
 import org.openplans.tools.tracking.impl.Observation;
 import org.openplans.tools.tracking.impl.VehicleState;
 import org.openplans.tools.tracking.impl.VehicleState.VehicleStateInitialParameters;
+import org.openplans.tools.tracking.impl.VehicleStatePerformanceResult;
+import org.openplans.tools.tracking.impl.graph.InferredEdge;
+import org.openplans.tools.tracking.impl.graph.paths.PathEdge;
 import org.openplans.tools.tracking.impl.statistics.filters.AbstractVehicleTrackingFilter;
 import org.openplans.tools.tracking.impl.statistics.filters.FilterInformation;
 import org.openplans.tools.tracking.impl.statistics.filters.VehicleTrackingBootstrapFilter;
@@ -37,6 +41,9 @@ import org.openplans.tools.tracking.impl.statistics.filters.VehicleTrackingPLFil
 import org.openplans.tools.tracking.impl.util.OtpGraph;
 
 import com.google.common.base.Stopwatch;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableMultimap;
+import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
@@ -58,7 +65,6 @@ public class InferenceInstance {
 
   public long simSeed = 0l;
 
-  public final boolean isSimulation;
   public boolean isEnabled = true;
 
   private VehicleTrackingFilter<Observation, VehicleState> filter;
@@ -71,10 +77,14 @@ public class InferenceInstance {
   private VehicleState bestState;
 
   private final VehicleStateInitialParameters initialParameters;
+  private final VehicleStateInitialParameters simulationParameters;
 
   public int totalRecords = 0;
 
   private final INFO_LEVEL infoLevel;
+  private Map<VehicleState, List<Entry<Long, InferredEdge>>> statePaths;
+  
+  private static int _collectedPathLength = Integer.MAX_VALUE;
   private static final double _maxUpdateIntervalCutoff = 5d * 60d;
 
   private static OtpGraph inferredGraph = Api.getGraph();
@@ -84,15 +94,22 @@ public class InferenceInstance {
   
   private final Class<? extends VehicleTrackingFilter> filterType;
   
-  public InferenceInstance(String vehicleId, boolean isSimulation,
+  public InferenceInstance(String vehicleId, VehicleStateInitialParameters simParameters,
     INFO_LEVEL infoLevel, VehicleStateInitialParameters parameters, 
     String filterTypeName) {
     this.initialParameters = parameters;
+    this.simulationParameters = simParameters;
     this.vehicleId = vehicleId;
-    this.isSimulation = isSimulation;
     this.simSeed = parameters.getSeed();
     this.infoLevel = infoLevel;
     this.filterType = Application.getFilters().get(filterTypeName);
+    
+    // TODO FIXME: set collect_paths based on infoLevel?
+    if (_collectedPathLength > 0) {
+      statePaths = Maps.newHashMap();
+    } else {
+      statePaths = null;
+    }
   }
 
   public RingAccumulator<MutableDouble> getAverager() {
@@ -144,7 +161,7 @@ public class InferenceInstance {
   }
 
   public boolean isSimulation() {
-    return isSimulation;
+    return simulationParameters != null;
   }
 
   synchronized public void update(Observation obs) {
@@ -259,6 +276,38 @@ public class InferenceInstance {
             filterInfo != null ? filterInfo.getResampleDist() : null;
       }
     }
+    
+    if (statePaths != null) {
+      Map<VehicleState, List<Entry<Long, InferredEdge>>> newPaths = Maps.newHashMap();
+      for (VehicleState state : postBelief.getDomain()) {
+        List<Entry<Long, InferredEdge>> path = Lists.newArrayList();
+        
+        List<Entry<Long, InferredEdge>> oldPath = statePaths.get(state.getParentState());
+        if (oldPath != null)
+            path.addAll(oldPath);
+        /*
+         * Make sure we don't add the start edge,
+         * since we already have that as the old 
+         * destination edge.
+         */
+        final List<PathEdge> newPath = state.getPath().getEdges();
+        for (PathEdge edge : 
+          (path.isEmpty() || (newPath.size() == 1 
+            && Iterables.getOnlyElement(newPath).isEmptyEdge())
+            || Iterables.getLast(path).getValue().isEmptyEdge()) 
+            ? newPath : Iterables.skip(newPath, 1)) {
+          path.add(Maps.immutableEntry(
+              new Long(state.getObservation().getTimestamp().getTime()), 
+              edge.getEdge()));
+        }
+        
+        if (_collectedPathLength < path.size())
+          path = path.subList(0, _collectedPathLength);
+        
+        newPaths.put(state, path);
+      }
+      statePaths = newPaths;
+    }
 
     watch.stop();
     averager.accumulate(new MutableDouble(watch.elapsedMillis()));
@@ -281,6 +330,7 @@ public class InferenceInstance {
   }
 
   private Map<VehicleState, List<OffRoadPath>> stateToOffRoadPaths = Maps.newHashMap();
+  private VehicleStatePerformanceResult performanceResults;
   
   public Map<VehicleState, List<OffRoadPath>> getStateToOffRoadPaths() {
     return stateToOffRoadPaths;
@@ -289,6 +339,30 @@ public class InferenceInstance {
   public void setStateToOffRoadPaths(
     Map<VehicleState, List<OffRoadPath>> newMap) {
     this.stateToOffRoadPaths = newMap;
+  }
+
+  public VehicleStateInitialParameters getSimParameters() {
+    return simulationParameters;
+  }
+
+  public VehicleStatePerformanceResult getPerformanceResults() {
+    return this.performanceResults;
+  }
+  
+  public void setPerformanceResults(VehicleStatePerformanceResult result) {
+    this.performanceResults = result;
+  }
+  
+  public List<Entry<Long, InferredEdge>> getStateCumulativePath(VehicleState state) {
+    return statePaths.get(state);
+  }
+
+  public static int getCollectedPathLength() {
+    return _collectedPathLength;
+  }
+
+  public static void setCollectedPathLength(int collectedPathLength) {
+    InferenceInstance._collectedPathLength = collectedPathLength;
   }
 
 }

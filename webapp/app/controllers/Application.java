@@ -2,6 +2,7 @@ package controllers;
 
 import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.math.matrix.VectorFactory;
+import gov.sandia.cognition.statistics.distribution.UnivariateGaussian.SufficientStatistic;
 import inference.InferenceService;
 import inference.SimulationActor;
 
@@ -23,6 +24,8 @@ import models.InferenceInstance;
 import org.openplans.tools.tracking.impl.Simulation;
 import org.openplans.tools.tracking.impl.Simulation.SimulationParameters;
 import org.openplans.tools.tracking.impl.VehicleState.VehicleStateInitialParameters;
+import org.openplans.tools.tracking.impl.VehicleStatePerformanceResult;
+import org.openplans.tools.tracking.impl.VehicleStatePerformanceResult.SufficientStatisticRecord;
 import org.openplans.tools.tracking.impl.statistics.filters.AbstractVehicleTrackingFilter;
 import org.openplans.tools.tracking.impl.statistics.filters.ErrorEstimatingRoadTrackingFilter;
 import org.openplans.tools.tracking.impl.statistics.filters.VTErrorEstimatingPLFilter;
@@ -75,6 +78,20 @@ public class Application extends Controller {
 
   public static void map(String vehicleId) {
     render(vehicleId);
+  }
+  
+  public static void dataPlot() {
+    
+    final List<InferenceInstance> instances =
+        InferenceService.getInferenceInstances();
+    
+    for (InferenceInstance instance : instances) {
+      if (instance.getPerformanceResults() == null) {
+        VehicleStatePerformanceResult result = Api.getPerformanceResultsData(instance.getVehicleId());
+        instance.setPerformanceResults(result);
+      }
+    }
+    render(instances);
   }
 
   public static void removeInferenceInstance(String vehicleId) {

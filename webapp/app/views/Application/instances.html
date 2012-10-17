@@ -10,9 +10,23 @@
             recordsProcessed: ${instance.recordsProcessed}
             #{if instance.totalRecords > 0}/${instance.totalRecords}
             #{/if}<br>
-            isSimulation: ${instance.isSimulation}
-            <br>
-            Initial Parameters:
+            #{if instance.simulation}
+            Simulation Initial Parameters:
+            <ul>
+              <li> obsCov: ${instance.simParameters.obsCov} </li>
+<!--               <li> obsCovDof: ${instance.simParameters.obsCovDof} </li> -->
+              <li> onRoadStateCov: ${instance.simParameters.onRoadStateCov} </li>
+<!--               <li> onRoadStateCovDof: ${instance.simParameters.onRoadCovDof} </li> -->
+              <li> offRoadStateCov: ${instance.simParameters.offRoadStateCov} </li>
+<!--               <li> offRoadStateCovDof: ${instance.simParameters.offRoadCovDof} </li> -->
+              <li> offTransitionProbs: ${instance.simParameters.offTransitionProbs} </li>
+              <li> onTransitionProbs: ${instance.simParameters.onTransitionProbs} </li>
+              <li> initialObsFreq: ${instance.simParameters.initialObsFreq} </li>
+<!--               <li> filterTypeName: ${instance.simParameters.filterTypeName} </li> -->
+              <li> seed: ${instance.simSeed} </li>
+            </ul>
+            #{/if}
+            Initial Filter Parameters:
             <ul>
               <li> obsCov: ${instance.initialParameters.obsCov} </li>
               <li> obsCovDof: ${instance.initialParameters.obsCovDof} </li>
@@ -31,7 +45,8 @@
                 <a href="/application/removeInferenceInstance?vehicleId=${instance.vehicleId}">Delete</a> 
                 <a href="/application/map?vehicleId=${instance.vehicleId}" target="_blank">View Map</a> 
                 <a href="/api/traces?vehicleId=${instance.vehicleId}" target="_blank">View Traces</a> 
-                <a href="/api/getPerformanceResults?vehicleId=${instance.vehicleId}" target="_blank">View Perf. Results</a> 
+<!--                 <a href="/api/getPerformanceResults?vehicleId=${instance.vehicleId}" target="_blank">View Perf. Results</a>  -->
+                <a href="/application/dataPlot?vehicleId=${instance.vehicleId}" target="_blank">View Perf. Results</a> 
                 <a href="/api/getOffRoadPaths?vehicleId=${instance.vehicleId}&recordNumber=${instance.recordsProcessed-1}" target="_blank">View Off-Road Paths</a> 
             </span>
         </li>

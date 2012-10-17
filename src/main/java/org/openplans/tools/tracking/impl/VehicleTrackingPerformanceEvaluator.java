@@ -13,10 +13,12 @@ import gov.sandia.cognition.util.AbstractCloneableSerializable;
 import java.util.Collection;
 import java.util.List;
 
+import org.openplans.tools.tracking.impl.VehicleStatePerformanceResult.SufficientStatisticRecord;
 import org.openplans.tools.tracking.impl.graph.paths.PathEdge;
 import org.openplans.tools.tracking.impl.statistics.filters.AbstractRoadTrackingFilter;
 
 import com.google.common.collect.Lists;
+import com.google.common.primitives.Longs;
 
 public class VehicleTrackingPerformanceEvaluator extends
     AbstractCloneableSerializable
@@ -38,7 +40,7 @@ public class VehicleTrackingPerformanceEvaluator extends
       evaluatePerformance(
         Collection<? extends TargetEstimatePair<VehicleState, DataDistribution<VehicleState>>> data) {
 
-    final List<UnivariateGaussian.SufficientStatistic> stats =
+    final List<SufficientStatisticRecord> stats =
         Lists.newArrayList();
     for (final TargetEstimatePair<VehicleState, DataDistribution<VehicleState>> pair : data) {
 
@@ -64,7 +66,12 @@ public class VehicleTrackingPerformanceEvaluator extends
                 estimateBeliefMean);
         stat.update(se);
       }
-      stats.add(stat);
+      
+      
+      final SufficientStatisticRecord statRecord = new SufficientStatisticRecord(
+          pair.getFirst().getObservation().getTimestamp().getTime(),
+          stat);
+      stats.add(statRecord);
     }
 
     final VehicleStatePerformanceResult results =

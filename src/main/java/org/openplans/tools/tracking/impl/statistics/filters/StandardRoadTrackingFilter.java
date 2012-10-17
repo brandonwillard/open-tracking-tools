@@ -11,6 +11,7 @@ import java.util.Random;
 import org.openplans.tools.tracking.impl.Observation;
 import org.openplans.tools.tracking.impl.VehicleState;
 import org.openplans.tools.tracking.impl.graph.paths.InferredPath;
+import org.openplans.tools.tracking.impl.graph.paths.PathStateBelief;
 
 public class StandardRoadTrackingFilter extends
     AbstractRoadTrackingFilter<StandardRoadTrackingFilter> {

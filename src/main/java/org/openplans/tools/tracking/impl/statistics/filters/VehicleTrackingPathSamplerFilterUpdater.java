@@ -9,6 +9,7 @@ import gov.sandia.cognition.statistics.DataDistribution;
 import gov.sandia.cognition.statistics.distribution.DefaultDataDistribution;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
@@ -25,6 +26,7 @@ import org.openplans.tools.tracking.impl.graph.InferredEdge;
 import org.openplans.tools.tracking.impl.graph.paths.InferredPath;
 import org.openplans.tools.tracking.impl.graph.paths.InferredPathEntry;
 import org.openplans.tools.tracking.impl.graph.paths.PathEdge;
+import org.openplans.tools.tracking.impl.graph.paths.PathState;
 import org.openplans.tools.tracking.impl.statistics.DefaultCountedDataDistribution;
 import org.openplans.tools.tracking.impl.statistics.OnOffEdgeTransDirMulti;
 import org.openplans.tools.tracking.impl.statistics.StatisticsUtil;
@@ -277,24 +279,26 @@ public class VehicleTrackingPathSamplerFilterUpdater implements
         }
       } else {
         if (totalDistToTravel == null) {
-          transferEdges.add(startEdge.getInferredEdge());
+          
+          /*
+           * XXX: Here we're allowing ourself to consider having
+           * been on another topologically equivalent edge as our
+           * source edge.  This way the graph traversal restrictions
+           * are mostly removed. 
+           * This should probably be removed when using the bootstrap
+           * filter in production.
+           */
+          Set<InferredEdge> equivEdges = this.inferredGraph.getTopoEquivEdges(
+              startEdge.getInferredEdge());
+          transferEdges.addAll(equivEdges);
+//          transferEdges.add(startEdge.getInferredEdge());
+          
           /*
            * We only allow going off-road when starting a path.
            */
           transferEdges.add(InferredEdge.getEmptyEdge());
         } else {
-          if (newState.getElement(0) < 0d) {
-            transferEdges.addAll(currentEdge.getInferredEdge()
-                .getIncomingTransferableEdges());
-          } else if (newState.getElement(0) > 0d) {
-            transferEdges.addAll(currentEdge.getInferredEdge()
-                .getOutgoingTransferableEdges());
-          } else {
-            transferEdges.addAll(currentEdge.getInferredEdge()
-                .getIncomingTransferableEdges());
-            transferEdges.addAll(currentEdge.getInferredEdge()
-                .getOutgoingTransferableEdges());
-          }
+          transferEdges.addAll(getTransferableEdges(currentEdge.getInferredEdge(), newState));
           /*
            *  Make sure we don't move back and forth,
            *  even if it's on a different edge.
@@ -345,6 +349,8 @@ public class VehicleTrackingPathSamplerFilterUpdater implements
            * When going from on road to off, we don't want to always
            * project along the edge length, so we're going to project
            * orthogonally to our road.
+           * XXX: should remove this when/if using the bootstrap filter in
+           * production, or on real data.
            */
           final double xVel = newState.getElement(1);
           final double yVel = newState.getElement(3);
@@ -414,7 +420,17 @@ public class VehicleTrackingPathSamplerFilterUpdater implements
               PathEdge.getEdge(sampledEdge, 0d, false));
           newState = AbstractRoadTrackingFilter.convertToRoadState(newState,
               edgePath, true).getState();
-        } 
+        } else {
+          /*
+           * In this case, we were on-road and still are.
+           * However, it is possible that we've sampled a
+           * topologically equivalent edge to our source edge,
+           * so we must adjust the state to reflect the new edge.
+           */
+          final InferredPath edgePath = InferredPath.getInferredPath(
+              PathEdge.getEdge(sampledEdge, 0d, false));
+          newState = edgePath.convertToStateOnPath(newState, currentEdge.getEdge()); 
+        }
         
         initialLocation = newState.getElement(0);
         
@@ -513,6 +529,30 @@ public class VehicleTrackingPathSamplerFilterUpdater implements
     }
     
     return result;
+  }
+
+  private Collection<? extends InferredEdge> getTransferableEdges(
+    InferredEdge currentEdge, Vector newState) {
+    /*
+     * We can evaluate transfers from the exact
+     * source edge, or from all topologically equivalent
+     * edges from the source edge.
+     */
+    Set<InferredEdge> transferEdges = Sets.newHashSet();
+    
+    if (newState.getElement(0) < 0d) {
+      transferEdges.addAll(currentEdge
+          .getIncomingTransferableEdges());
+    } else if (newState.getElement(0) > 0d) {
+      transferEdges.addAll(currentEdge
+          .getOutgoingTransferableEdges());
+    } else {
+      transferEdges.addAll(currentEdge
+          .getIncomingTransferableEdges());
+      transferEdges.addAll(currentEdge
+          .getOutgoingTransferableEdges());
+    }
+    return transferEdges;
   }
 
   @Override

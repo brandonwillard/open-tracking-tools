@@ -1,4 +1,6 @@
 library("rjson")
+library(plyr)
+library(ggplot2)
 
 getEdgeTransCIResultsJson <- function(simName) {
   json_file <-
@@ -227,7 +229,6 @@ matplot(cbind(pl_means_50_est_s1, pl_means_50_s1, bs_means_50_s1, bs_means_200_s
 boxplot(log1p(cbind(pl_means_50_est_s1, pl_means_50_s1, bs_means_50_s1, bs_means_200_s1)), log='')
 abline(b=0, a=0)
 
-library(ggplot2)
 data = rmse.data
 data$partFilter = interaction(data$Filter, data$Particles)
 
@@ -257,7 +258,6 @@ sim_res_on_correct <-  unlist(lapply(sim_res, function(x) {
                     }))
 mean(sim_res_on_correct)
 
-library(plyr)
 
 #
 # creates data frames for a matrix to be plotted
@@ -358,7 +358,8 @@ sim_res_qg_cov <- ldply(sim_res, function(x) {
 #infTransMat
 #actTransMat
 
-sim_onOff_trans_probs <- ldply(getEdgeTransCIResultsJson("sim-2012700520"), function(x) {
+onOffTransName = "sim-2012700520"
+sim_onOff_trans_probs <- ldply(getEdgeTransCIResultsJson(onOffTransName), function(x) {
    timestr =  as.POSIXct(as.numeric(x$time)/1000, origin="1970-01-01", tz="GMT");
    a1 = data.frame(time=timestr, type="actual",
                     trans="off", value.type="mean", value=x$actualFreeDiagonal,
@@ -387,7 +388,7 @@ sim_onOff_trans_probs <- ldply(getEdgeTransCIResultsJson("sim-2012700520"), func
    return(rbind(a1, a2, f1, e1));
          
 })
-
+ 
 # Debug
 {
   head(sim_res_obs_cov, 8*2)
@@ -425,8 +426,6 @@ sim_onOff_trans_probs <- ldply(getEdgeTransCIResultsJson("sim-2012700520"), func
   mean(state_diffs$diff)
   plot(state_diffs, type='l')
 }
-
-library(ggplot2)
 
 pdf(file="pl-edge-trans-1200-95CI.pdf", pointsize=7) 
 

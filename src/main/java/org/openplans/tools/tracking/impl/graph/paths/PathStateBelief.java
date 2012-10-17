@@ -1,9 +1,7 @@
-package org.openplans.tools.tracking.impl.statistics.filters;
+package org.openplans.tools.tracking.impl.graph.paths;
 
 import javax.annotation.Nonnull;
 
-import org.openplans.tools.tracking.impl.graph.paths.InferredPath;
-import org.openplans.tools.tracking.impl.graph.paths.PathEdge;
 
 import com.google.common.base.Preconditions;
 

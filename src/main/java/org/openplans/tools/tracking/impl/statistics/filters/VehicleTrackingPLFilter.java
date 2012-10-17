@@ -3,6 +3,7 @@ package org.openplans.tools.tracking.impl.statistics.filters;
 import gov.sandia.cognition.math.LogMath;
 import gov.sandia.cognition.statistics.DataDistribution;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
+import gov.sandia.cognition.statistics.distribution.UnivariateGaussian;
 import gov.sandia.cognition.util.DefaultPair;
 import gov.sandia.cognition.util.Pair;
 
@@ -25,6 +26,7 @@ import org.openplans.tools.tracking.impl.graph.paths.InferredPath;
 import org.openplans.tools.tracking.impl.graph.paths.InferredPath.EdgePredictiveResults;
 import org.openplans.tools.tracking.impl.graph.paths.InferredPathEntry;
 import org.openplans.tools.tracking.impl.graph.paths.PathEdge;
+import org.openplans.tools.tracking.impl.graph.paths.PathStateBelief;
 import org.openplans.tools.tracking.impl.statistics.DataCube;
 import org.openplans.tools.tracking.impl.statistics.DefaultCountedDataDistribution;
 import org.openplans.tools.tracking.impl.statistics.OnOffEdgeTransDirMulti;
@@ -87,15 +89,6 @@ public class VehicleTrackingPLFilter extends
           Maps.newHashMap();
 
       for (final InferredPath path : instStateTransitions) {
-        /*
-         * XXX: Tmp restriction for strict bootstrap comparison.
-         * We simply make sure that we evaluate only edges with the
-         * same geometry.
-         */
-//        if (!path.isEmptyPath() && !state.getInferredEdge().isEmptyEdge()
-//            && !Iterables.getFirst(path.getEdges(), null)
-//              .getEdge().getGeometry().equalsExact(state.getInferredEdge().getGeometry()))
-//          continue;
       
         if (isDebug)
           evaluatedPaths.add(path);
@@ -211,29 +204,12 @@ public class VehicleTrackingPLFilter extends
           .getFilter().measure(priorPathStateBelief, 
               obs.getProjectedPoint(), posteriorEdge);
 
-      for (final PathEdge edge : posteriorPath.getEdges()) {
-        if (!edge.isEmptyEdge()) {
-          edge.getInferredEdge()
-              .getVelocityEstimator()
-              .update(
-                  edge.getInferredEdge().getVelocityPrecisionDist(),
-                  Math.abs(updatedBelief.getState().getElement(1)));
-
-          final HashMap<String, Integer> attributes =
-              new HashMap<String, Integer>();
-
-          final Integer interval =
-              Math.round(((obs.getTimestamp().getHours() * 60) + obs
-                  .getTimestamp().getMinutes()) / DataCube.INTERVAL);
-
-          attributes.put("interval", interval);
-          attributes.put("edge", edge.getEdge().getEdgeId());
-
-          inferredGraph.getDataCube().store(
-              Math.abs(updatedBelief.getState().getElement(1)),
-              attributes);
-        }
-      }
+      
+      /*
+       * Update edge velocities
+       * TODO should be offline...actually almost all of what follows should be.
+       */
+      posteriorPath.updateEdges(obs, updatedBelief.getStateBelief(), this.inferredGraph);
       
       /*
        * Update edge transition priors.

@@ -12,11 +12,36 @@ import com.google.common.collect.Maps;
 
 public class VehicleStatePerformanceResult {
 
-  private List<UnivariateGaussian.SufficientStatistic> stats;
+  public static class SufficientStatisticRecord {
+
+    final long time;
+    final UnivariateGaussian.SufficientStatistic stat;
+    
+    public SufficientStatisticRecord(long time, UnivariateGaussian.SufficientStatistic stat) {
+      this.time = time;
+      this.stat = stat;
+      
+    }
+    
+    public long getTime() {
+      return time;
+    }
+    
+    public Double getMean() {
+      return stat.getMean();
+    }
+
+    public Double getVariance() {
+      return stat.getVariance();
+    }
+
+  }
+
+  private List<SufficientStatisticRecord> stats;
 
   public List<Map<String, Double>> getResults() {
     final List<Map<String, Double>> result = Lists.newArrayList();
-    for (final UnivariateGaussian.SufficientStatistic stat : stats) {
+    for (final SufficientStatisticRecord stat : stats) {
       final Map<String, Double> resultMap = Maps.newHashMap();
       resultMap.put("mean", stat.getMean());
       resultMap.put("variance", stat.getVariance());
@@ -27,12 +52,12 @@ public class VehicleStatePerformanceResult {
   }
 
   @JsonIgnore
-  public List<UnivariateGaussian.SufficientStatistic> getStats() {
+  public List<SufficientStatisticRecord> getStats() {
     return stats;
   }
 
   public void setStats(
-    List<UnivariateGaussian.SufficientStatistic> stats) {
+    List<SufficientStatisticRecord> stats) {
     this.stats = stats;
   }
 
