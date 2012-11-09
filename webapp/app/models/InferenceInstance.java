@@ -37,7 +37,6 @@ import org.openplans.tools.tracking.impl.statistics.filters.AbstractVehicleTrack
 import org.openplans.tools.tracking.impl.statistics.filters.FilterInformation;
 import org.openplans.tools.tracking.impl.statistics.filters.VehicleTrackingBootstrapFilter;
 import org.openplans.tools.tracking.impl.statistics.filters.VehicleTrackingFilter;
-import org.openplans.tools.tracking.impl.statistics.filters.VehicleTrackingPLFilter;
 import org.openplans.tools.tracking.impl.util.OtpGraph;
 
 import com.google.common.base.Stopwatch;

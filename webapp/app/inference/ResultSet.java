@@ -19,9 +19,9 @@ import org.openplans.tools.tracking.impl.VehicleState;
 import org.openplans.tools.tracking.impl.graph.InferredEdge;
 import org.openplans.tools.tracking.impl.graph.paths.InferredPath;
 import org.openplans.tools.tracking.impl.graph.paths.PathEdge;
-import org.openplans.tools.tracking.impl.statistics.filters.ErrorEstimatingRoadTrackingFilter;
 import org.openplans.tools.tracking.impl.statistics.filters.FilterInformation;
 import org.openplans.tools.tracking.impl.statistics.filters.VehicleTrackingFilter;
+import org.openplans.tools.tracking.impl.statistics.filters.road_tracking.ErrorEstimatingRoadTrackingFilter;
 import org.openplans.tools.tracking.impl.util.GeoUtils;
 import org.opentripplanner.routing.graph.Edge;
 

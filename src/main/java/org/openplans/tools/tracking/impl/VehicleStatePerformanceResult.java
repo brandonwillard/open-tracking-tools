@@ -16,19 +16,20 @@ public class VehicleStatePerformanceResult {
 
     final long time;
     final UnivariateGaussian.SufficientStatistic stat;
-    
-    public SufficientStatisticRecord(long time, UnivariateGaussian.SufficientStatistic stat) {
+
+    public SufficientStatisticRecord(long time,
+      UnivariateGaussian.SufficientStatistic stat) {
       this.time = time;
       this.stat = stat;
-      
+
     }
-    
-    public long getTime() {
-      return time;
-    }
-    
+
     public Double getMean() {
       return stat.getMean();
+    }
+
+    public long getTime() {
+      return time;
     }
 
     public Double getVariance() {
@@ -56,8 +57,7 @@ public class VehicleStatePerformanceResult {
     return stats;
   }
 
-  public void setStats(
-    List<SufficientStatisticRecord> stats) {
+  public void setStats(List<SufficientStatisticRecord> stats) {
     this.stats = stats;
   }
 

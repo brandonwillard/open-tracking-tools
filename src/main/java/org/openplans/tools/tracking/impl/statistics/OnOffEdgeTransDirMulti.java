@@ -6,7 +6,6 @@ import gov.sandia.cognition.math.matrix.mtj.DenseVector;
 import gov.sandia.cognition.statistics.bayesian.conjugate.MultinomialBayesianEstimator;
 import gov.sandia.cognition.statistics.distribution.DirichletDistribution;
 import gov.sandia.cognition.statistics.distribution.MultinomialDistribution;
-import gov.sandia.cognition.statistics.distribution.MultivariatePolyaDistribution;
 import gov.sandia.cognition.util.AbstractCloneableSerializable;
 
 import java.util.List;
@@ -249,9 +248,9 @@ public class OnOffEdgeTransDirMulti extends
   }
 
   public double logEvaluate(InferredEdge from, InferredEdge to) {
-    
+
     if (from == null) {
-      
+
       /*
        * This model assumes uniform priors over edges
        * TODO FIXME: as an interface/design force specifying the priors
@@ -269,21 +268,21 @@ public class OnOffEdgeTransDirMulti extends
     }
   }
 
-//  public double predictiveLogLikelihood(InferredEdge from,
-//    InferredEdge to) {
-//    final Vector state = getTransitionType(from, to);
-//    if (from.isEmptyEdge()) {
-//      final MultivariatePolyaDistribution predDist =
-//          freeMotionTransEstimator
-//              .createPredictiveDistribution(getFreeMotionTransProbPrior());
-//      return predDist.getProbabilityFunction().logEvaluate(state);
-//    } else {
-//      final MultivariatePolyaDistribution predDist =
-//          edgeMotionTransEstimator
-//              .createPredictiveDistribution(getEdgeMotionTransProbPrior());
-//      return predDist.getProbabilityFunction().logEvaluate(state);
-//    }
-//  }
+  //  public double predictiveLogLikelihood(InferredEdge from,
+  //    InferredEdge to) {
+  //    final Vector state = getTransitionType(from, to);
+  //    if (from.isEmptyEdge()) {
+  //      final MultivariatePolyaDistribution predDist =
+  //          freeMotionTransEstimator
+  //              .createPredictiveDistribution(getFreeMotionTransProbPrior());
+  //      return predDist.getProbabilityFunction().logEvaluate(state);
+  //    } else {
+  //      final MultivariatePolyaDistribution predDist =
+  //          edgeMotionTransEstimator
+  //              .createPredictiveDistribution(getEdgeMotionTransProbPrior());
+  //      return predDist.getProbabilityFunction().logEvaluate(state);
+  //    }
+  //  }
 
   public InferredEdge sample(Random rng,
     List<InferredEdge> transferEdges, InferredEdge currentEdge) {
@@ -303,7 +302,8 @@ public class OnOffEdgeTransDirMulti extends
             this.getFreeMotionTransPrior().sample(rng);
 
         if (sample.equals(stateOffToOn)) {
-          List<InferredEdge> support = Lists.newArrayList(transferEdges); 
+          final List<InferredEdge> support =
+              Lists.newArrayList(transferEdges);
           support.remove(InferredEdge.getEmptyEdge());
           return support.get(rng.nextInt(support.size()));
         } else {
@@ -317,13 +317,15 @@ public class OnOffEdgeTransDirMulti extends
        * If the empty edge is contained in the support (transferEdges)
        * then we sample for that.
        */
-      final Vector sample = transferEdges.contains(InferredEdge.getEmptyEdge()) ?
-          this.getEdgeMotionTransPrior().sample(rng) : stateOnToOn;
+      final Vector sample =
+          transferEdges.contains(InferredEdge.getEmptyEdge()) ? this
+              .getEdgeMotionTransPrior().sample(rng) : stateOnToOn;
 
       if (sample.equals(stateOnToOff) || transferEdges.isEmpty()) {
         return InferredEdge.getEmptyEdge();
       } else {
-        final List<InferredEdge> support = Lists.newArrayList(transferEdges); 
+        final List<InferredEdge> support =
+            Lists.newArrayList(transferEdges);
         support.remove(InferredEdge.getEmptyEdge());
         return support.get(rng.nextInt(support.size()));
       }
@@ -365,11 +367,13 @@ public class OnOffEdgeTransDirMulti extends
     if (from.isEmptyEdge()) {
       freeMotionTransEstimator.update(getFreeMotionTransProbPrior(),
           transType);
-      freeMotionTransPrior.setParameters(freeMotionTransProbPrior.getMean());
+      freeMotionTransPrior.setParameters(freeMotionTransProbPrior
+          .getMean());
     } else {
       edgeMotionTransEstimator.update(getEdgeMotionTransProbPrior(),
           transType);
-      edgeMotionTransPrior.setParameters(edgeMotionTransProbPrior.getMean());
+      edgeMotionTransPrior.setParameters(edgeMotionTransProbPrior
+          .getMean());
     }
   }
 

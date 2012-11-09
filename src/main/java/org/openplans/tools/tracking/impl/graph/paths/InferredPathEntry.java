@@ -1,13 +1,11 @@
 package org.openplans.tools.tracking.impl.graph.paths;
 
-import gov.sandia.cognition.util.Pair;
-
 import java.util.List;
 import java.util.Map;
 
 import org.openplans.tools.tracking.impl.WrappedWeightedValue;
 import org.openplans.tools.tracking.impl.graph.paths.InferredPath.EdgePredictiveResults;
-import org.openplans.tools.tracking.impl.statistics.filters.AbstractRoadTrackingFilter;
+import org.openplans.tools.tracking.impl.statistics.filters.road_tracking.AbstractRoadTrackingFilter;
 
 import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
@@ -29,8 +27,7 @@ public class InferredPathEntry implements
 
   private final List<WrappedWeightedValue<PathEdge>> weightedPathEdges;
 
-  public InferredPathEntry(
-    InferredPath path,
+  public InferredPathEntry(InferredPath path,
     Map<PathEdge, EdgePredictiveResults> edgeToPreBeliefAndLogLik,
     AbstractRoadTrackingFilter filter,
     List<WrappedWeightedValue<PathEdge>> weightedPathEdges,

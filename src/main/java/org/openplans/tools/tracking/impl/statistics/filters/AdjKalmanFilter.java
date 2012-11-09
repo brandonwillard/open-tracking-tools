@@ -1,7 +1,5 @@
 package org.openplans.tools.tracking.impl.statistics.filters;
 
-import org.openplans.tools.tracking.impl.statistics.StatisticsUtil;
-
 import gov.sandia.cognition.math.matrix.Matrix;
 import gov.sandia.cognition.math.matrix.MatrixFactory;
 import gov.sandia.cognition.math.matrix.Vector;
@@ -13,10 +11,11 @@ import gov.sandia.cognition.math.signals.LinearDynamicalSystem;
 import gov.sandia.cognition.statistics.bayesian.AbstractKalmanFilter;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 import gov.sandia.cognition.util.ObjectUtil;
-import no.uib.cipr.matrix.DenseCholesky;
 import no.uib.cipr.matrix.DenseMatrix;
 import no.uib.cipr.matrix.DenseVector;
 import no.uib.cipr.matrix.UpperSPDDenseMatrix;
+
+import org.openplans.tools.tracking.impl.statistics.StatisticsUtil;
 
 /**
  * This is an improved (computationally) filter based on the Sandia KalmanFilter
@@ -98,6 +97,29 @@ public class AdjKalmanFilter extends AbstractKalmanFilter {
         this.getModelCovariance());
   }
 
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj) {
+      return true;
+    }
+    if (obj == null) {
+      return false;
+    }
+    if (getClass() != obj.getClass()) {
+      return false;
+    }
+    final AdjKalmanFilter other = (AdjKalmanFilter) obj;
+    if (model == null) {
+      if (other.model != null) {
+        return false;
+      }
+    } else if (!StatisticsUtil.vectorEquals(model.convertToVector(),
+        other.model.convertToVector())) {
+      return false;
+    }
+    return true;
+  }
+
   /**
    * Getter for model
    * 
@@ -105,6 +127,18 @@ public class AdjKalmanFilter extends AbstractKalmanFilter {
    */
   public LinearDynamicalSystem getModel() {
     return this.model;
+  }
+
+  @Override
+  public int hashCode() {
+    final int prime = 31;
+    int result = super.hashCode();
+    result =
+        prime
+            * result
+            + ((model == null) ? 0 : StatisticsUtil
+                .hashCodeVector(model.convertToVector()));
+    return result;
   }
 
   @Override
@@ -169,7 +203,8 @@ public class AdjKalmanFilter extends AbstractKalmanFilter {
     final Matrix CC = R.minus(AtQtA);
     final Vector m = a.plus(Ate);
 
-    assert StatisticsUtil.isPosSemiDefinite((gov.sandia.cognition.math.matrix.mtj.DenseMatrix)CC);
+    assert StatisticsUtil
+        .isPosSemiDefinite((gov.sandia.cognition.math.matrix.mtj.DenseMatrix) CC);
 
     belief.setCovariance(CC);
     belief.setMean(m);
@@ -190,7 +225,8 @@ public class AdjKalmanFilter extends AbstractKalmanFilter {
     // Load the updated belief
     belief.setMean(xpred);
 
-    assert StatisticsUtil.isPosSemiDefinite((gov.sandia.cognition.math.matrix.mtj.DenseMatrix)P);
+    assert StatisticsUtil
+        .isPosSemiDefinite((gov.sandia.cognition.math.matrix.mtj.DenseMatrix) P);
 
     belief.setCovariance(P);
 
@@ -204,38 +240,6 @@ public class AdjKalmanFilter extends AbstractKalmanFilter {
    */
   public void setModel(LinearDynamicalSystem model) {
     this.model = model;
-  }
-
-  @Override
-  public int hashCode() {
-    final int prime = 31;
-    int result = super.hashCode();
-    result =
-        prime * result + ((model == null) ? 0 : StatisticsUtil.hashCodeVector(model.convertToVector()));
-    return result;
-  }
-
-  @Override
-  public boolean equals(Object obj) {
-    if (this == obj) {
-      return true;
-    }
-    if (obj == null) {
-      return false;
-    }
-    if (getClass() != obj.getClass()) {
-      return false;
-    }
-    AdjKalmanFilter other = (AdjKalmanFilter) obj;
-    if (model == null) {
-      if (other.model != null) {
-        return false;
-      }
-    } else if (!StatisticsUtil.vectorEquals(model.convertToVector(), 
-        other.model.convertToVector())) {
-      return false;
-    }
-    return true;
   }
 
 }

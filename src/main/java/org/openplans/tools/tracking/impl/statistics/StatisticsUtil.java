@@ -1,6 +1,5 @@
 package org.openplans.tools.tracking.impl.statistics;
 
-import gov.sandia.cognition.math.ComplexNumber;
 import gov.sandia.cognition.math.LogMath;
 import gov.sandia.cognition.math.matrix.Matrix;
 import gov.sandia.cognition.math.matrix.MatrixFactory;
@@ -20,8 +19,6 @@ import gov.sandia.cognition.util.Weighted;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Random;
 
 import no.uib.cipr.matrix.DenseCholesky;
@@ -30,13 +27,13 @@ import no.uib.cipr.matrix.NotConvergedException;
 import no.uib.cipr.matrix.SymmDenseEVD;
 import no.uib.cipr.matrix.UpperSPDDenseMatrix;
 import no.uib.cipr.matrix.UpperSymmDenseMatrix;
+
 import org.openplans.tools.tracking.impl.WrappedWeightedValue;
 
 import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.HashMultiset;
 import com.google.common.collect.Iterables;
-import com.google.common.collect.Lists;
 import com.google.common.collect.Multiset;
 import com.google.common.primitives.Doubles;
 
@@ -89,6 +86,51 @@ public class StatisticsUtil {
     }
 
     return d4;
+  }
+
+  /**
+   * Returns, for A, an R s.t. R^T * R = A
+   * 
+   * @param matrix
+   * @return
+   */
+  public static Matrix getCholR(Matrix matrix) {
+    final DenseCholesky cholesky =
+        DenseCholesky.factorize(DenseMatrixFactoryMTJ.INSTANCE
+            .copyMatrix(matrix).getInternalMatrix());
+
+    final Matrix covSqrt =
+        DenseMatrixFactoryMTJ.INSTANCE
+            .createWrapper(new no.uib.cipr.matrix.DenseMatrix(
+                cholesky.getU()));
+
+    assert covSqrt.transpose().times(covSqrt).equals(matrix, 1e-4);
+
+    return covSqrt;
+  }
+
+  /**
+   * Returns a ~99% confidence interval/credibility region by using the largest
+   * eigen value for a normal covariance.
+   * 
+   * @param covar
+   * @return
+   */
+  public static double getLargeNormalCovRadius(DenseMatrix covar) {
+    try {
+      final no.uib.cipr.matrix.Matrix covarMtj =
+          DenseMatrixFactoryMTJ.INSTANCE.copyMatrix(covar)
+              .getInternalMatrix();
+      final SymmDenseEVD evd =
+          new SymmDenseEVD(covarMtj.numRows(), true, false)
+              .factor(new UpperSymmDenseMatrix(covarMtj));
+      final Double largestEigenval =
+          Iterables.getLast(Doubles.asList(evd.getEigenvalues()));
+      final double varDistance = 2.32d * Math.sqrt(largestEigenval);
+      return varDistance;
+    } catch (final NotConvergedException e) {
+      return Double.NaN;
+    }
   }
 
   public static <SupportType extends Comparable<SupportType>>
@@ -152,6 +194,16 @@ public class StatisticsUtil {
               .getArray());
     else
       return vec.hashCode();
+  }
+
+  public static boolean isPosSemiDefinite(DenseMatrix covar) {
+    try {
+      DenseCholesky.factorize(DenseMatrixFactoryMTJ.INSTANCE
+          .copyMatrix(covar).getInternalMatrix());
+    } catch (final IllegalArgumentException ex) {
+      return false;
+    }
+    return true;
   }
 
   /**
@@ -409,6 +461,25 @@ public class StatisticsUtil {
 
   }
 
+  public static Matrix rootOfSemiDefinite(Matrix matrix) {
+    final SingularValueDecompositionMTJ svd =
+        SingularValueDecompositionMTJ.create(matrix);
+    final int effRank = svd.effectiveRank(1e-5);
+    final DiagonalMatrixMTJ roots =
+        DiagonalMatrixFactoryMTJ.INSTANCE.createMatrix(matrix
+            .getNumColumns());
+    for (int i = 0; i < effRank; i++) {
+      roots.setElement(i, Math.sqrt(svd.getS().getElement(i, i)));
+    }
+
+    //    Preconditions.checkState(effVt.equals(svd.getVtranspose().getSubMatrix(
+    //        0, effRank - 1,
+    //        0, svd.getVtranspose().getNumColumns() - 1), 1e-6));
+
+    final Matrix result = svd.getU().times(roots);
+    return result;
+  }
+
   public static Matrix sampleInvWishart(
     InverseWishartDistribution invWish, Random rng) {
     final int p = invWish.getInverseScale().getNumRows();
@@ -458,69 +529,5 @@ public class StatisticsUtil {
               .getArray());
     else
       return Objects.equal(vec1, vec2);
-  }
-
-  /**
-   * Returns a ~99% confidence interval/credibility region by using
-   * the largest eigen value for a normal covariance.
-   * @param covar
-   * @return
-   */
-  public static double getLargeNormalCovRadius(DenseMatrix covar) {
-    try {
-      no.uib.cipr.matrix.Matrix covarMtj = DenseMatrixFactoryMTJ.INSTANCE.copyMatrix(covar).getInternalMatrix();
-      SymmDenseEVD evd = 
-         new SymmDenseEVD(covarMtj.numRows(), true, false)
-                .factor(new UpperSymmDenseMatrix(covarMtj));
-      final Double largestEigenval = Iterables.getLast(Doubles.asList(evd.getEigenvalues()));
-      final double varDistance =
-          2.32d * Math.sqrt(largestEigenval);
-      return varDistance;
-    } catch (NotConvergedException e) {
-      return Double.NaN;
-    }
-  }
-  
-  public static boolean isPosSemiDefinite(DenseMatrix covar) {
-    try {
-      DenseCholesky cholesky = DenseCholesky.factorize( 
-          DenseMatrixFactoryMTJ.INSTANCE.copyMatrix(covar).getInternalMatrix());
-    } catch(IllegalArgumentException ex) {
-      return false;
-    }
-    return true;
-  }
-  
-  public static Matrix rootOfSemiDefinite(Matrix matrix) {
-    SingularValueDecompositionMTJ svd = SingularValueDecompositionMTJ.create(matrix);
-    final int effRank = svd.effectiveRank(1e-5);
-    DiagonalMatrixMTJ roots = DiagonalMatrixFactoryMTJ.INSTANCE.createMatrix(matrix.getNumColumns());
-    for (int i = 0; i < effRank; i++) {
-      roots.setElement(i, Math.sqrt(svd.getS().getElement(i, i)));
-    }
-    
-//    Preconditions.checkState(effVt.equals(svd.getVtranspose().getSubMatrix(
-//        0, effRank - 1,
-//        0, svd.getVtranspose().getNumColumns() - 1), 1e-6));
-       
-    final Matrix result = svd.getU().times(roots);
-    return result;
-  }
-  
-  /**
-   * Returns, for A, an R s.t. R^T * R = A 
-   * @param matrix
-   * @return
-   */
-  public static Matrix getCholR(Matrix matrix) {
-    DenseCholesky cholesky = DenseCholesky.factorize( 
-        DenseMatrixFactoryMTJ.INSTANCE.copyMatrix(matrix).getInternalMatrix() );
-    
-    final Matrix covSqrt = DenseMatrixFactoryMTJ.INSTANCE.createWrapper( 
-            new no.uib.cipr.matrix.DenseMatrix( cholesky.getU() ) );
-    
-    assert covSqrt.transpose().times(covSqrt).equals(matrix, 1e-4);
-    
-    return covSqrt;
   }
 }

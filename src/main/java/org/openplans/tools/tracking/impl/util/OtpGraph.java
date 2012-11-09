@@ -22,7 +22,7 @@ import org.openplans.tools.tracking.impl.graph.paths.PathEdge;
 import org.openplans.tools.tracking.impl.graph.paths.algorithms.MultiDestinationAStar;
 import org.openplans.tools.tracking.impl.statistics.DataCube;
 import org.openplans.tools.tracking.impl.statistics.StatisticsUtil;
-import org.openplans.tools.tracking.impl.statistics.filters.AbstractRoadTrackingFilter;
+import org.openplans.tools.tracking.impl.statistics.filters.road_tracking.AbstractRoadTrackingFilter;
 import org.opentripplanner.routing.core.RoutingRequest;
 import org.opentripplanner.routing.core.TraverseMode;
 import org.opentripplanner.routing.core.TraverseModeSet;
@@ -228,21 +228,21 @@ public class OtpGraph {
    * observation when snapping (for path search destination edges)
    */
   private static final double MAX_OBS_SNAP_RADIUS = 200d;
-  
+
   /*
    * Maximum radius we're willing to search around a given
    * state when snapping (for path search off -> on-road edges)
    */
   private static final double MAX_STATE_SNAP_RADIUS = 350d;
-  
+
   private final STRtree turnEdgeIndex = new STRtree();
   private final STRtree baseEdgeIndex = new STRtree();
 
   private final STRtree turnVertexIndex = new STRtree();
-  private final Multimap<Geometry, Edge> geomBaseEdgeMap = HashMultimap
-      .create();
-  private final Multimap<Geometry, Edge> geomTurnEdgeMap = HashMultimap
-      .create();
+  private final Multimap<Geometry, Edge> geomBaseEdgeMap =
+      HashMultimap.create();
+  private final Multimap<Geometry, Edge> geomTurnEdgeMap =
+      HashMultimap.create();
 
   private final Map<VertexPair, InferredEdge> edgeToInfo = Maps
       .newConcurrentMap();
@@ -274,14 +274,16 @@ public class OtpGraph {
 
     turnGraph = gs.getGraph();
     if (turnGraph == null) {
-      throw new RuntimeException("Could not load graph (path=" + path + ")");
-    } 
-    
+      throw new RuntimeException("Could not load graph (path=" + path
+          + ")");
+    }
+
     baseGraph = turnGraph.getService(BaseGraph.class).getBaseGraph();
 
     baseIndexService = new StreetVertexIndexServiceImpl(baseGraph);
     createIndices(baseGraph, baseEdgeIndex, null, geomBaseEdgeMap);
-    createIndices(turnGraph, turnEdgeIndex, turnVertexIndex, geomTurnEdgeMap);
+    createIndices(turnGraph, turnEdgeIndex, turnVertexIndex,
+        geomTurnEdgeMap);
 
     if (dcPath == null)
       dc = new DataCube();
@@ -298,7 +300,7 @@ public class OtpGraph {
      * whatever else we can find.
      */
     final VehicleState currentState = key.getState();
-    final InferredEdge currentEdge = currentState.getInferredEdge();
+    final InferredEdge currentEdge = currentState.getBelief().getEdge().getInferredEdge();
 
     final Coordinate toCoord = key.getEndCoord();
 
@@ -315,19 +317,22 @@ public class OtpGraph {
        * current edge and the reverse.
        * XXX This violates all directionality and graph structure.
        */
-      final Collection<Edge> turnEdges = geomTurnEdgeMap.get(
-          edge.getTurnVertex().geometry);
+      final Collection<Edge> turnEdges =
+          geomTurnEdgeMap.get(edge.getTurnVertex().geometry);
       startEdges.addAll(turnEdges);
     } else {
-      
-      final MultivariateGaussian obsBelief = currentState.getMovementFilter().getObservationBelief(currentState.getBelief(), 
-          PathEdge.getEdge(currentEdge, 0, currentState.getPath().getIsBackward()));
-      
-      final double beliefDistance = Math.min(StatisticsUtil.getLargeNormalCovRadius(
-          (DenseMatrix)obsBelief.getCovariance()), MAX_STATE_SNAP_RADIUS);
-      
+
+      final MultivariateGaussian obsBelief =
+          currentState.getMovementFilter().getObservationBelief(currentState.getBelief());
+
+      final double beliefDistance =
+          Math.min(StatisticsUtil
+              .getLargeNormalCovRadius((DenseMatrix) obsBelief
+                  .getCovariance()), MAX_STATE_SNAP_RADIUS);
+
       final Coordinate fromCoord = key.getStartCoord();
-      for (final Object obj : getNearbyEdges(fromCoord, beliefDistance)) {
+      for (final Object obj : getNearbyEdges(fromCoord,
+          beliefDistance)) {
         final PlainStreetEdgeWithOSMData edge =
             (PlainStreetEdgeWithOSMData) obj;
         startEdges.addAll(edge.getTurnVertex().getOutgoing());
@@ -336,20 +341,22 @@ public class OtpGraph {
 
     final Set<Edge> endEdges = Sets.newHashSet();
 
-    final double obsStdDevDistance = Math.min(StatisticsUtil.getLargeNormalCovRadius(
-        (DenseMatrix) currentState.getMovementFilter()
-            .getObsCovar()), MAX_OBS_SNAP_RADIUS);
+    final double obsStdDevDistance =
+        Math.min(StatisticsUtil
+            .getLargeNormalCovRadius((DenseMatrix) currentState
+                .getMovementFilter().getObsCovar()),
+            MAX_OBS_SNAP_RADIUS);
 
     double maxEndEdgeLength = Double.NEGATIVE_INFINITY;
     for (final Object obj : getNearbyEdges(toCoord, obsStdDevDistance)) {
-      
+
       final PlainStreetEdgeWithOSMData edge =
           (PlainStreetEdgeWithOSMData) obj;
       if (edge.getLength() > maxEndEdgeLength)
         maxEndEdgeLength = edge.getLength();
-      
-      final Collection<Edge> turnEdges = geomTurnEdgeMap.get(
-          edge.getTurnVertex().geometry);
+
+      final Collection<Edge> turnEdges =
+          geomTurnEdgeMap.get(edge.getTurnVertex().geometry);
       endEdges.addAll(turnEdges);
     }
 
@@ -362,7 +369,8 @@ public class OtpGraph {
      */
     final double timeDiff =
         currentState.getMovementFilter().getCurrentTimeDiff();
-    final double edgeLength = currentEdge.isEmptyEdge() ? 0d : currentEdge.getLength();
+    final double edgeLength =
+        currentEdge.isEmptyEdge() ? 0d : currentEdge.getLength();
     final double distanceMax =
         Math.max(
             MAX_DISTANCE_SPEED * timeDiff,
@@ -433,7 +441,8 @@ public class OtpGraph {
     double pathDist = 0d;
     final List<PathEdge> path = Lists.newArrayList();
     if (gpath.edges.isEmpty()) {
-      path.add(PathEdge.getEdge(this.getInferredEdge(startEdge), 0d, isReverse));
+      path.add(PathEdge.getEdge(this.getInferredEdge(startEdge), 0d,
+          isReverse));
     } else {
       for (final Edge edge : isReverse ? Lists.reverse(gpath.edges)
           : gpath.edges) {
@@ -470,7 +479,7 @@ public class OtpGraph {
             // what's happening here?
             geomEdgeMap.put(geometry.reverse(), e);
           }
-          
+
           if (graph.getIdForEdge(e) != null) {
             final Envelope envelope = geometry.getEnvelopeInternal();
             edgeIndex.insert(envelope, e);
@@ -513,16 +522,6 @@ public class OtpGraph {
     return edgeInfo;
   }
 
-  public Set<InferredEdge> getTopoEquivEdges(InferredEdge edge) {
-    final Collection<Edge> baseEdges = geomBaseEdgeMap.get(
-        edge.getGeometry());
-    Set<InferredEdge> results = Sets.newHashSet();
-    for (Edge bEdge : baseEdges) {
-      results.add(this.getInferredEdge(bEdge));
-    }
-    return results;
-  }
-  
   public GraphServiceImpl getGs() {
     return gs;
   }
@@ -565,8 +564,8 @@ public class OtpGraph {
     final Set<StreetEdge> streetEdges = Sets.newHashSet();
     for (final Object obj : baseEdgeIndex.query(toEnv)) {
       if (((StreetEdge) obj).canTraverse(defaultOptions)
-//          && defaultOptions.getModes().contains(((StreetEdge) obj).getMode())
-          )
+      //          && defaultOptions.getModes().contains(((StreetEdge) obj).getMode())
+      )
         streetEdges.add((StreetEdge) obj);
     }
     return streetEdges;
@@ -582,17 +581,19 @@ public class OtpGraph {
         new Envelope(
             GeoUtils.makeCoordinate(AbstractRoadTrackingFilter
                 .getOg().times(initialBelief.getMean())));
-    final double varDistance = StatisticsUtil.getLargeNormalCovRadius(
-        (DenseMatrix) trackingFilter.getObsCovar());
-    
+    final double varDistance =
+        StatisticsUtil
+            .getLargeNormalCovRadius((DenseMatrix) trackingFilter
+                .getObsCovar());
+
     toEnv.expandBy(varDistance);
 
     final List<StreetEdge> streetEdges = Lists.newArrayList();
     for (final Object obj : baseEdgeIndex.query(toEnv)) {
       final Edge edge = (Edge) obj;
       if (((StreetEdge) edge).canTraverse(defaultOptions)
-//          && defaultOptions.getModes().contains(((StreetEdge) edge).getMode())
-          )
+      //          && defaultOptions.getModes().contains(((StreetEdge) edge).getMode())
+      )
         streetEdges.add((StreetEdge) edge);
     }
     return streetEdges;
@@ -612,8 +613,8 @@ public class OtpGraph {
     Preconditions.checkNotNull(fromState);
 
     final Coordinate fromCoord;
-    if (!fromState.getInferredEdge().isEmptyEdge()) {
-      fromCoord = fromState.getInferredEdge().getCenterPointCoord();
+    if (!fromState.getBelief().getEdge().getInferredEdge().isEmptyEdge()) {
+      fromCoord = fromState.getBelief().getEdge().getInferredEdge().getCenterPointCoord();
     } else {
       final Vector meanLocation = fromState.getMeanLocation();
       fromCoord =
@@ -628,6 +629,20 @@ public class OtpGraph {
     paths.addAll(pathsCache.getUnchecked(startEndEntry));
     //    paths.addAll(computeUniquePaths(startEndEntry));
     return paths;
+  }
+
+  public Set<InferredEdge> getTopoEquivEdges(InferredEdge edge) {
+    final Collection<Edge> baseEdges =
+        geomBaseEdgeMap.get(edge.getGeometry());
+    final Set<InferredEdge> results = Sets.newHashSet();
+    for (final Edge bEdge : baseEdges) {
+      results.add(this.getInferredEdge(bEdge));
+    }
+    return results;
+  }
+
+  public Graph getTurnGraph() {
+    return turnGraph;
   }
 
   private PathEdge getValidPathEdge(Edge originalEdge,
@@ -689,8 +704,8 @@ public class OtpGraph {
     for (final Edge out : edges) {
       if ((out instanceof StreetEdge)
           && ((StreetEdge) out).canTraverse(defaultOptions)
-//          && defaultOptions.getModes().contains(out.getMode())
-          ) {
+      //          && defaultOptions.getModes().contains(out.getMode())
+      ) {
         result.add(out);
       }
     }
@@ -741,10 +756,6 @@ public class OtpGraph {
       }
     }
     paths.removeAll(toRemove);
-  }
-
-  public Graph getTurnGraph() {
-    return turnGraph;
   }
 
 }

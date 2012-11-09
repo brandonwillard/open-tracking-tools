@@ -27,11 +27,11 @@ import org.openplans.tools.tracking.impl.VehicleState.VehicleStateInitialParamet
 import org.openplans.tools.tracking.impl.VehicleStatePerformanceResult;
 import org.openplans.tools.tracking.impl.VehicleStatePerformanceResult.SufficientStatisticRecord;
 import org.openplans.tools.tracking.impl.statistics.filters.AbstractVehicleTrackingFilter;
-import org.openplans.tools.tracking.impl.statistics.filters.ErrorEstimatingRoadTrackingFilter;
-import org.openplans.tools.tracking.impl.statistics.filters.VTErrorEstimatingPLFilter;
 import org.openplans.tools.tracking.impl.statistics.filters.VehicleTrackingBootstrapFilter;
 import org.openplans.tools.tracking.impl.statistics.filters.VehicleTrackingFilter;
-import org.openplans.tools.tracking.impl.statistics.filters.VehicleTrackingPLFilter;
+import org.openplans.tools.tracking.impl.statistics.filters.particle_learning.VTErrorEstimatingPLFilter;
+import org.openplans.tools.tracking.impl.statistics.filters.particle_learning.VehicleTrackingPLFilter;
+import org.openplans.tools.tracking.impl.statistics.filters.road_tracking.ErrorEstimatingRoadTrackingFilter;
 
 import play.Logger;
 import play.mvc.Controller;

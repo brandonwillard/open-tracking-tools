@@ -13,7 +13,7 @@ import models.InferenceInstance;
 import org.openplans.tools.tracking.impl.Observation;
 import org.openplans.tools.tracking.impl.VehicleState.VehicleStateInitialParameters;
 import org.openplans.tools.tracking.impl.statistics.filters.AbstractVehicleTrackingFilter;
-import org.openplans.tools.tracking.impl.statistics.filters.VehicleTrackingPLFilter;
+import org.openplans.tools.tracking.impl.statistics.filters.particle_learning.VehicleTrackingPLFilter;
 
 import play.Logger;
 import akka.actor.UntypedActor;
@@ -60,10 +60,10 @@ public class InferenceService extends UntypedActor {
           VectorFactory.getDefault().createVector2D(100d, 100d), 20,
           VectorFactory.getDefault().createVector2D(0.000625, 0.000625), 20,
           VectorFactory.getDefault().createVector2D(0.000625, 0.000625), 20,
-          VectorFactory.getDefault().createVector2D(0.05d, 1d),
-          VectorFactory.getDefault().createVector2D(1d, 0.05d), 
+          VectorFactory.getDefault().createVector2D(5d, 95d),
+          VectorFactory.getDefault().createVector2D(95d, 5d), 
           VehicleTrackingPLFilter.class.getName(),
-          50, 30, 0l);
+          25, 30, 0l);
 
   static public final int THREAD_COUNT;
 

@@ -216,7 +216,7 @@ public class Api extends Controller {
         continue;
       for (final VehicleState state : record.getPostDistribution()
           .getDomain()) {
-        if (state.getInferredEdge().getEdgeId().equals(edgeId))
+        if (state.getBelief().getEdge().getInferredEdge().getEdgeId().equals(edgeId))
           observations.add(state.getObservation().getObsPoint());
       }
     }
@@ -384,7 +384,7 @@ public class Api extends Controller {
         .getPostDistribution().entrySet()) {
       final Map<String, Object> thisMap = Maps.newHashMap();
       thisMap.put("weight", stateEntry.getValue());
-      thisMap.put("edgeId", stateEntry.getKey().getInferredEdge()
+      thisMap.put("edgeId", stateEntry.getKey().getBelief().getEdge().getInferredEdge()
           .getEdgeId());
       thisMap.put("meanLoc", GeoUtils.getCoordinates(stateEntry
           .getKey().getMeanLocation()));

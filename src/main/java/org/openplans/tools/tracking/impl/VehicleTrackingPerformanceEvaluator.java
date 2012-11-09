@@ -6,7 +6,6 @@ import gov.sandia.cognition.learning.data.TargetEstimatePair;
 import gov.sandia.cognition.learning.performance.SupervisedPerformanceEvaluator;
 import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.statistics.DataDistribution;
-import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 import gov.sandia.cognition.statistics.distribution.UnivariateGaussian;
 import gov.sandia.cognition.util.AbstractCloneableSerializable;
 
@@ -15,10 +14,9 @@ import java.util.List;
 
 import org.openplans.tools.tracking.impl.VehicleStatePerformanceResult.SufficientStatisticRecord;
 import org.openplans.tools.tracking.impl.graph.paths.PathEdge;
-import org.openplans.tools.tracking.impl.statistics.filters.AbstractRoadTrackingFilter;
+import org.openplans.tools.tracking.impl.statistics.filters.road_tracking.AbstractRoadTrackingFilter;
 
 import com.google.common.collect.Lists;
-import com.google.common.primitives.Longs;
 
 public class VehicleTrackingPerformanceEvaluator extends
     AbstractCloneableSerializable
@@ -47,30 +45,32 @@ public class VehicleTrackingPerformanceEvaluator extends
       final UnivariateGaussian.SufficientStatistic stat =
           new UnivariateGaussian.SufficientStatistic();
 
-      final Vector targetBeliefMean = AbstractRoadTrackingFilter
-          .convertToGroundState(pair.getTarget().getBelief().getMean(), 
-              PathEdge.getEdge(pair.getTarget().getInferredEdge(), 
-                  0d, pair.getTarget().getPath().getIsBackward()), 
-                  true);
+      final Vector targetBeliefMean =
+          AbstractRoadTrackingFilter.convertToGroundState(pair
+              .getTarget().getBelief().getMean(), PathEdge.getEdge(
+              pair.getTarget().getInferredEdge(), 0d, pair
+                  .getTarget().getPath().getIsBackward()), true);
 
       for (final VehicleState estimate : pair.getEstimate()
           .getDomain()) {
 
-        final Vector estimateBeliefMean = AbstractRoadTrackingFilter.convertToGroundState(
-            estimate.getBelief().getMean(),
-            PathEdge.getEdge(estimate.getInferredEdge(), 0d, estimate.getPath().getIsBackward()), true);
+        final Vector estimateBeliefMean =
+            AbstractRoadTrackingFilter.convertToGroundState(estimate
+                .getBelief().getMean(), PathEdge.getEdge(estimate
+                .getInferredEdge(), 0d, estimate.getPath()
+                .getIsBackward()), true);
 
         final double se =
-            pair.getEstimate().getProbabilityFunction().evaluate(estimate) *
-            targetBeliefMean.euclideanDistanceSquared(
-                estimateBeliefMean);
+            pair.getEstimate().getProbabilityFunction()
+                .evaluate(estimate)
+                * targetBeliefMean
+                    .euclideanDistanceSquared(estimateBeliefMean);
         stat.update(se);
       }
-      
-      
-      final SufficientStatisticRecord statRecord = new SufficientStatisticRecord(
-          pair.getFirst().getObservation().getTimestamp().getTime(),
-          stat);
+
+      final SufficientStatisticRecord statRecord =
+          new SufficientStatisticRecord(pair.getFirst()
+              .getObservation().getTimestamp().getTime(), stat);
       stats.add(statRecord);
     }
 

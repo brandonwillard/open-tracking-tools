@@ -12,7 +12,6 @@ import org.openplans.tools.tracking.impl.VehicleState;
 import org.openplans.tools.tracking.impl.VehicleState.VehicleStateInitialParameters;
 import org.openplans.tools.tracking.impl.WrappedWeightedValue;
 import org.openplans.tools.tracking.impl.graph.paths.InferredPath;
-import org.openplans.tools.tracking.impl.graph.paths.PathEdge;
 import org.openplans.tools.tracking.impl.statistics.DefaultCountedDataDistribution;
 import org.openplans.tools.tracking.impl.statistics.StatisticsUtil;
 import org.openplans.tools.tracking.impl.util.OtpGraph;
@@ -68,12 +67,13 @@ public class VehicleTrackingBootstrapFilter extends
          * Previous particle weight times new state likelihood
          */
         final double totalLogLik =
-            target.getProbabilityFunction().logEvaluate(state) + 
-            predictedState.getProbabilityFunction().logEvaluate(obs);
-//              predictedState.getMovementFilter().logLikelihood(
-//                  obs.getProjectedPoint(), predictedState.getBelief().getMean(),
-//                  PathEdge.getEdge(predictedState.getInferredEdge(), 0d, 
-//                      predictedState.getPath().getIsBackward()));
+            target.getProbabilityFunction().logEvaluate(state)
+                + predictedState.getProbabilityFunction()
+                    .logEvaluate(obs);
+        //              predictedState.getMovementFilter().logLikelihood(
+        //                  obs.getProjectedPoint(), predictedState.getBelief().getMean(),
+        //                  PathEdge.getEdge(predictedState.getInferredEdge(), 0d, 
+        //                      predictedState.getPath().getIsBackward()));
 
         resampler.add(new WrappedWeightedValue<VehicleState>(
             predictedState, totalLogLik, 1));

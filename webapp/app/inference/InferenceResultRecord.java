@@ -26,7 +26,7 @@ import org.openplans.tools.tracking.impl.graph.InferredEdge;
 import org.openplans.tools.tracking.impl.graph.paths.InferredPath;
 import org.openplans.tools.tracking.impl.graph.paths.PathEdge;
 import org.openplans.tools.tracking.impl.statistics.DefaultCountedDataDistribution;
-import org.openplans.tools.tracking.impl.statistics.filters.AbstractRoadTrackingFilter;
+import org.openplans.tools.tracking.impl.statistics.filters.road_tracking.AbstractRoadTrackingFilter;
 import org.openplans.tools.tracking.impl.util.GeoUtils;
 import org.openplans.tools.tracking.impl.util.ProjectedCoordinate;
 import org.opentripplanner.routing.graph.Edge;
@@ -196,8 +196,8 @@ public class InferenceResultRecord {
         }
         
         VehicleState parentState = state.getParentState();
-        if (state.getPath().isEmptyPath()) {
-          if (parentState != null && parentState.getPath().isEmptyPath()
+        if (state.getBelief().getPath().isEmptyPath()) {
+          if (parentState != null && parentState.getBelief().getPath().isEmptyPath()
               // FIXME below shouldn't be true!
               && !previousOffRoadPaths.isEmpty()) {
             /*
@@ -223,14 +223,14 @@ public class InferenceResultRecord {
             OffRoadPath newPath = new OffRoadPath();
             newPath.setStartObs(state.getObservation());
             
-            InferredEdge parentStateEdge = parentState != null ? parentState.getEdge() : null;
+            InferredEdge parentStateEdge = parentState != null ? parentState.getBelief().getEdge().getEdge() : null;
             newPath.setStartEdge(parentStateEdge != null ? new OsmSegment(parentStateEdge) : null);
             newPath.setPointsBetween(coordList);
             previousOffRoadPaths.add(newPath);
             
           }
           
-        } else if (parentState != null && parentState.getPath().isEmptyPath()){
+        } else if (parentState != null && parentState.getBelief().getPath().isEmptyPath()){
           /*
            * We just finished our off-road path.
            * There should be a previousPath...
@@ -238,9 +238,9 @@ public class InferenceResultRecord {
           OffRoadPath previousPath = new OffRoadPath(Iterables.getLast(previousOffRoadPaths)); 
           previousPath.getPointsBetween().add(GeoUtils.makeCoordinate(
               state.getMeanLocation()));
-          previousPath.setEndEdge(new OsmSegment(state.getEdge().getEdgeId(), 
-                  state.getEdge().getGeometry(), 
-                  state.getEdge().getEdge().getName()));
+          previousPath.setEndEdge(new OsmSegment(state.getBelief().getEdge().getEdge().getEdgeId(), 
+                  state.getBelief().getEdge().getEdge().getGeometry(), 
+                  state.getBelief().getEdge().getEdge().getEdge().getName()));
           previousPath.setEndObs(state.getObservation());
           /*
            * Replace the last entry
@@ -278,11 +278,11 @@ public class InferenceResultRecord {
      * (or edge?  seems unlikely).
      */
     final VehicleState cloneState = state.clone();
-    final Boolean isBackward = cloneState.getPath().getIsBackward();
+    final Boolean isBackward = cloneState.getBelief().getPath().getIsBackward();
     final PathEdge currentEdge =
-        PathEdge.getEdge(cloneState.getInferredEdge(), 0d, isBackward);
+        PathEdge.getEdge(cloneState.getBelief().getEdge().getInferredEdge(), 0d, isBackward);
     final MultivariateGaussian gbelief =
-        cloneState.getBelief().clone();
+        cloneState.getBelief().getStateBelief().clone();
     final Matrix O =
         AbstractRoadTrackingFilter.getGroundObservationMatrix();
     final Vector mean;
@@ -340,7 +340,7 @@ public class InferenceResultRecord {
     final List<OsmSegmentWithVelocity> pathSegmentIds =
         Lists.newArrayList();
     Double pathDirection = null;
-    final InferredPath path = cloneState.getPath();
+    final InferredPath path = cloneState.getBelief().getPath();
     if (path.getTotalPathDistance() != null)
       pathDirection = path.getTotalPathDistance() > 0d ? 1d : -1d;
     for (final PathEdge edge : path.getEdges()) {

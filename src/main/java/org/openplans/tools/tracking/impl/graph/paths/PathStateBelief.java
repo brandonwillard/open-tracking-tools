@@ -1,59 +1,66 @@
 package org.openplans.tools.tracking.impl.graph.paths;
 
-import javax.annotation.Nonnull;
+import gov.sandia.cognition.math.matrix.Matrix;
+import gov.sandia.cognition.math.matrix.Vector;
+import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
+import gov.sandia.cognition.util.AbstractCloneableSerializable;
 
+import javax.annotation.Nonnull;
 
 import com.google.common.base.Preconditions;
 
-import gov.sandia.cognition.math.matrix.Vector;
-import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
+public class PathStateBelief  extends PathState {
 
-public class PathStateBelief implements PathStateInterface {
+  private static final long serialVersionUID = -31238492416118648L;
   
-  final private InferredPath path;
-  final private MultivariateGaussian state;
-  private PathEdge edge;
-  
-  protected PathStateBelief(InferredPath path, MultivariateGaussian state) {
-    this.path = path;
-    this.state = state;
+  private MultivariateGaussian stateBelief;
+
+  protected PathStateBelief(InferredPath path,
+    MultivariateGaussian state) {
+    super(path, state.getMean());
+    this.stateBelief = state;
   }
 
-  public static PathStateBelief getPathStateBelief(@Nonnull InferredPath path, 
-    @Nonnull MultivariateGaussian state) {
-    Preconditions.checkArgument(!path.isEmptyPath() || state.getInputDimensionality() == 4);
-    Preconditions.checkArgument(path.isEmptyPath() || path.isOnPath(state.getMean().getElement(0)));
+  public MultivariateGaussian getStateBelief() {
+    return stateBelief;
+  }
+
+  public static PathStateBelief getPathStateBelief(
+    @Nonnull InferredPath path, @Nonnull MultivariateGaussian state) {
+    Preconditions.checkArgument(!path.isEmptyPath()
+        || state.getInputDimensionality() == 4);
+    Preconditions.checkArgument(path.isEmptyPath()
+        || path.isOnPath(state.getMean().getElement(0)));
     return new PathStateBelief(path, state);
   }
+
+
+  @Override
+  public PathStateBelief clone() {
+    PathStateBelief clone = (PathStateBelief) super.clone();
+    clone.stateBelief = this.stateBelief.clone();
+    clone.state = clone.stateBelief.getMean();
+    
+    return clone;
+  }
+
+  public Vector getMean() {
+    return stateBelief.getMean();
+  }
   
-  @Override
-  public PathEdge getEdge() {
-    if (edge == null) {
-      this.edge = path.getEdgeForDistance(getState().getElement(0), false);
-    }
-    return this.edge;
+  public Matrix getCovariance() {
+    return stateBelief.getCovariance();
   }
 
-  @Override
-  public Vector getState() {
-    return state.getMean();
-  }
-  
-  public MultivariateGaussian getStateBelief() {
-    return state;
+  public Double getDistanceBetween(PathStateBelief belief) {
+    return null;
   }
 
-  @Override
-  public InferredPath getPath() {
-    return this.path;
+  public Vector getGroundMean() {
+    return null;
   }
 
-  @Override
-  public String toString() {
-    StringBuilder builder = new StringBuilder();
-    builder.append("PathStateBelief [path=").append(path)
-        .append(", state=").append(state).append("]");
-    return builder.toString();
+  public MultivariateGaussian getGroundBelief() {
+    return null;
   }
-
 }
