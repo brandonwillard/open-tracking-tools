@@ -37,6 +37,7 @@ import org.openplans.tools.tracking.impl.util.OtpGraph;
 import org.openplans.tools.tracking.impl.util.ProjectedCoordinate;
 import org.opentripplanner.common.geometry.GeometryUtils;
 import org.opentripplanner.routing.graph.Edge;
+import org.opentripplanner.routing.spt.GraphPath;
 
 import play.Logger;
 import play.Play;
@@ -57,6 +58,19 @@ public class Api extends Controller {
       Play.configuration.getProperty("application.otpGraphPath"), null);
 
   public static ObjectMapper jsonMapper = new ObjectMapper();
+  
+  public static void getPathBetween(String lat1, String lon1, String lat2, String lon2)
+      throws JsonGenerationException, JsonMappingException,
+      IOException {
+    final Coordinate coord1 =
+        new Coordinate(Double.parseDouble(lat1), Double.parseDouble(lon1));
+    final Coordinate coord2 =
+        new Coordinate(Double.parseDouble(lat2), Double.parseDouble(lon2));
+    
+    List<Integer> edgeIds = graph.getPathBetweenPoints(coord1, coord2);
+    
+    renderJSON(jsonMapper.writeValueAsString(edgeIds));
+  }
 
 //  public static void convertToLatLon(String x, String y, String lat, String lon)
 //      throws JsonGenerationException, JsonMappingException,

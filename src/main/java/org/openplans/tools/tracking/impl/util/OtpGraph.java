@@ -23,6 +23,7 @@ import org.openplans.tools.tracking.impl.graph.paths.algorithms.MultiDestination
 import org.openplans.tools.tracking.impl.statistics.DataCube;
 import org.openplans.tools.tracking.impl.statistics.StatisticsUtil;
 import org.openplans.tools.tracking.impl.statistics.filters.AbstractRoadTrackingFilter;
+import org.opentripplanner.routing.algorithm.GenericAStar;
 import org.opentripplanner.routing.core.RoutingRequest;
 import org.opentripplanner.routing.core.TraverseMode;
 import org.opentripplanner.routing.core.TraverseModeSet;
@@ -219,7 +220,7 @@ public class OtpGraph {
    */
   private final Graph baseGraph;
   //base index service is in projected coords
-  private final StreetVertexIndexServiceImpl baseIndexService;
+  private final StreetVertexIndexServiceImpl turnIndexService;
   private final static RoutingRequest defaultOptions =
       new RoutingRequest(new TraverseModeSet(TraverseMode.CAR));
 
@@ -279,7 +280,7 @@ public class OtpGraph {
     
     baseGraph = turnGraph.getService(BaseGraph.class).getBaseGraph();
 
-    baseIndexService = new StreetVertexIndexServiceImpl(baseGraph);
+    turnIndexService = new StreetVertexIndexServiceImpl(turnGraph);
     createIndices(baseGraph, baseEdgeIndex, null, geomBaseEdgeMap);
     createIndices(turnGraph, turnEdgeIndex, turnVertexIndex, geomTurnEdgeMap);
 
@@ -528,7 +529,7 @@ public class OtpGraph {
   }
 
   public StreetVertexIndexServiceImpl getIndexService() {
-    return baseIndexService;
+    return turnIndexService;
   }
 
   public InferredEdge getInferredEdge(Edge edge) {
@@ -668,17 +669,36 @@ public class OtpGraph {
     return baseGraph.getVertices().size();
   }
 
-  public List<StreetEdge> snapToGraph(Coordinate toCoords) {
-
-    Preconditions.checkNotNull(toCoords);
+  public List<Integer> getPathBetweenPoints(Coordinate fromCoord,
+      Coordinate toCoord) {
 
     final RoutingRequest options = OtpGraph.defaultOptions;
-    final CandidateEdgeBundle edgeBundle =
-        baseIndexService.getClosestEdges(toCoords, options, null,
-            null);
-    return edgeBundle.toEdgeList();
+    CandidateEdgeBundle fromEdges = turnIndexService.getClosestEdges(GeoUtils.reverseCoordinates(fromCoord), options, null, null);
+    CandidateEdgeBundle toEdges = turnIndexService.getClosestEdges(GeoUtils.reverseCoordinates(toCoord), options, null, null);
+    
+    GenericAStar astar = new GenericAStar();
+    final RoutingRequest req = new RoutingRequest(options.getModes());
+    /*
+     * TODO which vertices to use?
+     */
+    final Vertex fromVertex = Iterables.getFirst(fromEdges.toEdgeList(), null).getFromVertex(); //fromEdges.best.edge.getFromVertex();
+    final Vertex toVertex = Iterables.getFirst(toEdges.toEdgeList(), null).getToVertex(); //toEdges.best.edge.getFromVertex();
+    req.setRoutingContext(turnGraph, fromVertex, toVertex);
+    ShortestPathTree tree = astar.getShortestPathTree(req);
+    
+    GraphPath result = Iterables.getFirst(tree.getPaths(), null);
+    List<Integer> edgeIds = Lists.newArrayList();
+    
+    for (Edge edge : result.edges) {
+      Edge bEdge = getBaseEdge(edge);
+      Integer id = baseGraph.getIdForEdge(bEdge);
+      if (id != null)
+        edgeIds.add(id);
+    }
+    
+    return edgeIds;
   }
-
+  
   public void writeDataCube(File outFile) {
     DataCube.write(this.dc, outFile);
   }
