@@ -40,11 +40,12 @@ import com.google.common.collect.Sets;
 public abstract class AbstractVTPLFilter extends
     AbstractVehicleTrackingFilter {
 
+  private long seed;
   private static final long serialVersionUID = -8257075186193062150L;
 
   public AbstractVTPLFilter(Observation obs, OtpGraph inferredGraph,
     VehicleStateInitialParameters parameters,
-    VehicleTrackingParticleFilterUpdater updater,
+    AbstractVTParticleFilterUpdater updater,
     Boolean isDebug) {
     super(obs, inferredGraph, parameters, updater, isDebug);
   }
@@ -124,118 +125,26 @@ public abstract class AbstractVTPLFilter extends
 
     final DataDistribution<VehicleState> posteriorDist =
         new DefaultCountedDataDistribution<VehicleState>();
+    
     /*
      * Propagate states
      */
     for (final VehicleState state : smoothedStates) {
-
+      
+      /*
+       * TODO FIXME: cache the creation of these distributions
+       */
       final DataDistribution<InferredPathEntry> instStateDist =
           StatisticsUtil.getLogNormalizedDistribution(Lists
               .newArrayList(stateToPaths.get(state)));
-      final InferredPathEntry sampledPathEntry =
-          instStateDist.sample(rng);
 
       /*
-       * This is a bit confusing, so really try to understand this:
-       * The edge we're about to sample is not necessarily the edge that our filtering
-       * says we should be on.  The edges, in this case, only correspond to stretches of
-       * length-locations that were evaluated.  The posterior/filtering result that we
-       * obtain from these edges will adjust our previous length-location relative to how good
-       * it would've/could've been to be on each edge.  Essentially, this is kind of like saying
-       * that we have to walk to that better edge relative to how fast we are, not simply teleport.
+       * TODO: debug seeding 
        */
-      final PathEdge posteriorEdge;
-      if (sampledPathEntry.getPath().getEdges().size() > 1) {
-        final DataDistribution<PathEdge> pathEdgeDist =
-            StatisticsUtil
-                .getLogNormalizedDistribution(sampledPathEntry
-                    .getWeightedPathEdges());
-        posteriorEdge = pathEdgeDist.sample(rng);
-
-      } else {
-        posteriorEdge = sampledPathEntry.getPath().getEdges().get(0);
-      }
-
-      final InferredPath posteriorPath;
-      if (!posteriorEdge.isEmptyEdge()) {
-        /*
-         * IMPORTANT:
-         * We need to construct the subpath that will actually be used, otherwise
-         * we can end up on parts of the path not corresponding to the likelihood
-         * that got us this sample.
-         */
-        posteriorPath =
-            InferredPath.getInferredPath(Lists.newArrayList(Iterables
-                .filter(sampledPathEntry.getPath().getEdges(),
-                    new Predicate<PathEdge>() {
-                      @Override
-                      public boolean apply(@Nullable PathEdge input) {
-                        return Double.compare(Math.abs(input
-                            .getDistToStartOfEdge()),
-                            Math.abs(posteriorEdge
-                                .getDistToStartOfEdge())) <= 0;
-                      }
-
-                    })), sampledPathEntry.getPath().getIsBackward());
-      } else {
-        posteriorPath = InferredPath.getEmptyPath();
-      }
-
-      /*
-       * This belief is p(x_{t+1} | Z_t, ..., y_{t+1}).  The dependency
-       * on y_{t+1} obtained through resampling based on the likelihoods.
-       */
-      final MultivariateGaussian sampledBelief =
-          sampledPathEntry.getEdgeToPredictiveBelief()
-              .get(posteriorEdge).getWeightedPredictiveDist()
-              .getValue();
-
-      /*
-       * This is the belief that will be propagated.
-       */
-      final PathStateBelief priorPathStateBelief =
-          PathStateBelief.getPathStateBelief(posteriorPath,
-              sampledBelief.clone());
-      final PathStateBelief updatedBelief =
-          sampledPathEntry.getFilter().measure(priorPathStateBelief,
-              obs.getProjectedPoint(), posteriorEdge);
-
-      /*
-       * Update edge velocities
-       * TODO should be offline...actually almost all of what follows should be.
-       */
-      posteriorPath.updateEdges(obs, updatedBelief.getStateBelief(),
-          this.inferredGraph);
-
-      /*
-       * Update edge transition priors.
-       */
-      final OnOffEdgeTransDirMulti updatedEdgeTransDist =
-          state.getEdgeTransitionDist().clone();
-
-      /*
-       * Note: we don't want to update a transition like
-       * off->off when there were no other choices.  This
-       * would simply bias the results, and offer no real
-       * benefit. 
-       */
-      if (instStateDist.size() > 1) {
-        updatedEdgeTransDist.update(state.getBelief().getEdge().getInferredEdge(),
-            posteriorEdge.getInferredEdge());
-      }
-
-      /*
-       * Update covariances, or not.
-       */
-      final AbstractRoadTrackingFilter<?> updatedFilter =
-          sampledPathEntry.getFilter().clone();
-
-      updatedFilter.update(obs, updatedBelief, priorPathStateBelief,
-          rng);
-
-      final VehicleState newTransState =
-          new VehicleState(this.inferredGraph, obs, updatedFilter,
-              updatedBelief.clone(), updatedEdgeTransDist.clone(), state);
+      this.seed = rng.nextLong();
+      
+      final VehicleState newTransState = propagateStates(state,
+          obs, instStateDist);
 
       ((DefaultCountedDataDistribution<VehicleState>) posteriorDist)
           .increment(newTransState, 1d / numParticles);
@@ -249,5 +158,98 @@ public abstract class AbstractVTPLFilter extends
     assert ((DefaultCountedDataDistribution<VehicleState>) target)
         .getTotalCount() == this.numParticles;
 
+  }
+  
+  private VehicleState propagateStates(VehicleState state,
+    Observation obs, DataDistribution<InferredPathEntry> instStateDist) {
+    
+    final Random rng = getRandom();
+    rng.setSeed(this.seed);
+    
+    final InferredPathEntry sampledPathEntry = instStateDist.sample(rng);
+
+    /*
+     * This is a bit confusing, so really try to understand this:
+     * The edge we're about to sample is not necessarily the edge that our filtering
+     * says we should be on.  The edges, in this case, only correspond to stretches of
+     * length-locations that were evaluated.  The posterior/filtering result that we
+     * obtain from these edges will adjust our previous length-location relative to how good
+     * it would've/could've been to be on each edge.  Essentially, this is kind of like saying
+     * that we have to walk to that better edge relative to how fast we are, not simply teleport.
+     */
+    final PathEdge posteriorEdge;
+    if (sampledPathEntry.getPath().getEdges().size() > 1) {
+      /*
+       * TODO FIXME: cache the creation of these distributions
+       */
+      final DataDistribution<PathEdge> pathEdgeDist =
+          StatisticsUtil
+              .getLogNormalizedDistribution(sampledPathEntry
+                  .getWeightedPathEdges());
+      posteriorEdge = pathEdgeDist.sample(rng);
+
+    } else {
+      posteriorEdge = sampledPathEntry.getPath().getEdges().get(0);
+    }
+
+
+    /*
+     * This is the belief that will be propagated.
+     */
+    final PathStateBelief priorPathStateBelief =
+        sampledPathEntry.getEdgeToPredictiveBelief()
+            .get(posteriorEdge).getLocationPrediction().clone();
+    final PathStateBelief updatedBelief =
+        sampledPathEntry.getFilter().measure(priorPathStateBelief,
+            obs.getProjectedPoint(), posteriorEdge);
+
+    /*
+     * Update edge velocities
+     * TODO should be offline...actually almost all of what follows should be.
+     */
+    updatedBelief.getPath().updateEdges(obs, 
+        updatedBelief.getGlobalStateBelief(), 
+        this.inferredGraph);
+
+    /*
+     * Update edge transition priors.
+     */
+    final OnOffEdgeTransDirMulti updatedEdgeTransDist =
+        state.getEdgeTransitionDist().clone();
+
+    /*
+     * Note: we don't want to update a transition like
+     * off->off when there were no other choices.  This
+     * would simply bias the results, and offer no real
+     * benefit. 
+     */
+    if (instStateDist.size() > 1) {
+      updatedEdgeTransDist.update(
+          state.getBelief().getEdge().getInferredEdge(),
+          posteriorEdge.getInferredEdge());
+    }
+
+    /*
+     * Update covariances, or not.
+     */
+    final AbstractRoadTrackingFilter<?> updatedFilter =
+        sampledPathEntry.getFilter().clone();
+
+    /*
+     * To make sure that the samples connect when sampling
+     * along paths in sequence, we need to adjust the prior
+     */
+    final PathStateBelief pathAdjustedPriorBelief = 
+        PathStateBelief.getPathStateBelief(
+         updatedBelief.getPath(), 
+         priorPathStateBelief.getRawStateBelief());
+    updatedFilter.update(state, obs, 
+        updatedBelief, pathAdjustedPriorBelief, rng);
+
+    final VehicleState newTransState =
+        new VehicleState(this.inferredGraph, obs, updatedFilter,
+            updatedBelief.clone(), updatedEdgeTransDist.clone(), state);
+    
+    return newTransState;
   }
 }

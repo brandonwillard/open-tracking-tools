@@ -8,6 +8,7 @@ import org.openplans.tools.tracking.impl.statistics.filters.road_tracking.Abstra
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ComparisonChain;
 import com.google.common.collect.Ordering;
+import com.vividsolutions.jts.geom.Geometry;
 
 public class PathEdge implements Comparable<PathEdge> {
 
@@ -42,6 +43,10 @@ public class PathEdge implements Comparable<PathEdge> {
             Ordering.natural().nullsLast()).result();
   }
 
+  public Geometry getGeometry() {
+    return this.edge.getGeometry();
+  }
+  
   @Override
   public boolean equals(Object obj) {
     if (this == obj) {
@@ -78,7 +83,16 @@ public class PathEdge implements Comparable<PathEdge> {
     return true;
   }
 
-  public Vector getCheckedStateOnEdge(Vector state, double tolerance) {
+  /**
+   * Returns a state on the edge that's been truncated within the given tolerance.
+   * The relative parameters set to true will return a state relative to the edge (i.e.
+   * removing the distance to start).
+   * @param state
+   * @param tolerance
+   * @param relative 
+   * @return the state on the edge or null if it's 
+   */
+  public Vector getCheckedStateOnEdge(Vector state, double tolerance, boolean relative) {
     Preconditions.checkState(!isEmptyEdge());
     Preconditions.checkArgument(tolerance >= 0d);
     Preconditions.checkArgument(state.getDimensionality() == 2);
@@ -94,16 +108,19 @@ public class PathEdge implements Comparable<PathEdge> {
         return null;
       } else {
         newState.setElement(0, direction * this.edge.getLength()
-            + distToStartOfEdge);
+            + (relative ? 0d : distToStartOfEdge));
       }
     } else if (posDistAdj < 0d) {
-      if (posDistAdj < tolerance) {
+      if (posDistAdj < -tolerance) {
         return null;
       } else {
-        newState.setElement(0, distToStartOfEdge);
+        newState.setElement(0, (relative ? 0d : distToStartOfEdge));
       }
     }
 
+    if (relative)
+      newState.setElement(0, direction * posDistAdj);
+    
     return newState;
   }
 
@@ -111,10 +128,10 @@ public class PathEdge implements Comparable<PathEdge> {
     return distToStartOfEdge;
   }
 
-  public InferredEdge getEdge() {
-    return edge;
+  public double getLength() {
+    return this.getGeometry().getLength();
   }
-
+  
   public InferredEdge getInferredEdge() {
     return edge;
   }
@@ -144,8 +161,11 @@ public class PathEdge implements Comparable<PathEdge> {
   }
 
   /**
-   * Based on the path that this edge is contained in, determine if the given
-   * distance is on this edge.
+   * Based on the path that this edge is contained in, 
+   * determine if the given distance is on this edge.
+   * XXX: It is possible that a given distance is
+   * on more than one edge (depends on the value of 
+   * {@link AbstractRoadTrackingFilter#getEdgelengthtolerance()}).
    * 
    * @param distance
    * @return

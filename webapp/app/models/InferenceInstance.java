@@ -248,7 +248,7 @@ public class InferenceInstance {
         ctor = filterType.getConstructor(Observation.class, OtpGraph.class,
             VehicleStateInitialParameters.class, Boolean.class);
         filter = ctor.newInstance(obs, inferredGraph, initialParameters,
-          infoLevel.compareTo(INFO_LEVEL.DEBUG) >= 0);
+          new Boolean(infoLevel.compareTo(INFO_LEVEL.DEBUG) >= 0));
         filter.getRandom().setSeed(simSeed);
         postBelief = filter.createInitialLearnedObject();
       } catch (SecurityException e) {
@@ -276,7 +276,7 @@ public class InferenceInstance {
       }
     }
     
-    if (statePaths != null) {
+    if (statePaths != null && !statePaths.isEmpty()) {
       Map<VehicleState, List<Entry<Long, InferredEdge>>> newPaths = Maps.newHashMap();
       for (VehicleState state : postBelief.getDomain()) {
         List<Entry<Long, InferredEdge>> path = Lists.newArrayList();
@@ -289,7 +289,7 @@ public class InferenceInstance {
          * since we already have that as the old 
          * destination edge.
          */
-        final List<PathEdge> newPath = state.getPath().getEdges();
+        final List<PathEdge> newPath = state.getBelief().getPath().getEdges();
         for (PathEdge edge : 
           (path.isEmpty() || (newPath.size() == 1 
             && Iterables.getOnlyElement(newPath).isEmptyEdge())
@@ -297,7 +297,7 @@ public class InferenceInstance {
             ? newPath : Iterables.skip(newPath, 1)) {
           path.add(Maps.immutableEntry(
               new Long(state.getObservation().getTimestamp().getTime()), 
-              edge.getEdge()));
+              edge.getInferredEdge()));
         }
         
         if (_collectedPathLength < path.size())

@@ -61,7 +61,7 @@ public class VehicleTrackingBootstrapFilter extends
                 .update(state, obs);
 
         if (this.isDebug)
-          evaledPaths.add(predictedState.getPath());
+          evaledPaths.add(predictedState.getBelief().getPath());
 
         /*
          * Previous particle weight times new state likelihood

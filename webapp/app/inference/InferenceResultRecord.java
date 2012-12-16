@@ -223,7 +223,7 @@ public class InferenceResultRecord {
             OffRoadPath newPath = new OffRoadPath();
             newPath.setStartObs(state.getObservation());
             
-            InferredEdge parentStateEdge = parentState != null ? parentState.getBelief().getEdge().getEdge() : null;
+            InferredEdge parentStateEdge = parentState != null ? parentState.getBelief().getEdge().getInferredEdge() : null;
             newPath.setStartEdge(parentStateEdge != null ? new OsmSegment(parentStateEdge) : null);
             newPath.setPointsBetween(coordList);
             previousOffRoadPaths.add(newPath);
@@ -238,9 +238,9 @@ public class InferenceResultRecord {
           OffRoadPath previousPath = new OffRoadPath(Iterables.getLast(previousOffRoadPaths)); 
           previousPath.getPointsBetween().add(GeoUtils.makeCoordinate(
               state.getMeanLocation()));
-          previousPath.setEndEdge(new OsmSegment(state.getBelief().getEdge().getEdge().getEdgeId(), 
-                  state.getBelief().getEdge().getEdge().getGeometry(), 
-                  state.getBelief().getEdge().getEdge().getEdge().getName()));
+          previousPath.setEndEdge(new OsmSegment(state.getBelief().getEdge().getInferredEdge().getEdgeId(), 
+                  state.getBelief().getEdge().getGeometry(), 
+                  state.getBelief().getEdge().getInferredEdge().getEdge().getName()));
           previousPath.setEndObs(state.getObservation());
           /*
            * Replace the last entry
@@ -281,22 +281,13 @@ public class InferenceResultRecord {
     final Boolean isBackward = cloneState.getBelief().getPath().getIsBackward();
     final PathEdge currentEdge =
         PathEdge.getEdge(cloneState.getBelief().getEdge().getInferredEdge(), 0d, isBackward);
-    final MultivariateGaussian gbelief =
-        cloneState.getBelief().getStateBelief().clone();
+    final MultivariateGaussian gbelief = cloneState.getBelief().getGroundBelief();
     final Matrix O =
         AbstractRoadTrackingFilter.getGroundObservationMatrix();
     final Vector mean;
     final Vector minorAxis;
     final Vector majorAxis;
 
-    if (!gbelief.getCovariance().isZero()) {
-      AbstractRoadTrackingFilter.convertToGroundBelief(gbelief,
-          currentEdge, true);
-    } else {
-      gbelief.setMean(AbstractRoadTrackingFilter.convertToGroundState(gbelief.getMean(),
-          currentEdge, true));
-    }
-      
     mean = O.times(gbelief.getMean().clone());
 
     if (currentEdge.isEmptyEdge()

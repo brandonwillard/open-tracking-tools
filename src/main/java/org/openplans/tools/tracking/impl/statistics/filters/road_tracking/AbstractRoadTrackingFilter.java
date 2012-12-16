@@ -11,6 +11,7 @@ import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 import gov.sandia.cognition.util.AbstractCloneableSerializable;
 
 import java.util.Collections;
+import java.util.List;
 import java.util.Map.Entry;
 import java.util.Random;
 
@@ -18,6 +19,8 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
 import org.openplans.tools.tracking.impl.Observation;
+import org.openplans.tools.tracking.impl.VehicleState;
+import org.openplans.tools.tracking.impl.graph.paths.AbstractPathState;
 import org.openplans.tools.tracking.impl.graph.paths.InferredPath;
 import org.openplans.tools.tracking.impl.graph.paths.PathEdge;
 import org.openplans.tools.tracking.impl.graph.paths.PathState;
@@ -26,6 +29,7 @@ import org.openplans.tools.tracking.impl.statistics.StatisticsUtil;
 import org.openplans.tools.tracking.impl.statistics.filters.AdjKalmanFilter;
 import org.openplans.tools.tracking.impl.util.GeoUtils;
 
+import com.beust.jcommander.internal.Lists;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Maps;
@@ -38,7 +42,8 @@ import com.vividsolutions.jts.linearref.LinearLocation;
 import com.vividsolutions.jts.linearref.LocationIndexedLine;
 
 public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingFilter<T>>
-    extends AbstractCloneableSerializable implements Comparable<T> {
+    extends AbstractCloneableSerializable implements
+    Comparable<T> {
 
   public static class PathEdgeProjection {
 
@@ -47,8 +52,9 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
     private final Vector positiveState;
     private final Entry<Matrix, Vector> otherProjection;
 
-    public PathEdgeProjection(Entry<Matrix, Vector> projPair,
-      Vector posState, Entry<Matrix, Vector> otherProj) {
+    public PathEdgeProjection(
+      Entry<Matrix, Vector> projPair, Vector posState,
+      Entry<Matrix, Vector> otherProj) {
       this.projMatrix = projPair.getKey();
       this.offset = projPair.getValue();
       this.positiveState = posState;
@@ -83,7 +89,8 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
   /**
    * 
    */
-  private static final long serialVersionUID = -3818533301279461087L;
+  private static final long serialVersionUID =
+      -3818533301279461087L;
 
   /**
    * We allow {@value} meters of error when checking distance values on a path.
@@ -137,7 +144,7 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
   /**
    * Instantaneous gps error covariance.
    */
-  private Matrix obsCovar;
+  protected Matrix obsCovar;
 
   /**
    * Extracts the ground coordinates from a ground state.
@@ -166,10 +173,14 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
 
   static {
     Vg =
-        MatrixFactory.getDenseDefault().copyArray(
-            new double[][] { { 0, 1, 0, 0 }, { 0, 0, 0, 1 } });
+        MatrixFactory.getDenseDefault()
+            .copyArray(
+                new double[][] { { 0, 1, 0, 0 },
+                    { 0, 0, 0, 1 } });
 
-    Vr = VectorFactory.getDenseDefault().createVector2D(0, 1d);
+    Vr =
+        VectorFactory.getDenseDefault().createVector2D(0,
+            1d);
 
     Og = MatrixFactory.getDefault().createMatrix(2, 4);
     Og.setElement(0, 0, 1);
@@ -189,8 +200,8 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
 
   protected double prevTimeDiff = 0d;
 
-  protected final static Vector zeros2D = VectorFactory.getDefault()
-      .copyValues(0, 0);
+  protected final static Vector zeros2D = VectorFactory
+      .getDefault().copyValues(0, 0);
 
   @Override
   public AbstractRoadTrackingFilter<T> clone() {
@@ -202,7 +213,8 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
     clone.obsCovar = this.obsCovar.clone();
     clone.offRoadStateTransCovar =
         this.offRoadStateTransCovar.clone();
-    clone.onRoadStateTransCovar = this.onRoadStateTransCovar.clone();
+    clone.onRoadStateTransCovar =
+        this.onRoadStateTransCovar.clone();
     clone.prevTimeDiff = this.prevTimeDiff;
     clone.Qg = this.Qg.clone();
     clone.Qr = this.Qr.clone();
@@ -274,14 +286,18 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
    */
   public MultivariateGaussian getObservationBelief(
     final PathStateBelief stateBelief) {
-    final MultivariateGaussian projBelief = stateBelief.getGroundBelief().clone();
+    final MultivariateGaussian projBelief =
+        stateBelief.getGroundBelief().clone();
 
     final Matrix Q =
-        Og.times(projBelief.getCovariance()).times(Og.transpose());
-    Q.plusEquals(this.groundFilter.getMeasurementCovariance());
+        Og.times(projBelief.getCovariance()).times(
+            Og.transpose());
+    Q.plusEquals(this.groundFilter
+        .getMeasurementCovariance());
 
     final MultivariateGaussian res =
-        new MultivariateGaussian(Og.times(projBelief.getMean()), Q);
+        new MultivariateGaussian(Og.times(projBelief
+            .getMean()), Q);
     return res;
   }
 
@@ -299,12 +315,13 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
 
     final Matrix measurementCovariance = this.obsCovar;
     final Matrix Q =
-        Og.times(belief.getGroundBelief().getCovariance()).times(Og.transpose());
+        Og.times(belief.getGroundBelief().getCovariance())
+            .times(Og.transpose());
     Q.plusEquals(measurementCovariance);
 
     final double result =
         StatisticsUtil.logEvaluateNormal(obs,
-            Og.times(belief.getGroundMean()), Q);
+            Og.times(belief.getGroundState()), Q);
     return result;
   }
 
@@ -316,18 +333,14 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
    * @param edge
    * @return
    */
-  public double
-      logLikelihood(Vector obs, Vector state, PathEdge edge) {
+  public double logLikelihood(Vector obs,
+    AbstractPathState state) {
 
-    final Vector groundState;
-    if (state.getDimensionality() == 2) {
-      groundState = convertToGroundState(state, edge, true);
-    } else {
-      groundState = state;
-    }
+    final Vector groundState = state.getGroundState();
 
     final double result =
-        StatisticsUtil.logEvaluateNormal(obs, Og.times(groundState),
+        StatisticsUtil.logEvaluateNormal(obs,
+            Og.times(groundState),
             this.groundFilter.getMeasurementCovariance());
     return result;
   }
@@ -343,55 +356,81 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
   public PathStateBelief measure(PathStateBelief belief,
     Vector observation, PathEdge edge) {
 
-    final MultivariateGaussian updatedBelief =
-        belief.getStateBelief().clone();
-    if (belief.getState().getDimensionality() == 2) {
+    final MultivariateGaussian updatedBelief;
+    final PathStateBelief result;
+    if (belief.isOnRoad()) {
       /*
+       * TODO FIXME: should probably snap observation to road 
+       * and then filter, no?
+       * 
        * Convert road-coordinates prior predictive to ground-coordinates
        */
-      convertToGroundBelief(updatedBelief, belief.getEdge(), true);
+      updatedBelief = belief.getGroundBelief().clone();
 
       this.groundFilter.measure(updatedBelief, observation);
 
       /*
        * Convert back to road-coordinates
        */
-      convertToRoadBelief(updatedBelief, belief.getPath(), edge, true);
+      convertToRoadBelief(updatedBelief, belief.getPath(),
+          edge, true);
+      
+      final PathStateBelief tmpBelief =
+          PathStateBelief.getPathStateBelief(belief.getPath(), 
+              updatedBelief);
+      List<PathEdge> edges = Lists.newArrayList();
+      for (PathEdge pedge : belief.getPath().getEdges()) {
+        edges.add(pedge);
+        if (pedge.equals(tmpBelief.getEdge()))
+          break;
+      }
+      
+      /*
+       * Use the path actually traveled.
+       */
+      result = PathStateBelief.getPathStateBelief(
+          InferredPath.getInferredPath(edges, 
+              belief.getPath().getIsBackward()), 
+              updatedBelief);
 
     } else {
-      Preconditions.checkArgument(belief.getState()
-          .getDimensionality() == 4);
+      updatedBelief = belief.getGlobalStateBelief().clone();
       this.groundFilter.measure(updatedBelief, observation);
+      result = PathStateBelief.getPathStateBelief(
+          InferredPath.getEmptyPath(), updatedBelief);
     }
+    
 
-    return PathStateBelief.getPathStateBelief(belief.getPath(),
-        updatedBelief);
+    return result;
   }
 
   /**
    * Pass it a road-coordinates prior predictive belief distribution, edge and
-   * path starting distance, and it will update the prior predictive
-   * distribution for that edge and path. Otherwise, project free-movement onto
-   * an edge or predict free movement. Note: this will project without regard to
-   * path length.
+   * path starting distance, and it will return the prior predictive
+   * distribution for that edge and path. Otherwise, it projects free-movement
+   * onto an edge then projects. Note: this will project without regard to path
+   * length.
    * 
    * @param startOfEdgeDist
    */
-  public void predict(PathStateBelief currentBelief, InferredPath newPath) {
+  public PathStateBelief predict(PathStateBelief currentBelief, 
+    InferredPath newPath) {
 
     Preconditions.checkNotNull(newPath);
-
+    MultivariateGaussian newBelief;
     if (newPath.isEmptyPath()) {
       if (!currentBelief.isOnRoad()) {
         /*-
          * Predict free-movement
          */
-        groundFilter.predict(currentBelief.getStateBelief());
+        newBelief = currentBelief.getGlobalStateBelief().clone();
+        groundFilter.predict(newBelief);
       } else {
         /*-
          * Going off-road
          */
-        convertToGroundBelief(currentBelief.getStateBelief(), currentBelief.getEdge(), true);
+        newBelief = currentBelief.getGroundBelief().clone();
+        
         /*-
          * After this conversion, our covariance matrix will
          * have a shape that reflects the direction of the 
@@ -405,32 +444,42 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
         //        currentBelief.setCovariance(
         //            createStateCovarianceMatrix(this.currentTimeDiff, this.Qg, false));
 
-        groundFilter.predict(currentBelief.getStateBelief());
+        groundFilter.predict(newBelief);
       }
     } else {
+      
+      
       if (!currentBelief.isOnRoad()) {
         /*-
-         * Project a current locatoin on the path, then 
+         * Project a current location on the path, then 
          * project movement on the path.
          */
-        convertToRoadBelief(currentBelief.getStateBelief(), newPath,
+        newBelief = currentBelief.getLocalStateBelief().clone();
+        convertToRoadBelief(newBelief, newPath,
             Iterables.getFirst(newPath.getEdges(), null), true);
+      } else {
+        PathStateBelief newBeliefOnPath = newPath.getStateBeliefOnPath(currentBelief);
+        newBelief = newBeliefOnPath.getGlobalStateBelief();
       }
-      roadFilter.predict(currentBelief.getStateBelief());
+      roadFilter.predict(newBelief);
     }
+    
+    return PathStateBelief.getPathStateBelief(newPath, newBelief);
   }
 
   public void setCurrentTimeDiff(double currentTimeDiff) {
     if (currentTimeDiff != prevTimeDiff) {
-      groundFilter.setModelCovariance(createStateCovarianceMatrix(
-          currentTimeDiff, Qg, false));
-      roadFilter.setModelCovariance(createStateCovarianceMatrix(
-          currentTimeDiff, Qr, true));
+      groundFilter
+          .setModelCovariance(createStateCovarianceMatrix(
+              currentTimeDiff, Qg, false));
+      roadFilter
+          .setModelCovariance(createStateCovarianceMatrix(
+              currentTimeDiff, Qr, true));
 
-      groundModel.setA(createStateTransitionMatrix(currentTimeDiff,
-          false));
-      roadModel.setA(createStateTransitionMatrix(currentTimeDiff,
-          true));
+      groundModel.setA(createStateTransitionMatrix(
+          currentTimeDiff, false));
+      roadModel.setA(createStateTransitionMatrix(
+          currentTimeDiff, true));
     }
     this.prevTimeDiff = this.currentTimeDiff;
     this.currentTimeDiff = currentTimeDiff;
@@ -438,16 +487,21 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
 
   @Override
   public String toString() {
-    return "StandardRoadTrackingFilter [" + "groundFilterCov="
-        + groundFilter.getModelCovariance() + ", roadFilterCov="
-        + roadFilter.getModelCovariance() + ", onRoadStateVariance="
-        + onRoadStateTransCovar + ", offRoadStateVariance="
-        + offRoadStateTransCovar + ", obsVariance=" + obsCovar
-        + ", currentTimeDiff=" + currentTimeDiff + "]";
+    return "StandardRoadTrackingFilter ["
+        + "groundFilterCov="
+        + groundFilter.getModelCovariance()
+        + ", roadFilterCov="
+        + roadFilter.getModelCovariance()
+        + ", onRoadStateVariance=" + onRoadStateTransCovar
+        + ", offRoadStateVariance="
+        + offRoadStateTransCovar + ", obsVariance="
+        + obsCovar + ", currentTimeDiff=" + currentTimeDiff
+        + "]";
   }
 
-  public static PathState convertToRoadState(Vector state,
-    InferredPath path, boolean useAbsVelocity) {
+  public static AbstractPathState
+      convertToRoadState(Vector state, InferredPath path,
+        boolean useAbsVelocity) {
 
     final PathEdgeProjection projPair =
         getRoadProjection(state, path, null);
@@ -465,10 +519,11 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
 
     if (useAbsVelocity) {
       final double absVelocity =
-          VectorFactory.getDenseDefault().copyVector(Vg.times(state))
-              .norm2();
-      projState.setElement(1, Math.signum(projState.getElement(1))
-          * absVelocity);
+          VectorFactory.getDenseDefault()
+              .copyVector(Vg.times(state)).norm2();
+      projState.setElement(1,
+          Math.signum(projState.getElement(1))
+              * absVelocity);
     }
 
     /*
@@ -481,12 +536,15 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
 
     assert path.isOnPath(projState.getElement(0));
 
-    return path.getCheckedStateOnPath(projState,
-        AbstractRoadTrackingFilter.getEdgelengthtolerance());
+    return path
+        .getCheckedStateOnPath(projState,
+            AbstractRoadTrackingFilter
+                .getEdgelengthtolerance());
   }
 
-  public static Vector convertToGroundState(Vector locVelocity,
-    PathEdge edge, boolean useAbsVelocity) {
+  public static Vector convertToGroundState(
+    Vector locVelocity, PathEdge edge,
+    boolean useAbsVelocity) {
     final PathEdgeProjection projPair =
         getGroundProjection(locVelocity, edge, false);
 
@@ -494,16 +552,19 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
       return locVelocity;
 
     final Vector projMean =
-        projPair.getProjMatrix().times(projPair.getPositiveState())
+        projPair.getProjMatrix()
+            .times(projPair.getPositiveState())
             .plus(projPair.getOffset());
 
     if (useAbsVelocity) {
-      final double absVelocity = Math.abs(locVelocity.getElement(1));
+      final double absVelocity =
+          Math.abs(locVelocity.getElement(1));
       if (absVelocity > 0d) {
         final Vector velocities =
             VectorFactory.getDenseDefault().copyVector(
                 Vg.times(projMean));
-        velocities.scaleEquals(absVelocity / velocities.norm2());
+        velocities.scaleEquals(absVelocity
+            / velocities.norm2());
         projMean.setElement(1, velocities.getElement(0));
         projMean.setElement(3, velocities.getElement(1));
       }
@@ -514,10 +575,11 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
     return projMean;
   }
 
-  public static void
-      convertToGroundBelief(MultivariateGaussian belief,
-        PathEdge edge, boolean useAbsVelocity) {
-    convertToGroundBelief(belief, edge, false, useAbsVelocity);
+  public static void convertToGroundBelief(
+    MultivariateGaussian belief, PathEdge edge,
+    boolean useAbsVelocity) {
+    convertToGroundBelief(belief, edge, false,
+        useAbsVelocity);
   }
 
   public static PathEdgeProjection convertToGroundBelief(
@@ -525,7 +587,8 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
     boolean allowExtensions, boolean useAbsVelocity) {
 
     final PathEdgeProjection projPair =
-        getGroundProjection(belief.getMean(), edge, allowExtensions);
+        getGroundProjection(belief.getMean(), edge,
+            allowExtensions);
 
     if (projPair == null)
       return null;
@@ -535,10 +598,12 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
         projPair.getProjMatrix().times(C)
             .times(projPair.getProjMatrix().transpose());
 
-    assert StatisticsUtil.isPosSemiDefinite((DenseMatrix) projCov);
+    assert StatisticsUtil
+        .isPosSemiDefinite((DenseMatrix) projCov);
 
     final Vector projMean =
-        projPair.getProjMatrix().times(projPair.getPositiveState())
+        projPair.getProjMatrix()
+            .times(projPair.getPositiveState())
             .plus(projPair.getOffset());
 
     if (useAbsVelocity) {
@@ -548,7 +613,8 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
         final Vector velocities =
             VectorFactory.getDenseDefault().copyVector(
                 Vg.times(projMean));
-        velocities.scaleEquals(absVelocity / velocities.norm2());
+        velocities.scaleEquals(absVelocity
+            / velocities.norm2());
         projMean.setElement(1, velocities.getElement(0));
         projMean.setElement(3, velocities.getElement(1));
       }
@@ -563,9 +629,11 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
   }
 
   public static PathEdgeProjection getGroundProjection(
-    Vector locVelocity, PathEdge edge, boolean allowExtensions) {
+    Vector locVelocity, PathEdge edge,
+    boolean allowExtensions) {
 
-    Preconditions.checkArgument(locVelocity.getDimensionality() == 2
+    Preconditions.checkArgument(locVelocity
+        .getDimensionality() == 2
         || locVelocity.getDimensionality() == 4);
 
     if (locVelocity.getDimensionality() == 4)
@@ -578,7 +646,8 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
 
     final Vector positiveMean;
     if (locVelocity.getElement(0) < 0d
-        || (locVelocity.getElement(0) == 0d && edge.isBackward() == Boolean.TRUE)) {
+        || (locVelocity.getElement(0) == 0d && edge
+            .isBackward() == Boolean.TRUE)) {
       /*
        * We're going all positive here, since we should've been using
        * the reversed geometry if negative.
@@ -586,10 +655,8 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
       final Vector posMeanTmp = locVelocity.clone();
 
       double posLocation =
-          Math.max(
-              0d,
-              locVelocity.getElement(0)
-                  + edge.getInferredEdge().getLength()
+          Math.max(0d,
+              locVelocity.getElement(0) + edge.getLength()
                   + Math.abs(edge.getDistToStartOfEdge()));
 
       /*
@@ -598,14 +665,15 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
        */
       if (allowExtensions && posLocation < 0d) {
         posLocation =
-            edge.getInferredEdge().getLength()
+            edge.getLength()
                 + Math.abs(locVelocity.getElement(0));
       }
 
       posMeanTmp.setElement(0, posLocation);
       positiveMean = posMeanTmp;
     } else if (locVelocity.getElement(0) > 0d
-        || (locVelocity.getElement(0) == 0d && edge.isBackward() == Boolean.FALSE)) {
+        || (locVelocity.getElement(0) == 0d && edge
+            .isBackward() == Boolean.FALSE)) {
 
       positiveMean = locVelocity.clone();
 
@@ -623,11 +691,12 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
 
     assert positiveMean.getElement(0) >= 0d
         && (allowExtensions || positiveMean.getElement(0) <= edge
-            .getInferredEdge().getLength() + 1);
+            .getLength() + 1);
 
-    final Geometry geom = edge.getInferredEdge().getGeometry();
+    final Geometry geom = edge.getGeometry();
     final Entry<LineSegment, Double> segmentDist =
-        getSegmentAndDistanceToStart(geom, positiveMean.getElement(0));
+        getSegmentAndDistanceToStart(geom,
+            positiveMean.getElement(0));
     final double absTotalPathDistanceToStartOfSegment =
         Math.abs(segmentDist.getValue());
     final double absTotalPathDistanceToEndOfSegment =
@@ -646,8 +715,8 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
        * Truncate, to keep it on the edge.
        */
       if (positiveMean.getElement(0) > absTotalPathDistanceToEndOfSegment) {
-        positiveMean
-            .setElement(0, absTotalPathDistanceToEndOfSegment);
+        positiveMean.setElement(0,
+            absTotalPathDistanceToEndOfSegment);
       } else if (positiveMean.getElement(0) < absTotalPathDistanceToStartOfSegment) {
         positiveMean.setElement(0,
             absTotalPathDistanceToStartOfSegment);
@@ -655,19 +724,23 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
     }
 
     // TODO: missing other projection
-    return new PathEdgeProjection(projPair, positiveMean, null);
+    return new PathEdgeProjection(projPair, positiveMean,
+        null);
   }
 
-  public Vector sampleStateTransDist(Vector state, Random rng) {
+  public Vector sampleStateTransDist(Vector state,
+    Random rng) {
     final int dim = state.getDimensionality();
     final Matrix sampleCovChol =
-        StatisticsUtil.getCholR(dim == 4 ? this.getQg() : this
-            .getQr());
+        StatisticsUtil.getCholR(dim == 4 ? this.getQg()
+            : this.getQr());
     final Vector qSmpl =
-        MultivariateGaussian.sample(VectorFactory.getDenseDefault()
-            .createVector(dim / 2), sampleCovChol.transpose(), rng);
+        MultivariateGaussian.sample(VectorFactory
+            .getDenseDefault().createVector(dim / 2),
+            sampleCovChol.transpose(), rng);
     final Vector stateSmpl =
-        state.plus(this.getCovarianceFactor(dim == 2).times(qSmpl));
+        state.plus(this.getCovarianceFactor(dim == 2)
+            .times(qSmpl));
     return stateSmpl;
   }
 
@@ -700,7 +773,8 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
         projPair.getProjMatrix().transpose().times(C)
             .times(projPair.getProjMatrix());
 
-    assert StatisticsUtil.isPosSemiDefinite((DenseMatrix) projCov);
+    assert StatisticsUtil
+        .isPosSemiDefinite((DenseMatrix) projCov);
 
     final Vector projMean =
         projPair
@@ -713,9 +787,12 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
     if (useAbsVelocity) {
       final double absVelocity =
           VectorFactory.getDenseDefault()
-              .copyVector(Vg.times(belief.getMean())).norm2();
-      projMean.setElement(1, Math.signum(projMean.getElement(1))
-          * absVelocity);
+              .copyVector(Vg.times(belief.getMean()))
+              .norm2();
+      projMean
+          .setElement(1,
+              Math.signum(projMean.getElement(1))
+                  * absVelocity);
     }
 
     /*
@@ -735,16 +812,18 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
      */
     final PathState newState =
         path.getCheckedStateOnPath(projMean,
-            AbstractRoadTrackingFilter.getEdgelengthtolerance());
+            AbstractRoadTrackingFilter
+                .getEdgelengthtolerance());
 
-    belief.setMean(newState.getState());
+    belief.setMean(newState.getGlobalState());
     belief.setCovariance(projCov);
 
     return projPair;
   }
 
-  protected static boolean isIsoMapping(@Nonnull Vector from,
-    @Nonnull Vector to, @Nonnull PathEdge pathEdge) {
+  protected static boolean isIsoMapping(
+    @Nonnull Vector from, @Nonnull Vector to,
+    @Nonnull PathEdge pathEdge) {
 
     /*
      * XXX TODO FIXME: this is temporary!  we should be testing
@@ -753,8 +832,8 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
     final Vector adjFrom;
     if (Math.abs(pathEdge.getDistToStartOfEdge()) > 0d) {
       adjFrom = from.clone();
-      adjFrom.setElement(0,
-          adjFrom.getElement(0) - pathEdge.getDistToStartOfEdge());
+      adjFrom.setElement(0, adjFrom.getElement(0)
+          - pathEdge.getDistToStartOfEdge());
     } else {
       adjFrom = from;
     }
@@ -767,31 +846,35 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
     } else {
 
       final InferredPath invPath =
-          InferredPath.getInferredPath(
-              Collections.singletonList(PathEdge.getEdge(
-                  pathEdge.getInferredEdge(), 0d, isBackward)),
-              isBackward);
-      inversion = convertToRoadState(to, invPath, true).getState();
+          InferredPath.getInferredPath(Collections
+              .singletonList(PathEdge.getEdge(
+                  pathEdge.getInferredEdge(), 0d,
+                  isBackward)), isBackward);
+      inversion =
+          convertToRoadState(to, invPath, true)
+              .getLocalState();
     }
     final boolean result =
         inversion.equals(adjFrom,
-            AbstractRoadTrackingFilter.getEdgelengthtolerance());
+            AbstractRoadTrackingFilter
+                .getEdgelengthtolerance());
     return result;
   }
 
-  private static boolean isIsoMapping(Vector from, Vector to,
-    InferredPath path) {
+  private static boolean isIsoMapping(Vector from,
+    Vector to, InferredPath path) {
     final Vector inversion = invertProjection(to, path);
     final boolean result =
-        inversion.equals(from,
-            AbstractRoadTrackingFilter.getEdgelengthtolerance());
+        inversion.equals(from, AbstractRoadTrackingFilter
+            .getEdgelengthtolerance());
     return result;
   }
 
   public static PathEdgeProjection convertToRoadBelief(
     MultivariateGaussian belief, InferredPath path,
     boolean useAbsVelocity) {
-    return convertToRoadBelief(belief, path, null, useAbsVelocity);
+    return convertToRoadBelief(belief, path, null,
+        useAbsVelocity);
   }
 
   /**
@@ -814,7 +897,8 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
     Vector locVelocity, InferredPath path, PathEdge edge) {
 
     // TODO FIXME XXX make sure this works with the direction of motion.
-    Preconditions.checkArgument(locVelocity.getDimensionality() == 2
+    Preconditions.checkArgument(locVelocity
+        .getDimensionality() == 2
         || locVelocity.getDimensionality() == 4);
     Preconditions.checkArgument(edge == null
         || path.getEdges().contains(edge));
@@ -840,15 +924,17 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
     final LineSegment pathLineSegment;
     if (edge != null) {
       final Geometry edgeGeom =
-          path.getIsBackward() ? edge.getInferredEdge().getGeometry()
-              .reverse() : edge.getInferredEdge().getGeometry();
+          path.getIsBackward() ? edge.getGeometry()
+              .reverse() : edge.getGeometry();
       final LocationIndexedLine locIndex =
           new LocationIndexedLine(edgeGeom);
-      final LinearLocation tmpLocation = locIndex.project(currentPos);
+      final LinearLocation tmpLocation =
+          locIndex.project(currentPos);
       final LengthIndexedLine tmpLengthIdx =
           new LengthIndexedLine(edgeGeom);
       final double lengthOnEdge =
-          tmpLengthIdx.indexOf(tmpLocation.getCoordinate(edgeGeom));
+          tmpLengthIdx.indexOf(tmpLocation
+              .getCoordinate(edgeGeom));
 
       /*
        * Due to some really weird behavior with indexAfter in JTS,
@@ -864,7 +950,8 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
 
       lineLocation =
           LengthLocationMap.getLocation(geom,
-              Math.abs(edge.getDistToStartOfEdge()) + lengthOnEdge);
+              Math.abs(edge.getDistToStartOfEdge())
+                  + lengthOnEdge);
     } else {
       final LocationIndexedLine locIndex =
           new LocationIndexedLine(geom);
@@ -881,7 +968,8 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
           lengthIndex.indexOf(pathLineSegment.p0);
     }
 
-    final Coordinate pointOnLine = lineLocation.getCoordinate(geom);
+    final Coordinate pointOnLine =
+        lineLocation.getCoordinate(geom);
     m.setElement(0, pointOnLine.x);
     m.setElement(2, pointOnLine.y);
 
@@ -905,7 +993,8 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
 
     final Entry<Matrix, Vector> projPair =
         AbstractRoadTrackingFilter.posVelProjectionPair(
-            pathLineSegment, distanceToStartOfSegmentOnGeometry);
+            pathLineSegment,
+            distanceToStartOfSegmentOnGeometry);
 
     return new PathEdgeProjection(projPair, m, null);
   }
@@ -913,10 +1002,13 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
   protected static Matrix createStateCovarianceMatrix(
     double timeDiff, Matrix Q, boolean isRoad) {
 
-    final Matrix A_half = getCovarianceFactor(timeDiff, isRoad);
-    final Matrix A = A_half.times(Q).times(A_half.transpose());
+    final Matrix A_half =
+        getCovarianceFactor(timeDiff, isRoad);
+    final Matrix A =
+        A_half.times(Q).times(A_half.transpose());
 
-    assert StatisticsUtil.isPosSemiDefinite((DenseMatrix) A);
+    assert StatisticsUtil
+        .isPosSemiDefinite((DenseMatrix) A);
 
     return A;
   }
@@ -949,7 +1041,8 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
       dim = 1;
     }
     final Matrix A_half =
-        MatrixFactory.getDefault().createMatrix(dim * 2, dim);
+        MatrixFactory.getDefault().createMatrix(dim * 2,
+            dim);
     A_half.setElement(0, 0, Math.pow(timeDiff, 2) / 2d);
     A_half.setElement(1, 0, timeDiff);
     if (dim == 2) {
@@ -1013,8 +1106,10 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
         new LengthIndexedLine(geometry);
 
     final LinearLocation lineLocation =
-        LengthLocationMap.getLocation(geometry, distAlongGeometry);
-    final LineSegment lineSegment = lineLocation.getSegment(geometry);
+        LengthLocationMap.getLocation(geometry,
+            distAlongGeometry);
+    final LineSegment lineSegment =
+        lineLocation.getSegment(geometry);
     final Coordinate startOfSegmentCoord = lineSegment.p0;
     final double positiveDistToStartOfSegmentOnGeometry =
         lengthIdxLine.indexOf(startOfSegmentCoord);
@@ -1039,11 +1134,12 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
     return zeros2D;
   }
 
-  public static Vector
-      invertProjection(Vector dist, InferredPath path) {
+  public static Vector invertProjection(Vector dist,
+    InferredPath path) {
     Preconditions.checkArgument(!path.isEmptyPath());
-    Preconditions.checkArgument(dist.getDimensionality() == 2
-        || dist.getDimensionality() == 4);
+    Preconditions
+        .checkArgument(dist.getDimensionality() == 2
+            || dist.getDimensionality() == 4);
 
     if (dist.getDimensionality() == 2) {
       /*
@@ -1051,11 +1147,12 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
        */
       final PathEdgeProjection proj =
           getGroundProjection(dist,
-              path.getEdgeForDistance(dist.getElement(0), true),
-              false);
+              path.getEdgeForDistance(dist.getElement(0),
+                  true), false);
 
       final Vector projMean =
-          proj.getProjMatrix().times(proj.getPositiveState())
+          proj.getProjMatrix()
+              .times(proj.getPositiveState())
               .plus(proj.getOffset());
 
       return projMean;
@@ -1068,26 +1165,30 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
           getRoadProjection(dist, path, null);
 
       final Vector projMean =
-          proj.getProjMatrix().transpose()
-              .times(proj.getPositiveState().minus(proj.getOffset()));
+          proj.getProjMatrix()
+              .transpose()
+              .times(
+                  proj.getPositiveState().minus(
+                      proj.getOffset()));
 
       return projMean;
     }
   }
 
-  public static void invertProjection(MultivariateGaussian dist,
-    InferredPath path, boolean useAbsVelocity) {
+  public static void invertProjection(
+    MultivariateGaussian dist, InferredPath path,
+    boolean useAbsVelocity) {
     Preconditions.checkArgument(!path.isEmptyPath());
-    Preconditions.checkArgument(dist.getInputDimensionality() == 2
+    Preconditions.checkArgument(dist
+        .getInputDimensionality() == 2
         || dist.getInputDimensionality() == 4);
 
     if (dist.getInputDimensionality() == 2) {
       /*
        * Convert to ground-coordinates
        */
-      convertToGroundBelief(
-          dist,
-          path.getEdgeForDistance(dist.getMean().getElement(0), true),
+      convertToGroundBelief(dist, path.getEdgeForDistance(
+          dist.getMean().getElement(0), true),
           useAbsVelocity);
     } else {
       /*
@@ -1108,9 +1209,11 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
    * on paths/path-edges, we'll need to re-adjust locally when path directions
    * don't line up.
    */
-  public static void normalizeBelief(Vector mean, PathEdge edge) {
+  public static void normalizeBelief(Vector mean,
+    PathEdge edge) {
 
-    Preconditions.checkArgument(edge.isOnEdge(mean.getElement(0)));
+    Preconditions.checkArgument(edge.isOnEdge(mean
+        .getElement(0)));
 
     final double desiredDirection;
     if (edge.getDistToStartOfEdge() == 0d) {
@@ -1122,7 +1225,8 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
       if (desiredDirection == 0d)
         return;
     } else {
-      desiredDirection = Math.signum(edge.getDistToStartOfEdge());
+      desiredDirection =
+          Math.signum(edge.getDistToStartOfEdge());
     }
 
     if (Math.signum(mean.getElement(0)) != desiredDirection) {
@@ -1136,8 +1240,10 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
       else if (newPosLocation > totalPosLength)
         newPosLocation = totalPosLength;
 
-      final double newLocation = desiredDirection * newPosLocation;
-      assert Double.compare(Math.abs(newLocation), totalPosLength) <= 0;
+      final double newLocation =
+          desiredDirection * newPosLocation;
+      assert Double.compare(Math.abs(newLocation),
+          totalPosLength) <= 0;
       //assert edge.isOnEdge(newLocation);
 
       mean.setElement(0, newLocation);
@@ -1150,8 +1256,9 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
    * from the start of the path to the end of the given edge. NOTE: These
    * results are only in the positive direction. Convert on your end.
    */
-  static protected Entry<Matrix, Vector> posVelProjectionPair(
-    LineSegment lineSegment, double distToStartOfLine) {
+  static protected Entry<Matrix, Vector>
+      posVelProjectionPair(LineSegment lineSegment,
+        double distToStartOfLine) {
 
     final Vector start = GeoUtils.getVector(lineSegment.p0);
     final Vector end = GeoUtils.getVector(lineSegment.p1);
@@ -1163,7 +1270,8 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
     final Vector P1 = end.minus(start).scale(1 / length);
     final Vector s1 = start.minus(P1.scale(distToStart));
 
-    final Matrix P = MatrixFactory.getDefault().createMatrix(4, 2);
+    final Matrix P =
+        MatrixFactory.getDefault().createMatrix(4, 2);
     P.setColumn(0, P1.stack(zeros2D));
     P.setColumn(1, zeros2D.stack(P1));
 
@@ -1174,40 +1282,47 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
 
   protected void setQr(Matrix qr) {
     Preconditions.checkArgument(qr.getNumColumns() == 1);
-    assert StatisticsUtil.isPosSemiDefinite((DenseMatrix) qr);
+    assert StatisticsUtil
+        .isPosSemiDefinite((DenseMatrix) qr);
     Qr = qr;
   }
 
   protected void setQg(Matrix qg) {
     Preconditions.checkArgument(qg.getNumColumns() == 2);
-    assert StatisticsUtil.isPosSemiDefinite((DenseMatrix) qg);
+    assert StatisticsUtil
+        .isPosSemiDefinite((DenseMatrix) qg);
     Qg = qg;
   }
 
-  protected void setOnRoadStateTransCovar(Matrix onRoadStateVariance) {
-    Preconditions
-        .checkArgument(onRoadStateVariance.getNumColumns() == 2);
+  protected void setOnRoadStateTransCovar(
+    Matrix onRoadStateVariance) {
+    Preconditions.checkArgument(onRoadStateVariance
+        .getNumColumns() == 2);
     assert StatisticsUtil
         .isPosSemiDefinite((DenseMatrix) onRoadStateVariance);
     this.onRoadStateTransCovar = onRoadStateVariance;
     this.roadFilter.setModelCovariance(onRoadStateVariance);
   }
 
-  protected void
-      setOffRoadStateTransCovar(Matrix offRoadStateVariance) {
-    Preconditions
-        .checkArgument(offRoadStateVariance.getNumColumns() == 4);
+  protected void setOffRoadStateTransCovar(
+    Matrix offRoadStateVariance) {
+    Preconditions.checkArgument(offRoadStateVariance
+        .getNumColumns() == 4);
     assert StatisticsUtil
         .isPosSemiDefinite((DenseMatrix) offRoadStateVariance);
     this.offRoadStateTransCovar = offRoadStateVariance;
-    this.groundFilter.setModelCovariance(offRoadStateVariance);
+    this.groundFilter
+        .setModelCovariance(offRoadStateVariance);
   }
 
   protected void setObsCovar(Matrix obsVariance) {
-    Preconditions.checkArgument(obsVariance.getNumColumns() == 2);
+    Preconditions
+        .checkArgument(obsVariance.getNumColumns() == 2);
     assert StatisticsUtil
         .isPosSemiDefinite((DenseMatrix) obsVariance);
     this.obsCovar = obsVariance;
+    this.groundFilter.setMeasurementCovariance(this.obsCovar);
+    this.roadFilter.setMeasurementCovariance(this.obsCovar);
   }
 
   public static double getEdgelengthtolerance() {
@@ -1219,19 +1334,23 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
     final int prime = 31;
     int result = 1;
     result =
-        prime * result
-            + ((Qg == null) ? 0 : ((AbstractMatrix) Qg).hashCode());
+        prime
+            * result
+            + ((Qg == null) ? 0 : ((AbstractMatrix) Qg)
+                .hashCode());
     result =
-        prime * result
-            + ((Qr == null) ? 0 : ((AbstractMatrix) Qr).hashCode());
+        prime
+            * result
+            + ((Qr == null) ? 0 : ((AbstractMatrix) Qr)
+                .hashCode());
     long temp;
     temp = Double.doubleToLongBits(currentTimeDiff);
     result = prime * result + (int) (temp ^ (temp >>> 32));
     result =
         prime
             * result
-            + ((obsCovar == null) ? 0 : ((AbstractMatrix) obsCovar)
-                .hashCode());
+            + ((obsCovar == null) ? 0
+                : ((AbstractMatrix) obsCovar).hashCode());
     result =
         prime
             * result
@@ -1242,7 +1361,8 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
         prime
             * result
             + ((onRoadStateTransCovar == null) ? 0
-                : ((AbstractMatrix) onRoadStateTransCovar).hashCode());
+                : ((AbstractMatrix) onRoadStateTransCovar)
+                    .hashCode());
     temp = Double.doubleToLongBits(prevTimeDiff);
     result = prime * result + (int) (temp ^ (temp >>> 32));
     return result;
@@ -1283,7 +1403,8 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
       if (other.obsCovar != null) {
         return false;
       }
-    } else if (!((AbstractMatrix) obsCovar).equals((other.obsCovar))) {
+    } else if (!((AbstractMatrix) obsCovar)
+        .equals((other.obsCovar))) {
       return false;
     }
     if (offRoadStateTransCovar == null) {
@@ -1309,7 +1430,7 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
     return true;
   }
 
-  public abstract void update(Observation obs,
+  public abstract void update(VehicleState state, Observation obs,
     PathStateBelief updatedBelief,
     PathStateBelief priorPathStateBelief, Random rng);
 

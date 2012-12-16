@@ -38,6 +38,8 @@ var allInfMeansGroup = new L.LayerGroup();
 
 var lines = null;
 var i = 0;
+// FIXME hack!
+var globalEpsgCode = null;
 
 var interval = null;
 var paths = null;
@@ -552,20 +554,20 @@ function drawEdge(edge, edgeType, layerOnly) {
   var layers = new Array(geojson);
   geojson.addData(data.geom);
 
+  var arrowhead;
   var angle = data.angle;
   if (angle != null) {
     var lonlat = data.geom.coordinates[data.geom.coordinates.length - 1];
-    var myIcon = L.icon({
+    var myIcon = new L.icon({
       iconUrl : '/public/images/tab_right.png',
       shadowUrl: null,
       shadowSize: null,
       iconSize: [80, 30]
     }); 
-    var arrowhead = new L.Marker.Compass(new L.LatLng(lonlat[1], lonlat[0]), {
+    arrowhead = new L.Marker.Compass(new L.LatLng(lonlat[1], lonlat[0]), {
       icon : myIcon,
       clickable : false
     });
-    arrowhead.setIconAngle(angle);
     layers.push(arrowhead);
   }
 
@@ -574,6 +576,10 @@ function drawEdge(edge, edgeType, layerOnly) {
     // edgeGroup.addLayer(result);
     groupType.addLayer(result);
   }
+  
+  if (arrowhead)
+    arrowhead.setIconAngle(-angle);
+  
   map.invalidateSize();
 
   return result;
@@ -675,6 +681,7 @@ function renderParticles(isPrior) {
                   function(_, particleData) {
 
                     var epsgCode = particleData.particle.observedPoint.epsgCode;
+                    globalEpsgCode = epsgCode;
                     var particleMeanLoc = particleData.particle.infResults.meanCoords;
                     var locLinkName = 'particle_' + particleNumber + '_mean_'
                         + isPrior;
@@ -741,7 +748,7 @@ function renderParticles(isPrior) {
                     if (stateSample !== null) {
                       var smplLocLinkName = 'stateSample_' + particleNumber + '_mean_'
                           + isPrior;
-                      var smplCoordPair = stateSample.stateLoc[0] + ',' + stateSample.stateLoc[1];
+                      var smplCoordPair = stateSample.stateLoc[0] + ',' + stateSample.stateLoc[2];
                       var smplLocLink = '<a name="'
                           + smplLocLinkName
                           + '" title="'
@@ -751,7 +758,7 @@ function renderParticles(isPrior) {
                       
                       var smplMeanLoc = {};
                       smplMeanLoc.x = stateSample.stateLoc[0];
-                      smplMeanLoc.y = stateSample.stateLoc[1];
+                      smplMeanLoc.y = stateSample.stateLoc[2];
                       var smplMeanLatLon = convertToLatLon(smplMeanLoc, epsgCode);
                       collapsedDiv.append('<li>' + smplLocLink  + ", " + stateVec + '</li>');
                       createHoverPointLink(smplLocLinkName, smplMeanLatLon);
@@ -831,7 +838,7 @@ function renderParticles(isPrior) {
                       if (parentStateSample !== null) {
                         var smplLocLinkName = 'parent_stateSample_' + particleNumber + '_mean_'
                             + isPrior;
-                        var smplCoordPair = parentStateSample.stateLoc[0] + ',' + parentStateSample.stateLoc[1];
+                        var smplCoordPair = parentStateSample.stateLoc[0] + ',' + parentStateSample.stateLoc[2];
                         var smplLocLink = '<a name="'
                             + smplLocLinkName
                             + '" title="'
@@ -841,7 +848,7 @@ function renderParticles(isPrior) {
                         
                         var smplMeanLoc = {};
                         smplMeanLoc.x = parentStateSample.stateLoc[0];
-                        smplMeanLoc.y = parentStateSample.stateLoc[1];
+                        smplMeanLoc.y = parentStateSample.stateLoc[2];
                         var smplMeanLatLon = convertToLatLon(smplMeanLoc, epsgCode);
                         parentList.append('<li>' + smplLocLink  + ", " + stateVec + '</li>');
                         createHoverPointLink(smplLocLinkName, smplMeanLatLon);
@@ -1157,6 +1164,7 @@ function renderPath(pathSegments, pathDirection, edgeType, layerOnly) {
 L.Marker.Compass = L.Marker
     .extend({
       _reset : function() {
+        
         var pos = this._map.latLngToLayerPoint(this._latlng).round();
 
         L.DomUtil.setPosition(this._icon, pos);
@@ -1177,7 +1185,18 @@ L.Marker.Compass = L.Marker
 
         this._icon.style.zIndex = pos.y;
       },
+      
+      _initIcon : function() {
+        L.Marker.prototype._initIcon.call(this) 
+        this._reset();
+      },
 
+      onAdd : function(e) {
+        L.Marker.prototype.onAdd.call(this, e);
+        if (this._map)
+          this._reset();
+      },
+      
       setIconAngle : function(iconAngle) {
 
         if (this._map) {
@@ -1205,3 +1224,66 @@ function getColor(f) {
 
   return rgb.toString(16);
 }
+
+/*
+ * parse Well Known Text (WKT) and return a PolyLine, MultiPolyline, et cetera
+ * params:
+ * - wkt, String WKT to be parsed
+ * - options, object to be passed to the new feature as it is constructed, e.g. fillColor, strokeWidth
+ * returns:
+ * - an instance of a L.Path subclass, e.g. L.Polyline
+ *
+ * The supported options depends on the type of feature found   http://leaflet.cloudmade.com/reference.html#path
+ */
+L.WKTtoFeature = function (wkt,options) {
+    // really, this is a wrapper to the WKTtoFeature.parse* functions
+    wkt = wkt.replace(/^\s*/g,'').replace(/\s*$/,'');
+    if (wkt.indexOf('LINESTRING') == 0)      return L.WKTtoFeature.parseLinestring(wkt,options);
+    if (wkt.indexOf('MULTILINESTRING') == 0) return L.WKTtoFeature.parseMultiLinestring(wkt,options);
+};
+
+
+L.WKTtoFeature.parseLinestring = function (wkt,options) {
+    // split on , to get vertices. handle possible spaces after commas
+    var verts = wkt.replace(/^LINESTRING\s*\(/, '').replace(/\)$/, '').split(/,\s*/);
+
+    // collect vertices into a line
+    var line = [];
+    for (var vi=0, vl=verts.length; vi<vl; vi++) {
+        var lng = parseFloat( verts[vi].split(" ")[0] );
+        var lat = parseFloat( verts[vi].split(" ")[1] );
+        line[line.length] = convertToLatLon({x: lng, y: lat}, globalEpsgCode);
+//        line[line.length] = new L.LatLng(lat,lng);
+    }
+
+    // all set, return the Polyline with the user-supplied options/style
+    var feature = new L.Polyline(line, options);
+    return feature;
+}
+
+
+L.WKTtoFeature.parseMultiLinestring = function (wkt,options) {
+    // some text fixes
+    wkt = wkt.replace(/^MULTILINESTRING\s*\(\(/, '').replace(/\)\)$/, '');
+
+    // split by () content to get linestrings, split linestrings by commas to get vertices
+    var multiline = [];
+    var getLineStrings = /\((.+?)\)/g;
+    var getVerts = /,\s*/g;
+    while (lsmatch = getLineStrings.exec(wkt)) {
+        var line = [];
+        var verts = lsmatch[1].split(getVerts);
+        for (var i=0; i<verts.length; i++) {
+            var lng = parseFloat( verts[i].split(" ")[0] );
+            var lat = parseFloat( verts[i].split(" ")[1] );
+            line[line.length] = convertToLatLon({x: lng, y: lat}, globalEpsgCode);
+//            line[line.length] = new L.LatLng(lat,lng);
+        }
+        multiline[multiline.length] = line;
+    }
+
+    // all set, return the MultiPolyline with the user-supplied options/style
+    var feature = new L.MultiPolyline(multiline, options);
+    return feature;
+}
+

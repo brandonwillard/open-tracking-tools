@@ -188,11 +188,11 @@ public class ResultSet {
           Map<String, Object> jsonResult = Maps.newHashMap();
           jsonResult.put("state",
               ((gov.sandia.cognition.math.matrix.mtj.DenseVector) 
-                eeFilter.getCurrentStateSample().getState()).getArray().clone());
+                eeFilter.getCurrentStateSample().getGlobalState()).getArray().clone());
           jsonResult.put("stateLoc",
               ((gov.sandia.cognition.math.matrix.mtj.DenseVector) 
-                eeFilter.getCurrentStateSample().getStateLocation()).getArray().clone());
-          jsonResult.put("isBackward", eeFilter.getCurrentStateSample().getIsBackward());
+                eeFilter.getCurrentStateSample().getGroundState()).getArray().clone());
+          jsonResult.put("isBackward", eeFilter.getCurrentStateSample().getPath().getIsBackward());
           return jsonResult;
         } 
       } 
@@ -304,7 +304,7 @@ public class ResultSet {
   @JsonIgnore
   private OsmSegmentWithVelocity createInferredEdge() {
     final OsmSegmentWithVelocity osmSegment;
-    final InferredEdge edge = state.getInferredEdge();
+    final InferredEdge edge = state.getBelief().getEdge().getInferredEdge();
     if (edge != InferredEdge.getEmptyEdge()) {
       osmSegment =
           new OsmSegmentWithVelocity(edge, edge.getVelocityPrecisionDist().getLocation());
@@ -417,7 +417,7 @@ public class ResultSet {
 
   @JsonSerialize
   public double[] getStateMean() {
-    return ((DenseVector) state.getBelief().getMean()).getArray()
+    return ((DenseVector) state.getBelief().getGlobalState()).getArray()
         .clone();
   }
 

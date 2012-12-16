@@ -1,7 +1,8 @@
-package org.openplans.tools.tracking.impl.util;
+package org.openplans.tools.tracking.impl.statistics;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.*;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -9,10 +10,12 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import org.junit.Before;
 import org.junit.Test;
 import org.openplans.tools.tracking.impl.graph.InferredEdge;
 import org.openplans.tools.tracking.impl.graph.paths.InferredPath;
 import org.openplans.tools.tracking.impl.graph.paths.PathEdge;
+import org.openplans.tools.tracking.impl.util.OtpGraph;
 import org.opentripplanner.routing.edgetype.PlainStreetEdge;
 import org.opentripplanner.routing.edgetype.StreetTraversalPermission;
 import org.opentripplanner.routing.graph.Edge;
@@ -26,6 +29,11 @@ import com.vividsolutions.jts.geom.LineString;
 
 public class UniquePathTest {
 
+  @Before
+  public void testSetup() {
+    
+  }
+  
   @Test
   public void testUnique() {
     Graph graph = new Graph();
@@ -54,12 +62,13 @@ public class UniquePathTest {
         StreetTraversalPermission.ALL, false);
 
     Set<InferredPath> paths = new HashSet<InferredPath>();
-    OtpGraph otpGraph = null;
 
+    OtpGraph otpGraph = mock(OtpGraph.class);
+    
     List<PathEdge> edges1 = new ArrayList<PathEdge>(
         Arrays.asList(PathEdge.getEdge(new InferredEdge(
-            e1, 1, otpGraph), 0)));
-    InferredPath p1 = InferredPath.getInferredPath(edges1);
+            e1, 1, otpGraph), 0, false)));
+    InferredPath p1 = InferredPath.getInferredPath(edges1, false);
     paths.add(p1);
 
     //a single path should be passed unchanged.
@@ -67,8 +76,8 @@ public class UniquePathTest {
     assertEquals(1, paths.size());
 
     List<PathEdge> edges2 = Arrays.asList(PathEdge.getEdge(
-        new InferredEdge(e2, 2, otpGraph), 0));
-    InferredPath p2 = InferredPath.getInferredPath(edges2);
+        new InferredEdge(e2, 2, otpGraph), 0, false));
+    InferredPath p2 = InferredPath.getInferredPath(edges2, false);
     paths.add(p2);
 
     //two non-overlapping paths should not be compressed
@@ -76,9 +85,9 @@ public class UniquePathTest {
     assertEquals(2, paths.size());
 
     List<PathEdge> edges3 = Arrays.asList(
-        PathEdge.getEdge(new InferredEdge(e2, 2, otpGraph), 0),
-        PathEdge.getEdge(new InferredEdge(e3, 3, otpGraph), 0));
-    InferredPath p3 = InferredPath.getInferredPath(edges3);
+        PathEdge.getEdge(new InferredEdge(e2, 2, otpGraph), 0, false),
+        PathEdge.getEdge(new InferredEdge(e3, 3, otpGraph), 0, false));
+    InferredPath p3 = InferredPath.getInferredPath(edges3, false);
     paths.add(p3);
 
     //an overlapping path should supersede a smaller one
@@ -88,16 +97,16 @@ public class UniquePathTest {
 
     //the most complicated example
     List<PathEdge> edges4 = Arrays.asList(
-        PathEdge.getEdge(new InferredEdge(e2, 2, otpGraph), 0),
-        PathEdge.getEdge(new InferredEdge(e4, 4, otpGraph), 0));
-    InferredPath p4 = InferredPath.getInferredPath(edges4);
+        PathEdge.getEdge(new InferredEdge(e2, 2, otpGraph), 0, false),
+        PathEdge.getEdge(new InferredEdge(e4, 4, otpGraph), 0, false));
+    InferredPath p4 = InferredPath.getInferredPath(edges4, false);
     paths.add(p4);
 
     List<PathEdge> edges5 = Arrays.asList(
-        PathEdge.getEdge(new InferredEdge(e2, 2, otpGraph), 0),
-        PathEdge.getEdge(new InferredEdge(e4, 4, otpGraph), 0),
-        PathEdge.getEdge(new InferredEdge(e5, 5, otpGraph), 0));
-    InferredPath p5 = InferredPath.getInferredPath(edges5);
+        PathEdge.getEdge(new InferredEdge(e2, 2, otpGraph), 0, false),
+        PathEdge.getEdge(new InferredEdge(e4, 4, otpGraph), 0, false),
+        PathEdge.getEdge(new InferredEdge(e5, 5, otpGraph), 0, false));
+    InferredPath p5 = InferredPath.getInferredPath(edges5, false);
     paths.add(p5);
     OtpGraph.makeUnique(paths);
     assertEquals(3, paths.size());

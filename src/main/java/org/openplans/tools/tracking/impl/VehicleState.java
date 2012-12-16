@@ -25,6 +25,7 @@ import org.openplans.tools.tracking.impl.statistics.filters.road_tracking.Abstra
 import org.openplans.tools.tracking.impl.util.OtpGraph;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.Iterables;
 
 /**
  * This class represents the state of a vehicle, which is made up of the
@@ -70,7 +71,7 @@ public class VehicleState implements
        */
       logLikelihood +=
           this.getMovementFilter().logLikelihood(
-              input.getProjectedPoint(), this.belief.getState(), this.belief.getEdge());
+              input.getProjectedPoint(), this.belief);
 
       return logLikelihood;
     }
@@ -358,7 +359,6 @@ public class VehicleState implements
     OnOffEdgeTransDirMulti edgeTransitionDist,
     VehicleState parentState) {
 
-    Preconditions.checkNotNull(parentState);
     Preconditions.checkNotNull(graph);
     Preconditions.checkNotNull(observation);
     Preconditions.checkNotNull(updatedFilter);
@@ -370,16 +370,25 @@ public class VehicleState implements
     this.graph = graph;
     
     /*
+     * Check that the state's location corresponds
+     * to the last edge.
+     */
+    Preconditions.checkState(!belief.isOnRoad() 
+        || belief.getEdge().equals(
+            Iterables.getLast(belief.getPath().getEdges())));
+    /*
      * This is the constructor used when creating transition states, so this is
      * where we'll need to reset the distance measures
      */
-    if (this.belief.isOnRoad()) {
-      if (parentState != null && parentState.getBelief().isOnRoad()) {
-        this.distanceFromPreviousState = this.belief.getDistanceBetween(parentState.belief);
+    if (parentState != null) {
+      final Vector dist = this.belief.minus(parentState.belief);
+      if (dist.getDimensionality() == 2) {
+        this.distanceFromPreviousState = AbstractRoadTrackingFilter.getOr()
+            .times(dist).getElement(0);
       } else {
-        this.distanceFromPreviousState = null;
+        this.distanceFromPreviousState = AbstractRoadTrackingFilter.getOg()
+          .times(dist).getElement(0);      
       }
-
     } else {
       this.distanceFromPreviousState = null;
     }
@@ -482,21 +491,12 @@ public class VehicleState implements
    * @return
    */
   public Vector getMeanLocation() {
-    Vector v;
-    if (belief.isOnRoad()) {
-      v = belief.getGroundMean();
-    } else {
-      v = belief.getMean();
-    }
+    Vector v = belief.getGroundState();
     return AbstractRoadTrackingFilter.getOg().times(v);
   }
 
   public AbstractRoadTrackingFilter<?> getMovementFilter() {
     return movementFilter;
-  }
-
-  public Vector getNonVelocityVector() {
-    return getNonVelocityVector(this.belief.getMean());
   }
 
   public Observation getObservation() {

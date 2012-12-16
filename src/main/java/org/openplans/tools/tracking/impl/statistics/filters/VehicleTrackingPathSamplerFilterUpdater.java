@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Random;
 import java.util.Set;
 
+import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
 import org.apache.commons.lang.NotImplementedException;
@@ -30,7 +31,7 @@ import org.openplans.tools.tracking.impl.graph.paths.PathStateBelief;
 import org.openplans.tools.tracking.impl.statistics.DefaultCountedDataDistribution;
 import org.openplans.tools.tracking.impl.statistics.OnOffEdgeTransDirMulti;
 import org.openplans.tools.tracking.impl.statistics.StatisticsUtil;
-import org.openplans.tools.tracking.impl.statistics.filters.particle_learning.VehicleTrackingParticleFilterUpdater;
+import org.openplans.tools.tracking.impl.statistics.filters.particle_learning.AbstractVTParticleFilterUpdater;
 import org.openplans.tools.tracking.impl.statistics.filters.road_tracking.AbstractRoadTrackingFilter;
 import org.openplans.tools.tracking.impl.statistics.filters.road_tracking.StandardRoadTrackingFilter;
 import org.openplans.tools.tracking.impl.util.GeoUtils;
@@ -38,6 +39,7 @@ import org.openplans.tools.tracking.impl.util.OtpGraph;
 import org.opentripplanner.routing.edgetype.StreetEdge;
 import org.opentripplanner.routing.graph.Edge;
 
+import com.google.common.base.Preconditions;
 import com.google.common.base.Predicate;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
@@ -47,7 +49,7 @@ import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.Polygon;
 
 public class VehicleTrackingPathSamplerFilterUpdater extends 
-    VehicleTrackingParticleFilterUpdater {
+    AbstractVTParticleFilterUpdater {
 
   public VehicleTrackingPathSamplerFilterUpdater(Observation obs,
     OtpGraph inferredGraph, VehicleStateInitialParameters parameters) {
@@ -56,9 +58,6 @@ public class VehicleTrackingPathSamplerFilterUpdater extends
 
   private static final long serialVersionUID = 2884138088944317656L;
 
-  /**
-   * Why is this required?
-   */
   @Override
   public double computeLogLikelihood(VehicleState particle,
     Observation observation) {
@@ -76,10 +75,14 @@ public class VehicleTrackingPathSamplerFilterUpdater extends
        * have distributions, so no variances. TODO FIXME: we should have a
        * better design. one that take the above into account.
        */
-      state.getBelief().getStateBelief().setCovarianceInverse(
+      state.getBelief().getLocalStateBelief().setCovarianceInverse(
           MatrixFactory.getDiagonalDefault().createMatrix(
-              state.getBelief().getMean().getDimensionality(),
-              state.getBelief().getMean().getDimensionality()));
+              state.getBelief().getLocalState().getDimensionality(),
+              state.getBelief().getLocalState().getDimensionality()));
+      state.getBelief().getGlobalStateBelief().setCovarianceInverse(
+          MatrixFactory.getDiagonalDefault().createMatrix(
+              state.getBelief().getLocalState().getDimensionality(),
+              state.getBelief().getLocalState().getDimensionality()));
     }
 
     return initialDist;
@@ -139,9 +142,11 @@ public class VehicleTrackingPathSamplerFilterUpdater extends
     final Random rng = this.random;
     rng.setSeed(this.seed);
 
-    PathEdge currentEdge = initialState.getEdge();
+    PathEdge currentEdge = PathEdge.getEdge(
+        initialState.getEdge().getInferredEdge(),
+        0d, initialState.getPath().getIsBackward());
     PathEdge previousEdge = null;
-    Vector newState = initialState.getMean().clone();
+    Vector newState = initialState.getLocalState().clone();
 
     final List<PathEdge> currentPath = Lists.newArrayList();
 
@@ -282,7 +287,7 @@ public class VehicleTrackingPathSamplerFilterUpdater extends
            * filters will likely suffer, no?
            */
           final Vector oldLoc =
-              AbstractRoadTrackingFilter.getOg().times(initialState.getGroundMean());
+              AbstractRoadTrackingFilter.getOg().times(initialState.getGroundState());
           final Polygon extent =
               JTS.toGeometry(this.inferredGraph.getBaseGraph()
                   .getExtent());
@@ -322,7 +327,7 @@ public class VehicleTrackingPathSamplerFilterUpdater extends
                   sampledEdge, 0d, false));
           newState =
               AbstractRoadTrackingFilter.convertToRoadState(newState,
-                  edgePath, true).getState();
+                  edgePath, true).getLocalState();
         } else {
           /*
            * In this case, we were on-road and still are.
@@ -334,8 +339,16 @@ public class VehicleTrackingPathSamplerFilterUpdater extends
               InferredPath.getInferredPath(PathEdge.getEdge(
                   sampledEdge, 0d, false));
           newState =
-              edgePath.convertToStateOnPath(newState,
-                  currentEdge.getEdge());
+              edgePath.getStateOnPath(
+                  PathState.getPathState(
+                      InferredPath.getInferredPath(
+                          PathEdge.getEdge(
+                              currentEdge.getInferredEdge(), 
+                              0d, 
+                              newState.getElement(0) < 0d)),
+                      newState
+                      )
+                  );
         }
 
         initialLocation = newState.getElement(0);
@@ -434,9 +447,9 @@ public class VehicleTrackingPathSamplerFilterUpdater extends
       final InferredPath newPath =
           InferredPath.getInferredPath(currentPath,
               newState.getElement(0) < 0d ? true : false);
-      result =
+      result = Preconditions.checkNotNull(
           newPath.getCheckedStateOnPath(newState,
-              AbstractRoadTrackingFilter.getEdgelengthtolerance());
+              AbstractRoadTrackingFilter.getEdgelengthtolerance()));
     } else {
       final InferredPath newPath = InferredPath.getEmptyPath();
       result = PathState.getPathState(newPath, newState);
@@ -485,14 +498,25 @@ public class VehicleTrackingPathSamplerFilterUpdater extends
     final PathState newPathState =
         sampleNextState(newTransDist, currentBelief, predictedFilter);
     
-    final PathStateBelief newStateBelief = PathStateBelief.getPathStateBelief(newPathState.getPath(),
-        new MultivariateGaussian(newPathState.getState(), currentBelief.getCovariance()));
+    final PathStateBelief newStateBelief = PathStateBelief.getPathStateBelief(newPathState, 
+        currentBelief.getCovariance());
 
     final VehicleState newState =
         new VehicleState(this.inferredGraph, obs, predictedFilter,
             newStateBelief, newTransDist, previousState);
 
     return newState;
+  }
+
+  @Override
+  @Nonnull
+  protected AbstractRoadTrackingFilter
+      createRoadTrackingFilter() {
+    return new StandardRoadTrackingFilter(
+          parameters.getObsCov(),
+          parameters.getOffRoadStateCov(),
+          parameters.getOnRoadStateCov(),
+          parameters.getInitialObsFreq());
   }
 
 }

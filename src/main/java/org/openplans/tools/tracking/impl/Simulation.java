@@ -1,7 +1,9 @@
 package org.openplans.tools.tracking.impl;
 
 import gov.sandia.cognition.math.matrix.Matrix;
+import gov.sandia.cognition.math.matrix.MatrixFactory;
 import gov.sandia.cognition.math.matrix.Vector;
+import gov.sandia.cognition.math.matrix.mtj.DiagonalMatrixFactoryMTJ;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 
 import java.util.Date;
@@ -278,16 +280,13 @@ public class Simulation {
    * @param edge
    * @return
    */
-  public Vector sampleObservation(Vector state, Matrix obsCov,
-    PathEdge edge) {
+  public Vector sampleObservation(PathState state, Matrix cov) {
 
-    final Vector groundState =
-        AbstractRoadTrackingFilter.convertToGroundState(state, edge,
-            false);
+    final Vector groundState = state.getGroundState();
     final Vector gMean =
         AbstractRoadTrackingFilter.getOg().times(groundState);
 
-    final Matrix covSqrt = StatisticsUtil.rootOfSemiDefinite(obsCov);
+    final Matrix covSqrt = StatisticsUtil.rootOfSemiDefinite(cov);
 
     final Vector thisStateSample =
         MultivariateGaussian.sample(gMean, covSqrt, rng);
@@ -309,24 +308,16 @@ public class Simulation {
     /*
      * Run through the edges, predict movement and reset the belief.
      */
-    this.updater.seed = this.rng.nextLong();
     final PathState newPathState =
         this.updater.sampleNextState(
             vehicleState.getEdgeTransitionDist(),
             vehicleState.getBelief(), 
             vehicleState.getMovementFilter());
 
-    final InferredPath newPath = newPathState.getPath();
-
-
-    final PathEdge newPathEdge =
-        Iterables.getLast(newPath.getEdges());
-
     final Matrix gCov =
         vehicleState.getMovementFilter().getObsCovar();
     final Vector thisLoc =
-        sampleObservation(newPathState.getState(), gCov,
-            newPathEdge);
+        sampleObservation(newPathState, gCov);
 
     final Coordinate obsCoord =
         GeoUtils.convertToLatLon(thisLoc, vehicleState
@@ -344,7 +335,12 @@ public class Simulation {
 
     final PathStateBelief newStateBelief = PathStateBelief.getPathStateBelief(
         newPathState.getPath(), new MultivariateGaussian(
-            newPathState.getState(), vehicleState.getBelief().getCovariance()));
+            newPathState.getGlobalState(), 
+            MatrixFactory.getDiagonalDefault().createMatrix(
+                newPathState.getGlobalState().getDimensionality(),
+                newPathState.getGlobalState().getDimensionality())
+            )
+        );
     
     final VehicleState newState =
         new VehicleState(this.inferredGraph, thisObs, trackingFilter,
@@ -357,9 +353,17 @@ public class Simulation {
     final long time =
         currentState.getObservation().getTimestamp().getTime()
             + this.simParameters.getFrequency() * 1000;
+    
+    /*
+     * TODO: set seed for debugging
+     */
+    this.updater.seed = this.rng.nextLong();
+    
     final VehicleState vehicleState = sampleState(currentState, time);
+    
     _log.info("processed simulation observation : "
         + recordsProcessed + ", " + time);
+    
     recordsProcessed++;
     return vehicleState;
   }

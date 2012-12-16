@@ -8,6 +8,7 @@ import gov.sandia.cognition.math.signals.LinearDynamicalSystem;
 import java.util.Random;
 
 import org.openplans.tools.tracking.impl.Observation;
+import org.openplans.tools.tracking.impl.VehicleState;
 import org.openplans.tools.tracking.impl.graph.paths.PathStateBelief;
 import org.openplans.tools.tracking.impl.statistics.filters.AdjKalmanFilter;
 
@@ -32,8 +33,8 @@ public class StandardRoadTrackingFilter extends
     Vector unscaledOffRoadStateCov, Vector unscaledOnRoadStateCov,
     int initialObsFreq) {
 
-    this.setObsCovar(MatrixFactory.getDefault()
-        .createDiagonal(obsCov));
+    this.obsCovar = MatrixFactory.getDefault()
+        .createDiagonal(obsCov);
 
     this.currentTimeDiff = initialObsFreq;
 
@@ -56,7 +57,7 @@ public class StandardRoadTrackingFilter extends
             this.getQr(), true);
     this.roadFilter =
         new AdjKalmanFilter(roadModel, roadStateCov,
-            this.getObsCovar());
+            this.obsCovar);
     this.setOnRoadStateTransCovar(roadStateCov);
 
     /*
@@ -81,7 +82,7 @@ public class StandardRoadTrackingFilter extends
             this.getQg(), false);
     this.groundFilter =
         new AdjKalmanFilter(groundModel, groundStateCov,
-            this.getObsCovar());
+            this.obsCovar);
     this.setOffRoadStateTransCovar(groundStateCov);
 
   }
@@ -95,7 +96,7 @@ public class StandardRoadTrackingFilter extends
   }
 
   @Override
-  public void update(Observation obs, PathStateBelief posteriorState,
+  public void update(VehicleState state, Observation obs, PathStateBelief posteriorState,
     PathStateBelief priorPredictiveState, Random rng) {
     /*
      * Not updating.

@@ -449,7 +449,7 @@ public class OtpGraph {
         final PathEdge pathEdge =
             getValidPathEdge(edge, pathDist, direction, path);
         pathDist +=
-            direction * pathEdge.getInferredEdge().getLength();
+            direction * pathEdge.getLength();
         path.add(pathEdge);
       }
     }

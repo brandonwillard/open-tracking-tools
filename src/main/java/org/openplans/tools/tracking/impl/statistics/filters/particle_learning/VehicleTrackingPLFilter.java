@@ -5,12 +5,14 @@ import javax.annotation.Nonnull;
 import org.openplans.tools.tracking.impl.Observation;
 import org.openplans.tools.tracking.impl.VehicleState;
 import org.openplans.tools.tracking.impl.VehicleState.VehicleStateInitialParameters;
+import org.openplans.tools.tracking.impl.statistics.filters.road_tracking.AbstractRoadTrackingFilter;
+import org.openplans.tools.tracking.impl.statistics.filters.road_tracking.StandardRoadTrackingFilter;
 import org.openplans.tools.tracking.impl.util.OtpGraph;
 
 public class VehicleTrackingPLFilter extends AbstractVTPLFilter {
 
   public static class VehicleTrackingPLFilterUpdater extends
-      VehicleTrackingParticleFilterUpdater {
+      AbstractVTParticleFilterUpdater {
 
     private static final long serialVersionUID = 5271480648697065434L;
 
@@ -30,6 +32,17 @@ public class VehicleTrackingPLFilter extends AbstractVTPLFilter {
       Observation observation) {
       // TODO Auto-generated method stub
       return 0;
+    }
+
+    @Override
+    @Nonnull
+    protected AbstractRoadTrackingFilter
+        createRoadTrackingFilter() {
+      return new StandardRoadTrackingFilter(
+            parameters.getObsCov(),
+            parameters.getOffRoadStateCov(),
+            parameters.getOnRoadStateCov(),
+            parameters.getInitialObsFreq());
     }
 
   }

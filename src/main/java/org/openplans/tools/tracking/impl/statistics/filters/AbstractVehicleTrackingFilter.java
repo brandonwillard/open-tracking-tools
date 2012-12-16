@@ -24,7 +24,7 @@ import org.openplans.tools.tracking.impl.graph.paths.PathEdge;
 import org.openplans.tools.tracking.impl.graph.paths.PathStateBelief;
 import org.openplans.tools.tracking.impl.statistics.DefaultCountedDataDistribution;
 import org.openplans.tools.tracking.impl.statistics.OnOffEdgeTransDirMulti;
-import org.openplans.tools.tracking.impl.statistics.filters.particle_learning.VehicleTrackingParticleFilterUpdater;
+import org.openplans.tools.tracking.impl.statistics.filters.particle_learning.AbstractVTParticleFilterUpdater;
 import org.openplans.tools.tracking.impl.statistics.filters.road_tracking.StandardRoadTrackingFilter;
 import org.openplans.tools.tracking.impl.util.OtpGraph;
 import org.opentripplanner.routing.edgetype.StreetEdge;
@@ -60,7 +60,22 @@ public abstract class AbstractVehicleTrackingFilter extends
 
   public AbstractVehicleTrackingFilter(Observation obs,
     OtpGraph inferredGraph, VehicleStateInitialParameters parameters,
-    VehicleTrackingParticleFilterUpdater updater,
+    AbstractVTParticleFilterUpdater updater,
+    @Nonnull Boolean isDebug,
+    Random rng) {
+    this.parameters = parameters;
+    this.isDebug = isDebug;
+    this.setNumParticles(parameters.getNumParticles());
+    this.inferredGraph = inferredGraph;
+    this.setUpdater(updater);
+    this.initialObservation = obs;
+    this.random = rng;
+    updater.setRandom(random);
+  }
+  
+  public AbstractVehicleTrackingFilter(Observation obs,
+    OtpGraph inferredGraph, VehicleStateInitialParameters parameters,
+    AbstractVTParticleFilterUpdater updater,
     @Nonnull Boolean isDebug) {
     this.parameters = parameters;
     this.isDebug = isDebug;
@@ -72,6 +87,7 @@ public abstract class AbstractVehicleTrackingFilter extends
     updater.setRandom(random);
   }
 
+  @Nonnull
   @Override
   public DataDistribution<VehicleState> createInitialLearnedObject() {
     final DataDistribution<VehicleState> dist =
@@ -101,6 +117,7 @@ public abstract class AbstractVehicleTrackingFilter extends
     return prevTime;
   }
 
+  @Nonnull
   @Override
   public Random getRandom() {
     return this.random;

@@ -45,20 +45,14 @@ public class VehicleTrackingPerformanceEvaluator extends
       final UnivariateGaussian.SufficientStatistic stat =
           new UnivariateGaussian.SufficientStatistic();
 
-      final Vector targetBeliefMean =
-          AbstractRoadTrackingFilter.convertToGroundState(pair
-              .getTarget().getBelief().getMean(), PathEdge.getEdge(
-              pair.getTarget().getInferredEdge(), 0d, pair
-                  .getTarget().getPath().getIsBackward()), true);
+      final Vector targetBeliefMean = pair
+              .getTarget().getBelief().getGroundState();
 
       for (final VehicleState estimate : pair.getEstimate()
           .getDomain()) {
 
-        final Vector estimateBeliefMean =
-            AbstractRoadTrackingFilter.convertToGroundState(estimate
-                .getBelief().getMean(), PathEdge.getEdge(estimate
-                .getInferredEdge(), 0d, estimate.getPath()
-                .getIsBackward()), true);
+        final Vector estimateBeliefMean = estimate
+                .getBelief().getGroundState();
 
         final double se =
             pair.getEstimate().getProbabilityFunction()

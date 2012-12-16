@@ -11,6 +11,8 @@ import java.util.List;
 import java.util.Random;
 import java.util.Set;
 
+import javax.annotation.Nonnull;
+
 import org.openplans.tools.tracking.impl.Observation;
 import org.openplans.tools.tracking.impl.VehicleState;
 import org.openplans.tools.tracking.impl.VehicleState.VehicleStateInitialParameters;
@@ -21,7 +23,9 @@ import org.openplans.tools.tracking.impl.graph.paths.PathEdge;
 import org.openplans.tools.tracking.impl.graph.paths.PathStateBelief;
 import org.openplans.tools.tracking.impl.statistics.DefaultCountedDataDistribution;
 import org.openplans.tools.tracking.impl.statistics.OnOffEdgeTransDirMulti;
+import org.openplans.tools.tracking.impl.statistics.filters.AbstractVehicleTrackingFilter;
 import org.openplans.tools.tracking.impl.statistics.filters.VehicleTrackingPathSamplerFilterUpdater;
+import org.openplans.tools.tracking.impl.statistics.filters.road_tracking.AbstractRoadTrackingFilter;
 import org.openplans.tools.tracking.impl.statistics.filters.road_tracking.StandardRoadTrackingFilter;
 import org.openplans.tools.tracking.impl.util.OtpGraph;
 import org.opentripplanner.routing.edgetype.StreetEdge;
@@ -29,7 +33,7 @@ import org.opentripplanner.routing.graph.Edge;
 
 import com.google.common.collect.Sets;
 
-public abstract class VehicleTrackingParticleFilterUpdater 
+public abstract class AbstractVTParticleFilterUpdater 
   implements ParticleFilter.Updater<Observation, VehicleState> {
   
   private static final long serialVersionUID = 7567157323292175525L;
@@ -44,7 +48,7 @@ public abstract class VehicleTrackingParticleFilterUpdater
 
   public long seed;
 
-  public VehicleTrackingParticleFilterUpdater(Observation obs,
+  public AbstractVTParticleFilterUpdater(Observation obs,
     OtpGraph inferredGraph, VehicleStateInitialParameters parameters) {
     this.initialObservation = obs;
     this.inferredGraph = inferredGraph;
@@ -52,10 +56,10 @@ public abstract class VehicleTrackingParticleFilterUpdater
   }
 
   @Override
-  public VehicleTrackingParticleFilterUpdater clone() {
+  public AbstractVTParticleFilterUpdater clone() {
     try {
-      final VehicleTrackingParticleFilterUpdater clone =
-          (VehicleTrackingParticleFilterUpdater) super.clone();
+      final AbstractVTParticleFilterUpdater clone =
+          (AbstractVTParticleFilterUpdater) super.clone();
       clone.seed = seed;
       clone.inferredGraph = inferredGraph;
       clone.initialObservation = initialObservation;
@@ -68,6 +72,7 @@ public abstract class VehicleTrackingParticleFilterUpdater
     return null;
   }
 
+  @Nonnull
   @Override
   public DataDistribution<VehicleState> createInitialParticles(
     int numParticles) {
@@ -76,11 +81,8 @@ public abstract class VehicleTrackingParticleFilterUpdater
         new DefaultCountedDataDistribution<VehicleState>();
 
     for (int i = 0; i < numParticles; i++) {
-      final StandardRoadTrackingFilter tmpTrackingFilter =
-          new StandardRoadTrackingFilter(parameters.getObsCov(),
-              parameters.getOffRoadStateCov(),
-              parameters.getOnRoadStateCov(),
-              parameters.getInitialObsFreq());
+      final AbstractRoadTrackingFilter<?> tmpTrackingFilter =
+          this.createRoadTrackingFilter();
       final MultivariateGaussian tmpInitialBelief =
           tmpTrackingFilter.createInitialLearnedObject();
       final Vector xyPoint = initialObservation.getProjectedPoint();
@@ -105,11 +107,8 @@ public abstract class VehicleTrackingParticleFilterUpdater
           evaluatedPaths.add(new InferredPathEntry(path, null, null,
               null, Double.NEGATIVE_INFINITY));
 
-          final StandardRoadTrackingFilter trackingFilter =
-              new StandardRoadTrackingFilter(parameters.getObsCov(),
-                  parameters.getOffRoadStateCov(),
-                  parameters.getOnRoadStateCov(),
-                  parameters.getInitialObsFreq());
+          final AbstractRoadTrackingFilter<?> trackingFilter =
+              this.createRoadTrackingFilter();
 
           final OnOffEdgeTransDirMulti edgeTransDist =
               new OnOffEdgeTransDirMulti(inferredGraph,
@@ -163,11 +162,8 @@ public abstract class VehicleTrackingParticleFilterUpdater
       /*
        * Free-motion
        */
-      final StandardRoadTrackingFilter trackingFilter =
-          new StandardRoadTrackingFilter(parameters.getObsCov(),
-              parameters.getOffRoadStateCov(),
-              parameters.getOnRoadStateCov(),
-              parameters.getInitialObsFreq());
+      final AbstractRoadTrackingFilter<?> trackingFilter =
+          this.createRoadTrackingFilter();
 
       final OnOffEdgeTransDirMulti edgeTransDist =
           new OnOffEdgeTransDirMulti(inferredGraph,
@@ -215,6 +211,9 @@ public abstract class VehicleTrackingParticleFilterUpdater
     return retDist;
   }
 
+  @Nonnull
+  abstract protected AbstractRoadTrackingFilter<?> createRoadTrackingFilter();
+
   public Random getRandom() {
     return random;
   }
@@ -231,14 +230,17 @@ public abstract class VehicleTrackingParticleFilterUpdater
     this.seed = seed;
   }
 
+  @Nonnull
   public Observation getInitialObservation() {
     return initialObservation;
   }
 
+  @Nonnull
   public OtpGraph getInferredGraph() {
     return inferredGraph;
   }
 
+  @Nonnull
   public VehicleStateInitialParameters getParameters() {
     return parameters;
   }

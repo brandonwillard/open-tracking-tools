@@ -9,16 +9,30 @@ import gov.sandia.cognition.statistics.distribution.InverseWishartDistribution;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 import gov.sandia.cognition.util.AbstractCloneableSerializable;
 
+import java.util.Collections;
+import java.util.List;
 import java.util.Random;
 
 import org.apache.commons.lang.builder.CompareToBuilder;
 import org.openplans.tools.tracking.impl.Observation;
+import org.openplans.tools.tracking.impl.VehicleState;
+import org.openplans.tools.tracking.impl.graph.InferredEdge;
 import org.openplans.tools.tracking.impl.graph.paths.InferredPath;
 import org.openplans.tools.tracking.impl.graph.paths.PathEdge;
 import org.openplans.tools.tracking.impl.graph.paths.PathState;
 import org.openplans.tools.tracking.impl.graph.paths.PathStateBelief;
 import org.openplans.tools.tracking.impl.statistics.StatisticsUtil;
 import org.openplans.tools.tracking.impl.statistics.filters.AdjKalmanFilter;
+import org.opentripplanner.routing.edgetype.PlainStreetEdge;
+import org.opentripplanner.routing.edgetype.StreetTraversalPermission;
+import org.opentripplanner.routing.graph.Edge;
+import org.opentripplanner.routing.vertextype.StreetVertex;
+
+import com.google.common.base.Preconditions;
+import com.google.common.collect.Iterables;
+import com.google.common.collect.Lists;
+import com.vividsolutions.jts.geom.Coordinate;
+import com.vividsolutions.jts.geom.LineString;
 
 public class ErrorEstimatingRoadTrackingFilter extends
     AbstractRoadTrackingFilter<ErrorEstimatingRoadTrackingFilter> {
@@ -132,7 +146,7 @@ public class ErrorEstimatingRoadTrackingFilter extends
   private InverseWishartDistribution obsVariancePrior;
   private InverseWishartDistribution onRoadStateVariancePrior;
   private InverseWishartDistribution offRoadStateVariancePrior;
-  private StateSample currentStateSample;
+  private PathState currentStateSample;
 
   public ErrorEstimatingRoadTrackingFilter(Vector obsVarPrior,
     final int obsVarDof, Vector offRoadStateVarPrior,
@@ -164,8 +178,8 @@ public class ErrorEstimatingRoadTrackingFilter extends
             onRoadVarDof);
 
     if (rng != null) {
-      this.setObsCovar(StatisticsUtil.sampleInvWishart(
-          obsVariancePrior, rng));
+      this.obsCovar = StatisticsUtil.sampleInvWishart(
+          obsVariancePrior, rng);
       this.setQg(StatisticsUtil.sampleInvWishart(
           offRoadStateVariancePrior, rng));
       this.setQr(StatisticsUtil.sampleInvWishart(
@@ -248,9 +262,7 @@ public class ErrorEstimatingRoadTrackingFilter extends
             .convertToVector()).getArray(), ((DenseVector) o
             .getOffRoadStateVariancePrior().convertToVector())
             .getArray());
-    comparator.append(((DenseVector) this.currentStateSample.state)
-        .getArray(), ((DenseVector) o.getCurrentStateSample()
-        .getState()).getArray());
+    comparator.append(this.currentStateSample, o.getCurrentStateSample());
     return comparator.toComparison();
   }
 
@@ -308,7 +320,7 @@ public class ErrorEstimatingRoadTrackingFilter extends
     return true;
   }
 
-  public StateSample getCurrentStateSample() {
+  public PathState getCurrentStateSample() {
     return currentStateSample;
   }
 
@@ -355,8 +367,8 @@ public class ErrorEstimatingRoadTrackingFilter extends
     return result;
   }
 
-  public void setCurrentStateSample(StateSample currentStateSample) {
-    this.currentStateSample = currentStateSample;
+  public void setCurrentStateSample(PathState pathState) {
+    this.currentStateSample = pathState;
   }
 
   public void setObsVariancePrior(
@@ -375,44 +387,31 @@ public class ErrorEstimatingRoadTrackingFilter extends
   }
 
   @Override
-  public void update(Observation obs, PathStateBelief posteriorState,
+  public void update(VehicleState state, Observation obs, 
+    PathStateBelief posteriorState,
     PathStateBelief priorPredictiveState, Random rng) {
 
     final Vector priorPredictiveBelief =
-        priorPredictiveState.getState();
-    //    if (posteriorBelief.getInputDimensionality() == 2) {
-    //      final Vector priorStateOnNewPath;
-    //      if (state.getPath().isEmptyPath()) {
-    //        priorStateOnNewPath = AbstractRoadTrackingFilter.convertToRoadState(
-    //            state.getBelief().getMean(), sampledPath, true).getState();
-    //      } else {
-    //        priorStateOnNewPath = sampledPath.convertToStateOnPath(
-    //            state.getBelief().getMean(), state.getEdge());
-    //      }
-    //      priorPredictiveBelief = this.roadModel.getA().times(priorStateOnNewPath);
-    //    } else {
-    //      final Vector priorState = AbstractRoadTrackingFilter.convertToGroundState(
-    //          state.getBelief().getMean(),
-    //          PathEdge.getEdge(state.getEdge(), 0d, state.getPath().getIsBackward()), 
-    //          true);
-    //      priorPredictiveBelief = this.groundModel.getA().times(priorState);
-    //    }
+        priorPredictiveState.getRawState();
 
     final Matrix sampledBeliefRoot =
         StatisticsUtil.rootOfSemiDefinite(priorPredictiveBelief
             .getDimensionality() == 2 ? this
             .getOnRoadStateTransCovar() : this
             .getOffRoadStateTransCovar());
-    final Vector newStateSample =
+    final Vector newStateSampleVec =
         MultivariateGaussian.sample(priorPredictiveBelief,
             sampledBeliefRoot, rng);
+    final InferredPath newSamplePath =
+          priorPredictiveState.getPath();
+    
+    final PathState newStateSample = PathState.getPathState(newSamplePath,
+        newStateSampleVec);
 
     /*
      * Update state covariances.
      */
     final Vector stateError;
-    final StateSample newState;
-    final Vector newStateLocation;
     if (!priorPredictiveState.getPath().isEmptyPath()) {
       /*
        * Handle the on-road case
@@ -421,73 +420,22 @@ public class ErrorEstimatingRoadTrackingFilter extends
       final InverseWishartDistribution covarPrior =
           this.getOnRoadStateVariancePrior();
 
-      /*
-       * Since we can't project onto an edge when we were considered off-road,
-       * we have to come up with a way to handle off -> on road state covariance
-       * updates.
-       * 
-       * For now, we skip it.
-       */
-      final InferredPath newSamplePath =
-          priorPredictiveState.getPath();
-
-      /*
-       * Force a location on the path.
-       * TODO should we restrict the ground coordinate result to be on the path, and
-       * not the projected distance/vel, or both?  Going with both for now.
-       */
-      final Vector truncatedNewStateSample = newStateSample.clone();
-      truncatedNewStateSample.setElement(0, newSamplePath
-          .clampToPath(truncatedNewStateSample.getElement(0)));
-      final PathState newStateSampleOnPath =
-          newSamplePath.getCheckedStateOnPath(
-              truncatedNewStateSample,
-              AbstractRoadTrackingFilter.getEdgelengthtolerance());
-
-      newStateLocation =
-          AbstractRoadTrackingFilter.getOg().times(
-              AbstractRoadTrackingFilter.convertToGroundState(
-                  newStateSampleOnPath.getState(),
-                  newStateSampleOnPath.getEdge(), true));
-
       if (this.currentStateSample == null) {
-        this.currentStateSample =
-            new StateSample(newStateSample,
-                newSamplePath.getIsBackward(), newStateLocation);
+        this.currentStateSample = newStateSample;
         return;
       }
 
-      final Vector oldStateSample =
-          this.getCurrentStateSample().getState().clone();
+      final PathState oldStateSample = this.getCurrentStateSample();
 
-      if (oldStateSample.getDimensionality() == 2) {
-
-        /*
-         * Recall that the sign is relative, with regard to the path,
-         * so we might need to change the sign for a proper difference.
-         */
-        if (this.getCurrentStateSample().getIsBackward() != newSamplePath
-            .getIsBackward()) {
-          /*
-           * If we're here, then our edges are facing opposite directions, but
-           * are otherwise the same.
-           * Now we convert the old state sample to the new state's orientation.
-           */
-          oldStateSample.setElement(0, -oldStateSample.getElement(0));
-          oldStateSample.setElement(1, -oldStateSample.getElement(1));
-        }
+      if (this.getCurrentStateSample().isOnRoad()) {
 
         // TODO should keep these values, not recompute.
         final Matrix covFactor = this.getCovarianceFactor(true);
         final Matrix covFactorInv = covFactor.pseudoInverse();
 
-        final Vector oldStateProjection =
-            this.roadModel.getA().times(oldStateSample);
-        final Vector projOldStateSample =
-            this.roadModel.getA().times(oldStateProjection);
         stateError =
-            covFactorInv.times(newStateSample
-                .minus(projOldStateSample));
+            covFactorInv.times(
+                newStateSample.minus(oldStateSample));
 
         updateInvWishart(covarPrior, stateError);
 
@@ -499,22 +447,6 @@ public class ErrorEstimatingRoadTrackingFilter extends
             .times(covFactor.transpose()));
       }
 
-      /*
-       * For valid comparisons next time around, we need to orient our newStateSample
-       * with respect to the new posterior's edge, since next time around our sampled
-       * state will be on a path starting from there, and we want the distance calculation
-       * to be correct.
-       */
-      final PathEdge postPathEdge =
-          newSamplePath.getEdgeForDistance(posteriorState.getState()
-              .getElement(0), true);
-      newStateSample.setElement(0, newStateSample.getElement(0)
-          - postPathEdge.getDistToStartOfEdge());
-
-      newState =
-          new StateSample(newStateSample,
-              newSamplePath.getIsBackward(), newStateLocation);
-
     } else {
 
       /*
@@ -523,30 +455,25 @@ public class ErrorEstimatingRoadTrackingFilter extends
       final InverseWishartDistribution covarPrior =
           this.getOffRoadStateVariancePrior();
 
-      newStateLocation =
-          AbstractRoadTrackingFilter.getOg().times(newStateSample);
       if (this.currentStateSample == null) {
-        this.currentStateSample =
-            new StateSample(newStateSample, null, newStateLocation);
+        this.currentStateSample = newStateSample;
         return;
       }
 
       /*
        * TODO We're not dealing with transitions on -> off right now.
        */
-      final Vector oldStateSample =
-          this.getCurrentStateSample().getState();
-      if (oldStateSample.getDimensionality() == 4) {
+      final PathState oldStateSample =
+          this.getCurrentStateSample();
+      if (!oldStateSample.isOnRoad()) {
 
         // TODO should keep these values, not recompute.
         final Matrix covFactor = this.getCovarianceFactor(false);
         final Matrix covFactorInv = covFactor.pseudoInverse();
 
-        final Vector oldStateProjection =
-            this.roadModel.getA().times(oldStateSample);
         stateError =
-            covFactorInv.times(newStateSample
-                .minus(oldStateProjection));
+            covFactorInv.times(
+                newStateSample.minus(oldStateSample));
 
         updateInvWishart(covarPrior, stateError);
 
@@ -557,16 +484,15 @@ public class ErrorEstimatingRoadTrackingFilter extends
         this.setOffRoadStateTransCovar(covFactor.times(this.getQg())
             .times(covFactor.transpose()));
       }
-
-      newState =
-          new StateSample(newStateSample, null, newStateLocation);
     }
 
     /*
      * observation covar update
      */
     final Vector obsError =
-        obs.getProjectedPoint().minus(newStateLocation);
+        obs.getProjectedPoint().minus(
+          AbstractRoadTrackingFilter.getOg().times(
+            newStateSample.getGroundState()));
 
     final InverseWishartDistribution obsCovPrior =
         this.getObsVariancePrior();
@@ -576,8 +502,9 @@ public class ErrorEstimatingRoadTrackingFilter extends
         StatisticsUtil.sampleInvWishart(obsCovPrior, rng);
     this.setObsCovar(obsVarSmpl);
 
-    this.currentStateSample = newState;
+    this.currentStateSample = newStateSample;
   }
+
 
   private void updateInvWishart(
     InverseWishartDistribution covarPrior, Vector stateError) {
