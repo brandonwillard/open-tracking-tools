@@ -26,6 +26,7 @@ import com.vividsolutions.jts.geom.CoordinateArrays;
 import com.vividsolutions.jts.geom.CoordinateSequence;
 import com.vividsolutions.jts.geom.CoordinateSequenceComparator;
 import com.vividsolutions.jts.geom.Geometry;
+import com.vividsolutions.jts.geom.GeometryFactory;
 import com.vividsolutions.jts.geom.LineString;
 import com.vividsolutions.jts.geom.Point;
 import com.vividsolutions.jts.linearref.LengthIndexedLine;
@@ -293,35 +294,45 @@ public abstract class AbstractPathState extends
   public Vector minus(AbstractPathState otherState) {
     if (this.isOnRoad() && otherState.isOnRoad()) {
       
-      PathEdge otherFirstEdge = Iterables.getFirst(
-          otherState.path.getEdges(), null);
       PathEdge thisFirstEdge = Iterables.getFirst(
           this.path.getEdges(), null);
-      
-      PathEdge otherLastEdge = 
-          //otherState.getEdge(); 
-          Iterables.getLast(otherState.path.getEdges(), null);
-      PathEdge thisLastEdge = 
-          //this.getEdge(); 
-          Iterables.getLast(this.path.getEdges(), null);
-      
-      final Geometry otherFirstActualGeom = 
-          otherState.path.getIsBackward() ?
-          otherFirstEdge.getGeometry().reverse() :
-          otherFirstEdge.getGeometry();
       final Geometry thisFirstActualGeom = 
           this.path.getIsBackward() ?
           thisFirstEdge.getGeometry().reverse() :
           thisFirstEdge.getGeometry();
+      PathEdge thisLastEdge = 
+          Iterables.getLast(this.path.getEdges(), null);
+      
+      final Geometry thisLastActualGeom;
+      if (this.path.getEdges().size() > 1) {
+        thisLastActualGeom = 
+            this.path.getIsBackward() ?
+            thisLastEdge.getGeometry().reverse() :
+            thisLastEdge.getGeometry();
+      } else {
+        thisLastActualGeom = JTSFactoryFinder.getGeometryFactory().createLineString(
+            new Coordinate[0]);
+      }
           
-      final Geometry thisLastActualGeom = 
-          this.path.getIsBackward() ?
-          thisLastEdge.getGeometry().reverse() :
-          thisLastEdge.getGeometry();
-      final Geometry otherLastActualGeom = 
+      PathEdge otherFirstEdge = Iterables.getFirst(
+          otherState.path.getEdges(), null);
+      PathEdge otherLastEdge = 
+          Iterables.getLast(otherState.path.getEdges(), null);
+      final Geometry otherFirstActualGeom = 
+          otherState.path.getIsBackward() ?
+          otherFirstEdge.getGeometry().reverse() :
+          otherFirstEdge.getGeometry();
+          
+      final Geometry otherLastActualGeom;
+      if (otherState.path.getEdges().size() > 1) {
+        otherLastActualGeom = 
           otherState.path.getIsBackward() ?
           otherLastEdge.getGeometry().reverse() :
           otherLastEdge.getGeometry();
+      } else {
+        otherLastActualGeom = JTSFactoryFinder.getGeometryFactory().createLineString(
+            new Coordinate[0]);
+      }
       
       final Vector result;
       final double distanceMax;

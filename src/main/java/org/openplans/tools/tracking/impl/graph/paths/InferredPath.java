@@ -249,6 +249,7 @@ public class InferredPath implements Comparable<InferredPath> {
       } else {
         final Vector convertedState =
             this.getStateOnPath(stateBelief);
+        Preconditions.checkState(convertedState != null);
         edgeStateBelief.setMean(convertedState);
       }
     } else {
