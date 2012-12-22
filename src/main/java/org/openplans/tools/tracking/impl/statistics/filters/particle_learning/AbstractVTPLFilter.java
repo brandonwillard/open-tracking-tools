@@ -196,9 +196,11 @@ public abstract class AbstractVTPLFilter extends
     /*
      * This is the belief that will be propagated.
      */
-    final PathStateBelief priorPathStateBelief =
+    final EdgePredictiveResults predictionResults =
         sampledPathEntry.getEdgeToPredictiveBelief()
-            .get(posteriorEdge).getLocationPrediction().clone();
+            .get(posteriorEdge);
+    final PathStateBelief priorPathStateBelief =
+        predictionResults.getLocationPrediction().clone();
     final PathStateBelief updatedBelief =
         sampledPathEntry.getFilter().measure(priorPathStateBelief,
             obs.getProjectedPoint(), posteriorEdge);
@@ -243,6 +245,8 @@ public abstract class AbstractVTPLFilter extends
         PathStateBelief.getPathStateBelief(
          updatedBelief.getPath(), 
          priorPathStateBelief.getRawStateBelief());
+//         predictionResults.getBeliefPrediction().getRawStateBelief());
+    
     updatedFilter.update(state, obs, 
         updatedBelief, pathAdjustedPriorBelief, rng);
 

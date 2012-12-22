@@ -1,5 +1,6 @@
 package org.openplans.tools.tracking.impl.statistics.filters;
 
+import gov.sandia.cognition.math.matrix.Matrix;
 import gov.sandia.cognition.math.matrix.MatrixFactory;
 import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.math.matrix.VectorFactory;
@@ -449,7 +450,7 @@ public class VehicleTrackingPathSamplerFilterUpdater extends
               newState.getElement(0) < 0d ? true : false);
       result = Preconditions.checkNotNull(
           newPath.getCheckedStateOnPath(newState,
-              AbstractRoadTrackingFilter.getEdgelengthtolerance()));
+              AbstractRoadTrackingFilter.getEdgeLengthErrorTolerance()));
     } else {
       final InferredPath newPath = InferredPath.getEmptyPath();
       result = PathState.getPathState(newPath, newState);
@@ -498,8 +499,22 @@ public class VehicleTrackingPathSamplerFilterUpdater extends
     final PathState newPathState =
         sampleNextState(newTransDist, currentBelief, predictedFilter);
     
-    final PathStateBelief newStateBelief = PathStateBelief.getPathStateBelief(newPathState, 
-        currentBelief.getCovariance());
+    final MultivariateGaussian newBelief =
+        new MultivariateGaussian(
+            VectorFactory.getDefault().createVector(
+                currentBelief.getCovariance().getNumColumns())
+            , currentBelief.getCovariance());
+    if (newPathState.isOnRoad() && !currentBelief.isOnRoad()) {
+      AbstractRoadTrackingFilter.convertToRoadBelief(newBelief, 
+          newPathState.getPath(), true);
+    } else if (newPathState.isOnRoad() && !currentBelief.isOnRoad()) {
+      AbstractRoadTrackingFilter.convertToGroundBelief(newBelief, 
+          newPathState.getEdge(), true);
+    } 
+    newBelief.setMean(newPathState.getRawState());
+    
+    final PathStateBelief newStateBelief = PathStateBelief.
+        getPathStateBelief(newPathState.getPath(), newBelief);
 
     final VehicleState newState =
         new VehicleState(this.inferredGraph, obs, predictedFilter,

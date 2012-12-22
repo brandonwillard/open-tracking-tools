@@ -4,6 +4,7 @@ import gov.sandia.cognition.math.LogMath;
 import gov.sandia.cognition.math.matrix.Matrix;
 import gov.sandia.cognition.math.matrix.MatrixFactory;
 import gov.sandia.cognition.math.matrix.Vector;
+import gov.sandia.cognition.math.matrix.VectorEntry;
 import gov.sandia.cognition.math.matrix.VectorFactory;
 import gov.sandia.cognition.math.matrix.mtj.AbstractMTJMatrix;
 import gov.sandia.cognition.math.matrix.mtj.DenseMatrix;
@@ -462,21 +463,39 @@ public class StatisticsUtil {
   }
 
   public static Matrix rootOfSemiDefinite(Matrix matrix) {
+    return rootOfSemiDefinite(matrix, false, -1);
+  }
+  
+  public static Matrix rootOfSemiDefinite(Matrix matrix,
+    boolean effRankDimResult, int rank) {
     final SingularValueDecompositionMTJ svd =
         SingularValueDecompositionMTJ.create(matrix);
-    final int effRank = svd.effectiveRank(1e-5);
+
+    final int effRank = rank > 0 ? rank : svd.effectiveRank(1e-9);
+    
     final DiagonalMatrixMTJ roots =
         DiagonalMatrixFactoryMTJ.INSTANCE.createMatrix(matrix
             .getNumColumns());
+    final Matrix U = svd.getU();
     for (int i = 0; i < effRank; i++) {
       roots.setElement(i, Math.sqrt(svd.getS().getElement(i, i)));
     }
 
-    //    Preconditions.checkState(effVt.equals(svd.getVtranspose().getSubMatrix(
-    //        0, effRank - 1,
-    //        0, svd.getVtranspose().getNumColumns() - 1), 1e-6));
-
-    final Matrix result = svd.getU().times(roots);
+    Matrix result = U.times(roots);
+    
+    /*
+     * XXX: just for fun/testing/keep things
+     * positive.
+     */
+    if (result.sumOfRows().sum() < 0d)
+      result.negativeEquals();
+    
+    if (effRankDimResult)
+      result = result
+          .getSubMatrix(
+              0, result.getNumRows()-1,
+              0, effRank-1);
+    
     return result;
   }
 
@@ -499,13 +518,16 @@ public class StatisticsUtil {
     for (int i = 0; i < p; i++) {
       for (int j = i + 1; j < p; j++) {
         final double normSample = rng.nextGaussian();
-        Z.setElement(j, i, normSample);
+        Z.setElement(i, j, normSample);
       }
     }
 
-    final Matrix k = Z.times(invWish.getScaleSqrt());
+    final Matrix scaleSqrt = StatisticsUtil.rootOfSemiDefinite(
+        invWish.getInverseScale().pseudoInverse(1e-9));
+    final Matrix k = Z.times(scaleSqrt); 
+        //Z.times(invWish.getScaleSqrt());
     final Matrix wishSample = k.transpose().times(k);
-    final Matrix invWishSample = wishSample.inverse();
+    final Matrix invWishSample = wishSample.pseudoInverse(1e-9);
     return invWishSample;
   }
 
@@ -529,5 +551,34 @@ public class StatisticsUtil {
               .getArray());
     else
       return Objects.equal(vec1, vec2);
+  }
+
+  public static Matrix getPseudoInverseReduced(
+    Matrix matrix) {
+    final SingularValueDecompositionMTJ svd =
+        SingularValueDecompositionMTJ.create(matrix);
+
+    final int effRank = svd.effectiveRank(1e-9);
+    
+    final DiagonalMatrixMTJ roots =
+        DiagonalMatrixFactoryMTJ.INSTANCE.createMatrix(matrix
+            .getNumColumns());
+    final Matrix U = svd.getU();
+    for (int i = 0; i < effRank; i++) {
+      roots.setElement(i, 1d/svd.getS().getElement(i, i));
+    }
+
+    Matrix firstHalf = U.times(roots).getSubMatrix(
+            0, U.getNumRows()-1,
+            0, effRank-1);
+    
+    Matrix V = svd.getVtranspose().transpose();
+    V = V.getSubMatrix(
+            0, V.getNumRows()-1,
+            0, effRank-1);
+    Matrix result = V
+        .times(firstHalf.transpose());
+    
+    return result;
   }
 }

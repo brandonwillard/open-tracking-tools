@@ -48,7 +48,7 @@ public class PathState extends AbstractPathState implements Comparable<PathState
     } else {
       this.localState = this.getEdge().getCheckedStateOnEdge(
           this.globalState, 
-          StandardRoadTrackingFilter.getEdgelengthtolerance(),
+          StandardRoadTrackingFilter.getEdgeLengthErrorTolerance(),
           true);
     }
     return this.localState;

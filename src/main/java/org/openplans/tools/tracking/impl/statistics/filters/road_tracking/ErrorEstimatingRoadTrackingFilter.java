@@ -3,6 +3,7 @@ package org.openplans.tools.tracking.impl.statistics.filters.road_tracking;
 import gov.sandia.cognition.math.matrix.Matrix;
 import gov.sandia.cognition.math.matrix.MatrixFactory;
 import gov.sandia.cognition.math.matrix.Vector;
+import gov.sandia.cognition.math.matrix.VectorFactory;
 import gov.sandia.cognition.math.matrix.mtj.DenseVector;
 import gov.sandia.cognition.math.signals.LinearDynamicalSystem;
 import gov.sandia.cognition.statistics.distribution.InverseWishartDistribution;
@@ -147,6 +148,7 @@ public class ErrorEstimatingRoadTrackingFilter extends
   private InverseWishartDistribution onRoadStateVariancePrior;
   private InverseWishartDistribution offRoadStateVariancePrior;
   private PathState currentStateSample;
+  private PathState prevStateSample;
 
   public ErrorEstimatingRoadTrackingFilter(Vector obsVarPrior,
     final int obsVarDof, Vector offRoadStateVarPrior,
@@ -323,6 +325,10 @@ public class ErrorEstimatingRoadTrackingFilter extends
   public PathState getCurrentStateSample() {
     return currentStateSample;
   }
+  
+  public PathState getPrevStateSample() {
+    return prevStateSample;
+  }
 
   public InverseWishartDistribution getObsVariancePrior() {
     return obsVariancePrior;
@@ -370,6 +376,10 @@ public class ErrorEstimatingRoadTrackingFilter extends
   public void setCurrentStateSample(PathState pathState) {
     this.currentStateSample = pathState;
   }
+  
+  public void setPrevStateSample(PathState pathState) {
+    this.prevStateSample = pathState;
+  }
 
   public void setObsVariancePrior(
     InverseWishartDistribution obsVariancePrior) {
@@ -391,100 +401,50 @@ public class ErrorEstimatingRoadTrackingFilter extends
     PathStateBelief posteriorState,
     PathStateBelief priorPredictiveState, Random rng) {
 
-    final Vector priorPredictiveBelief =
-        priorPredictiveState.getRawState();
-
-    final Matrix sampledBeliefRoot =
-        StatisticsUtil.rootOfSemiDefinite(priorPredictiveBelief
-            .getDimensionality() == 2 ? this
-            .getOnRoadStateTransCovar() : this
-            .getOffRoadStateTransCovar());
-    final Vector newStateSampleVec =
-        MultivariateGaussian.sample(priorPredictiveBelief,
-            sampledBeliefRoot, rng);
-    final InferredPath newSamplePath =
-          priorPredictiveState.getPath();
-    
-    final PathState newStateSample = PathState.getPathState(newSamplePath,
-        newStateSampleVec);
+    final PathStateBelief priorState = 
+        priorPredictiveState.getPath().getStateBeliefOnPath(
+            state.getBelief());
+    final PathState prevStateSample = sampleSmoothedPrevState(
+        priorState, priorPredictiveState, posteriorState, 
+        obs.getProjectedPoint(), rng);
+    final PathState newStateSample = sampleFilteredTransition(
+        prevStateSample, obs.getProjectedPoint(), rng);
 
     /*
-     * Update state covariances.
+     * Update state covariance.
      */
-    final Vector stateError;
-    if (!priorPredictiveState.getPath().isEmptyPath()) {
-      /*
-       * Handle the on-road case
-       */
+    final InverseWishartDistribution covarPrior =
+        prevStateSample.isOnRoad() ?
+        this.getOnRoadStateVariancePrior() : this.getOffRoadStateVariancePrior();
 
-      final InverseWishartDistribution covarPrior =
-          this.getOnRoadStateVariancePrior();
+    // TODO should keep these values, not recompute.
+    final Matrix covFactor = this.getCovarianceFactor(
+        prevStateSample.isOnRoad());
 
-      if (this.currentStateSample == null) {
-        this.currentStateSample = newStateSample;
-        return;
-      }
+    final Vector sampleDiff = newStateSample.minus(prevStateSample);
+    final Matrix covFactorInv = 
+        StatisticsUtil.rootOfSemiDefinite(
+            covFactor.times(covFactor.transpose())
+        .pseudoInverse(1e-7), true, -1).transpose();
+    final Vector stateError = covFactorInv.times(sampleDiff);
+    final Matrix smplCov = stateError.outerProduct(stateError);
 
-      final PathState oldStateSample = this.getCurrentStateSample();
+    updateInvWishart(covarPrior, smplCov);
 
-      if (this.getCurrentStateSample().isOnRoad()) {
-
-        // TODO should keep these values, not recompute.
-        final Matrix covFactor = this.getCovarianceFactor(true);
-        final Matrix covFactorInv = covFactor.pseudoInverse();
-
-        stateError =
-            covFactorInv.times(
-                newStateSample.minus(oldStateSample));
-
-        updateInvWishart(covarPrior, stateError);
-
-        final Matrix qrSmpl =
-            StatisticsUtil.sampleInvWishart(covarPrior, rng);
-        this.setQr(qrSmpl);
-        // TODO necessary, given that we'll update this value for each time change?
-        this.setOnRoadStateTransCovar(covFactor.times(this.getQr())
-            .times(covFactor.transpose()));
-      }
-
+    final Matrix qSmpl =
+        StatisticsUtil.sampleInvWishart(covarPrior, rng);
+    
+    final Matrix stateCovarSmpl = covFactor.times(qSmpl)
+        .times(covFactor.transpose());
+    
+    if (newStateSample.isOnRoad()) {
+      this.setQr(qSmpl);
+      this.setOnRoadStateTransCovar(stateCovarSmpl);
     } else {
-
-      /*
-       * Handle the off-road case.
-       */
-      final InverseWishartDistribution covarPrior =
-          this.getOffRoadStateVariancePrior();
-
-      if (this.currentStateSample == null) {
-        this.currentStateSample = newStateSample;
-        return;
-      }
-
-      /*
-       * TODO We're not dealing with transitions on -> off right now.
-       */
-      final PathState oldStateSample =
-          this.getCurrentStateSample();
-      if (!oldStateSample.isOnRoad()) {
-
-        // TODO should keep these values, not recompute.
-        final Matrix covFactor = this.getCovarianceFactor(false);
-        final Matrix covFactorInv = covFactor.pseudoInverse();
-
-        stateError =
-            covFactorInv.times(
-                newStateSample.minus(oldStateSample));
-
-        updateInvWishart(covarPrior, stateError);
-
-        final Matrix qgSmpl =
-            StatisticsUtil.sampleInvWishart(covarPrior, rng);
-        this.setQg(qgSmpl);
-        // TODO necessary, given that we'll update this value for each time change?
-        this.setOffRoadStateTransCovar(covFactor.times(this.getQg())
-            .times(covFactor.transpose()));
-      }
+      this.setQg(qSmpl);
+      this.setOffRoadStateTransCovar(stateCovarSmpl);
     }
+
 
     /*
      * observation covar update
@@ -496,22 +456,135 @@ public class ErrorEstimatingRoadTrackingFilter extends
 
     final InverseWishartDistribution obsCovPrior =
         this.getObsVariancePrior();
-    updateInvWishart(obsCovPrior, obsError);
+    final Matrix obsSmplCov = obsError.outerProduct(obsError);
+    updateInvWishart(obsCovPrior, obsSmplCov);
 
     final Matrix obsVarSmpl =
         StatisticsUtil.sampleInvWishart(obsCovPrior, rng);
     this.setObsCovar(obsVarSmpl);
 
+    this.prevStateSample = prevStateSample;
     this.currentStateSample = newStateSample;
   }
 
+  private PathState sampleSmoothedPrevState(
+    PathStateBelief prior,
+    PathStateBelief priorPred,
+    PathStateBelief posterior,
+    Vector obs, Random rng) {
+    
+    Preconditions.checkState(
+        Iterables.getFirst(prior.getPath().getEdges(), null).
+          equals(Iterables.getFirst(priorPred.getPath().getEdges(), null))
+        && Iterables.getFirst(priorPred.getPath().getEdges(), null)
+          .equals(Iterables.getFirst(posterior.getPath().getEdges(), null)));
+    
+    final Matrix Sigma = this.getObsCovar();
+    final Matrix F = AbstractRoadTrackingFilter.getOg();
+    final Matrix G = this.getGroundModel().getA();
+    final Matrix C = prior.getGroundBelief().getCovariance();
+    final Vector m = prior.getGroundState();
+    final Matrix Omega;
+    if (prior.isOnRoad()) {
+      final MultivariateGaussian omegaTmp = new MultivariateGaussian(
+          VectorFactory.getDefault().createVector2D(
+              prior.getEdge().getDistToStartOfEdge(), 0d), 
+          this.getOnRoadStateTransCovar());
+      
+      AbstractRoadTrackingFilter.convertToGroundBelief(omegaTmp, prior.getEdge(), true);
+      Omega = omegaTmp.getCovariance();
+    } else {
+      Omega = this.getOffRoadStateTransCovar();
+    }
+    
+    final Matrix W = F.times(Omega).times(F.transpose()).plus(Sigma);
+    final Matrix FG = F.times(G);
+    final Matrix A = FG.times(C).times(FG.transpose()).plus(W);
+    final Matrix Wtil = A.transpose().solve(FG.times(C.transpose())).transpose();
+//    final Matrix WtilTest = C.times(FG.transpose()).times(A.inverse());
+//    
+//    // XXX testing
+//    final Matrix V= (C.inverse().plus(
+//        FG.transpose().times(W.inverse()).times(FG))).inverse();
+//    final Vector aTest = V.times(
+//        (FG.transpose().times(W.inverse()).times(obs)).plus(C.inverse().times(m))
+//        );
+        
+    Vector mSmooth = m.plus(Wtil.times(
+            obs.minus(FG.times(m))
+                ));
+    Matrix CSmooth = C.minus(
+        Wtil.times(A).times(Wtil.transpose()));
+    
+    if (posterior.isOnRoad()) {
+      final MultivariateGaussian convToRoad = new MultivariateGaussian
+          (mSmooth, CSmooth);
+      AbstractRoadTrackingFilter.convertToGroundBelief(convToRoad, prior.getEdge(), true);
+      mSmooth = convToRoad.getMean();
+      CSmooth = convToRoad.getCovariance();
+    }
+    
+    final Matrix Csqrt = StatisticsUtil.rootOfSemiDefinite(CSmooth);
+    
+    final Vector result = MultivariateGaussian.sample(
+        mSmooth, Csqrt, rng);
+    
+    if (posterior.isOnRoad()) {
+      return (PathState) AbstractRoadTrackingFilter.
+          convertToRoadState(result, posterior.getPath(), true);
+    }
+    
+    return PathState.getPathState(posterior.getPath(), result);
+  }
+
+  /**
+   * Samples (x_{t+1} | x_t, y_{t+1}, ...)
+   * Needed for some parameter estimates.
+   * 
+   * @param priorPredictiveBelief
+   * @param rng
+   * @return
+   */
+  private PathState sampleFilteredTransition(
+    PathState prevStateSample, Vector obs, Random rng) {
+    
+    final InferredPath path = prevStateSample.getPath();
+    final PathStateBelief prior = 
+        PathStateBelief.getPathStateBelief(
+            path,
+            new MultivariateGaussian(
+            prevStateSample.getRawState(),
+            MatrixFactory.getDenseDefault().createIdentity(
+                prevStateSample.getRawState().getDimensionality(),
+                prevStateSample.getRawState().getDimensionality())
+            ));
+    final PathStateBelief prediction = this.predict(prior, path);
+    final MultivariateGaussian updatedStateSmplDist = 
+        new MultivariateGaussian(
+            prediction.getRawState(),
+            prevStateSample.isOnRoad() ? this.getOnRoadStateTransCovar() :
+            this.getOffRoadStateTransCovar());
+    final PathStateBelief predictState = 
+        PathStateBelief.getPathStateBelief(
+            prediction.getPath(),
+            updatedStateSmplDist);
+    final PathStateBelief postState  =
+        this.measure(predictState, obs, predictState.getEdge());
+    
+    final Matrix Hsqrt = StatisticsUtil.rootOfSemiDefinite(
+        postState.getCovariance());
+    
+    final Vector result = MultivariateGaussian.sample(
+        postState.getRawState(), Hsqrt, rng);
+    
+    return PathState.getPathState(path, result);
+  }
 
   private void updateInvWishart(
-    InverseWishartDistribution covarPrior, Vector stateError) {
+    InverseWishartDistribution covarPrior, Matrix smplCov) {
     final int nOld = covarPrior.getDegreesOfFreedom();
     final int nNew = nOld + 1;
     covarPrior.setDegreesOfFreedom(nNew);
-    final Matrix smplCov = stateError.outerProduct(stateError);
     covarPrior.setInverseScale(covarPrior.getInverseScale().plus(
         smplCov));
   }

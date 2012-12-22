@@ -2,6 +2,9 @@ package org.openplans.tools.tracking.impl.statistics.filters.road_tracking;
 
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.mock;
+
+import java.util.Random;
+
 import gov.sandia.cognition.math.matrix.Matrix;
 import gov.sandia.cognition.math.matrix.MatrixFactory;
 import gov.sandia.cognition.math.matrix.Vector;
@@ -142,6 +145,58 @@ public class AbstractRoadTrackingFilterTest {
     assertEquals("dist 2", -15d, 
         result2.getGlobalState().getElement(0), 0d);
     assertEquals("new path 2", newPath, result2.getPath());
+    
+  }
+  
+  @Test
+  public void testRoadStateTransSampling() {
+    Random rng = new Random(123456789);
+    MultivariateGaussian.SufficientStatistic ss = new MultivariateGaussian.SufficientStatistic();
+    final Vector zeros = VectorFactory.getDenseDefault().createVector(2);
+    for (int i = 0; i < 100000; i++) {
+      final Vector smpl2 = filter.sampleStateTransDist(
+          zeros, rng);
+      ss.update(smpl2);
+    } 
+    
+    final Matrix varErr = filter.getOnRoadStateTransCovar()
+        .minus(ss.getCovariance());
+    
+    
+    final Matrix leftInv = filter.getCovarianceFactorLeftInv(true);
+    final Matrix rfact = leftInv.times(ss.getCovariance()).times(
+        leftInv.transpose());
+    
+    final Matrix factErr = filter.getQr().minus(rfact);
+    
+    assertTrue(varErr.normFrobenius() < 1d);
+    assertTrue(factErr.normFrobenius() < 1e-5d);
+    
+  }
+  
+  @Test
+  public void testGroundStateTransSampling() {
+    Random rng = new Random(123456789);
+    MultivariateGaussian.SufficientStatistic ss = new MultivariateGaussian.SufficientStatistic();
+    final Vector zeros = VectorFactory.getDenseDefault().createVector(4);
+    for (int i = 0; i < 100000; i++) {
+      final Vector smpl2 = filter.sampleStateTransDist(
+          zeros, rng);
+      ss.update(smpl2);
+    } 
+    
+    final Matrix varErr = filter.getOffRoadStateTransCovar()
+        .minus(ss.getCovariance());
+    
+    
+    final Matrix leftInv = filter.getCovarianceFactorLeftInv(false);
+    final Matrix rfact = leftInv.times(ss.getCovariance()).times(
+        leftInv.transpose());
+    
+    final Matrix factErr = filter.getQg().minus(rfact);
+    
+    assertTrue(varErr.normFrobenius() < 1d);
+    assertTrue(factErr.normFrobenius() < 1e-5d);
     
   }
 

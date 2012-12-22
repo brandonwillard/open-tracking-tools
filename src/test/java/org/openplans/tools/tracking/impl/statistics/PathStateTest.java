@@ -827,6 +827,74 @@ public class PathStateTest {
     assertEquals("dist", 0d, difference.getElement(0), 0d);
     assertEquals("vel", 0d, difference.getElement(1), 0d);
   }
+  
+  @Test
+  public void testDistanceBetween19() {
+    /*
+     * This path ends at its start (a loop).
+     */
+    InferredPath otherPath = makeTmpPath( 
+        true, 
+        new Coordinate(-90d, 0d),
+        new Coordinate(0d, 0d),
+        new Coordinate(0d, -(517d-90d)/2d),
+        new Coordinate(0d, 0d),
+        new Coordinate(-90d, 0d)
+      );
+    
+    PathState otherState = PathState.getPathState(otherPath,
+        VectorFactory.getDefault().createVector2D(
+            -564d, -8d));
+    
+    /*
+     * This path starts at the same start as
+     * the other. 
+     */
+    InferredPath thisPath = makeTmpPath( 
+        true, 
+        new Coordinate(0d, 607d-90d),
+        new Coordinate(0d, 0d),
+        new Coordinate(-90d, 0d)
+      );
+    
+    final Vector result = thisPath.getStateOnPath(otherState);
+    
+    PathState stateOnThis = PathState.getPathState(thisPath,
+        result);
+    final Vector difference = stateOnThis.minus(
+       otherState);
+    
+    assertTrue(difference.isZero(1e-7));
+  }
+
+  @Test
+  public void testDistanceBetween20() {
+    InferredPath otherPath = makeTmpPath( 
+        true, 
+        new Coordinate(0d, 0d),
+        new Coordinate(0d, 179d),
+        new Coordinate(10d, 179d),
+        new Coordinate(56d, 179d)
+      );
+    
+    PathState otherState = PathState.getPathState(otherPath,
+        VectorFactory.getDefault().createVector2D(
+            -41d, 4d));
+    
+    InferredPath thisPath = makeTmpPath( 
+        false, 
+        new Coordinate(0d, 0d),
+        new Coordinate(0d, 179d)
+      );
+    PathState thisState = PathState.getPathState(thisPath,
+        VectorFactory.getDefault().createVector2D(
+            157d, 7.5d));
+    
+    final Vector difference = thisState.minus(otherState);
+    
+    assertEquals("dist", -37d, difference.getElement(0), 0d);
+    assertEquals("vel", 3.5d, difference.getElement(1), 0d);
+  }
 
 
   private InferredPath makeTmpPath(boolean isBackward, Coordinate ... coords) {

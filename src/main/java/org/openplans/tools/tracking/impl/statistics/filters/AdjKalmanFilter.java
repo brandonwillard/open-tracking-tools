@@ -147,67 +147,67 @@ public class AdjKalmanFilter extends AbstractKalmanFilter {
     final Matrix C = this.model.getC();
 
     // Figure out what the model says the observation should be
-    //    final Vector xpred = belief.getMean();
-    //    final Vector ypred = C.times(xpred);
+    final Vector xpred = belief.getMean();
+    final Vector ypred = C.times(xpred);
 
     // Update step... compute the difference between the observation
     // and what the model says.
     // Then compute the Kalman gain, which essentially indicates
     // how much to believe the observation, and how much to believe model
-    //    final Vector innovation = observation.minus(ypred);
-    //    this.computeMeasurementBelief(belief, innovation, C);
+    final Vector innovation = observation.minus(ypred);
+    this.computeMeasurementBelief(belief, innovation, C);
 
-    final Vector a = belief.getMean();
-    final Matrix R = belief.getCovariance();
-    final Matrix Q =
-        C.times(R).times(C.transpose())
-            .plus(this.getMeasurementCovariance());
-    /*
-     * This is the source of one major improvement:
-     * uses the solve routine for a positive definite matrix
-     */
-    final UpperSPDDenseMatrix Qspd =
-        new UpperSPDDenseMatrix(
-            ((AbstractMTJMatrix) Q).getInternalMatrix(), false);
-    final no.uib.cipr.matrix.Matrix CRt =
-        ((AbstractMTJMatrix) C.times(R.transpose()))
-            .getInternalMatrix();
-
-    final DenseMatrix Amtj =
-        new DenseMatrix(Qspd.numRows(), CRt.numColumns());
-    Qspd.transSolve(CRt, Amtj);
-
-    final DenseMatrix AtQt =
-        new DenseMatrix(Amtj.numColumns(), Qspd.numRows());
-    Amtj.transABmult(Qspd, AtQt);
-
-    final DenseMatrix AtQtAMtj =
-        new DenseMatrix(AtQt.numRows(), Amtj.numColumns());
-    AtQt.mult(Amtj, AtQtAMtj);
-
-    final Matrix AtQtA =
-        ((DenseMatrixFactoryMTJ) MatrixFactory.getDenseDefault())
-            .createWrapper(AtQtAMtj);
-
-    final DenseVector e =
-        new DenseVector(
-            ((gov.sandia.cognition.math.matrix.mtj.DenseVector) observation
-                .minus(C.times(a))).getArray(), false);
-
-    final DenseVector AteMtj = new DenseVector(Amtj.numColumns());
-    Amtj.transMult(e, AteMtj);
-    final Vector Ate =
-        ((DenseVectorFactoryMTJ) VectorFactory.getDenseDefault())
-            .createWrapper(AteMtj);
-
-    final Matrix CC = R.minus(AtQtA);
-    final Vector m = a.plus(Ate);
-
-    assert StatisticsUtil
-        .isPosSemiDefinite((gov.sandia.cognition.math.matrix.mtj.DenseMatrix) CC);
-
-    belief.setCovariance(CC);
-    belief.setMean(m);
+//    final Vector a = belief.getMean();
+//    final Matrix R = belief.getCovariance();
+//    final Matrix Q =
+//        C.times(R).times(C.transpose())
+//            .plus(this.getMeasurementCovariance());
+//    /*
+//     * This is the source of one major improvement:
+//     * uses the solve routine for a positive definite matrix
+//     */
+//    final UpperSPDDenseMatrix Qspd =
+//        new UpperSPDDenseMatrix(
+//            ((AbstractMTJMatrix) Q).getInternalMatrix(), false);
+//    final no.uib.cipr.matrix.Matrix CRt =
+//        ((AbstractMTJMatrix) C.times(R.transpose()))
+//            .getInternalMatrix();
+//
+//    final DenseMatrix Amtj =
+//        new DenseMatrix(Qspd.numRows(), CRt.numColumns());
+//    Qspd.transSolve(CRt, Amtj);
+//
+//    final DenseMatrix AtQt =
+//        new DenseMatrix(Amtj.numColumns(), Qspd.numRows());
+//    Amtj.transABmult(Qspd, AtQt);
+//
+//    final DenseMatrix AtQtAMtj =
+//        new DenseMatrix(AtQt.numRows(), Amtj.numColumns());
+//    AtQt.mult(Amtj, AtQtAMtj);
+//
+//    final Matrix AtQtA =
+//        ((DenseMatrixFactoryMTJ) MatrixFactory.getDenseDefault())
+//            .createWrapper(AtQtAMtj);
+//
+//    final DenseVector e =
+//        new DenseVector(
+//            ((gov.sandia.cognition.math.matrix.mtj.DenseVector) observation
+//                .minus(C.times(a))).getArray(), false);
+//
+//    final DenseVector AteMtj = new DenseVector(Amtj.numColumns());
+//    Amtj.transMult(e, AteMtj);
+//    final Vector Ate =
+//        ((DenseVectorFactoryMTJ) VectorFactory.getDenseDefault())
+//            .createWrapper(AteMtj);
+//
+//    final Matrix CC = R.minus(AtQtA);
+//    final Vector m = a.plus(Ate);
+//
+//    assert StatisticsUtil
+//        .isPosSemiDefinite((gov.sandia.cognition.math.matrix.mtj.DenseMatrix) CC);
+//
+//    belief.setCovariance(CC);
+//    belief.setMean(m);
   }
 
   @Override

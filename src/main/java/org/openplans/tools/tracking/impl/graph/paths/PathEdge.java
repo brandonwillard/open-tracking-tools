@@ -165,7 +165,7 @@ public class PathEdge implements Comparable<PathEdge> {
    * determine if the given distance is on this edge.
    * XXX: It is possible that a given distance is
    * on more than one edge (depends on the value of 
-   * {@link AbstractRoadTrackingFilter#getEdgelengthtolerance()}).
+   * {@link AbstractRoadTrackingFilter#getEdgeLengthErrorTolerance()}).
    * 
    * @param distance
    * @return
@@ -176,29 +176,14 @@ public class PathEdge implements Comparable<PathEdge> {
     final double posDistOffset =
         direction * distance - posDistToStart;
 
-    if (posDistOffset - edge.getLength() > AbstractRoadTrackingFilter
-        .getEdgelengthtolerance()) {
+    if (posDistOffset - edge.getLength() > 1e-7d) {
       return false;
-    } else if (posDistOffset < -AbstractRoadTrackingFilter
-        .getEdgelengthtolerance()) {
+    } else if (posDistOffset < 0d) {
       return false;
     }
 
     return true;
   }
-
-  /*
-   * This method is problematic, since it discards/ignores direction.
-   */
-  //  public static PathEdge getEdge(InferredEdge infEdge) {
-  //    PathEdge edge;
-  //    if (infEdge.isEmptyEdge()) {
-  //      edge = PathEdge.getEmptyPathEdge();
-  //    } else {
-  //      edge = new PathEdge(infEdge, 0d, false);
-  //    }
-  //    return edge;
-  //  }
 
   @Override
   public String toString() {

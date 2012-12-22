@@ -118,7 +118,7 @@ public class PathStateBelief extends AbstractPathState implements Comparable<Pat
           Preconditions.checkNotNull(
             this.getEdge().getCheckedStateOnEdge(
                 this.globalStateBelief.getMean(), 
-                StandardRoadTrackingFilter.getEdgelengthtolerance(), 
+                StandardRoadTrackingFilter.getEdgeLengthErrorTolerance(), 
                 true));
       this.localStateBelief = new MultivariateGaussian(
           mean, this.globalStateBelief.getCovariance());
@@ -135,6 +135,8 @@ public class PathStateBelief extends AbstractPathState implements Comparable<Pat
 
   public static PathStateBelief getPathStateBelief(
     PathState newPathState, Matrix covariance) {
+    Preconditions.checkState(newPathState.getRawState().getDimensionality()
+        == covariance.getNumColumns());
     PathStateBelief result = getPathStateBelief(newPathState.path, 
         new MultivariateGaussian(newPathState.getRawState(), covariance));
     result.localStateBelief = new MultivariateGaussian(newPathState.getLocalState(), covariance);

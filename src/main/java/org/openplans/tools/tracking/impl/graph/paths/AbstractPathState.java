@@ -13,6 +13,7 @@ import org.apache.commons.lang3.ArrayUtils;
 import org.geotools.geometry.jts.JTSFactoryFinder;
 import org.geotools.geometry.jts.coordinatesequence.CoordinateSequences;
 import org.jaitools.jts.CoordinateSequence2D;
+import org.openplans.tools.tracking.impl.statistics.filters.road_tracking.AbstractRoadTrackingFilter;
 import org.openplans.tools.tracking.impl.util.EdgeOverlayOp;
 
 import com.beust.jcommander.internal.Lists;
@@ -269,6 +270,8 @@ public abstract class AbstractPathState extends
           
   }
   
+  final boolean useRaw = false;
+  
   /**
    * 
    * Yields the difference between distance and velocities
@@ -321,103 +324,42 @@ public abstract class AbstractPathState extends
           otherLastEdge.getGeometry();
       
       final Vector result;
+      final double distanceMax;
       
-      if (otherFirstActualGeom.equalsExact(
-            thisFirstActualGeom)) {
-        
-        final Vector otherVec;
-        if (this.path.getIsBackward() 
-            == otherState.path.getIsBackward()) {
-          otherVec = otherState.getRawState();
-        } else {
-          otherVec = otherState.getRawState().
-              scale(-1d);
-        }
-        
-        /*
-         * Same start, same direction.
-         */
-        
-        result = this.getRawState().minus(otherVec);
-        
-      } else if (otherLastActualGeom.equalsExact(
-          thisFirstActualGeom)) {
-          /*
-           * Head-to-tail
-           */
-          result = headToTailDiff(
-                this.getRawState(), 
-                this.path.getIsBackward(),
-                thisFirstEdge.getGeometry(),
-                otherState.getRawState(),
-                otherState.getEdge().getDistToStartOfEdge(),
-                otherLastEdge.getGeometry());
-        
-      } else if (otherFirstActualGeom.equalsTopo(
+      final Vector thisStateVec =  useRaw ?
+          this.getRawState() : this.getGlobalState();
+      final Vector otherStateVec = useRaw ?
+          otherState.getRawState() : otherState.getGlobalState();
+      
+      if (otherLastActualGeom.equalsExact(
           thisFirstActualGeom)) {
         /*
-         * Going in opposite directions from the same
-         * starting location. 
+         * Head-to-tail
          */
-        final double adjustedLocation =
-            -1d * (Math.abs(otherState.getRawState().getElement(0))
-              - otherFirstEdge.getLength());
-        final double distDiff = 
-            (this.path.getIsBackward() ? -1d : 1d) *
-            (Math.abs(this.getRawState().getElement(0))
-              - adjustedLocation);
+        result = headToTailDiff(
+              thisStateVec, 
+              this.path.getIsBackward(),
+              thisFirstEdge.getGeometry(),
+              otherStateVec,
+              otherState.getEdge().getDistToStartOfEdge(),
+              otherLastEdge.getGeometry());
         
-        double thisVel = this.getRawState().getElement(1);
-        double thatVel = (otherFirstEdge.getGeometry().equalsExact(
-            thisFirstEdge.getGeometry()) ? 1d : -1d) 
-            * otherState.getRawState().getElement(1);
-        final double velDiff = thisVel - thatVel;
-        
-        result = VectorFactory.getDenseDefault().createVector2D(
-            distDiff, velDiff);
+        distanceMax = 
+            Math.abs(otherState.path.getTotalPathDistance())
+            + Math.abs(this.path.getTotalPathDistance())
+            - otherLastActualGeom.getLength(); 
         
       } else if (otherLastActualGeom.equalsTopo(
         thisFirstActualGeom)) {
         /*
-         * Head-to-tail, but in reverse directions.
-         * If the tail (first edge on this state) is
-         * the edge of this location, then we're OK.
-         * 
-         * Otherwise, I'm not sure how to interpret.
-         * TODO FIXME what to do?
+         * Head-to-tail, but in opposite path directions.
          */
-//          if (thisFirstEdge.isOnEdge(this.getRawState()
-//              .getElement(0))) {
-          /*
-           * Flip the other state around so that it's
-           * going the same direction as this state.
-           */
-        final double thisDir = this.path.getIsBackward()
-            ? -1d : 1d;     
-        final double otherDir = otherState.path.getIsBackward()
-            ? -1d : 1d;     
-        final double otherDist = 
-            (this.path.getIsBackward() ? -1d : 1d) *
-            (otherState.getEdge().getLength()
-            + Math.abs(otherState.getEdge().getDistToStartOfEdge())
-            - Math.abs(otherState.getRawState().getElement(0)));
-        /*
-         * Normed velocities (normed means sign 
-         * is positive for motion in the direction of geom).
-         */
-        final double otherVelNormRev = -1d * 
-            otherDir * otherState.getRawState().getElement(1);
-        final double thisVelNorm =
-            thisDir * this.getRawState().getElement(1);
-        final double relVelDiff = thisDir * (
-            thisVelNorm - otherVelNormRev);
-        result = VectorFactory.getDenseDefault().createVector2D(
-            this.getRawState().getElement(0) - otherDist,
-             relVelDiff);
-          
-//          } else {
-//            throw new IllegalStateException();
-//          }
+        result = headToTailRevDiff(this, otherState, useRaw);
+        
+        distanceMax = 
+            Math.abs(otherState.path.getTotalPathDistance())
+            + Math.abs(this.path.getTotalPathDistance())
+            - otherLastActualGeom.getLength(); 
         
       } else if (otherFirstActualGeom.equalsExact(
         thisLastActualGeom)){
@@ -426,43 +368,152 @@ public abstract class AbstractPathState extends
          * Tail-to-head
          */
         result = headToTailDiff(
-              otherState.getRawState(), 
+              otherStateVec, 
               otherState.path.getIsBackward(),
               otherFirstEdge.getGeometry(),
-              this.getRawState(),
+              thisStateVec,
               this.getEdge().getDistToStartOfEdge(),
               thisLastEdge.getGeometry())
             .scale(-1d); 
+        
+        distanceMax = 
+            Math.abs(otherState.path.getTotalPathDistance())
+            + Math.abs(this.path.getTotalPathDistance())
+            - otherFirstActualGeom.getLength(); 
         
       } else if (otherFirstActualGeom.equalsTopo(
         thisLastActualGeom)){
         
         /*
-         * Tail-to-head, but moving opposite directions.
-         * See head-to-tail comments.
+         * Tail-to-head, but moving opposite path-directions.
          * TODO FIXME what to do?
          */
-        if (otherFirstEdge.isOnEdge(otherState.
-            getRawState().getElement(0))) {
+        if (otherFirstEdge.isOnEdge(
+            otherStateVec.getElement(0))) {
           result = headToTailDiff(
-              otherState.getRawState(), 
+              otherStateVec, 
               otherState.path.getIsBackward(),
               otherFirstEdge.getGeometry(),
-              this.getRawState(),
+              thisStateVec,
               this.getEdge().getDistToStartOfEdge(),
               thisLastEdge.getGeometry())
               .scale(-1d); 
         } else {
           throw new IllegalStateException();
         }
+        
+        distanceMax = 
+            Math.abs(otherState.path.getTotalPathDistance())
+            + Math.abs(this.path.getTotalPathDistance())
+            - otherFirstActualGeom.getLength(); 
+        
+      } else if (otherFirstActualGeom.equalsExact(
+            thisFirstActualGeom)) {
+        /*
+         * Same start, same path-directions.
+         */
+        final Vector otherVec;
+        if (this.path.getIsBackward() 
+            == otherState.path.getIsBackward()) {
+          otherVec = otherStateVec;
+        } else {
+          otherVec = otherStateVec.
+              scale(-1d);
+        }
+        
+        result = thisStateVec.minus(otherVec);
+        
+        distanceMax = Math.max(
+            Math.abs(otherState.path.getTotalPathDistance()),
+            Math.abs(this.path.getTotalPathDistance())); 
+        
+      } else if (otherFirstActualGeom.equalsTopo(
+          thisFirstActualGeom)) {
+        /*
+         * Going in opposite path-directions from the same
+         * starting location. 
+         */
+        final double adjustedLocation =
+            -1d * (Math.abs(otherStateVec.getElement(0))
+              - otherFirstEdge.getLength());
+        final double distDiff = 
+            (this.path.getIsBackward() ? -1d : 1d) *
+            (Math.abs(thisStateVec.getElement(0))
+              - adjustedLocation);
+        
+        double thisVel = thisStateVec.getElement(1);
+        double thatVel = (otherFirstEdge.getGeometry().equalsExact(
+            thisFirstEdge.getGeometry()) ? 1d : -1d) 
+            * otherStateVec.getElement(1);
+        final double velDiff = thisVel - thatVel;
+        
+        result = VectorFactory.getDenseDefault().createVector2D(
+            distDiff, velDiff);
+        
+        distanceMax = Math.max(
+            Math.abs(otherState.path.getTotalPathDistance()),
+            Math.abs(this.path.getTotalPathDistance())); 
+        
       } else {
         throw new IllegalStateException();
       }
+      
+      /*
+       * Distance upper-bound requirement
+       */
+      assert Preconditions.checkNotNull(
+          (useRaw || 
+          Math.abs(result.getElement(0)) - distanceMax
+            <= 1d) ? true : null);
+        
+      /*
+       * Distance/velocity lower-bound requirement
+       */
+      assert Preconditions.checkNotNull(
+         Math.min(this.getGroundState()
+             .minus(otherState.getGroundState())
+          .norm2Squared() - result.norm2Squared(), 0d)
+            <= 1d ? true : null);
       
       return result;
     } else {
       return this.getGroundState().minus(otherState.getGroundState());
     }
+  }
+  
+  private static Vector headToTailRevDiff(AbstractPathState thisState,
+    AbstractPathState otherState, boolean useRaw) {
+    /*
+     * Flip the other state around so that it's
+     * going the same direction as this state.
+     */
+    final double thisDir = thisState.path.getIsBackward()
+        ? -1d : 1d;     
+    final double otherDir = otherState.path.getIsBackward()
+        ? -1d : 1d;     
+    final Vector otherStateVec = useRaw? otherState.getRawState()
+        : otherState.getGlobalState();
+    final Vector thisStateVec = useRaw? thisState.getRawState()
+        : thisState.getGlobalState();
+    final double otherDist = 
+        (thisState.path.getIsBackward() ? -1d : 1d) *
+        (Math.abs(otherState.path.getTotalPathDistance())
+        - Math.abs(otherStateVec.getElement(0)));
+//        (otherState.getEdge().getLength()
+//        + Math.abs(otherState.getEdge().getDistToStartOfEdge())
+//        - Math.abs(otherStateVec.getElement(0)));
+    /*
+     * Normed velocities (normed means sign 
+     * is positive for motion in the direction of geom).
+     */
+    final double otherVelNormRev = -1d * 
+        otherDir * otherStateVec.getElement(1);
+    final double thisVelNorm =
+        thisDir * thisStateVec.getElement(1);
+    final double relVelDiff = thisDir * (
+        thisVelNorm - otherVelNormRev);
+    return VectorFactory.getDenseDefault().createVector2D(
+        thisStateVec.getElement(0) - otherDist, relVelDiff);
   }
   
   private static Vector headToTailDiff(

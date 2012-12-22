@@ -95,7 +95,7 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
   /**
    * We allow {@value} meters of error when checking distance values on a path.
    */
-  private static final double edgeLengthTolerance = 1d;
+  private static final double edgeLengthErrorTolerance = 1d;
 
   /**
    * State movement and observation model for the ground-state.
@@ -230,6 +230,10 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
 
   public Matrix getCovarianceFactor(boolean isRoad) {
     return getCovarianceFactor(this.currentTimeDiff, isRoad);
+  }
+  
+  public Matrix getCovarianceFactorLeftInv(boolean isRoad) {
+    return getCovarianceFactorLeftInv(this.currentTimeDiff, isRoad);
   }
 
   public double getCurrentTimeDiff() {
@@ -539,7 +543,7 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
     return path
         .getCheckedStateOnPath(projState,
             AbstractRoadTrackingFilter
-                .getEdgelengthtolerance());
+                .getEdgeLengthErrorTolerance());
   }
 
   public static Vector convertToGroundState(
@@ -620,7 +624,9 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
       }
     }
 
-    assert isIsoMapping(belief.getMean(), projMean, edge);
+    assert Preconditions.checkNotNull(
+      isIsoMapping(belief.getMean(), projMean, edge)
+      ? true : null);
 
     belief.setMean(projMean);
     belief.setCovariance(projCov);
@@ -732,12 +738,12 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
     Random rng) {
     final int dim = state.getDimensionality();
     final Matrix sampleCovChol =
-        StatisticsUtil.getCholR(dim == 4 ? this.getQg()
+        StatisticsUtil.rootOfSemiDefinite(dim == 4 ? this.getQg()
             : this.getQr());
     final Vector qSmpl =
         MultivariateGaussian.sample(VectorFactory
             .getDenseDefault().createVector(dim / 2),
-            sampleCovChol.transpose(), rng);
+            sampleCovChol, rng);
     final Vector stateSmpl =
         state.plus(this.getCovarianceFactor(dim == 2)
             .times(qSmpl));
@@ -813,7 +819,7 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
     final PathState newState =
         path.getCheckedStateOnPath(projMean,
             AbstractRoadTrackingFilter
-                .getEdgelengthtolerance());
+                .getEdgeLengthErrorTolerance());
 
     belief.setMean(newState.getGlobalState());
     belief.setCovariance(projCov);
@@ -857,7 +863,7 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
     final boolean result =
         inversion.equals(adjFrom,
             AbstractRoadTrackingFilter
-                .getEdgelengthtolerance());
+                .getEdgeLengthErrorTolerance());
     return result;
   }
 
@@ -866,7 +872,7 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
     final Vector inversion = invertProjection(to, path);
     final boolean result =
         inversion.equals(from, AbstractRoadTrackingFilter
-            .getEdgelengthtolerance());
+            .getEdgeLengthErrorTolerance());
     return result;
   }
 
@@ -1052,6 +1058,37 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
 
     return A_half;
   }
+  
+  public static Matrix getCovarianceFactorLeftInv(double timeDiff,
+    boolean isRoad) {
+
+    final int dim;
+    if (!isRoad) {
+      dim = 2;
+    } else {
+      dim = 1;
+    }
+    final Matrix A_half =
+        MatrixFactory.getDefault().createMatrix(dim,
+            dim * 2);
+    A_half.setElement(0, 0, 1d/Math.pow(timeDiff, 2));
+    A_half.setElement(0, 1, 1d/(2d*timeDiff));
+//    A_half.setElement(0, 0, 2d * timeDiff/
+//        (Math.pow(timeDiff, 2) + 4d));
+//    A_half.setElement(0, 1, 4d/
+//        (Math.pow(timeDiff, 2) + 4d));
+    if (dim == 2) {
+//      A_half.setElement(1, 2, 2d * timeDiff/
+//          (Math.pow(timeDiff, 2) + 4d));
+//      A_half.setElement(1, 3, 4d/
+//          (Math.pow(timeDiff, 2) + 4d));
+      A_half.setElement(1, 2, 1d/Math.pow(timeDiff, 2));
+      A_half.setElement(1, 3, 1d/(2d*timeDiff));
+    }
+//    A_half.scale(1/timeDiff);
+
+    return A_half;
+  }
 
   public static Matrix getGroundObservationMatrix() {
     return Og;
@@ -1209,6 +1246,7 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
    * on paths/path-edges, we'll need to re-adjust locally when path directions
    * don't line up.
    */
+  @Deprecated
   public static void normalizeBelief(Vector mean,
     PathEdge edge) {
 
@@ -1285,6 +1323,7 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
     assert StatisticsUtil
         .isPosSemiDefinite((DenseMatrix) qr);
     Qr = qr;
+    // TODO should set trans covar?
   }
 
   protected void setQg(Matrix qg) {
@@ -1292,6 +1331,7 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
     assert StatisticsUtil
         .isPosSemiDefinite((DenseMatrix) qg);
     Qg = qg;
+    // TODO should set trans covar?
   }
 
   protected void setOnRoadStateTransCovar(
@@ -1300,7 +1340,7 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
         .getNumColumns() == 2);
     assert StatisticsUtil
         .isPosSemiDefinite((DenseMatrix) onRoadStateVariance);
-    this.onRoadStateTransCovar = onRoadStateVariance;
+    this.onRoadStateTransCovar = onRoadStateVariance.clone();
     this.roadFilter.setModelCovariance(onRoadStateVariance);
   }
 
@@ -1310,7 +1350,7 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
         .getNumColumns() == 4);
     assert StatisticsUtil
         .isPosSemiDefinite((DenseMatrix) offRoadStateVariance);
-    this.offRoadStateTransCovar = offRoadStateVariance;
+    this.offRoadStateTransCovar = offRoadStateVariance.clone();
     this.groundFilter
         .setModelCovariance(offRoadStateVariance);
   }
@@ -1320,13 +1360,13 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
         .checkArgument(obsVariance.getNumColumns() == 2);
     assert StatisticsUtil
         .isPosSemiDefinite((DenseMatrix) obsVariance);
-    this.obsCovar = obsVariance;
-    this.groundFilter.setMeasurementCovariance(this.obsCovar);
-    this.roadFilter.setMeasurementCovariance(this.obsCovar);
+    this.obsCovar = obsVariance.clone();
+    this.groundFilter.setMeasurementCovariance(obsVariance);
+    this.roadFilter.setMeasurementCovariance(obsVariance);
   }
 
-  public static double getEdgelengthtolerance() {
-    return edgeLengthTolerance;
+  public static double getEdgeLengthErrorTolerance() {
+    return edgeLengthErrorTolerance;
   }
 
   @Override
