@@ -115,15 +115,15 @@ public class ErrorEstimatingRoadTrackingFilterTest {
     if (isOnRoad) {
       startPath = TrackingTestUtils.makeTmpPath(
           this.graph, false,
-          new Coordinate(-iterations * 40d, 0d),
+          new Coordinate(-Math.pow(iterations, 2), 0d),
           new Coordinate(0d, 0d),
-          new Coordinate(iterations * 40d, 0d)
+          new Coordinate(Math.pow(iterations, 2), 0d)
           );
       startPathRev = TrackingTestUtils.makeTmpPath(
           this.graph, false,
-          new Coordinate(iterations * 40d, 0d),
+          new Coordinate(Math.pow(iterations, 2), 0d),
           new Coordinate(0d, 0d),
-          new Coordinate(-iterations * 40d, 0d)
+          new Coordinate(-Math.pow(iterations, 2), 0d)
           );
     } else {
       startPath = InferredPath.getEmptyPath();
@@ -186,7 +186,7 @@ public class ErrorEstimatingRoadTrackingFilterTest {
     
     PathStateBelief trueState = currentState.clone();
     
-    final DecimalFormat formatter = new DecimalFormat( "0.000E0" ); 
+    final NumberFormat formatter = new DecimalFormat( "0.000E0" ); 
      
     MultivariateGaussian.SufficientStatistic samplesSS = 
         new MultivariateGaussian.SufficientStatistic();
@@ -325,9 +325,14 @@ public class ErrorEstimatingRoadTrackingFilterTest {
           residualsSS.getCovariance().toString(formatter)
         );
     
-    assertTrue(
-        filter.getObsVariancePrior().getMean()
-        .minus(trueObsCov).normFrobenius() <= 61d);
+    final Matrix obsMean = filter.getObsVariancePrior().getMean();
+    assertTrue(obsMean.minus(trueObsCov).normFrobenius()/obsMean.normFrobenius() <= 0.3d);
+    
+    final Matrix stateTransMean = isOnRoad ? filter.getOnRoadStateVariancePrior().getMean()
+            : filter.getOffRoadStateVariancePrior().getMean();
+    final Matrix stateTransDiff = stateTransMean.minus(trueStateCov);
+    
+    assertTrue( stateTransDiff.normFrobenius()/stateTransMean.normFrobenius() <= 0.4d);
 
   }
 

@@ -421,7 +421,10 @@ public class ErrorEstimatingRoadTrackingFilter extends
     final Matrix covFactor = this.getCovarianceFactor(
         prevStateSample.isOnRoad());
 
-    final Vector sampleDiff = newStateSample.minus(prevStateSample);
+    final Matrix G = prevStateSample.isOnRoad() ?
+        this.getRoadModel().getA() : this.getGroundModel().getA();
+    final Vector sampleDiff = newStateSample.getRawState().minus(
+        G.times(prevStateSample.getRawState()));
     final Matrix covFactorInv = 
         StatisticsUtil.rootOfSemiDefinite(
             covFactor.times(covFactor.transpose())
