@@ -423,8 +423,8 @@ public class ErrorEstimatingRoadTrackingFilter extends
 
     final Matrix G = prevStateSample.isOnRoad() ?
         this.getRoadModel().getA() : this.getGroundModel().getA();
-    final Vector sampleDiff = newStateSample.getRawState().minus(
-        G.times(prevStateSample.getRawState()));
+    final Vector sampleDiff = newStateSample.getGlobalState().minus(
+        G.times(prevStateSample.getGlobalState()));
     final Matrix covFactorInv = 
         StatisticsUtil.rootOfSemiDefinite(
             covFactor.times(covFactor.transpose())
@@ -482,60 +482,65 @@ public class ErrorEstimatingRoadTrackingFilter extends
         && Iterables.getFirst(priorPred.getPath().getEdges(), null)
           .equals(Iterables.getFirst(posterior.getPath().getEdges(), null)));
     
-    final Matrix Sigma = this.getObsCovar();
-    final Matrix F = AbstractRoadTrackingFilter.getOg();
-    final Matrix G = this.getGroundModel().getA();
-    final Matrix C = prior.getGroundBelief().getCovariance();
-    final Vector m = prior.getGroundState();
+    final Matrix F;
+    final Matrix G;
+    final Matrix C;
+    final Vector m;
     final Matrix Omega;
-    if (prior.isOnRoad()) {
-      final MultivariateGaussian omegaTmp = new MultivariateGaussian(
-          VectorFactory.getDefault().createVector2D(
-              prior.getEdge().getDistToStartOfEdge(), 0d), 
-          this.getOnRoadStateTransCovar());
+    final Vector y;
+    final Matrix Sigma; 
+    
+    if (posterior.isOnRoad()) {
+      final PathStateBelief priorOnRoad;
+      if (!prior.isOnRoad()) {
+        priorOnRoad = prior.clone();
+        AbstractRoadTrackingFilter.convertToRoadBelief(priorOnRoad.getRawStateBelief(),
+            priorPred.getPath(), 
+            Iterables.getFirst(priorPred.getPath().getEdges(), null), true);
+        
+      } else {
+        priorOnRoad = prior;
+      }
+      final MultivariateGaussian obsProjBelief = AbstractRoadTrackingFilter
+          .getRoadObservation(obs, this.obsCovar, priorPred.getPath(), 
+          Iterables.getLast(priorPred.getPath().getEdges()));
       
-      AbstractRoadTrackingFilter.convertToGroundBelief(omegaTmp, prior.getEdge(), true);
-      Omega = omegaTmp.getCovariance();
+      /*
+       * Perform non-linear transform on y and obs cov. 
+       */
+      y = obsProjBelief.getMean();
+      Sigma = obsProjBelief.getCovariance();
+      
+      F = AbstractRoadTrackingFilter.getOr();
+      G = this.getRoadModel().getA();
+      C = priorOnRoad.getGlobalStateBelief().getCovariance();
+      m = priorOnRoad.getGlobalState();
+      Omega = this.getOnRoadStateTransCovar();
     } else {
+      y = obs;
+      F = AbstractRoadTrackingFilter.getOg();
+      G = this.getGroundModel().getA();
+      C = prior.getGroundBelief().getCovariance();
+      m = prior.getGroundState();
       Omega = this.getOffRoadStateTransCovar();
+      Sigma = this.getObsCovar();
     }
     
     final Matrix W = F.times(Omega).times(F.transpose()).plus(Sigma);
     final Matrix FG = F.times(G);
     final Matrix A = FG.times(C).times(FG.transpose()).plus(W);
     final Matrix Wtil = A.transpose().solve(FG.times(C.transpose())).transpose();
-//    final Matrix WtilTest = C.times(FG.transpose()).times(A.inverse());
-//    
-//    // XXX testing
-//    final Matrix V= (C.inverse().plus(
-//        FG.transpose().times(W.inverse()).times(FG))).inverse();
-//    final Vector aTest = V.times(
-//        (FG.transpose().times(W.inverse()).times(obs)).plus(C.inverse().times(m))
-//        );
         
     Vector mSmooth = m.plus(Wtil.times(
-            obs.minus(FG.times(m))
+            y.minus(FG.times(m))
                 ));
     Matrix CSmooth = C.minus(
         Wtil.times(A).times(Wtil.transpose()));
-    
-    if (posterior.isOnRoad()) {
-      final MultivariateGaussian convToRoad = new MultivariateGaussian
-          (mSmooth, CSmooth);
-      AbstractRoadTrackingFilter.convertToGroundBelief(convToRoad, prior.getEdge(), true);
-      mSmooth = convToRoad.getMean();
-      CSmooth = convToRoad.getCovariance();
-    }
     
     final Matrix Csqrt = StatisticsUtil.rootOfSemiDefinite(CSmooth);
     
     final Vector result = MultivariateGaussian.sample(
         mSmooth, Csqrt, rng);
-    
-    if (posterior.isOnRoad()) {
-      return (PathState) AbstractRoadTrackingFilter.
-          convertToRoadState(result, posterior.getPath(), true);
-    }
     
     return PathState.getPathState(posterior.getPath(), result);
   }
@@ -556,7 +561,7 @@ public class ErrorEstimatingRoadTrackingFilter extends
         PathStateBelief.getPathStateBelief(
             path,
             new MultivariateGaussian(
-            prevStateSample.getRawState(),
+            prevStateSample.getGlobalState(),
             MatrixFactory.getDenseDefault().createIdentity(
                 prevStateSample.getRawState().getDimensionality(),
                 prevStateSample.getRawState().getDimensionality())
@@ -564,7 +569,7 @@ public class ErrorEstimatingRoadTrackingFilter extends
     final PathStateBelief prediction = this.predict(prior, path);
     final MultivariateGaussian updatedStateSmplDist = 
         new MultivariateGaussian(
-            prediction.getRawState(),
+            prediction.getGlobalState(),
             prevStateSample.isOnRoad() ? this.getOnRoadStateTransCovar() :
             this.getOffRoadStateTransCovar());
     final PathStateBelief predictState = 
@@ -578,7 +583,7 @@ public class ErrorEstimatingRoadTrackingFilter extends
         postState.getCovariance());
     
     final Vector result = MultivariateGaussian.sample(
-        postState.getRawState(), Hsqrt, rng);
+        postState.getGlobalState(), Hsqrt, rng);
     
     return PathState.getPathState(path, result);
   }

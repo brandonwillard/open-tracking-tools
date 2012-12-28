@@ -372,51 +372,51 @@ public abstract class AbstractPathState extends
             + Math.abs(this.path.getTotalPathDistance())
             - otherLastActualGeom.getLength(); 
         
-      } else if (otherFirstActualGeom.equalsExact(
-        thisLastActualGeom)){
-        
-        /*
-         * Tail-to-head
-         */
-        result = headToTailDiff(
-              otherStateVec, 
-              otherState.path.getIsBackward(),
-              otherFirstEdge.getGeometry(),
-              thisStateVec,
-              this.getEdge().getDistToStartOfEdge(),
-              thisLastEdge.getGeometry())
-            .scale(-1d); 
-        
-        distanceMax = 
-            Math.abs(otherState.path.getTotalPathDistance())
-            + Math.abs(this.path.getTotalPathDistance())
-            - otherFirstActualGeom.getLength(); 
-        
-      } else if (otherFirstActualGeom.equalsTopo(
-        thisLastActualGeom)){
-        
-        /*
-         * Tail-to-head, but moving opposite path-directions.
-         * TODO FIXME what to do?
-         */
-        if (otherFirstEdge.isOnEdge(
-            otherStateVec.getElement(0))) {
-          result = headToTailDiff(
-              otherStateVec, 
-              otherState.path.getIsBackward(),
-              otherFirstEdge.getGeometry(),
-              thisStateVec,
-              this.getEdge().getDistToStartOfEdge(),
-              thisLastEdge.getGeometry())
-              .scale(-1d); 
-        } else {
-          throw new IllegalStateException();
-        }
-        
-        distanceMax = 
-            Math.abs(otherState.path.getTotalPathDistance())
-            + Math.abs(this.path.getTotalPathDistance())
-            - otherFirstActualGeom.getLength(); 
+//      } else if (otherFirstActualGeom.equalsExact(
+//        thisLastActualGeom)){
+//        
+//        /*
+//         * Tail-to-head
+//         */
+//        result = headToTailDiff(
+//              otherStateVec, 
+//              otherState.path.getIsBackward(),
+//              otherFirstEdge.getGeometry(),
+//              thisStateVec,
+//              this.getEdge().getDistToStartOfEdge(),
+//              thisLastEdge.getGeometry());
+////            .scale(-1d); 
+//        
+//        distanceMax = 
+//            Math.abs(otherState.path.getTotalPathDistance())
+//            + Math.abs(this.path.getTotalPathDistance())
+//            - otherFirstActualGeom.getLength(); 
+//        
+//      } else if (otherFirstActualGeom.equalsTopo(
+//        thisLastActualGeom)){
+//        
+//        /*
+//         * Tail-to-head, but moving opposite path-directions.
+//         * TODO FIXME what to do?
+//         */
+//        if (otherFirstEdge.isOnEdge(
+//            otherStateVec.getElement(0))) {
+//          result = headToTailDiff(
+//              otherStateVec, 
+//              otherState.path.getIsBackward(),
+//              otherFirstEdge.getGeometry(),
+//              thisStateVec,
+//              this.getEdge().getDistToStartOfEdge(),
+//              thisLastEdge.getGeometry());
+////              .scale(-1d); 
+//        } else {
+//          throw new IllegalStateException();
+//        }
+//        
+//        distanceMax = 
+//            Math.abs(otherState.path.getTotalPathDistance())
+//            + Math.abs(this.path.getTotalPathDistance())
+//            - otherFirstActualGeom.getLength(); 
         
       } else if (otherFirstActualGeom.equalsExact(
             thisFirstActualGeom)) {

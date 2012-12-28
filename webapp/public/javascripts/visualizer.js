@@ -744,7 +744,7 @@ function renderParticles(isPrior) {
                     var collapsedDiv = subList.find(".subinfo");
                     optionDiv.append(subList);
                     
-                    var stateSample = particleData.particle.infResults.stateSample;
+                    var stateSample = particleData.particle.infResults.currentStateSample;
                     if (stateSample !== null) {
                       var smplLocLinkName = 'stateSample_' + particleNumber + '_mean_'
                           + isPrior;
@@ -834,7 +834,7 @@ function renderParticles(isPrior) {
                           + parentEdgeLink + "</li>");
                       collapsedDiv.append(parentList);
                       
-                      var parentStateSample = particleData.parent.infResults.stateSample;
+                      var parentStateSample = particleData.parent.infResults.currentStateSample;
                       if (parentStateSample !== null) {
                         var smplLocLinkName = 'parent_stateSample_' + particleNumber + '_mean_'
                             + isPrior;

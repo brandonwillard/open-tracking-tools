@@ -324,28 +324,79 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
     Q.plusEquals(measurementCovariance);
 
     final double result =
-        StatisticsUtil.logEvaluateNormal(obs,
-            Og.times(belief.getGroundState()), Q);
+        this.logLikelihood(obs, Q, belief);
+//        StatisticsUtil.logEvaluateNormal(obs,
+//            Og.times(belief.getGroundState()), Q);
     return result;
   }
-
+  
+  public double logLikelihood(Vector obs,
+    AbstractPathState state) {
+    return this.logLikelihood(obs, this.obsCovar, state);
+  }
+  
   /**
    * Returns the log likelihood for given state and observation.<br>
+   * 
+   * Note: When in a road-state we break down the likelihood
+   * into its parallel and perpendicular components.  This way
+   * the parallel (distance-along) is evaluated correctly, since if
+   * we just used the ground-state likelihood things like loops
+   * with considerable movement would be just as likely as staying
+   * in the same place (for any velocity!).
    * 
    * @param obs
    * @param belief
    * @param edge
    * @return
    */
-  public double logLikelihood(Vector obs,
+  public double logLikelihood(Vector obs, Matrix obsCov,
     AbstractPathState state) {
-
-    final Vector groundState = state.getGroundState();
-
-    final double result =
-        StatisticsUtil.logEvaluateNormal(obs,
-            Og.times(groundState),
-            this.groundFilter.getMeasurementCovariance());
+    final double result;
+    if (state.isOnRoad()) {
+      final PathEdge lastEdge = Iterables.getLast(
+          state.getPath().getEdges(), null);
+      final Geometry lastEdgeGeom = lastEdge.isBackward() ?
+          lastEdge.getGeometry().reverse() : lastEdge.getGeometry();
+      final MultivariateGaussian obsProjPar = 
+          AbstractRoadTrackingFilter.getRoadObservation(obs, 
+              obsCov, state.getPath(), lastEdge);
+      
+      final LocationIndexedLine lilPath = new LocationIndexedLine(
+          lastEdgeGeom);
+      final LinearLocation obsLoc = LengthLocationMap.
+          getLocation(lastEdgeGeom, obsProjPar.getMean().getElement(0));
+//      final LineSegment segment = obsLoc.getSegment(lastEdgeGeom);
+      final Coordinate obsLocCoord = lilPath.extractPoint(obsLoc);
+      final Vector obsGroundLoc = 
+         GeoUtils.getVector(obsLocCoord); 
+      final Vector perpUnitVec = obs.minus(obsGroundLoc).unitVector();
+      final double obsProjCovPer = perpUnitVec.times(obsCov)
+          .dotProduct(perpUnitVec);
+      /*
+       * TODO FIXME XXX: This decomp needs to be done properly.
+       * I.e. the perpendicular component should be conditional
+       * on the parallel, and/or (?) actually projected perpendicular.
+       */
+      result =
+          // parallel component
+          StatisticsUtil.logEvaluateNormal(obsProjPar.getMean(),
+              Or.times(state.getGlobalState()),
+              obsProjPar.getCovariance()) 
+                // perpendicular component
+              + StatisticsUtil.logEvaluateNormal(
+                  VectorFactory.getDefault()
+                  .createVector1D(0d), 
+                  VectorFactory.getDefault()
+                  .createVector1D(obs.euclideanDistance(obsGroundLoc))
+                  , MatrixFactory.getDefault()
+                  .copyArray(new double[][] {{obsProjCovPer}}));
+    } else {
+      final Vector groundState = state.getGroundState();
+      result = StatisticsUtil.logEvaluateNormal(obs, 
+          Og.times(groundState), obsCov);
+      
+    }
     return result;
   }
 
@@ -363,25 +414,34 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
     final MultivariateGaussian updatedBelief;
     final PathStateBelief result;
     if (belief.isOnRoad()) {
-      /*
-       * TODO FIXME: should probably snap observation to road 
-       * and then filter, no?
-       * 
-       * Convert road-coordinates prior predictive to ground-coordinates
-       */
-      updatedBelief = belief.getGroundBelief().clone();
-
-      this.groundFilter.measure(updatedBelief, observation);
-
-      /*
-       * Convert back to road-coordinates
-       */
-      convertToRoadBelief(updatedBelief, belief.getPath(),
-          edge, true);
+//      /*
+//       * TODO FIXME: should probably snap observation to road 
+//       * and then filter, no?
+//       * 
+//       * Convert road-coordinates prior predictive to ground-coordinates
+//       */
+//      updatedBelief = belief.getGroundBelief().clone();
+//
+//      this.groundFilter.measure(updatedBelief, observation);
+//
+//      /*
+//       * Convert back to road-coordinates
+//       */
+//      convertToRoadBelief(updatedBelief, belief.getPath(),
+//          edge, true);
+      final MultivariateGaussian obsProj = 
+          AbstractRoadTrackingFilter.getRoadObservation(observation, 
+              this.obsCovar, belief.getPath(), 
+              Iterables.getLast(belief.getPath().getEdges()));
+              
+      this.roadFilter.setMeasurementCovariance(obsProj.getCovariance());
+      updatedBelief = belief.getGlobalStateBelief().clone();
+      this.roadFilter.measure(updatedBelief, obsProj.getMean());
       
       final PathStateBelief tmpBelief =
           PathStateBelief.getPathStateBelief(belief.getPath(), 
               updatedBelief);
+      
       List<PathEdge> edges = Lists.newArrayList();
       for (PathEdge pedge : belief.getPath().getEdges()) {
         edges.add(pedge);
@@ -455,8 +515,8 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
       
       if (!currentBelief.isOnRoad()) {
         /*-
-         * Project a current location on the path, then 
-         * project movement on the path.
+         * Project a current location onto the path, then 
+         * project movement along the path.
          */
         newBelief = currentBelief.getLocalStateBelief().clone();
         convertToRoadBelief(newBelief, newPath,
@@ -582,8 +642,31 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
   public static void convertToGroundBelief(
     MultivariateGaussian belief, PathEdge edge,
     boolean useAbsVelocity) {
+    
+    // TODO XXX FIXME debug, remove.
+    MultivariateGaussian beliefBefore = belief.clone();
+    
     convertToGroundBelief(belief, edge, false,
         useAbsVelocity);
+    
+    assert Preconditions.checkNotNull(
+        beliefBefore.getInputDimensionality() == 4 ||
+        getRoadBeliefFromGround(belief, edge, useAbsVelocity)
+        .getMean().minus(beliefBefore.getMean()).isZero(1e-4) ? true : null
+        );
+  }
+  
+  public static MultivariateGaussian getRoadBeliefFromGround(
+    MultivariateGaussian belief, PathEdge edge,
+    boolean useAbsVelocity) {
+    Preconditions.checkArgument(belief.getInputDimensionality() == 4);
+    final MultivariateGaussian tmpMg = belief.clone();
+    convertToRoadBelief(tmpMg, 
+        InferredPath.getInferredPath(PathEdge.getEdge(
+            edge.getInferredEdge(), 0d, edge.isBackward())), true);
+    tmpMg.getMean().setElement(0,
+        tmpMg.getMean().getElement(0) + edge.getDistToStartOfEdge());
+    return tmpMg;
   }
 
   public static PathEdgeProjection convertToGroundBelief(
@@ -1468,6 +1551,36 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
       return false;
     }
     return true;
+  }
+  
+  /**
+   * Transforms the observation and observation covariance
+   * to road coordinates for the given edge and path.
+   * @param obs
+   * @param path
+   * @param edge
+   * @return
+   */
+  public static MultivariateGaussian getRoadObservation(Vector obs, 
+    Matrix obsCov, InferredPath path, PathEdge edge) {
+    
+    Preconditions.checkState(obs.getDimensionality() == 2
+        && obsCov.getNumColumns() == 2 && obsCov.isSquare());
+    
+    final Matrix obsCovExp = AbstractRoadTrackingFilter.getOg().transpose().
+        times(obsCov).times(AbstractRoadTrackingFilter.getOg());
+    final MultivariateGaussian obsProjBelief = new MultivariateGaussian(
+        AbstractRoadTrackingFilter.getOg().transpose()
+        .times(obs), obsCovExp);
+    AbstractRoadTrackingFilter.convertToRoadBelief(
+        obsProjBelief, path, edge, true);
+    
+    final Vector y = AbstractRoadTrackingFilter.getOr().times(
+        obsProjBelief.getMean());
+    final Matrix Sigma = AbstractRoadTrackingFilter.getOr().times(
+        obsProjBelief.getCovariance()).times(
+            AbstractRoadTrackingFilter.getOr().transpose());
+    return new MultivariateGaussian(y, Sigma);
   }
 
   public abstract void update(VehicleState state, Observation obs,

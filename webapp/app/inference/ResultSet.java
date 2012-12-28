@@ -181,7 +181,26 @@ public class ResultSet {
     }
     
     @JsonSerialize
-    public Map<String, Object> getStateSample() {
+    public Map<String, Object> getPrevStateSample() {
+      if (this.state.getMovementFilter() instanceof ErrorEstimatingRoadTrackingFilter) {
+        final ErrorEstimatingRoadTrackingFilter eeFilter = (ErrorEstimatingRoadTrackingFilter) state.getMovementFilter();
+        if (eeFilter.getPrevStateSample() != null) {
+          Map<String, Object> jsonResult = Maps.newHashMap();
+          jsonResult.put("state",
+              ((gov.sandia.cognition.math.matrix.mtj.DenseVector) 
+                eeFilter.getPrevStateSample().getGlobalState()).getArray().clone());
+          jsonResult.put("stateLoc",
+              ((gov.sandia.cognition.math.matrix.mtj.DenseVector) 
+                eeFilter.getPrevStateSample().getGroundState()).getArray().clone());
+          jsonResult.put("isBackward", eeFilter.getPrevStateSample().getPath().getIsBackward());
+          return jsonResult;
+        } 
+      } 
+      return null;
+    }
+    
+    @JsonSerialize
+    public Map<String, Object> getCurrentStateSample() {
       if (this.state.getMovementFilter() instanceof ErrorEstimatingRoadTrackingFilter) {
         final ErrorEstimatingRoadTrackingFilter eeFilter = (ErrorEstimatingRoadTrackingFilter) state.getMovementFilter();
         if (eeFilter.getCurrentStateSample() != null) {

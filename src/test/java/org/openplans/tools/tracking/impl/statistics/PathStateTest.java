@@ -895,6 +895,66 @@ public class PathStateTest {
     assertEquals("dist", -37d, difference.getElement(0), 0d);
     assertEquals("vel", 3.5d, difference.getElement(1), 0d);
   }
+  
+  @Test
+  public void testDistanceBetween21() {
+    InferredPath otherPath = makeTmpPath( 
+        false, 
+        new Coordinate(0d, 0d),
+        new Coordinate(100d, 0d)
+      );
+    
+    PathState otherState = PathState.getPathState(otherPath,
+        VectorFactory.getDefault().createVector2D(
+            49d, 1.6d));
+    
+    InferredPath thisPath = makeTmpPath( 
+        false, 
+        new Coordinate(0d, 0d),
+        new Coordinate(100d, 0d),
+        new Coordinate(100d, 100d),
+        new Coordinate(100d, 0d),
+        new Coordinate(0d, 0d)
+      );
+    PathState thisState = PathState.getPathState(thisPath,
+        VectorFactory.getDefault().createVector2D(
+            0d, 0d));
+    
+    final Vector difference = thisState.minus(otherState);
+    
+    assertEquals("dist", -49d, difference.getElement(0), 0d);
+    assertEquals("vel", -1.6d, difference.getElement(1), 0d);
+  }
+
+ @Test
+  public void testDistanceBetween22() {
+    InferredPath otherPath = makeTmpPath( 
+        false, 
+        new Coordinate(0d, 0d),
+        new Coordinate(100d, 0d),
+        new Coordinate(100d, 100d),
+        new Coordinate(100d, 0d),
+        new Coordinate(0d, 0d)
+      );
+    
+    PathState otherState = PathState.getPathState(otherPath,
+        VectorFactory.getDefault().createVector2D(
+            49d, 1.6d));
+    
+    InferredPath thisPath = makeTmpPath( 
+        false, 
+        new Coordinate(0d, 0d),
+        new Coordinate(100d, 0d)
+      );
+    PathState thisState = PathState.getPathState(thisPath,
+        VectorFactory.getDefault().createVector2D(
+            0d, 0d));
+    
+    final Vector difference = thisState.minus(otherState);
+    
+    assertEquals("dist", -49d, difference.getElement(0), 0d);
+    assertEquals("vel", -1.6d, difference.getElement(1), 0d);
+  }
 
 
   private InferredPath makeTmpPath(boolean isBackward, Coordinate ... coords) {

@@ -7,6 +7,7 @@ import static org.mockito.Mockito.stub;
 import java.text.DecimalFormat;
 import java.text.NumberFormat;
 import java.util.Date;
+import java.util.List;
 import java.util.Random;
 
 import gov.sandia.cognition.math.matrix.Matrix;
@@ -36,6 +37,7 @@ import org.opentripplanner.common.geometry.GeometryUtils;
 import org.opentripplanner.routing.edgetype.PlainStreetEdge;
 import org.opentripplanner.routing.vertextype.StreetVertex;
 
+import com.beust.jcommander.internal.Lists;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.LineString;
 
@@ -81,7 +83,20 @@ public class ErrorEstimatingRoadTrackingFilterTest {
    */
   @Test
   public void testGroundStateTransCovLearning() throws TimeOrderException {
-    runErrorTest(false);
+    InferredPath startPath = InferredPath.getEmptyPath();
+    final Matrix covFactor = 
+        filter.getCovarianceFactor(false);
+    final Matrix covar = covFactor.times(
+        MatrixFactory.getDefault().createDiagonal(
+                this.vehicleStateInitialParams.getOffRoadStateCov()
+        )).times(covFactor.transpose());
+    
+    MultivariateGaussian startState = new MultivariateGaussian(
+          VectorFactory.getDefault().copyArray(
+             new double[] {0d, 1d, 0d, 1d}), 
+             covar);
+    
+    simplePathTest(startPath, startState, 100000);
   }
   
   /**
@@ -89,7 +104,24 @@ public class ErrorEstimatingRoadTrackingFilterTest {
    */
   @Test
   public void testRoadStateTransCovLearning() throws TimeOrderException {
-    runErrorTest(true);
+   final int iterations = 100000; 
+   InferredPath startPath = TrackingTestUtils.makeTmpPath(
+          this.graph, false,
+          new Coordinate(-Math.pow(iterations, 2), 0d),
+          new Coordinate(0d, 0d),
+          new Coordinate(Math.pow(iterations, 2), 0d)
+          );
+    final Matrix covFactor = 
+        filter.getCovarianceFactor(true);
+    final Matrix covar = covFactor.times(
+        MatrixFactory.getDefault().createDiagonal(
+            this.vehicleStateInitialParams.getOnRoadStateCov()
+        )).times(covFactor.transpose());
+    MultivariateGaussian startState = new MultivariateGaussian(
+          VectorFactory.getDefault().copyArray(
+             new double[] {Math.pow(iterations, 2), 2d}), covar);
+    
+    simplePathTest(startPath, startState, iterations);
   }
   
   private Vector sampleTransition(Vector state,
@@ -108,51 +140,16 @@ public class ErrorEstimatingRoadTrackingFilterTest {
     return stateSmpl;
   }
   
-  private void runErrorTest(boolean isOnRoad) {
-    final int iterations = 10000;
-    InferredPath startPath; 
-    InferredPath startPathRev;
-    if (isOnRoad) {
-      startPath = TrackingTestUtils.makeTmpPath(
-          this.graph, false,
-          new Coordinate(-Math.pow(iterations, 2), 0d),
-          new Coordinate(0d, 0d),
-          new Coordinate(Math.pow(iterations, 2), 0d)
-          );
-      startPathRev = TrackingTestUtils.makeTmpPath(
-          this.graph, false,
-          new Coordinate(Math.pow(iterations, 2), 0d),
-          new Coordinate(0d, 0d),
-          new Coordinate(-Math.pow(iterations, 2), 0d)
-          );
-    } else {
-      startPath = InferredPath.getEmptyPath();
-      startPathRev = null;
-    }
+  private void simplePathTest(InferredPath startPath, MultivariateGaussian startState, int iterations) {
     
+    final boolean isOnRoad = !startPath.isEmptyPath();
     final Matrix covFactor = 
         filter.getCovarianceFactor(isOnRoad);
     
-    final Matrix covar = covFactor.times(
-        MatrixFactory.getDefault().createDiagonal(
-            isOnRoad ? this.vehicleStateInitialParams.getOnRoadStateCov()
-                : this.vehicleStateInitialParams.getOffRoadStateCov()
-        )).times(covFactor.transpose());
-    
-    MultivariateGaussian currentStateVec;
-    if (isOnRoad) {
-      currentStateVec = new MultivariateGaussian(
-          VectorFactory.getDefault().copyArray(
-             new double[] {iterations * 40d, 1d}), covar);
-    } else {
-      currentStateVec = new MultivariateGaussian(
-          VectorFactory.getDefault().copyArray(
-             new double[] {0d, 1d, 0d, 1d}), 
-             filter.getOffRoadStateTransCovar());
-    }
+    final Matrix trueCovar = startState.getCovariance().clone();
     
     PathStateBelief currentState = PathStateBelief.
-        getPathStateBelief(startPath, currentStateVec);
+        getPathStateBelief(startPath, startState);
     
     
     final Random rng = new Random(987654321);
@@ -186,12 +183,16 @@ public class ErrorEstimatingRoadTrackingFilterTest {
     
     PathStateBelief trueState = currentState.clone();
     
-    final NumberFormat formatter = new DecimalFormat( "0.000E0" ); 
+    final NumberFormat formatter = 
+        new DecimalFormat("##.#######"); 
      
     MultivariateGaussian.SufficientStatistic samplesSS = 
         new MultivariateGaussian.SufficientStatistic();
     MultivariateGaussian.SufficientStatistic residualsSS = 
         new MultivariateGaussian.SufficientStatistic();
+    
+    InferredPath currentEstPath = startPath;
+    
     for (int i = 0; i < iterations; i++) {
       System.out.println("i=" + i);
       System.out.println("\tobs=" + obs.getProjectedPoint().toString(formatter));
@@ -202,20 +203,24 @@ public class ErrorEstimatingRoadTrackingFilterTest {
       /*
        * Perform Kalman steps
        */
-      final InferredPath newPath; 
-      if (isOnRoad) {
-        final InferredEdge presentEdge = currentState.getEdge().getInferredEdge();
-        final InferredEdge startEdge = 
-            startPath.getEdges().get(0).getInferredEdge();
-        
-        newPath = presentEdge.getGeometry()
-            .equalsTopo(startEdge.getGeometry()) ? startPath : startPathRev;
+      final PathEdge presentEdge = currentState.getEdge();
+      if (!presentEdge.isEmptyEdge()) {
+        List<PathEdge> newEdges = Lists.newArrayList();
+        for (PathEdge edge : currentEstPath.getEdges()) {
+          if (Math.abs(edge.getDistToStartOfEdge()) >= 
+              Math.abs(presentEdge.getDistToStartOfEdge())) {
+            newEdges.add(PathEdge.getEdge(edge.getInferredEdge(),
+                edge.getDistToStartOfEdge() - presentEdge.getDistToStartOfEdge(),
+                edge.isBackward()));
+          }
+        }
+        currentEstPath = InferredPath.getInferredPath(newEdges, presentEdge.isBackward());
       } else {
-        newPath = startPath;
+        currentEstPath = startPath;
       }
         
       final PathStateBelief predictedState = 
-          filter.predict(currentState, newPath);
+          filter.predict(currentState, currentEstPath);
       final PathStateBelief updatedState = 
           filter.measure(predictedState, obs.getProjectedPoint(), 
             predictedState.getEdge());
@@ -301,8 +306,7 @@ public class ErrorEstimatingRoadTrackingFilterTest {
           filter, trueStateCov, rng);
       trueState = PathStateBelief.
         getPathStateBelief(startPath, 
-            new MultivariateGaussian(newStateMean,
-                covar));
+            new MultivariateGaussian(newStateMean, trueCovar));
       stub(obs.getProjectedPoint()).toReturn(
           MultivariateGaussian.sample(
           AbstractRoadTrackingFilter.getOg().times(

@@ -25,6 +25,7 @@ import org.openplans.tools.tracking.impl.statistics.DataCube;
 import org.openplans.tools.tracking.impl.statistics.StatisticsUtil;
 import org.openplans.tools.tracking.impl.statistics.filters.road_tracking.AbstractRoadTrackingFilter;
 import org.openplans.tools.tracking.impl.statistics.filters.road_tracking.AbstractRoadTrackingFilter.PathEdgeProjection;
+import org.openplans.tools.tracking.impl.util.GeoUtils;
 import org.openplans.tools.tracking.impl.util.OtpGraph;
 
 import com.beust.jcommander.internal.Maps;
@@ -36,7 +37,12 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
+import com.vividsolutions.jts.geom.LineSegment;
 import com.vividsolutions.jts.linearref.LengthIndexedLine;
+import com.vividsolutions.jts.linearref.LengthLocationMap;
+import com.vividsolutions.jts.linearref.LinearIterator;
+import com.vividsolutions.jts.linearref.LinearLocation;
+import com.vividsolutions.jts.linearref.LocationIndexedLine;
 
 /**
  * Inferred paths are collections of PathEdges that track the distance traveled
@@ -300,20 +306,26 @@ public class InferredPath implements Comparable<InferredPath> {
         diff.getElement(1));
     
     /*
-     * Make sure that we're still on the same edge.
+     * Make sure that we're still on the same edge,
+     * or that we had the same starting edge.
+     * 
      */
-    boolean foundMatch = false;
-    for (PathEdge thisEdge : this.edges) {
-      if (thisEdge.isOnEdge(normState.getElement(0))
-          && currentState.getEdge().getGeometry()
-            .equalsTopo(thisEdge.getGeometry())) {
-        foundMatch = true;
-        break;
+    if (!Iterables.getFirst(this.edges, null).getGeometry()
+        .equalsTopo(
+        Iterables.getFirst(this.edges, null).getGeometry())) {
+      boolean foundMatch = false;
+      for (PathEdge thisEdge : this.edges) {
+        if (thisEdge.isOnEdge(normState.getElement(0))
+            && currentState.getEdge().getGeometry()
+              .equalsTopo(thisEdge.getGeometry())) {
+          foundMatch = true;
+          break;
+        }
       }
+      
+      if (!foundMatch)
+        return null;
     }
-    
-    if (!foundMatch)
-      return null;
     
 //    PathState result = PathState.getPathState(
 //        this, diff.negative());
@@ -485,11 +497,9 @@ public class InferredPath implements Comparable<InferredPath> {
      * current state.
      */
     if (!(!state.getBelief().isOnRoad() || this.isEmptyPath() || state
-        .getBelief().getEdge().getInferredEdge()
-        .getGeometry()
-        .equals(
-            Iterables.getFirst(this.getEdges(), null)
-                .getInferredEdge().getGeometry())))
+        .getBelief().getEdge().getGeometry()
+        .equalsTopo(
+            Iterables.getFirst(this.getEdges(), null).getGeometry())))
       return null;
 
     /*
@@ -931,4 +941,60 @@ public class InferredPath implements Comparable<InferredPath> {
     else
       return new InferredPath(pathEdge);
   }
+  
+//  private PathEdge indexOfFromStart(Vector inputPt, MultivariateGaussian dist) {
+//    
+//    Preconditions.checkArgument(inputPt.getDimensionality() == 4);
+//    
+//    final LocationIndexedLine lilPath = new LocationIndexedLine(this.geometry);
+//    final Coordinate inputCoord = GeoUtils.getCoordinates(
+//        AbstractRoadTrackingFilter.getOg().times(inputPt));
+////    final LinearLocation refIndex = LengthLocationMap.getLocation(
+////        this.geometry, state.getGroundState().getElement(0));
+////    final double refDistanceAlong = LengthLocationMap.getLength(this.geometry, refIndex);
+//    
+//    double minDistance = Double.MAX_VALUE;
+//    LinearLocation minLoc = null;
+//
+//    LineSegment seg = new LineSegment();
+//    for (LinearIterator it = new LinearIterator(this.geometry);
+//         it.hasNext(); it.next()) {
+//      if (! it.isEndOfLine()) {
+//        seg.p0 = it.getSegmentStart();
+//        seg.p1 = it.getSegmentEnd();
+//        
+//        double segFrac = seg.segmentFraction(inputCoord);
+//        int candidateComponentIndex = it.getComponentIndex();
+//        int candidateSegmentIndex = it.getVertexIndex();
+//        
+//        final LinearLocation loc = new LinearLocation(
+//            candidateComponentIndex, candidateSegmentIndex, 
+//            segFrac);
+//        
+////        double segDistance = seg.distance(inputPt) 
+////            + Math.abs(refDistanceAlong - segDistanceAlong);
+//        
+//        final Vector thisLocPnt = GeoUtils.getVector(lilPath.extractPoint(loc));
+//        final double segDistance = dist.getProbabilityFunction()
+//            .logEvaluate(thisLocPnt);
+//        
+//        if (segDistance > minDistance) {
+//          // otherwise, save this as new minimum
+//          minLoc = loc;
+//          minDistance = segDistance;
+//        }
+//      }
+//    }
+//    
+//    final double resDistanceAlong = LengthLocationMap
+//        .getLength(this.geometry, minLoc);
+//    final PathEdge result;
+//    if (minLoc != null) {
+//      result = this.getEdgeForDistance(resDistanceAlong, false);
+//    } else {
+//      result = null;
+//    } 
+//    return result;
+//  }
+
 }
