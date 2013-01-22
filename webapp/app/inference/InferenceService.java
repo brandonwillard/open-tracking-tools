@@ -2,25 +2,29 @@ package inference;
 
 import gov.sandia.cognition.math.matrix.VectorFactory;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import models.InferenceInstance;
+import org.opentrackingtools.impl.Observation;
+import org.opentrackingtools.impl.VehicleState.VehicleStateInitialParameters;
+import org.opentrackingtools.impl.statistics.filters.particle_learning.VehicleTrackingPLFilter;
 
-import org.openplans.tools.tracking.impl.Observation;
-import org.openplans.tools.tracking.impl.VehicleState.VehicleStateInitialParameters;
-import org.openplans.tools.tracking.impl.statistics.filters.AbstractVehicleTrackingFilter;
-import org.openplans.tools.tracking.impl.statistics.filters.particle_learning.VehicleTrackingPLFilter;
+import models.InferenceInstance;
 
 import play.Logger;
 import akka.actor.UntypedActor;
 
+import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.google.common.collect.Multimap;
+import com.google.common.collect.TreeMultimap;
 
 import controllers.Application;
 
@@ -39,18 +43,19 @@ public class InferenceService extends UntypedActor {
 
   private static class UpdateRunnable implements Runnable {
 
-    final Observation obs;
+    final List<Observation> observations;
     final InferenceInstance ie;
 
-    UpdateRunnable(Observation obs, InferenceInstance ie) {
+    UpdateRunnable(List<Observation> observations, InferenceInstance ie) {
       super();
-      this.obs = obs;
+      this.observations = observations;
       this.ie = ie;
     }
 
     @Override
     public void run() {
-      ie.update(obs);
+      for (Observation obs : observations) 
+        ie.update(obs);
     }
 
   }
@@ -98,9 +103,8 @@ public class InferenceService extends UntypedActor {
       if (location instanceof Observation) {
         final Observation observation = (Observation) location;
         if (!processRecord(observation)) {
-
-          new InferenceInstance(observation.getVehicleId(), null,
-              defaultInfoLevel, defaultVehicleStateInitialParams, defaultFilterName);
+          InferenceService.getOrCreateInferenceInstance(observation.getVehicleId(), 
+              defaultVehicleStateInitialParams, null, defaultInfoLevel);
         }
 
         Logger.info("Message received:  "
@@ -140,7 +144,6 @@ public class InferenceService extends UntypedActor {
   public static InferenceInstance getOrCreateInferenceInstance(
     String vehicleId,
     VehicleStateInitialParameters initialParameters,
-    String filterTypeName,
     VehicleStateInitialParameters simParameters, INFO_LEVEL infoLevel) {
 
     InferenceInstance ie = vehicleToInstance.get(vehicleId);
@@ -148,7 +151,7 @@ public class InferenceService extends UntypedActor {
     if (ie == null) {
       ie =
           new InferenceInstance(vehicleId, simParameters, infoLevel,
-              initialParameters, filterTypeName);
+              initialParameters);
       vehicleToInstance.put(vehicleId, ie);
     }
 
@@ -170,7 +173,7 @@ public class InferenceService extends UntypedActor {
     if (ie == null)
       return false;
 
-    executor.execute(new UpdateRunnable(observation, ie));
+    executor.execute(new UpdateRunnable(Collections.singletonList(observation), ie));
 
     return true;
   }
@@ -181,14 +184,21 @@ public class InferenceService extends UntypedActor {
         String filterTypeName,
         INFO_LEVEL level) throws InterruptedException {
 
-    final List<Callable<Object>> tasks = Lists.newArrayList();
+    final Multimap<InferenceInstance, Observation> instanceToObs = TreeMultimap.create();
+    
     for (final Observation obs : observations) {
       final InferenceInstance ie =
           getOrCreateInferenceInstance(obs.getVehicleId(),
-              initialParameters, filterTypeName, null, level);
-      tasks.add(Executors.callable(new UpdateRunnable(obs, ie)));
+              initialParameters, null, level);
+      instanceToObs.put(ie, obs);
     }
 
+    final List<Callable<Object>> tasks = Lists.newArrayList();
+    for (InferenceInstance instance: instanceToObs.keySet()) {
+      tasks.add(Executors.callable(new UpdateRunnable(
+          Lists.newArrayList(instanceToObs.get(instance)), instance)));
+    }
+      
     executor.invokeAll(tasks);
   }
 

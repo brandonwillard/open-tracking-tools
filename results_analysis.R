@@ -258,106 +258,6 @@ sim_res_on_correct <-  unlist(lapply(sim_res, function(x) {
                     }))
 mean(sim_res_on_correct)
 
-
-#
-# creates data frames for a matrix to be plotted
-#
-matrix_record_maker <- function(time, type, matrix) {
-  n = length(matrix)/2;
-  if (n == 1/2)
-    indx = 1
-  else
-    indx = expand.grid(col=1:n, row=1:n);
-  timestr =  as.POSIXct(as.numeric(time)/1000, origin="1970-01-01", tz="GMT");
-  df = data.frame(time=timestr, 
-                         type,
-                         indx,
-                         matrix,
-                         check.rows=F, check.names=F);
-  return(df);
-}
-
-sim_res_obs_cov <- ldply(sim_res, function(x) {
-                         return(rbind(matrix_record_maker(x$time, "inferred", x$infResults$obsCovariance),
-                                      matrix_record_maker(x$time, "actual", x$actualResults$obsCovariance)))
-                    })
-
-sim_res_obs_prior_mean_cov <- ldply(sim_res, function(x) {
-                         return(rbind(matrix_record_maker(x$time, "inferred",
-                                x$infResults$obsCovarPrior$scale
-                                  /(x$infResults$obsCovarPrior$dof -2 -1)),
-                                      matrix_record_maker(x$time, "actual", x$actualResults$obsCovariance)))
-                    })
-
-sim_res_onroad_prior_mean_cov <- ldply(sim_res, function(x) {
-   return(rbind(matrix_record_maker(x$time, "inferred",
-          x$infResults$onRoadCovarPrior$scale
-            /(x$infResults$onRoadCovarPrior$dof-1-1)),
-                matrix_record_maker(x$time, "actual", 
-                  x$actualResults$stateQrCovariance)))
-})
-
-sim_res_offroad_prior_mean_cov <- ldply(sim_res, function(x) {
-   return(rbind(matrix_record_maker(x$time, "inferred",
-          x$infResults$offRoadCovarPrior$scale
-            /(x$infResults$offRoadCovarPrior$dof -2 -1)),
-                matrix_record_maker(x$time, "actual",
-                  x$actualResults$stateQgCovariance)))
-})
-
-sim_res_offroad_cov <- ldply(sim_res, function(x) {
-  if (x$actualResults$inferredEdge$id == -1 
-       && x$infResults$inferredEdge$id == -1) {                         
-    return(rbind(matrix_record_maker(x$time, "inferred",
-                                     x$infResults$stateCovariance),
-                  matrix_record_maker(x$time, "actual",
-                                      x$actualResults$stateCovariance)))
-  } else {
-    return(NULL)
-  }
-})
-
-sim_res_onroad_cov <- ldply(sim_res, function(x) {
-
-                        if (x$actualResults$inferredEdge$id != -1 
-                             && x$infResults$inferredEdge$id != -1) {                         
-                          return(rbind(matrix_record_maker(x$time, "inferred",
-                                                           x$infResults$stateCovariance),
-                                        matrix_record_maker(x$time, "actual",
-                                                            x$actualResults$stateCovariance)))
-                        } else {
-                          return(NULL)
-                        }
-                    })
-
-sim_res_qr_cov <- ldply(sim_res, function(x) {
- return(rbind(matrix_record_maker(x$time, "inferred",
-                x$infResults$stateQrCovariance),
-              matrix_record_maker(x$time, "actual", 
-                x$actualResults$stateQrCovariance)))
-})
-
-sim_res_qg_cov <- ldply(sim_res, function(x) {
-                         return(rbind(matrix_record_maker(x$time, "inferred",
-                                                          x$infResults$stateQgCovariance),
-                                      matrix_record_maker(x$time, "actual", 
-                                                          x$actualResults$stateQgCovariance)))
-                    })
-
-#i = 1050
-#infTransMat = matrix(c(sim_res[[i]]$infResults$offRoadTransProbs,
-#  rev(sim_res[[i]]$infResults$onRoadTransProbs)), 2,2, byrow=T)
-#colnames(infTransMat) <- c("off", "on")
-#rownames(infTransMat) <- c("off", "on")
-#
-#actTransMat = matrix(c(sim_res[[i]]$actualResults$offRoadTransProbs,
-#  rev(sim_res[[i]]$actualResults$onRoadTransProbs)), 2,2, byrow=T)
-#colnames(actTransMat) <- c("off", "on")
-#rownames(actTransMat) <- c("off", "on")
-#
-#infTransMat
-#actTransMat
-
 onOffTransName = "sim-2012700520"
 sim_onOff_trans_probs <- ldply(getEdgeTransCIResultsJson(onOffTransName), function(x) {
    timestr =  as.POSIXct(as.numeric(x$time)/1000, origin="1970-01-01", tz="GMT");
@@ -388,44 +288,6 @@ sim_onOff_trans_probs <- ldply(getEdgeTransCIResultsJson(onOffTransName), functi
    return(rbind(a1, a2, f1, e1));
          
 })
- 
-# Debug
-{
-  head(sim_res_obs_cov, 8*2)
-  tail(sim_res_obs_cov, 8*2)
-  range(sim_res_obs_cov$time)
-
-  sim_obs_scales <- ldply(sim_res, function(x) {
-    timestr =  as.POSIXct(as.numeric(x$time)/1000, origin="1970-01-01", tz="GMT");
-    return( data.frame(time=timestr,
-      scale=max(eigen(matrix(x$infResults$obsCovarPrior$scale, 2, 2), 
-        symmetric=T, only.values = T)$values)
-    ))
-  })
-
-  scale_diffs = data.frame(
-    time=sim_obs_scales$time[-1],
-    diffs=diff(sim_obs_scales$scale))
-  head(scale_diffs)
-  scale_diffs_plot <- ggplot(scale_diffs, aes(x=time, y=scale)) +
-        geom_line(alpha=1.0) + scale_y_continuous() + 
-        theme_bw(base_size=10)
-  plot(scale_diffs_plot)
-
-  biggest.diff = which.max(abs(diff(sim_obs_scales)))
-  sim_res[[biggest.diff+1]]$time
-
-  state_diffs <- ldply(sim_res, function(x) {
-    timestr =  as.POSIXct(as.numeric(x$time)/1000, origin="1970-01-01", tz="GMT");
-    locdiff = c(x$observedPoint$x, x$observedPoint$y) -
-      x$infResults$stateSample$stateLoc;
-    return( data.frame(time=timestr,
-      diff= sqrt(locdiff %*% locdiff)
-    ))
-  })
-  mean(state_diffs$diff)
-  plot(state_diffs, type='l')
-}
 
 pdf(file="pl-edge-trans-1200-95CI.pdf", pointsize=7) 
 
@@ -438,54 +300,156 @@ plot(sim_onOff_trans_plot)
 
 dev.off()
 
-sim_obs_prior_mean_plot <- ggplot(sim_res_obs_prior_mean_cov, aes(x=time, y=matrix, colour=type,
-                           group=type)) +
-      geom_line(alpha=1.0) + facet_grid(row ~ col, scales="free") + scale_y_continuous() + 
-      theme_bw(base_size=10)
-plot(sim_obs_prior_mean_plot)
 
-sim_onroad_prior_mean_plot <- ggplot(sim_res_onroad_prior_mean_cov, aes(x=time, y=matrix, colour=type,
-                           group=type)) +
-      geom_line(alpha=1.0) +
-      scale_y_log10() + 
-      theme_bw(base_size=10)
-plot(sim_onroad_prior_mean_plot)
+#
+# creates data frames for a matrix to be plotted
+#
 
-sim_offroad_prior_mean_plot <- ggplot(sim_res_offroad_prior_mean_cov, aes(x=time, y=matrix, colour=type,
-                           group=type)) +
-      geom_line(alpha=1.0) + facet_grid(row ~ col, scales="free") +
-      scale_y_log10() + 
-      theme_bw(base_size=10)
-plot(sim_offroad_prior_mean_plot)
+matrix_record_maker <- function(time, type, matrix) {
+  n = length(matrix)/2;
+  if (n == 1/2)
+    indx = 1
+  else
+    indx = expand.grid(col=1:n, row=1:n);
+  timestr =  as.POSIXct(as.numeric(time)/1000, origin="1970-01-01", tz="GMT");
+  df = data.frame(time=timestr, 
+                         type,
+                         indx,
+                         matrix,
+                         check.rows=F, check.names=F);
+  return(df);
+}
 
-sim_obs_cov_plot <- ggplot(sim_res_obs_cov, aes(x=time, y=matrix, colour=type,
-                           group=type)) +
-      geom_line(alpha=1.0) + facet_grid(row ~ col, scales="free") + scale_y_continuous() + 
-      theme_bw(base_size=10)
-plot(sim_obs_cov_plot)     
+produceSimDiagPdf <- function(sim_name) {
 
-sim_obs_qr_plot <- ggplot(sim_res_qr_cov, 
-  aes(x=time, y=matrix, colour=type, group=type)) +
-  geom_line(alpha=1.0) + scale_y_continuous() + 
-  theme_bw(base_size=10)
-plot(sim_obs_qr_plot)     
+  sim_res <- getSimBestStatesJson(sim_name)
 
-sim_obs_qg_plot <- ggplot(sim_res_qg_cov, aes(x=time, y=matrix, colour=type,
-                           group=type)) +
-      geom_line(alpha=1.0) + 
-      facet_grid(row ~ col, scales="free") + scale_y_continuous() + 
-      theme_bw(base_size=10)
-plot(sim_obs_qg_plot)     
+  sim_res_obs_cov <- ldply(sim_res, function(x) {
+                           return(rbind(matrix_record_maker(x$time, "inferred", x$infResults$obsCovariance),
+                                        matrix_record_maker(x$time, "actual", x$actualResults$obsCovariance)))
+                      })
 
-sim_onroad_cov_plot <- ggplot(sim_res_onroad_cov, aes(x=time, y=matrix, colour=type,
-                           group=type)) +
-      geom_line(alpha=1.0) + facet_grid(row ~ col, scales="free") + scale_y_continuous() +
-      theme_bw(base_size=10)
-plot(sim_onroad_cov_plot)     
+  sim_res_obs_prior_mean_cov <- ldply(sim_res, function(x) {
+                           return(rbind(matrix_record_maker(x$time, "inferred",
+                                  x$infResults$obsCovarPrior$scale
+                                    /(x$infResults$obsCovarPrior$dof -2 -1)),
+                                        matrix_record_maker(x$time, "actual", 
+                                                            x$actualResults$obsCovariance)))
+                      })
 
-sim_offroad_cov_plot <- ggplot(sim_res_offroad_cov, aes(x=time, y=matrix, colour=type,
-                           group=type)) +
-      geom_line(alpha=1.0) + facet_grid(row ~ col, scales="free") + scale_y_log10() +
-      theme_bw(base_size=10)
-plot(sim_offroad_cov_plot)     
+  sim_res_onroad_prior_mean_cov <- ldply(sim_res, function(x) {
+     return(rbind(matrix_record_maker(x$time, "inferred",
+            x$infResults$onRoadCovarPrior$scale
+              /(x$infResults$onRoadCovarPrior$dof-1-1)),
+                  matrix_record_maker(x$time, "actual", 
+                    x$actualResults$stateQrCovariance)))
+  })
+
+  sim_res_offroad_prior_mean_cov <- ldply(sim_res, function(x) {
+     return(rbind(matrix_record_maker(x$time, "inferred",
+            x$infResults$offRoadCovarPrior$scale
+              /(x$infResults$offRoadCovarPrior$dof -2 -1)),
+                  matrix_record_maker(x$time, "actual",
+                    x$actualResults$stateQgCovariance)))
+  })
+
+  #sim_res_offroad_cov <- ldply(sim_res, function(x) {
+  #  if (x$actualResults$inferredEdge$id == -1 
+  #       && x$infResults$inferredEdge$id == -1) {                         
+  #    return(rbind(matrix_record_maker(x$time, "inferred",
+  #                                     x$infResults$stateCovariance),
+  #                  matrix_record_maker(x$time, "actual",
+  #                                      x$actualResults$stateCovariance)))
+  #  } else {
+  #    return(NULL)
+  #  }
+  #})
+
+  #sim_res_onroad_cov <- ldply(sim_res, function(x) {
+
+  #                        if (x$actualResults$inferredEdge$id != -1 
+  #                             && x$infResults$inferredEdge$id != -1) {                         
+  #                          return(rbind(matrix_record_maker(x$time, "inferred",
+  #                                                           x$infResults$stateCovariance),
+  #                                        matrix_record_maker(x$time, "actual",
+  #                                                            x$actualResults$stateCovariance)))
+  #                        } else {
+  #                          return(NULL)
+  #                        }
+  #                    })
+
+  #sim_res_qr_cov <- ldply(sim_res, function(x) {
+  # return(rbind(matrix_record_maker(x$time, "inferred",
+  #                x$infResults$stateQrCovariance),
+  #              matrix_record_maker(x$time, "actual", 
+  #                x$actualResults$stateQrCovariance)))
+  #})
+
+  #sim_res_qg_cov <- ldply(sim_res, function(x) {
+  #                         return(rbind(matrix_record_maker(x$time, "inferred",
+  #                                                          x$infResults$stateQgCovariance),
+  #                                      matrix_record_maker(x$time, "actual", 
+  #                                                          x$actualResults$stateQgCovariance)))
+  #                    })
+
+  pdf(file=paste(sim_name, ".pdf", sep=''), pointsize=7) 
+
+  sim_obs_prior_mean_plot <- ggplot(sim_res_obs_prior_mean_cov, aes(x=time, y=matrix, colour=type,
+                             group=type)) +
+        geom_line(alpha=1.0) + facet_grid(row ~ col, scales="free") + scale_y_continuous() + 
+        theme_bw(base_size=10) + opts(title="obs cov prior mean")
+  plot(sim_obs_prior_mean_plot)
+
+  sim_onroad_prior_mean_plot <- ggplot(sim_res_onroad_prior_mean_cov, aes(x=time, y=matrix, colour=type,
+                             group=type)) +
+        geom_line(alpha=1.0) +
+        scale_y_continuous() +
+        theme_bw(base_size=10) + opts(title="on-road cov prior mean") 
+  plot(sim_onroad_prior_mean_plot)
+
+  sim_offroad_prior_mean_plot <- ggplot(sim_res_offroad_prior_mean_cov, aes(x=time, y=matrix, colour=type,
+                             group=type)) +
+        geom_line(alpha=1.0) + facet_grid(row ~ col, scales="free") +
+        scale_y_continuous() + 
+        theme_bw(base_size=10) + opts(title="off-road cov prior mean")  
+  plot(sim_offroad_prior_mean_plot)
+
+  #sim_obs_qr_plot <- ggplot(sim_res_qr_cov, 
+  #  aes(x=time, y=matrix, colour=type, group=type)) +
+  #  geom_line(alpha=1.0) + scale_y_continuous() + 
+  #  theme_bw(base_size=10) + opts(title="Qr cov prior scale") 
+  #plot(sim_obs_qr_plot)     
+
+  #sim_obs_qg_plot <- ggplot(sim_res_qg_cov, aes(x=time, y=matrix, colour=type,
+  #                           group=type)) +
+  #      geom_line(alpha=1.0) + 
+  #      facet_grid(row ~ col, scales="free") + scale_y_continuous() + 
+  #      theme_bw(base_size=10) + opts(title="Qg cov prior scale")
+  #plot(sim_obs_qg_plot)     
+
+  #sim_obs_cov_plot <- ggplot(sim_res_obs_cov, aes(x=time, y=matrix, colour=type,
+  #                           group=type)) +
+  #      geom_line(alpha=1.0) + facet_grid(row ~ col, scales="free") + scale_y_continuous() + 
+  #      theme_bw(base_size=10) + opts(title="obs cov sample")   
+  #plot(sim_obs_cov_plot)     
+
+  #sim_onroad_cov_plot <- ggplot(sim_res_onroad_cov, aes(x=time, y=matrix, colour=type,
+  #                           group=type)) +
+  #      geom_line(alpha=1.0) + facet_grid(row ~ col, scales="free") + scale_y_continuous() +
+  #      theme_bw(base_size=10) + opts(title="on-road cov sample") 
+  #plot(sim_onroad_cov_plot)     
+
+  #sim_offroad_cov_plot <- ggplot(sim_res_offroad_cov, aes(x=time, y=matrix, colour=type,
+  #                           group=type)) +
+  #      geom_line(alpha=1.0) + facet_grid(row ~ col, scales="free") + scale_y_continuous() +
+  #      theme_bw(base_size=10) + opts(title="off-road cov sample")  
+  #plot(sim_offroad_cov_plot)     
+
+  dev.off()
+}
+
+produceSimDiagPdf("sim-210440056")
+
+produceSimDiagPdf("sim1592603256")
+
 

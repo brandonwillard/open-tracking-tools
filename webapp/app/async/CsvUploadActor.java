@@ -11,9 +11,9 @@ import java.util.concurrent.TimeUnit;
 
 import models.InferenceInstance;
 
-import org.openplans.tools.tracking.impl.Observation;
-import org.openplans.tools.tracking.impl.TimeOrderException;
-import org.openplans.tools.tracking.impl.VehicleState.VehicleStateInitialParameters;
+import org.opentrackingtools.impl.Observation;
+import org.opentrackingtools.impl.TimeOrderException;
+import org.opentrackingtools.impl.VehicleState.VehicleStateInitialParameters;
 
 import akka.actor.UntypedActor;
 import akka.event.Logging;

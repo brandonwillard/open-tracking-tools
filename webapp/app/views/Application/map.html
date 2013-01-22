@@ -12,85 +12,57 @@
 <link type="text/css" href="@{'/public/javascripts/jquery/ui-lightness/jquery-ui-1.8.21.custom.css'}" rel="stylesheet" />	
 <script type="text/javascript" src="@{'/public/javascripts/jquery/jquery-1.7.2.min.js'}"></script>
 <script type="text/javascript" src="@{'/public/javascripts/jquery/jquery-ui-1.8.21.custom.min.js'}"></script>
+<script type="text/javascript" src="@{'/public/javascripts/sylvester.js'}"></script>
+<script type="text/javascript" src="@{'/public/javascripts/sylvester.js'}"></script>
+<script type="text/javascript" src="@{'/public/javascripts/ext-4.1.1a/ext-all-debug.js'}"></script>
+
+<link rel="stylesheet" href="@{'/public/stylesheets/style.css'}" />
+<link rel="stylesheet" href="@{'/public/javascripts/ext-4.1.1a/resources/css/ext-all.css'}" />
 
 <script src="@{'/public/javascripts/visualizer.js'}"></script>
-<link rel="stylesheet" href="@{'/public/stylesheets/style.css'}" />
 
 </head>	
-
 <body>
-
-<table>
-  <tr>
-    <td colspan="2">
-      <div id="top_bar">
-      	<div id="loadData"> 
-          <input type="text" id="vehicle_id" value="${vehicleId}" style="width: 300px; padding: 2px; border: 1px solid black"/>
-        	<span id="loadDataLink" class="jqlink" style="padding: 2px; border: 1px solid black">load data</span>
-        </div>
+<div id="vehicleId" style="visibility:hidden">${vehicleId}</div>
+<!-- <table> -->
+<!--   <tr> -->
+<!--     <td colspan="2"> -->
+<!--       <div id="top_bar"> -->
+<!--       	<div id="loadData">  -->
+<!--           <input type="text" id="vehicle_id" value="${vehicleId}" style="width: 300px; padding: 2px; border: 1px solid black"/> -->
+<!--         	<span id="loadDataLink" class="jqlink" style="padding: 2px; border: 1px solid black">load data</span> -->
+<!--         </div> -->
         
-      	<div id="controls">
-    		  <div>
-      		  <span id="slider" style="width: 230px; float: left; left: 10px; right: 15px; top: 5px;"></span>
-            &nbsp;&nbsp;&nbsp;&nbsp; <span id="prev" class="jqlink">
-            &laquo;</span> | <span id="next" class="jqlink">
-            &raquo;</span> | <span id="play" class="jqlink">play
-            </span><span id="pause" class="jqlink">pause</span>
-        	  &nbsp;&nbsp; <span id="count_display"></span>
-    		  </div>
-        </div>
-      </div>
+<!--       	<div id="controls"> -->
+<!--     		  <div> -->
+<!--       		  <span id="slider" style="width: 230px; float: left; left: 10px; right: 15px; top: 5px;"></span> -->
+<!--             &nbsp;&nbsp;&nbsp;&nbsp; <span id="prev" class="jqlink"> -->
+<!--             &laquo;</span> | <span id="next" class="jqlink"> -->
+<!--             &raquo;</span> | <span id="play" class="jqlink">play -->
+<!--             </span><span id="pause" class="jqlink">pause</span> -->
+<!--         	  &nbsp;&nbsp; <span id="count_display"></span> -->
+<!--     		  </div> -->
+<!--         </div> -->
+<!--       </div> -->
     
-      <div id="debug_bar" style="width: 500px; padding: 2px; border: 1px solid black">
-          <input type="text" id="coordinate_data" style="width: 400px; padding: 2px; border: 1px solid black"/>
-          <span id="addCoordinates" class="jqlink" style="padding: 2px; border: 1px solid black">add point</span>
-        <br>
-          <input type="text" id="edge_id" style="width: 400px; padding: 2px; border: 1px solid black"/>
-          <span id="addEdge" class="jqlink" style="padding: 2px; border: 1px solid black">add edge</span>
-      </div>
-    </td>
-  </tr>
-  <tr>
-    <td>
-      <div id="map" style="width: 700px; height: 700px;"></div>
-    </td>
-    <td>
-      <div id="filterControls" class="ui-widget-content" style="overflow-y:scroll; width:400px; height:400px; padding: 2px; border: 1px solid black">
-        <ul>
-          <li><a href="#tabs-1">Prior Particles</a></li>
-          <li><a href="#tabs-2">Posterior Particles</a></li>
-          <li><a href="#tabs-3">Simulation State</a></li>
-        </ul> 
-        <div id="tabs-1">
-          <span id="priorParticleMeans" class="jqlink">show means</span>
-          <span id="priorParticleParentMeans" class="jqlink" style="visibility:hidden;">show means</span>
-          <span id="priorParticleEdges" class="jqlink">show edges</span><br>
-          <div id="priorParticles" class="ui-accordion-container">
-              ...
-          </div>
-        </div>
-        <div id="tabs-2">
-          <span id="postParticleMeans" class="jqlink">show means</span>
-          <span id="postParticleParentMeans" class="jqlink" style="visibility:hidden;">show means</span>
-          <span id="postParticleEdges" class="jqlink">show edges</span><br>
-          <div id="posteriorParticles" class="ui-accordion-container">
-              ...
-          </div>
-        </div>
-        <div id="tabs-3">
-          <div id="actualResults" class="ui-accordion-container">
-              ...
-          </div>
-        </div>
-      </div>
-      <div class="ui-widget-content" style="width:400px; height:300px;">
-        <select size="20" style="width:400px; height:300px;" id="paths">
-          <option value="">...</option>
-        </select>
-      </div>
-    </td>
-  </tr>
-</table>
+<!--       <div id="debug_bar" style="width: 500px; padding: 2px; border: 1px solid black"> -->
+<!--           <input type="text" id="coordinate_data" style="width: 400px; padding: 2px; border: 1px solid black"/> -->
+<!--           <span id="addCoordinates" class="jqlink" style="padding: 2px; border: 1px solid black">add point</span> -->
+<!--         <br> -->
+<!--           <input type="text" id="edge_id" style="width: 400px; padding: 2px; border: 1px solid black"/> -->
+<!--           <span id="addEdge" class="jqlink" style="padding: 2px; border: 1px solid black">add edge</span> -->
+<!--       </div> -->
+<!--     </td> -->
+<!--   </tr> -->
+<!--   <tr> -->
+<!--     <td rowspan=2> -->
+<!--       <div id="map" style="width: 700px; height: 700px;"></div> -->
+<!--     </td> -->
+<!--     <td> -->
+<!--       <div id='particlesTabs'></div> -->
+<!--     </td> -->
+<!--   </tr> -->
+<!-- </table> -->
 
 </body>
 </html>

@@ -1,0 +1,2 @@
+serviceClass: org.openplans.tools.tracking.client.GreetingService
+path: 054770292942593F34E6B2DB49AFF40F.gwt.rpc

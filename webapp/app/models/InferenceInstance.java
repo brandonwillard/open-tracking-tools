@@ -27,19 +27,18 @@ import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 import org.apache.log4j.Logger;
-import org.openplans.tools.tracking.impl.Observation;
-import org.openplans.tools.tracking.impl.VehicleState;
-import org.openplans.tools.tracking.impl.VehicleState.VehicleStateInitialParameters;
-import org.openplans.tools.tracking.impl.VehicleStatePerformanceResult;
-import org.openplans.tools.tracking.impl.graph.InferredEdge;
-import org.openplans.tools.tracking.impl.graph.paths.PathEdge;
-import org.openplans.tools.tracking.impl.statistics.filters.AbstractVehicleTrackingFilter;
-import org.openplans.tools.tracking.impl.statistics.filters.FilterInformation;
-import org.openplans.tools.tracking.impl.statistics.filters.VehicleTrackingBootstrapFilter;
-import org.openplans.tools.tracking.impl.statistics.filters.VehicleTrackingFilter;
-import org.openplans.tools.tracking.impl.util.OtpGraph;
+import org.opentrackingtools.impl.Observation;
+import org.opentrackingtools.impl.VehicleState;
+import org.opentrackingtools.impl.VehicleState.VehicleStateInitialParameters;
+import org.opentrackingtools.impl.VehicleStatePerformanceResult;
+import org.opentrackingtools.impl.graph.InferredEdge;
+import org.opentrackingtools.impl.graph.paths.PathEdge;
+import org.opentrackingtools.impl.statistics.filters.FilterInformation;
+import org.opentrackingtools.impl.statistics.filters.VehicleTrackingFilter;
+import org.opentrackingtools.util.OtpGraph;
 
 import com.google.common.base.Stopwatch;
+import com.google.common.collect.ComparisonChain;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableMultimap;
 import com.google.common.collect.Iterables;
@@ -55,7 +54,7 @@ import controllers.Application;
  * @author bwillard
  * 
  */
-public class InferenceInstance {
+public class InferenceInstance implements Comparable<InferenceInstance> {
 
   final Logger log = Logger.getLogger(InferenceInstance.class);
   final public String vehicleId;
@@ -94,14 +93,13 @@ public class InferenceInstance {
   private final Class<? extends VehicleTrackingFilter> filterType;
   
   public InferenceInstance(String vehicleId, VehicleStateInitialParameters simParameters,
-    INFO_LEVEL infoLevel, VehicleStateInitialParameters parameters, 
-    String filterTypeName) {
+    INFO_LEVEL infoLevel, VehicleStateInitialParameters parameters) {
     this.initialParameters = parameters;
     this.simulationParameters = simParameters;
     this.vehicleId = vehicleId;
     this.simSeed = parameters.getSeed();
     this.infoLevel = infoLevel;
-    this.filterType = Application.getFilters().get(filterTypeName);
+    this.filterType = Application.getFilters().get(parameters.getFilterTypeName());
     
     // TODO FIXME: set collect_paths based on infoLevel?
     if (_collectedPathLength > 0) {
@@ -362,6 +360,75 @@ public class InferenceInstance {
 
   public static void setCollectedPathLength(int collectedPathLength) {
     InferenceInstance._collectedPathLength = collectedPathLength;
+  }
+
+  @Override
+  public int compareTo(InferenceInstance o) {
+    return ComparisonChain.start()
+        .compare(this.vehicleId, o.vehicleId)
+        .compare(this.initialParameters, o.initialParameters)
+        .compare(this.simulationParameters, o.simulationParameters)
+        .result();
+  }
+
+  @Override
+  public int hashCode() {
+    final int prime = 31;
+    int result = 1;
+    result =
+        prime
+            * result
+            + ((initialParameters == null) ? 0
+                : initialParameters.hashCode());
+    result =
+        prime
+            * result
+            + ((simulationParameters == null) ? 0
+                : simulationParameters.hashCode());
+    result =
+        prime
+            * result
+            + ((vehicleId == null) ? 0 : vehicleId
+                .hashCode());
+    return result;
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj) {
+      return true;
+    }
+    if (obj == null) {
+      return false;
+    }
+    if (getClass() != obj.getClass()) {
+      return false;
+    }
+    InferenceInstance other = (InferenceInstance) obj;
+    if (initialParameters == null) {
+      if (other.initialParameters != null) {
+        return false;
+      }
+    } else if (!initialParameters
+        .equals(other.initialParameters)) {
+      return false;
+    }
+    if (simulationParameters == null) {
+      if (other.simulationParameters != null) {
+        return false;
+      }
+    } else if (!simulationParameters
+        .equals(other.simulationParameters)) {
+      return false;
+    }
+    if (vehicleId == null) {
+      if (other.vehicleId != null) {
+        return false;
+      }
+    } else if (!vehicleId.equals(other.vehicleId)) {
+      return false;
+    }
+    return true;
   }
 
 }

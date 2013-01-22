@@ -20,15 +20,15 @@ import models.InferenceInstance;
 
 import org.codehaus.jackson.annotate.JsonIgnore;
 import org.codehaus.jackson.map.annotate.JsonSerialize;
-import org.openplans.tools.tracking.impl.Observation;
-import org.openplans.tools.tracking.impl.VehicleState;
-import org.openplans.tools.tracking.impl.graph.InferredEdge;
-import org.openplans.tools.tracking.impl.graph.paths.InferredPath;
-import org.openplans.tools.tracking.impl.graph.paths.PathEdge;
-import org.openplans.tools.tracking.impl.statistics.DefaultCountedDataDistribution;
-import org.openplans.tools.tracking.impl.statistics.filters.road_tracking.AbstractRoadTrackingFilter;
-import org.openplans.tools.tracking.impl.util.GeoUtils;
-import org.openplans.tools.tracking.impl.util.ProjectedCoordinate;
+import org.opentrackingtools.impl.Observation;
+import org.opentrackingtools.impl.VehicleState;
+import org.opentrackingtools.impl.graph.InferredEdge;
+import org.opentrackingtools.impl.graph.paths.InferredPath;
+import org.opentrackingtools.impl.graph.paths.PathEdge;
+import org.opentrackingtools.impl.statistics.DefaultCountedDataDistribution;
+import org.opentrackingtools.impl.statistics.filters.road_tracking.AbstractRoadTrackingFilter;
+import org.opentrackingtools.util.GeoUtils;
+import org.opentrackingtools.util.ProjectedCoordinate;
 import org.opentripplanner.routing.graph.Edge;
 
 import api.OsmSegment;
@@ -48,9 +48,9 @@ public class InferenceResultRecord {
 
   private final ProjectedCoordinate observedPoint;
 
-  private final InferenceResultSet actualResults;
+  private final ResultSet actualResults;
 
-  private final InferenceResultSet infResults;
+  private final ResultSet infResults;
 
   private final DataDistribution<VehicleState> postDistribution;
 

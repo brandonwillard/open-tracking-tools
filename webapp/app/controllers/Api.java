@@ -3,6 +3,9 @@ package controllers;
 import gov.sandia.cognition.collection.ScalarMap.Entry;
 import gov.sandia.cognition.learning.data.DefaultTargetEstimatePair;
 import gov.sandia.cognition.learning.data.TargetEstimatePair;
+import gov.sandia.cognition.math.matrix.AbstractVector;
+import gov.sandia.cognition.math.matrix.Matrix;
+import gov.sandia.cognition.math.matrix.mtj.DenseVector;
 import gov.sandia.cognition.statistics.DataDistribution;
 import gov.sandia.cognition.statistics.bayesian.BayesianCredibleInterval;
 import gov.sandia.cognition.statistics.distribution.BernoulliDistribution;
@@ -21,20 +24,25 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 
+import javax.annotation.Nullable;
+
 import models.InferenceInstance;
 
 import org.codehaus.jackson.JsonGenerationException;
 import org.codehaus.jackson.map.JsonMappingException;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.opengis.referencing.operation.MathTransform;
-import org.openplans.tools.tracking.impl.Observation;
-import org.openplans.tools.tracking.impl.VehicleState;
-import org.openplans.tools.tracking.impl.VehicleStatePerformanceResult;
-import org.openplans.tools.tracking.impl.VehicleTrackingPerformanceEvaluator;
-import org.openplans.tools.tracking.impl.graph.InferredEdge;
-import org.openplans.tools.tracking.impl.util.GeoUtils;
-import org.openplans.tools.tracking.impl.util.OtpGraph;
-import org.openplans.tools.tracking.impl.util.ProjectedCoordinate;
+import org.opentrackingtools.impl.Observation;
+import org.opentrackingtools.impl.VehicleState;
+import org.opentrackingtools.impl.VehicleStatePerformanceResult;
+import org.opentrackingtools.impl.VehicleTrackingPerformanceEvaluator;
+import org.opentrackingtools.impl.graph.InferredEdge;
+import org.opentrackingtools.impl.statistics.StatisticsUtil;
+import org.opentrackingtools.impl.statistics.filters.road_tracking.AbstractRoadTrackingFilter;
+import org.opentrackingtools.impl.statistics.filters.road_tracking.ErrorEstimatingRoadTrackingFilter;
+import org.opentrackingtools.util.GeoUtils;
+import org.opentrackingtools.util.OtpGraph;
+import org.opentrackingtools.util.ProjectedCoordinate;
 import org.opentripplanner.common.geometry.GeometryUtils;
 import org.opentripplanner.routing.graph.Edge;
 
@@ -43,6 +51,7 @@ import play.Play;
 import play.mvc.Controller;
 import api.OsmSegment;
 
+import com.google.common.base.Predicate;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -78,6 +87,16 @@ public class Api extends Controller {
 //
 //    renderJSON(jsonMapper.writeValueAsString(jsonResults));
 //  }
+  
+  public static void getGraphCenter()
+      throws JsonGenerationException, JsonMappingException,
+      IOException {
+    Coordinate center = graph.getTurnGraphExtent().centre();
+    Map<String, Double> result = Maps.newHashMap();
+    result.put("lat", center.y);
+    result.put("lng", center.x);
+    renderJSON(jsonMapper.writeValueAsString(result));
+  }
   
   public static void convertToLatLon(String x, String y)
       throws JsonGenerationException, JsonMappingException,
@@ -412,6 +431,91 @@ public class Api extends Controller {
     } else
       badRequest();
   }
+  
+  public static void particleHistoryDebug(String vehicleId,
+    int recordNumber, Integer particleNumber) throws JsonGenerationException,
+      JsonMappingException, IOException {
+    
+    final InferenceInstance instance =
+        InferenceService.getInferenceInstance(vehicleId);
+    if (instance == null)
+      renderJSON(jsonMapper.writeValueAsString(null));
+
+    final Collection<InferenceResultRecord> resultRecords =
+        instance.getResultRecords();
+    if (resultRecords.isEmpty())
+      renderJSON(jsonMapper.writeValueAsString(null));
+
+    
+    final InferenceResultRecord record =
+        Iterables.get(resultRecords, recordNumber, null);
+
+    if (record == null)
+      error(vehicleId + " result record " + recordNumber
+          + " is out-of-bounds");
+
+    DataDistribution<VehicleState> belief = record.getPostDistribution();
+    
+    VehicleState state =
+        Iterables.get(belief.getDomain(), particleNumber, null);
+
+    if (state == null)
+      renderJSON(jsonMapper.writeValueAsString(null));
+
+    final List<Map<String, Object>> mapResults = Lists.newArrayList();
+    int currentRecordNumber = recordNumber;
+    while (state != null) {
+      final Map<String, Object> mapResult = Maps.newHashMap();
+      mapResult.put("time", state.getObservation().getTimestamp().getTime());
+      mapResult.put("recordNumber", currentRecordNumber);
+      
+      final int thisParticleNum;
+      if (currentRecordNumber != recordNumber) {
+        final InferenceResultRecord thisRecord =
+            Iterables.get(resultRecords, currentRecordNumber, null);
+        final VehicleState thisState = state;
+        thisParticleNum = Iterables.indexOf(thisRecord.getPostDistribution().getDomain(), 
+            new Predicate<VehicleState>() { 
+            @Override
+            public boolean
+                apply(@Nullable VehicleState input) {
+              return input.equals(thisState);
+            }
+        });
+      } else {
+        thisParticleNum = particleNumber;
+      }
+      mapResult.put("particleNumber", thisParticleNum);
+      
+      ErrorEstimatingRoadTrackingFilter filter = (ErrorEstimatingRoadTrackingFilter) state.getMovementFilter();  
+      
+      mapResult.put("obsCovMean",((DenseVector) 
+          filter.getObsVariancePrior().getMean().convertToVector()).getArray());
+      mapResult.put("onRoadCovMean", ((DenseVector) 
+          filter.getOnRoadStateVariancePrior().getMean().convertToVector()).getArray());
+      mapResult.put("offRoadCovMean", ((DenseVector) 
+          filter.getOffRoadStateVariancePrior().getMean().convertToVector()).getArray());
+      if (filter.getCurrentStateSample() != null) {
+        final Matrix projMatrix = filter.getPrevStateSample().isOnRoad() ?
+           filter.getRoadFilter().getModel().getA() : filter.getGroundFilter().getModel().getA();
+        mapResult.put("stateSampleDiff", ((DenseVector) 
+            filter.getCurrentStateSample().getGlobalState().minus(
+                projMatrix.times(
+                    filter.getPrevStateSample().getGlobalState()))).getArray());
+        mapResult.put("stateSampleObsDiff", ((DenseVector) 
+            state.getObservation().getProjectedPoint().minus(
+                AbstractRoadTrackingFilter.getOg().times(
+                    filter.getCurrentStateSample().getGroundState()))).getArray());
+      }
+      mapResults.add(mapResult);
+      
+      currentRecordNumber--;
+      state = state.getParentState();
+    }
+    
+    renderJSON(jsonMapper.writeValueAsString(mapResults));
+    
+  }
 
   public static void traceParticleRecord(String vehicleId,
     int recordNumber, Integer particleNumber, Boolean withParent,
@@ -494,6 +598,9 @@ public class Api extends Controller {
       }
     }
 
+    /*
+     * Get best particles for every observation
+     */
     final List<Map<String, Object>> mapResults = Lists.newArrayList();
     for (final InferenceResultRecord result : results) {
       final VehicleState state = result.getInfResults().getState();
@@ -514,6 +621,9 @@ public class Api extends Controller {
 
       final Map<String, Object> mapResult = Maps.newHashMap();
       mapResult.put("particle", result);
+      
+      final int thisParticleNumber = Lists.newArrayList(belief.getDomain()).indexOf(state);
+      mapResult.put("particleNumber", thisParticleNumber);
 
       mapResult.put("isBest", state.equals(belief.getMaxValueKey()));
       if (belief != null) {

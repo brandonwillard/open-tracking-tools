@@ -1,7 +1,7 @@
 package api;
 
 import org.codehaus.jackson.map.annotate.JsonSerialize;
-import org.openplans.tools.tracking.impl.graph.InferredEdge;
+import org.opentrackingtools.impl.graph.InferredEdge;
 
 import utils.GeoJSONSerializer;
 
