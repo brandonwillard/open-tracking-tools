@@ -32,23 +32,25 @@ import org.codehaus.jackson.JsonGenerationException;
 import org.codehaus.jackson.map.JsonMappingException;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.opengis.referencing.operation.MathTransform;
-import org.opentrackingtools.impl.Observation;
+import org.opentrackingtools.GpsObservation;
+import org.opentrackingtools.graph.edges.InferredEdge;
+import org.opentrackingtools.graph.edges.impl.SimpleInferredEdge;
+import org.opentrackingtools.graph.otp.impl.OtpGraph;
 import org.opentrackingtools.impl.VehicleState;
 import org.opentrackingtools.impl.VehicleStatePerformanceResult;
 import org.opentrackingtools.impl.VehicleTrackingPerformanceEvaluator;
-import org.opentrackingtools.impl.graph.InferredEdge;
-import org.opentrackingtools.impl.statistics.StatisticsUtil;
-import org.opentrackingtools.impl.statistics.filters.road_tracking.AbstractRoadTrackingFilter;
-import org.opentrackingtools.impl.statistics.filters.road_tracking.ErrorEstimatingRoadTrackingFilter;
+import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
+import org.opentrackingtools.statistics.filters.vehicles.road.impl.ErrorEstimatingRoadTrackingFilter;
+import org.opentrackingtools.statistics.impl.StatisticsUtil;
 import org.opentrackingtools.util.GeoUtils;
-import org.opentrackingtools.util.OtpGraph;
-import org.opentrackingtools.util.ProjectedCoordinate;
+import org.opentrackingtools.util.geom.ProjectedCoordinate;
 import org.opentripplanner.common.geometry.GeometryUtils;
 import org.opentripplanner.routing.graph.Edge;
 
 import play.Logger;
 import play.Play;
 import play.mvc.Controller;
+import utils.ObservationFactory;
 import api.OsmSegment;
 
 import com.google.common.base.Predicate;
@@ -91,7 +93,7 @@ public class Api extends Controller {
   public static void getGraphCenter()
       throws JsonGenerationException, JsonMappingException,
       IOException {
-    Coordinate center = graph.getTurnGraphExtent().centre();
+    Coordinate center = graph.getGPSGraphExtent().centre();
     Map<String, Double> result = Maps.newHashMap();
     result.put("lat", center.y);
     result.put("lng", center.x);
@@ -361,8 +363,8 @@ public class Api extends Controller {
 
     try {
 
-      final Observation location =
-          Observation.createObservation(vehicleId, timestamp, latStr,
+      final GpsObservation location =
+          ObservationFactory.createObservation(vehicleId, timestamp, latStr,
               lonStr, velocity, heading, accuracy);
 
       if (location != null) {
@@ -413,14 +415,17 @@ public class Api extends Controller {
     renderJSON(jsonMapper.writeValueAsString(jsonResults));
   }
 
-  public static void segment(Integer segmentId)
+  public static void segment(String segmentId)
       throws JsonGenerationException, JsonMappingException,
       IOException {
 
     if (segmentId == null)
       badRequest();
 
-    final Edge e = graph.getBaseGraph().getEdgeById(segmentId);
+//    final Edge e = graph.getBaseGraph().getEdgeById(
+//        Integer.parseInt(segmentId));
+    
+    final InferredEdge e = graph.getInferredEdge(segmentId);
 
     if (e != null) {
 

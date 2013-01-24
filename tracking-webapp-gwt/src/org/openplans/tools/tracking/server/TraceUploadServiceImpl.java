@@ -27,7 +27,8 @@ import org.apache.log4j.Logger;
 import org.openplans.tools.tracking.client.TraceUploadService;
 import org.openplans.tools.tracking.server.InferenceServiceImpl.INFO_LEVEL;
 import org.openplans.tools.tracking.server.shared.InferenceInstance;
-import org.opentrackingtools.impl.Observation;
+import org.openplans.tools.tracking.server.shared.ObservationFactory;
+import org.opentrackingtools.GpsObservation;
 import org.opentrackingtools.impl.TimeOrderException;
 import org.opentrackingtools.impl.VehicleState.VehicleStateInitialParameters;
 
@@ -256,7 +257,7 @@ public class TraceUploadServiceImpl extends RemoteServiceServlet implements Trac
     String[] line = gps_reader.readNext();
 
     final Set<String> vehicleIds = Sets.newHashSet();
-    final List<Observation> observations = Lists.newArrayList();
+    final List<GpsObservation> observationFactories = Lists.newArrayList();
     try {
       do {
         try {
@@ -268,16 +269,16 @@ public class TraceUploadServiceImpl extends RemoteServiceServlet implements Trac
            */
           if (!vehicleId.contains(vehicleId)) {
             InferenceServiceImpl.remove(vehicleId);
-            Observation.remove(vehicleId);
+            ObservationFactory.remove(vehicleId);
           }
 
           final String lat = line[4];
           final String lng = line[5];
           
-          final Observation obs =
-              Observation.createObservation(vehicleId, line[6],
+          final GpsObservation obs =
+              ObservationFactory.createObservation(vehicleId, line[6],
                   lat, lng, line[7], null, null);
-          observations.add(obs);
+          observationFactories.add(obs);
 
         } catch (final TimeOrderException ex) {
           log.info("bad time order: "
@@ -299,7 +300,7 @@ public class TraceUploadServiceImpl extends RemoteServiceServlet implements Trac
         traceParams.isDebugEnabled() ? INFO_LEVEL.DEBUG
             : InferenceServiceImpl.defaultInfoLevel;
 
-    InferenceServiceImpl.processRecords(observations,
+    InferenceServiceImpl.processRecords(observationFactories,
         traceParams.getVehicleStateInitialParams(), traceParams.getFilterTypeName(), level);
     InferenceServiceImpl.getExecutor().awaitTermination(5,
         TimeUnit.SECONDS);

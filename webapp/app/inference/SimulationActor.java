@@ -2,7 +2,7 @@ package inference;
 
 import org.opentrackingtools.impl.Simulation;
 import org.opentrackingtools.impl.VehicleState;
-import org.opentrackingtools.impl.statistics.filters.VehicleTrackingBootstrapFilter;
+import org.opentrackingtools.statistics.filters.vehicles.impl.VehicleTrackingBootstrapFilter;
 
 import inference.InferenceService.INFO_LEVEL;
 import models.InferenceInstance;

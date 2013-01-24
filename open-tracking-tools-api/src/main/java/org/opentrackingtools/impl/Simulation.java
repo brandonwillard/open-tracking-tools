@@ -3,20 +3,23 @@ package org.opentrackingtools.impl;
 import gov.sandia.cognition.math.matrix.Matrix;
 import gov.sandia.cognition.math.matrix.MatrixFactory;
 import gov.sandia.cognition.math.matrix.Vector;
+import gov.sandia.cognition.math.matrix.VectorFactory;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 
 import java.util.Date;
 import java.util.Random;
 
+import org.opentrackingtools.GpsObservation;
+import org.opentrackingtools.graph.InferenceGraph;
+import org.opentrackingtools.graph.paths.states.PathState;
+import org.opentrackingtools.graph.paths.states.impl.SimplePathStateBelief;
 import org.opentrackingtools.impl.VehicleState.VehicleStateInitialParameters;
-import org.opentrackingtools.impl.graph.paths.PathState;
-import org.opentrackingtools.impl.graph.paths.PathStateBelief;
-import org.opentrackingtools.impl.statistics.OnOffEdgeTransDirMulti;
-import org.opentrackingtools.impl.statistics.StatisticsUtil;
-import org.opentrackingtools.impl.statistics.filters.VehicleTrackingPathSamplerFilterUpdater;
-import org.opentrackingtools.impl.statistics.filters.road_tracking.AbstractRoadTrackingFilter;
+import org.opentrackingtools.statistics.distributions.impl.OnOffEdgeTransDirMulti;
+import org.opentrackingtools.statistics.filters.vehicles.impl.VehicleTrackingPathSamplerFilterUpdater;
+import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
+import org.opentrackingtools.statistics.impl.StatisticsUtil;
 import org.opentrackingtools.util.GeoUtils;
-import org.opentrackingtools.util.OtpGraph;
+import org.opentrackingtools.util.geom.ProjectedCoordinate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -170,7 +173,7 @@ public class Simulation {
 
   private final long seed;
   private final Random rng;
-  private final OtpGraph inferredGraph;
+  private final InferenceGraph inferredGraph;
   private final String simulationName;
   private final VehicleStateInitialParameters infParameters;
 
@@ -181,7 +184,7 @@ public class Simulation {
   private final String filterTypeName;
   private final VehicleTrackingPathSamplerFilterUpdater updater;
 
-  public Simulation(String simulationName, OtpGraph graph,
+  public Simulation(String simulationName, InferenceGraph graph,
     SimulationParameters simParameters,
     VehicleStateInitialParameters infParams) {
 
@@ -202,27 +205,27 @@ public class Simulation {
     }
 
     this.rng.setSeed(seed);
-    Observation initialObs = null;
-    try {
-      final Coordinate startCoord;
-      if (this.simParameters.getStartCoordinate() == null) {
-        startCoord =
-            GeoUtils.reverseCoordinates(this.inferredGraph
-                .getTurnGraph().getExtent().centre());
-      } else {
-        startCoord =
-            this.simParameters.getStartCoordinate();
-      }
+    
+    final Coordinate startCoord;
+    if (this.simParameters.getStartCoordinate() == null) {
+      startCoord =
+          GeoUtils.reverseCoordinates(this.inferredGraph.
+              getGPSGraphExtent().centre());
+    } else {
+      startCoord =
+          this.simParameters.getStartCoordinate();
+    }
 
-      Observation.remove(simulationName);
-      initialObs =
-          Observation.createObservation(
+    final ProjectedCoordinate obsPoint =
+        GeoUtils.convertToEuclidean(startCoord);
+    Vector projPoint = VectorFactory.getDefault().createVector2D(
+                startCoord.x, startCoord.y);
+    
+    GpsObservation initialObs = new SimpleObservation(
               this.simulationName,
               this.simParameters.getStartTime(),
-              startCoord, null, null, null);
-    } catch (final TimeOrderException e) {
-      e.printStackTrace();
-    }
+              startCoord, null, null, null,
+              0, projPoint, null, obsPoint);
 
     if (initialObs != null) {
       this.updater =
@@ -260,7 +263,7 @@ public class Simulation {
     return filterTypeName;
   }
 
-  public OtpGraph getInferredGraph() {
+  public InferenceGraph getInferredGraph() {
     return inferredGraph;
   }
 
@@ -293,10 +296,10 @@ public class Simulation {
    * @param edge
    * @return
    */
-  public Vector sampleObservation(PathState state,
+  public Vector sampleObservation(PathState newPathState,
     Matrix cov) {
 
-    final Vector groundState = state.getGroundState();
+    final Vector groundState = newPathState.getGroundState();
     final Vector gMean =
         AbstractRoadTrackingFilter.getOg().times(
             groundState);
@@ -339,18 +342,16 @@ public class Simulation {
         GeoUtils.convertToLatLon(thisLoc, vehicleState
             .getObservation().getObsPoint());
 
-    Observation thisObs;
-    try {
-      thisObs =
-          Observation.createObservation(simulationName,
-              new Date(time), obsCoord, null, null, null);
-    } catch (final TimeOrderException e) {
-      e.printStackTrace();
-      return null;
-    }
+    final int thisRecNum = vehicleState.getObservation().getRecordNumber();
+    GpsObservation thisObs =
+          new SimpleObservation(simulationName,
+              new Date(time), obsCoord, null, null, null,
+              thisRecNum, thisLoc, 
+              vehicleState.getObservation(), vehicleState
+            .getObservation().getObsPoint());
 
-    final PathStateBelief newStateBelief =
-        PathStateBelief.getPathStateBelief(
+    final SimplePathStateBelief newStateBelief =
+        SimplePathStateBelief.getPathStateBelief(
             newPathState.getPath(),
             new MultivariateGaussian(newPathState
                 .getGlobalState(), MatrixFactory

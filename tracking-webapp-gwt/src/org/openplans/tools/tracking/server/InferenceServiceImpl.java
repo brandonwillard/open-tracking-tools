@@ -17,21 +17,22 @@ import javax.servlet.ServletException;
 
 import org.apache.log4j.Logger;
 import org.openplans.tools.tracking.server.shared.InferenceInstance;
+import org.openplans.tools.tracking.server.shared.ObservationFactory;
 import org.openplans.tools.tracking.client.InferenceService;
-import org.opentrackingtools.impl.Observation;
+import org.opentrackingtools.GpsObservation;
+import org.opentrackingtools.graph.otp.impl.OtpGraph;
 import org.opentrackingtools.impl.VehicleState.VehicleStateInitialParameters;
-import org.opentrackingtools.impl.statistics.filters.VehicleTrackingBootstrapFilter;
-import org.opentrackingtools.impl.statistics.filters.VehicleTrackingFilter;
-import org.opentrackingtools.impl.statistics.filters.particle_learning.VTErrorEstimatingPLFilter;
-import org.opentrackingtools.impl.statistics.filters.particle_learning.VehicleTrackingPLFilter;
-import org.opentrackingtools.util.OtpGraph;
+import org.opentrackingtools.statistics.filters.vehicles.impl.VehicleTrackingBootstrapFilter;
+import org.opentrackingtools.statistics.filters.vehicles.impl.VehicleTrackingFilter;
+import org.opentrackingtools.statistics.filters.vehicles.particle_learning.VTErrorEstimatingPLFilter;
+import org.opentrackingtools.statistics.filters.vehicles.particle_learning.VehicleTrackingPLFilter;
 
-import com.google.appengine.repackaged.com.google.common.base.Strings;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.TreeMultimap;
+import com.google.gwt.thirdparty.guava.common.base.Strings;
 import com.google.gwt.user.server.rpc.RemoteServiceServlet;
 
 /**
@@ -85,10 +86,10 @@ public class InferenceServiceImpl extends RemoteServiceServlet
 
   private static class UpdateRunnable implements java.lang.Runnable {
 
-    final List<Observation> observations;
+    final List<GpsObservation> observations;
     final InferenceInstance ie;
 
-    UpdateRunnable(List<Observation> observations, InferenceInstance ie) {
+    UpdateRunnable(List<GpsObservation> observations, InferenceInstance ie) {
       super();
       this.observations = observations;
       this.ie = ie;
@@ -96,7 +97,7 @@ public class InferenceServiceImpl extends RemoteServiceServlet
 
     @Override
     public void run() {
-      for (Observation obs : observations) 
+      for (GpsObservation obs : observations) 
         ie.update(obs);
     }
 
@@ -138,21 +139,17 @@ public class InferenceServiceImpl extends RemoteServiceServlet
 
   @Override
   public void onReceive(String obs) throws Exception {
-    synchronized (this) {
-      final Observation observation = createObservation(obs);
-      if (!processRecord(observation)) {
-        InferenceServiceImpl.getOrCreateInferenceInstance(observation.getVehicleId(), 
-            defaultVehicleStateInitialParams, null, defaultInfoLevel);
-      }
-
-      log.info("Message received:  "
-          + observation.getTimestamp().toString());
-    }
-  }
-
-  private Observation createObservation(String obs) {
-    // TODO Auto-generated method stub
-    return null;
+    // TODO XXX
+//    synchronized (this) {
+//      final GpsObservation observation = createObservation(obs);
+//      if (!processRecord(observation)) {
+//        InferenceServiceImpl.getOrCreateInferenceInstance(observation.getSourceId(), 
+//            defaultVehicleStateInitialParams, null, defaultInfoLevel);
+//      }
+//
+//      log.info("Message received:  "
+//          + observation.getTimestamp().toString());
+//    }
   }
 
   public static void clearInferenceData() {
@@ -203,13 +200,13 @@ public class InferenceServiceImpl extends RemoteServiceServlet
    * This will process a record for an already existing
    * {@link #InferenceInstance}, or it will create a new one.
    * 
-   * @param observation
+   * @param observationFactory
    * @return boolean true if an instance was found and processed
    */
-  public static boolean processRecord(Observation observation) {
+  public static boolean processRecord(GpsObservation observation) {
 
     final InferenceInstance ie =
-        getInferenceInstance(observation.getVehicleId());
+        getInferenceInstance(observation.getSourceId());
 
     if (ie == null)
       return false;
@@ -220,16 +217,16 @@ public class InferenceServiceImpl extends RemoteServiceServlet
   }
 
   public static void
-      processRecords(List<Observation> observations,
+      processRecords(List<GpsObservation> observations,
         VehicleStateInitialParameters initialParameters,
         String filterTypeName,
         INFO_LEVEL level) throws InterruptedException {
 
-    final Multimap<InferenceInstance, Observation> instanceToObs = TreeMultimap.create();
+    final Multimap<InferenceInstance, GpsObservation> instanceToObs = TreeMultimap.create();
     
-    for (final Observation obs : observations) {
+    for (final GpsObservation obs : observations) {
       final InferenceInstance ie =
-          getOrCreateInferenceInstance(obs.getVehicleId(),
+          getOrCreateInferenceInstance(obs.getSourceId(),
               initialParameters, null, level);
       instanceToObs.put(ie, obs);
     }
@@ -245,7 +242,7 @@ public class InferenceServiceImpl extends RemoteServiceServlet
 
   public static void remove(String name) {
     vehicleToInstance.remove(name);
-    Observation.remove(name);
+    ObservationFactory.remove(name);
   }
 
   public static void setDefaultInfoLevel(INFO_LEVEL defaultInfoLevel) {

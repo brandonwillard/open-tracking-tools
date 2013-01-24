@@ -11,9 +11,11 @@ import java.util.concurrent.TimeUnit;
 
 import models.InferenceInstance;
 
-import org.opentrackingtools.impl.Observation;
+import org.opentrackingtools.GpsObservation;
 import org.opentrackingtools.impl.TimeOrderException;
 import org.opentrackingtools.impl.VehicleState.VehicleStateInitialParameters;
+
+import utils.ObservationFactory;
 
 import akka.actor.UntypedActor;
 import akka.event.Logging;
@@ -137,7 +139,7 @@ public class CsvUploadActor extends UntypedActor {
 
 
       final Set<String> vehicleIds = Sets.newHashSet();
-      final List<Observation> observations = Lists.newArrayList();
+      final List<GpsObservation> observations = Lists.newArrayList();
       try {
         do {
           try {
@@ -149,11 +151,11 @@ public class CsvUploadActor extends UntypedActor {
              */
             if (!vehicleId.contains(vehicleId)) {
               InferenceService.remove(vehicleId);
-              Observation.remove(vehicleId);
+              ObservationFactory.remove(vehicleId);
             }
 
-            final Observation obs =
-                Observation.createObservation(vehicleId, line[6],
+            final GpsObservation obs =
+                ObservationFactory.createObservation(vehicleId, line[6],
                     line[4], line[5], line[7], null, null);
             observations.add(obs);
 

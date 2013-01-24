@@ -3,7 +3,8 @@ package org.openplans.tools.tracking.server.shared;
 import org.codehaus.jackson.map.annotate.JsonSerialize;
 
 import org.openplans.tools.tracking.server.shared.GeoJSONSerializer;
-import org.opentrackingtools.impl.graph.InferredEdge;
+import org.opentrackingtools.graph.edges.InferredEdge;
+import org.opentrackingtools.graph.edges.impl.SimpleInferredEdge;
 
 import com.vividsolutions.jts.algorithm.Angle;
 import com.vividsolutions.jts.geom.Coordinate;
@@ -14,19 +15,19 @@ public class OsmSegment {
   private final static double OFFSET = 2;
   private static GeometryFactory gf = new GeometryFactory();
     
-  private final int id;
+  private final String id;
   private final Geometry geom;
   private final Double angle;
   private final String name;
   private final Double length;
   
-  public OsmSegment(InferredEdge edge) {
-    this(edge.getEdgeId() != null ? edge.getEdgeId() : -1, 
-        edge.isEmptyEdge() ? null : edge.getGeometry(), 
-        edge.isEmptyEdge() ? "empty" : edge.getEdge().getName());
+  public OsmSegment(InferredEdge parentStateEdge) {
+    this(parentStateEdge.getEdgeId() != null ? parentStateEdge.getEdgeId() : "-1", 
+        parentStateEdge.isEmptyEdge() ? null : parentStateEdge.getGeometry(), 
+        parentStateEdge.isEmptyEdge() ? "empty" : parentStateEdge.toString());
   }
 
-  public OsmSegment(Integer i, Geometry g, String name) {
+  public OsmSegment(String i, Geometry g, String name) {
     if (g != null) {
       final int points = g.getCoordinates().length;
       this.angle =
@@ -82,7 +83,7 @@ public class OsmSegment {
   }
 
   @JsonSerialize
-  public int getId() {
+  public String getId() {
     return id;
   }
 

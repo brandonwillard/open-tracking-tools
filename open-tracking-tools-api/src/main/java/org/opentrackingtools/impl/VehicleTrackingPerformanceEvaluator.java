@@ -12,6 +12,7 @@ import gov.sandia.cognition.util.AbstractCloneableSerializable;
 import java.util.Collection;
 import java.util.List;
 
+import org.opentrackingtools.GpsObservation;
 import org.opentrackingtools.impl.VehicleStatePerformanceResult.SufficientStatisticRecord;
 
 import com.google.common.collect.Lists;
@@ -19,7 +20,7 @@ import com.google.common.collect.Lists;
 public class VehicleTrackingPerformanceEvaluator extends
     AbstractCloneableSerializable
     implements
-    SupervisedPerformanceEvaluator<Observation, VehicleState, DataDistribution<VehicleState>, VehicleStatePerformanceResult> {
+    SupervisedPerformanceEvaluator<GpsObservation, VehicleState, DataDistribution<VehicleState>, VehicleStatePerformanceResult> {
 
   private static final long serialVersionUID =
       2188027766955238277L;
@@ -78,8 +79,8 @@ public class VehicleTrackingPerformanceEvaluator extends
   public
       VehicleStatePerformanceResult
       evaluatePerformance(
-        Evaluator<? super Observation, ? extends DataDistribution<VehicleState>> object,
-        Collection<? extends InputOutputPair<Observation, VehicleState>> data) {
+        Evaluator<? super GpsObservation, ? extends DataDistribution<VehicleState>> object,
+        Collection<? extends InputOutputPair<GpsObservation, VehicleState>> data) {
     // TODO Auto-generated method stub
     return null;
   }

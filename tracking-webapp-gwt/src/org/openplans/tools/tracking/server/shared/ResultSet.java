@@ -10,18 +10,19 @@ import java.util.Map;
 
 import org.codehaus.jackson.annotate.JsonIgnore;
 import org.codehaus.jackson.map.annotate.JsonSerialize;
-import org.opentrackingtools.impl.Observation;
+import org.opentrackingtools.GpsObservation;
+import org.opentrackingtools.graph.edges.InferredEdge;
+import org.opentrackingtools.graph.edges.impl.SimpleInferredEdge;
+import org.opentrackingtools.graph.paths.InferredPath;
+import org.opentrackingtools.graph.paths.edges.PathEdge;
+import org.opentrackingtools.graph.paths.edges.impl.EdgePredictiveResults;
+import org.opentrackingtools.graph.paths.states.PathState;
+import org.opentrackingtools.graph.paths.states.PathStateBelief;
 import org.opentrackingtools.impl.VehicleState;
-import org.opentrackingtools.impl.graph.InferredEdge;
-import org.opentrackingtools.impl.graph.paths.AbstractPathState;
-import org.opentrackingtools.impl.graph.paths.EdgePredictiveResults;
-import org.opentrackingtools.impl.graph.paths.InferredPath;
-import org.opentrackingtools.impl.graph.paths.PathEdge;
-import org.opentrackingtools.impl.graph.paths.PathStateBelief;
-import org.opentrackingtools.impl.statistics.filters.FilterInformation;
-import org.opentrackingtools.impl.statistics.filters.VehicleTrackingFilter;
-import org.opentrackingtools.impl.statistics.filters.road_tracking.AbstractRoadTrackingFilter;
-import org.opentrackingtools.impl.statistics.filters.road_tracking.ErrorEstimatingRoadTrackingFilter;
+import org.opentrackingtools.statistics.filters.vehicles.impl.FilterInformation;
+import org.opentrackingtools.statistics.filters.vehicles.impl.VehicleTrackingFilter;
+import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
+import org.opentrackingtools.statistics.filters.vehicles.road.impl.ErrorEstimatingRoadTrackingFilter;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -226,8 +227,8 @@ public class ResultSet {
   }
 
   static public class OffRoadPath {
-    private Observation startObs;
-    private Observation endObs;
+    private GpsObservation startObs;
+    private GpsObservation endObs;
     private OsmSegment startEdge;
     private OsmSegment endEdge;
 
@@ -271,7 +272,7 @@ public class ResultSet {
       this.endEdge = endEdge;
     }
 
-    public void setEndObs(Observation endObs) {
+    public void setEndObs(GpsObservation endObs) {
       this.endObs = endObs;
     }
 
@@ -284,7 +285,7 @@ public class ResultSet {
       this.startEdge = startEdge;
     }
 
-    public void setStartObs(Observation startObs) {
+    public void setStartObs(GpsObservation startObs) {
       this.startObs = startObs;
     }
 
@@ -354,13 +355,17 @@ public class ResultSet {
     final OsmSegmentWithVelocity osmSegment;
     final InferredEdge edge =
         state.getBelief().getEdge().getInferredEdge();
-    if (edge != InferredEdge.getEmptyEdge()) {
-      osmSegment =
-          new OsmSegmentWithVelocity(edge, edge
-              .getVelocityPrecisionDist().getLocation());
+    if (edge.isEmptyEdge()) {
+      final double velocity;
+      if (edge instanceof SimpleInferredEdge)
+        velocity = ((SimpleInferredEdge)edge).getVelocityPrecisionDist().getLocation();
+      else
+        velocity = Double.NaN;
+      osmSegment = new OsmSegmentWithVelocity(edge, velocity);
+              
     } else {
       osmSegment =
-          new OsmSegmentWithVelocity(-1, null, "empty",
+          new OsmSegmentWithVelocity("-1", null, "empty",
               null);
     }
     return osmSegment;
@@ -469,7 +474,7 @@ public class ResultSet {
 
   @JsonIgnore
   protected static Map<String, Object> getJsonForPathState(
-    AbstractPathState pathState) {
+    PathState pathState) {
     final Map<String, Object> jsonResult =
         Maps.newHashMap();
     jsonResult
@@ -487,10 +492,10 @@ public class ResultSet {
         .getEdge().getInferredEdge()));
 
     if (pathState instanceof PathStateBelief) {
-      final PathStateBelief pathStateBelief =
+      final PathStateBelief simplePathStateBelief =
           (PathStateBelief) pathState;
       jsonResult.put("covariance",
-          ((AbstractMTJMatrix) pathStateBelief
+          ((AbstractMTJMatrix) simplePathStateBelief
               .getCovariance()).convertToVector()
               .getArray().clone());
     }

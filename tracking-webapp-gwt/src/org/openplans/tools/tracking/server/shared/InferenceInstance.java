@@ -20,15 +20,15 @@ import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 import org.apache.log4j.Logger;
-import org.opentrackingtools.impl.Observation;
+import org.opentrackingtools.GpsObservation;
+import org.opentrackingtools.graph.InferenceGraph;
+import org.opentrackingtools.graph.edges.InferredEdge;
+import org.opentrackingtools.graph.paths.edges.PathEdge;
 import org.opentrackingtools.impl.VehicleState;
 import org.opentrackingtools.impl.VehicleStatePerformanceResult;
 import org.opentrackingtools.impl.VehicleState.VehicleStateInitialParameters;
-import org.opentrackingtools.impl.graph.InferredEdge;
-import org.opentrackingtools.impl.graph.paths.PathEdge;
-import org.opentrackingtools.impl.statistics.filters.FilterInformation;
-import org.opentrackingtools.impl.statistics.filters.VehicleTrackingFilter;
-import org.opentrackingtools.util.OtpGraph;
+import org.opentrackingtools.statistics.filters.vehicles.impl.FilterInformation;
+import org.opentrackingtools.statistics.filters.vehicles.impl.VehicleTrackingFilter;
 
 import com.google.common.base.Stopwatch;
 import com.google.common.collect.ComparisonChain;
@@ -54,7 +54,7 @@ public class InferenceInstance implements Comparable<InferenceInstance> {
 
   public boolean isEnabled = true;
 
-  private VehicleTrackingFilter<Observation, VehicleState> filter;
+  private VehicleTrackingFilter<GpsObservation, VehicleState> filter;
 
   private final Queue<InferenceResultRecord> resultRecords =
       new ConcurrentLinkedQueue<InferenceResultRecord>();
@@ -74,7 +74,7 @@ public class InferenceInstance implements Comparable<InferenceInstance> {
   private static int _collectedPathLength = Integer.MAX_VALUE;
   private static final double _maxUpdateIntervalCutoff = 5d * 60d;
 
-                            private static OtpGraph inferredGraph = InferenceServiceImpl.getGraph();
+  private static InferenceGraph inferredGraph = InferenceServiceImpl.getGraph();
 
   private final RingAccumulator<MutableDouble> averager =
       new RingAccumulator<MutableDouble>();
@@ -150,7 +150,7 @@ public class InferenceInstance implements Comparable<InferenceInstance> {
     return simulationParameters != null;
   }
 
-  synchronized public void update(Observation obs) {
+  synchronized public void update(GpsObservation obs) {
 
     if (!shouldProcessUpdate(obs))
       return;
@@ -158,7 +158,8 @@ public class InferenceInstance implements Comparable<InferenceInstance> {
     updateFilter(obs);
     this.recordsProcessed++;
 
-    final InferenceResultRecord infResult = InferenceResultRecord.createInferenceResultRecord(obs, this);
+    final InferenceResultRecord infResult = 
+        InferenceResultRecord.createInferenceResultRecord(obs, this);
 
     if (infoLevel == INFO_LEVEL.SINGLE_RESULT
         && !this.resultRecords.isEmpty())
@@ -167,7 +168,7 @@ public class InferenceInstance implements Comparable<InferenceInstance> {
     this.resultRecords.add(infResult);
   }
 
-  synchronized public void update(VehicleState actualState, Observation obs,
+  synchronized public void update(VehicleState actualState, GpsObservation obs,
     boolean performInference, boolean updateOffRoad) {
 
     if (!shouldProcessUpdate(obs))
@@ -197,7 +198,7 @@ public class InferenceInstance implements Comparable<InferenceInstance> {
    * also consider resetting the filter.
    * 
    */
-  private boolean shouldProcessUpdate(Observation obs) {
+  private boolean shouldProcessUpdate(GpsObservation obs) {
     if (filter != null) {
       final double timeDiff =
           filter.getLastProcessedTime() == 0 ? 1d
@@ -223,7 +224,7 @@ public class InferenceInstance implements Comparable<InferenceInstance> {
     return true;
   }
 
-  synchronized private void updateFilter(Observation obs) {
+  synchronized private void updateFilter(GpsObservation obs) {
 
     final Stopwatch watch = new Stopwatch();
     watch.start();
@@ -232,7 +233,7 @@ public class InferenceInstance implements Comparable<InferenceInstance> {
 
       Constructor<? extends VehicleTrackingFilter> ctor;
       try {
-        ctor = filterType.getConstructor(Observation.class, OtpGraph.class,
+        ctor = filterType.getConstructor(GpsObservation.class, InferenceGraph.class,
             VehicleStateInitialParameters.class, Boolean.class);
         filter = ctor.newInstance(obs, inferredGraph, initialParameters,
           new Boolean(infoLevel.compareTo(INFO_LEVEL.DEBUG) >= 0));
@@ -276,10 +277,10 @@ public class InferenceInstance implements Comparable<InferenceInstance> {
          * since we already have that as the old 
          * destination edge.
          */
-        final List<PathEdge> newPath = state.getBelief().getPath().getEdges();
+        final List<? extends PathEdge> newPath = state.getBelief().getPath().getEdges();
         for (PathEdge edge : 
           (path.isEmpty() || (newPath.size() == 1 
-            && Iterables.getOnlyElement(newPath).isEmptyEdge())
+            && Iterables.getOnlyElement(newPath).isNullEdge())
             || Iterables.getLast(path).getValue().isEmptyEdge()) 
             ? newPath : Iterables.skip(newPath, 1)) {
           path.add(Maps.immutableEntry(
@@ -307,7 +308,7 @@ public class InferenceInstance implements Comparable<InferenceInstance> {
     
   }
 
-  public static OtpGraph getInferredGraph() {
+  public static InferenceGraph getInferredGraph() {
     return inferredGraph;
   }
 

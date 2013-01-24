@@ -10,13 +10,14 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import org.opentrackingtools.impl.Observation;
+import org.opentrackingtools.GpsObservation;
 import org.opentrackingtools.impl.VehicleState.VehicleStateInitialParameters;
-import org.opentrackingtools.impl.statistics.filters.particle_learning.VehicleTrackingPLFilter;
+import org.opentrackingtools.statistics.filters.vehicles.particle_learning.VehicleTrackingPLFilter;
 
 import models.InferenceInstance;
 
 import play.Logger;
+import utils.ObservationFactory;
 import akka.actor.UntypedActor;
 
 import com.google.common.collect.HashMultimap;
@@ -43,10 +44,10 @@ public class InferenceService extends UntypedActor {
 
   private static class UpdateRunnable implements Runnable {
 
-    final List<Observation> observations;
+    final List<GpsObservation> observations;
     final InferenceInstance ie;
 
-    UpdateRunnable(List<Observation> observations, InferenceInstance ie) {
+    UpdateRunnable(List<GpsObservation> observations, InferenceInstance ie) {
       super();
       this.observations = observations;
       this.ie = ie;
@@ -54,7 +55,7 @@ public class InferenceService extends UntypedActor {
 
     @Override
     public void run() {
-      for (Observation obs : observations) 
+      for (GpsObservation obs : observations) 
         ie.update(obs);
     }
 
@@ -100,10 +101,10 @@ public class InferenceService extends UntypedActor {
   @Override
   public void onReceive(Object location) throws Exception {
     synchronized (this) {
-      if (location instanceof Observation) {
-        final Observation observation = (Observation) location;
+      if (location instanceof GpsObservation) {
+        final GpsObservation observation = (GpsObservation) location;
         if (!processRecord(observation)) {
-          InferenceService.getOrCreateInferenceInstance(observation.getVehicleId(), 
+          InferenceService.getOrCreateInferenceInstance(observation.getSourceId(), 
               defaultVehicleStateInitialParams, null, defaultInfoLevel);
         }
 
@@ -165,10 +166,10 @@ public class InferenceService extends UntypedActor {
    * @param observation
    * @return boolean true if an instance was found and processed
    */
-  public static boolean processRecord(Observation observation) {
+  public static boolean processRecord(GpsObservation observation) {
 
     final InferenceInstance ie =
-        getInferenceInstance(observation.getVehicleId());
+        getInferenceInstance(observation.getSourceId());
 
     if (ie == null)
       return false;
@@ -179,16 +180,16 @@ public class InferenceService extends UntypedActor {
   }
 
   public static void
-      processRecords(List<Observation> observations,
+      processRecords(List<GpsObservation> observations,
         VehicleStateInitialParameters initialParameters,
         String filterTypeName,
         INFO_LEVEL level) throws InterruptedException {
 
-    final Multimap<InferenceInstance, Observation> instanceToObs = TreeMultimap.create();
+    final Multimap<InferenceInstance, GpsObservation> instanceToObs = TreeMultimap.create();
     
-    for (final Observation obs : observations) {
+    for (final GpsObservation obs : observations) {
       final InferenceInstance ie =
-          getOrCreateInferenceInstance(obs.getVehicleId(),
+          getOrCreateInferenceInstance(obs.getSourceId(),
               initialParameters, null, level);
       instanceToObs.put(ie, obs);
     }
@@ -204,7 +205,7 @@ public class InferenceService extends UntypedActor {
 
   public static void remove(String name) {
     vehicleToInstance.remove(name);
-    Observation.remove(name);
+    ObservationFactory.remove(name);
   }
 
   public static void setDefaultInfoLevel(INFO_LEVEL defaultInfoLevel) {

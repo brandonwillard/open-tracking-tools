@@ -12,11 +12,12 @@ import java.util.Random;
 import jj2000.j2k.NotImplementedError;
 
 import org.apache.commons.lang.builder.CompareToBuilder;
-import org.opentrackingtools.impl.graph.paths.InferredPathPrediction;
-import org.opentrackingtools.impl.graph.paths.PathStateBelief;
-import org.opentrackingtools.impl.statistics.OnOffEdgeTransDirMulti;
-import org.opentrackingtools.impl.statistics.filters.road_tracking.AbstractRoadTrackingFilter;
-import org.opentrackingtools.util.OtpGraph;
+import org.opentrackingtools.GpsObservation;
+import org.opentrackingtools.graph.InferenceGraph;
+import org.opentrackingtools.graph.paths.impl.InferredPathPrediction;
+import org.opentrackingtools.graph.paths.states.PathStateBelief;
+import org.opentrackingtools.statistics.distributions.impl.OnOffEdgeTransDirMulti;
+import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ComparisonChain;
@@ -31,11 +32,11 @@ import com.google.common.collect.Iterables;
  * 
  */
 public class VehicleState implements
-    ComputableDistribution<Observation>,
+    ComputableDistribution<GpsObservation>,
     Comparable<VehicleState> {
 
   public static class PDF extends VehicleState implements
-      ProbabilityFunction<Observation> {
+      ProbabilityFunction<GpsObservation> {
 
     private static final long serialVersionUID =
         879217079360170446L;
@@ -50,7 +51,7 @@ public class VehicleState implements
     }
 
     @Override
-    public Double evaluate(Observation input) {
+    public Double evaluate(GpsObservation input) {
       return Math.exp(logEvaluate(input));
     }
 
@@ -60,7 +61,7 @@ public class VehicleState implements
     }
 
     @Override
-    public double logEvaluate(Observation input) {
+    public double logEvaluate(GpsObservation input) {
       double logLikelihood = 0d;
 
       /*
@@ -77,12 +78,12 @@ public class VehicleState implements
     }
 
     @Override
-    public Observation sample(Random random) {
+    public GpsObservation sample(Random random) {
       throw new NotImplementedError();
     }
 
     @Override
-    public ArrayList<Observation> sample(Random random,
+    public ArrayList<GpsObservation> sample(Random random,
       int numSamples) {
       throw new NotImplementedError();
     }
@@ -371,12 +372,12 @@ public class VehicleState implements
    * edges
    */
   protected final OnOffEdgeTransDirMulti edgeTransitionDist;
-  private final Observation observation;
+  private final GpsObservation observationFactory;
   private VehicleState parentState = null;
 
   private final Double distanceFromPreviousState;
 
-  private final OtpGraph graph;
+  private final InferenceGraph graph;
 
   // private final int initialHashCode;
   // private final int edgeInitialHashCode;
@@ -386,22 +387,22 @@ public class VehicleState implements
 
   private int hash = 0;
 
-  public VehicleState(OtpGraph graph,
-    Observation observation,
+  public VehicleState(InferenceGraph inferredGraph,
+    GpsObservation observationFactory,
     AbstractRoadTrackingFilter<?> updatedFilter,
     PathStateBelief belief,
     OnOffEdgeTransDirMulti edgeTransitionDist,
     VehicleState parentState) {
 
-    Preconditions.checkNotNull(graph);
-    Preconditions.checkNotNull(observation);
+    Preconditions.checkNotNull(inferredGraph);
+    Preconditions.checkNotNull(observationFactory);
     Preconditions.checkNotNull(updatedFilter);
     Preconditions.checkNotNull(belief);
 
-    this.observation = observation;
+    this.observationFactory = observationFactory;
     this.movementFilter = updatedFilter;
     this.belief = belief.clone();
-    this.graph = graph;
+    this.graph = inferredGraph;
 
     /*
      * Check that the state's location corresponds
@@ -442,9 +443,9 @@ public class VehicleState implements
     // state.parentState = null;
 
     final double timeDiff;
-    if (observation.getPreviousObservation() != null) {
+    if (observationFactory.getPreviousObservation() != null) {
       timeDiff =
-          (observation.getTimestamp().getTime() - observation
+          (observationFactory.getTimestamp().getTime() - observationFactory
               .getPreviousObservation().getTimestamp()
               .getTime()) / 1000d;
     } else {
@@ -467,7 +468,7 @@ public class VehicleState implements
     this.belief = other.belief.clone();
     this.edgeTransitionDist =
         other.edgeTransitionDist.clone();
-    this.observation = other.observation;
+    this.observationFactory = other.observationFactory;
     this.distanceFromPreviousState =
         other.distanceFromPreviousState;
     this.parentState = other.parentState;
@@ -524,7 +525,7 @@ public class VehicleState implements
     return edgeTransitionDist;
   }
 
-  public OtpGraph getGraph() {
+  public InferenceGraph getGraph() {
     return graph;
   }
 
@@ -542,8 +543,8 @@ public class VehicleState implements
     return movementFilter;
   }
 
-  public Observation getObservation() {
-    return observation;
+  public GpsObservation getObservation() {
+    return observationFactory;
   }
 
   public VehicleState getParentState() {
@@ -576,12 +577,12 @@ public class VehicleState implements
   }
 
   @Override
-  public Observation sample(Random random) {
+  public GpsObservation sample(Random random) {
     throw new NotImplementedError();
   }
 
   @Override
-  public ArrayList<Observation> sample(Random random,
+  public ArrayList<GpsObservation> sample(Random random,
     int numSamples) {
     throw new NotImplementedError();
   }
@@ -595,7 +596,7 @@ public class VehicleState implements
     final StringBuilder builder = new StringBuilder();
     builder.append("VehicleState [belief=").append(belief)
         .append(", observation=")
-        .append(observation.getTimestamp()).append("]");
+        .append(observationFactory.getTimestamp()).append("]");
     return builder.toString();
   }
 
@@ -675,12 +676,12 @@ public class VehicleState implements
         .equals(other.movementFilter)) {
       return false;
     }
-    if (thisState.observation == null) {
-      if (other.observation != null) {
+    if (thisState.observationFactory == null) {
+      if (other.observationFactory != null) {
         return false;
       }
-    } else if (!thisState.observation
-        .equals(other.observation)) {
+    } else if (!thisState.observationFactory
+        .equals(other.observationFactory)) {
       return false;
     }
     return true;
@@ -707,8 +708,8 @@ public class VehicleState implements
     result =
         prime
             * result
-            + ((state.observation == null) ? 0
-                : state.observation.hashCode());
+            + ((state.observationFactory == null) ? 0
+                : state.observationFactory.hashCode());
     return result;
   }
 
