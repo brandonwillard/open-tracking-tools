@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:context="http://www.springframework.org/schema/context"
+    xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-2.5.xsd
+           http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-2.5.xsd">
+
+    <bean id="osmBuilder" class="org.opentripplanner.graph_builder.impl.osm.OpenStreetMapGraphBuilderImpl">
+        <property name="provider">
+        <bean class="org.opentripplanner.openstreetmap.impl.RegionBasedOpenStreetMapProviderImpl">
+          <property name="regionsSource">
+            <bean
+               class="org.opentripplanner.openstreetmap.impl.FixedRegionSourceImpl">
+              <property name="latFrom" value="40.7012" />
+              <property name="lonFrom" value="-74.020" />
+              <property name="latTo" value="40.8086" />
+              <property name="lonTo" value="-73.935" />
+            </bean>
+          </property>
+            <property name="cacheDirectory" value="/tmp/osm" />
+        </bean> 
+        </property>
+        <property name="defaultWayPropertySetSource">
+          <bean class="org.opentripplanner.graph_builder.impl.osm.DefaultWayPropertySetSource" />
+        </property>
+        <property name="edgeFactory">
+          <bean class="org.opentrackingtools.graph.otp.impl.PlainStreetEdgeFactory" />
+        </property>
+    </bean>
+
+    <bean id="checkGeometry" class="org.opentripplanner.graph_builder.impl.CheckGeometryGraphBuilderImpl" />
+
+    <bean id="reconstruct" class="org.opentrackingtools.graph.otp.impl.ReconstructOriginalGraph" />
+
+    <bean id="reproject" class="org.opentrackingtools.graph.otp.impl.ReprojectCoords" />
+
+    <bean id="graphBuilderTask" class="org.opentripplanner.graph_builder.GraphBuilderTask">
+
+	<!--property name="modes">
+          <list>
+          <bean class="org.opentripplanner.routing.contraction.ModeAndOptimize">
+            <constructor-arg><value>WALK</value></constructor-arg>
+            <constructor-arg><value>QUICK</value></constructor-arg>
+          </bean>
+          <bean class="org.opentripplanner.routing.contraction.ModeAndOptimize">
+            <constructor-arg><value>BICYCLE</value></constructor-arg>
+            <constructor-arg><value>QUICK</value></constructor-arg>
+          </bean>
+          <bean class="org.opentripplanner.routing.contraction.ModeAndOptimize">
+            <constructor-arg><value>BICYCLE</value></constructor-arg>
+            <constructor-arg><value>SAFE</value></constructor-arg>
+          </bean>
+          </list>
+        </property>
+        <property name="contractionFactor" value="0.995" /-->
+
+    <property name="path" value="/tmp/test-graph" />
+        <property name="graphBuilders">
+            <list>
+                <!-- GTFS comes before OSM, because we use the loaded set of stops to determine our OSM coverage -->
+                <ref bean="osmBuilder" />
+                <ref bean="checkGeometry" />
+                <ref bean="reconstruct" />
+                <ref bean="reproject" />
+            </list>
+        </property>
+    </bean>
+
+</beans>

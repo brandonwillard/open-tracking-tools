@@ -20,6 +20,11 @@ require:
     - com.jhlabs -> javaproj 1.0
 
 repositories:
+    - local:
+        type: iBibliio
+        root: "file:${user.home}/.m2/repository/"
+        contains:
+            - "*"
     - typesafe:
         type: iBiblio
         root: "http://repo.typesafe.com/typesafe/releases/"
