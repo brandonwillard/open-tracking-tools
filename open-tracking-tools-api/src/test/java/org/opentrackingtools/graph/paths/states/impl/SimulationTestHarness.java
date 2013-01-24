@@ -14,7 +14,7 @@ import org.opentrackingtools.impl.Simulation;
 import org.opentrackingtools.impl.VehicleState;
 import org.opentrackingtools.impl.Simulation.SimulationParameters;
 import org.opentrackingtools.impl.VehicleState.VehicleStateInitialParameters;
-import org.opentrackingtools.statistics.filters.vehicles.impl.VehicleTrackingFilter;
+import org.opentrackingtools.statistics.filters.vehicles.VehicleTrackingFilter;
 
 import com.google.common.collect.Lists;
 

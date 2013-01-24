@@ -27,8 +27,8 @@ import org.opentrackingtools.graph.paths.edges.PathEdge;
 import org.opentrackingtools.impl.VehicleState;
 import org.opentrackingtools.impl.VehicleStatePerformanceResult;
 import org.opentrackingtools.impl.VehicleState.VehicleStateInitialParameters;
+import org.opentrackingtools.statistics.filters.vehicles.VehicleTrackingFilter;
 import org.opentrackingtools.statistics.filters.vehicles.impl.FilterInformation;
-import org.opentrackingtools.statistics.filters.vehicles.impl.VehicleTrackingFilter;
 
 import com.google.common.base.Stopwatch;
 import com.google.common.collect.ComparisonChain;

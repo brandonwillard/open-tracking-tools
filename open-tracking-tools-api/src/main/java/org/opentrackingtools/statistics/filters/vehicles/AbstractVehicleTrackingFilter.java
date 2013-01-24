@@ -16,7 +16,6 @@ import org.opentrackingtools.graph.paths.InferredPath;
 import org.opentrackingtools.impl.VehicleState;
 import org.opentrackingtools.impl.VehicleState.VehicleStateInitialParameters;
 import org.opentrackingtools.statistics.filters.vehicles.impl.FilterInformation;
-import org.opentrackingtools.statistics.filters.vehicles.impl.VehicleTrackingFilter;
 import org.opentrackingtools.statistics.filters.vehicles.particle_learning.AbstractVTParticleFilterUpdater;
 
 import com.google.common.collect.Maps;

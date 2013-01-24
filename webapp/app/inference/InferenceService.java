@@ -12,7 +12,7 @@ import java.util.concurrent.Executors;
 
 import org.opentrackingtools.GpsObservation;
 import org.opentrackingtools.impl.VehicleState.VehicleStateInitialParameters;
-import org.opentrackingtools.statistics.filters.vehicles.particle_learning.VehicleTrackingPLFilter;
+import org.opentrackingtools.statistics.filters.vehicles.particle_learning.impl.VehicleTrackingPLFilter;
 
 import models.InferenceInstance;
 

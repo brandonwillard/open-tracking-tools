@@ -33,8 +33,8 @@ import org.codehaus.jackson.map.JsonMappingException;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.opengis.referencing.operation.MathTransform;
 import org.opentrackingtools.GpsObservation;
+import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.graph.edges.InferredEdge;
-import org.opentrackingtools.graph.edges.impl.SimpleInferredEdge;
 import org.opentrackingtools.graph.otp.impl.OtpGraph;
 import org.opentrackingtools.impl.VehicleState;
 import org.opentrackingtools.impl.VehicleStatePerformanceResult;
@@ -64,8 +64,8 @@ public class Api extends Controller {
   public static final SimpleDateFormat sdf = new SimpleDateFormat(
       "yyyy-MM-dd hh:mm:ss");
 
-  public static OtpGraph graph = new OtpGraph(
-      Play.configuration.getProperty("application.otpGraphPath"), null);
+  public static InferenceGraph graph = new OtpGraph(
+      Play.configuration.getProperty("application.graphPath"), null);
 
   public static ObjectMapper jsonMapper = new ObjectMapper();
 
@@ -107,7 +107,8 @@ public class Api extends Controller {
     final Coordinate rawCoords =
         new Coordinate(Double.parseDouble(x), Double.parseDouble(y));
     
-    final Coordinate refLatLon = GeoUtils.reverseCoordinates(graph.getTurnGraph().getExtent().centre());
+    final Coordinate refLatLon = GeoUtils.reverseCoordinates(
+        graph.getGPSGraphExtent().centre());
     final MathTransform transform = GeoUtils.getTransform(refLatLon);
     final String epsgCode = "EPSG:" + GeoUtils.getEPSGCodefromUTS(refLatLon);
     Coordinate coords = GeoUtils.convertToLatLon(transform, rawCoords);
@@ -194,7 +195,7 @@ public class Api extends Controller {
   }
 
 
-  public static OtpGraph getGraph() {
+  public static InferenceGraph getGraph() {
     return graph;
   }
 
@@ -673,14 +674,6 @@ public class Api extends Controller {
       renderJSON(jsonMapper.writeValueAsString(null));
 
     renderJSON(jsonMapper.writeValueAsString(resultRecords));
-  }
-
-  public static void vertex() {
-    Logger.info("vertices: " + graph.getVertexCount());
-
-    // TODO noop
-
-    ok();
   }
 
 }

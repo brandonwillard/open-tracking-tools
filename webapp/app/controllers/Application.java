@@ -27,10 +27,10 @@ import org.opentrackingtools.impl.Simulation.SimulationParameters;
 import org.opentrackingtools.impl.VehicleState.VehicleStateInitialParameters;
 import org.opentrackingtools.impl.VehicleStatePerformanceResult.SufficientStatisticRecord;
 import org.opentrackingtools.statistics.filters.vehicles.AbstractVehicleTrackingFilter;
+import org.opentrackingtools.statistics.filters.vehicles.VehicleTrackingFilter;
 import org.opentrackingtools.statistics.filters.vehicles.impl.VehicleTrackingBootstrapFilter;
-import org.opentrackingtools.statistics.filters.vehicles.impl.VehicleTrackingFilter;
-import org.opentrackingtools.statistics.filters.vehicles.particle_learning.VTErrorEstimatingPLFilter;
-import org.opentrackingtools.statistics.filters.vehicles.particle_learning.VehicleTrackingPLFilter;
+import org.opentrackingtools.statistics.filters.vehicles.particle_learning.impl.VTErrorEstimatingPLFilter;
+import org.opentrackingtools.statistics.filters.vehicles.particle_learning.impl.VehicleTrackingPLFilter;
 import org.opentrackingtools.statistics.filters.vehicles.road.impl.ErrorEstimatingRoadTrackingFilter;
 
 import play.Logger;

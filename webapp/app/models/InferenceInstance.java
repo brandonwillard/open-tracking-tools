@@ -35,8 +35,8 @@ import org.opentrackingtools.graph.paths.edges.PathEdge;
 import org.opentrackingtools.impl.VehicleState;
 import org.opentrackingtools.impl.VehicleStatePerformanceResult;
 import org.opentrackingtools.impl.VehicleState.VehicleStateInitialParameters;
+import org.opentrackingtools.statistics.filters.vehicles.VehicleTrackingFilter;
 import org.opentrackingtools.statistics.filters.vehicles.impl.FilterInformation;
-import org.opentrackingtools.statistics.filters.vehicles.impl.VehicleTrackingFilter;
 
 import com.google.common.base.Stopwatch;
 import com.google.common.collect.ComparisonChain;
@@ -86,7 +86,7 @@ public class InferenceInstance implements Comparable<InferenceInstance> {
   private static int _collectedPathLength = Integer.MAX_VALUE;
   private static final double _maxUpdateIntervalCutoff = 5d * 60d;
 
-  private static OtpGraph inferredGraph = Api.getGraph();
+  private static InferenceGraph inferredGraph = Api.getGraph();
 
   private final RingAccumulator<MutableDouble> averager =
       new RingAccumulator<MutableDouble>();

@@ -3,7 +3,10 @@
 require:
     - play
     - play -> ivy 1.0.1
-    - org.openplans -> openplans-tracking-tools 0.0.1-SNAPSHOT 
+    - org.opentripplanner -> opentripplanner-graph-builder 0.7.10-SNAPSHOT 
+    - org.opentripplanner -> opentripplanner-routing 0.7.10-SNAPSHOT 
+    - org.opentripplanner -> opentripplanner-utils 0.7.10-SNAPSHOT 
+    - org.opentrackingtools -> open-tracking-tools-api 0.0.1-SNAPSHOT 
     - gov.sandia.foundry -> gov-sandia-cognition-common-core 3.3.2
     - gov.sandia.foundry -> gov-sandia-cognition-learning-core 3.3.2
     - net.sf.opencsv -> opencsv 2.0

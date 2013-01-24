@@ -172,6 +172,21 @@
 
   <dependencyManagement>
     <dependencies>
+      <dependency>
+        <groupId>org.opentripplanner</groupId>
+        <artifactId>opentripplanner-routing</artifactId>
+        <version>${otp.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.opentripplanner</groupId>
+        <artifactId>opentripplanner-graph-builder</artifactId>
+        <version>${otp.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.opentripplanner</groupId>
+        <artifactId>opentripplanner-utils</artifactId>
+        <version>${otp.version}</version>
+      </dependency>
       <!-- Geotools -->
       <dependency>
         <groupId>org.geotools</groupId>
@@ -241,6 +256,7 @@
   </dependencyManagement>
 
   <properties>
+    <otp.version>0.7.10-SNAPSHOT</otp.version>
     <geotools.version>8.0-M4</geotools.version>
     <jersey.version>1.11</jersey.version>
     <spring.version>3.0.5.RELEASE</spring.version>

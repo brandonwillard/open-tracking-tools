@@ -20,12 +20,13 @@ import org.openplans.tools.tracking.server.shared.InferenceInstance;
 import org.openplans.tools.tracking.server.shared.ObservationFactory;
 import org.openplans.tools.tracking.client.InferenceService;
 import org.opentrackingtools.GpsObservation;
+import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.graph.otp.impl.OtpGraph;
 import org.opentrackingtools.impl.VehicleState.VehicleStateInitialParameters;
+import org.opentrackingtools.statistics.filters.vehicles.VehicleTrackingFilter;
 import org.opentrackingtools.statistics.filters.vehicles.impl.VehicleTrackingBootstrapFilter;
-import org.opentrackingtools.statistics.filters.vehicles.impl.VehicleTrackingFilter;
-import org.opentrackingtools.statistics.filters.vehicles.particle_learning.VTErrorEstimatingPLFilter;
-import org.opentrackingtools.statistics.filters.vehicles.particle_learning.VehicleTrackingPLFilter;
+import org.opentrackingtools.statistics.filters.vehicles.particle_learning.impl.VTErrorEstimatingPLFilter;
+import org.opentrackingtools.statistics.filters.vehicles.particle_learning.impl.VehicleTrackingPLFilter;
 
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
@@ -64,7 +65,7 @@ public class InferenceServiceImpl extends RemoteServiceServlet
     }
   }
   
-  private static OtpGraph graph;
+  private static InferenceGraph graph;
   
   final Logger log = Logger.getLogger(InferenceInstance.class);
   
@@ -259,7 +260,7 @@ public class InferenceServiceImpl extends RemoteServiceServlet
   	return filtersMap;
   }
 
-  public static OtpGraph getGraph() {
+  public static InferenceGraph getGraph() {
     return graph;
   }
 
