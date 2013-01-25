@@ -23,7 +23,6 @@ import org.opentrackingtools.graph.paths.InferredPath;
 import org.opentrackingtools.graph.paths.algorithms.otp.impl.MultiDestinationAStar;
 import org.opentrackingtools.graph.paths.edges.PathEdge;
 import org.opentrackingtools.graph.paths.edges.impl.SimplePathEdge;
-import org.opentrackingtools.graph.paths.impl.SimpleInferredPath;
 import org.opentrackingtools.impl.VehicleState;
 import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
 import org.opentrackingtools.statistics.impl.DataCube;
@@ -341,7 +340,7 @@ public class OtpGraph implements InferenceGraph {
     final Coordinate toCoord = key.getEndCoord();
 
     final Set<InferredPath> paths =
-        Collections.singleton((InferredPath)SimpleInferredPath.getEmptyPath());
+        Collections.singleton((InferredPath)OtpInferredPath.getEmptyPath());
     final Set<Edge> startEdges = Sets.newHashSet();
 
     if (!currentEdge.isEmptyEdge()) {
@@ -520,7 +519,7 @@ public class OtpGraph implements InferenceGraph {
       }
     }
     if (!path.isEmpty())
-      return SimpleInferredPath.getInferredPath(path, isReverse);
+      return OtpInferredPath.getInferredPath(path, isReverse);
     else
       return null;
   }
@@ -943,7 +942,7 @@ public class OtpGraph implements InferenceGraph {
 
   @Override
   public InferredPath getNullPath() {
-    return SimpleInferredPath.getEmptyPath();
+    return OtpInferredPath.getEmptyPath();
   }
 
   @Override
@@ -963,13 +962,13 @@ public class OtpGraph implements InferenceGraph {
 
   @Override
   public InferredPath getInferredPath(PathEdge pathEdge) {
-    return SimpleInferredPath.getInferredPath(pathEdge);
+    return OtpInferredPath.getInferredPath(pathEdge);
   }
 
   @Override
   public InferredPath getInferredPath(List<PathEdge> currentPath,
     boolean isBackward) {
-    return SimpleInferredPath.getInferredPath(currentPath, isBackward);
+    return OtpInferredPath.getInferredPath(currentPath, isBackward);
   }
 
   @Override

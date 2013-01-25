@@ -52,7 +52,7 @@ public interface PathState extends Comparable<PathState>, Cloneable {
 
   abstract public Vector getRawState();
 
-  public abstract PathState getTruncatedPathStateBelief();
+  public abstract PathState getTruncatedPathState();
 
   public abstract PathState clone();
 

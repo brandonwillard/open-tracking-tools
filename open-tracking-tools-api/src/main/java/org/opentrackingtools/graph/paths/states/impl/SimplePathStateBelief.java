@@ -1,7 +1,5 @@
 package org.opentrackingtools.graph.paths.states.impl;
 
-import java.util.List;
-
 import gov.sandia.cognition.math.matrix.Matrix;
 import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
@@ -10,11 +8,8 @@ import gov.sandia.cognition.util.ObjectUtil;
 import javax.annotation.Nonnull;
 
 import org.apache.commons.lang3.builder.CompareToBuilder;
-import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.graph.paths.InferredPath;
 import org.opentrackingtools.graph.paths.edges.PathEdge;
-import org.opentrackingtools.graph.paths.edges.impl.SimplePathEdge;
-import org.opentrackingtools.graph.paths.impl.SimpleInferredPath;
 import org.opentrackingtools.graph.paths.states.AbstractPathState;
 import org.opentrackingtools.graph.paths.states.PathState;
 import org.opentrackingtools.graph.paths.states.PathStateBelief;
@@ -22,7 +17,7 @@ import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadT
 import org.opentrackingtools.statistics.impl.StatisticsUtil;
 
 import com.google.common.base.Preconditions;
-import com.google.common.collect.Lists;
+import com.google.common.collect.Iterables;
 
 public class SimplePathStateBelief extends AbstractPathState implements PathStateBelief {
 
@@ -35,9 +30,8 @@ public class SimplePathStateBelief extends AbstractPathState implements PathStat
   private MultivariateGaussian groundBelief;
 
   protected SimplePathStateBelief(InferredPath path,
-    MultivariateGaussian state, PathEdge edge) {
+    MultivariateGaussian state) {
 
-    this.edge = edge;
     this.path = path;
     this.rawStateBelief = state.clone();
     this.globalStateBelief = state.clone();
@@ -112,7 +106,15 @@ public class SimplePathStateBelief extends AbstractPathState implements PathStat
 
   @Override
   public PathEdge getEdge() {
-    return this.edge;
+    if (!isOnRoad())
+      return Iterables.getOnlyElement(this.path.getEdges());
+          
+    if (edge == null) {
+      Preconditions.checkState(!path.isNullPath());
+      this.edge = path.getEdgeForDistance(
+                  this.getGlobalState().getElement(0), false);
+    }
+    return Preconditions.checkNotNull(this.edge);
   }
 
   @Override
@@ -241,16 +243,19 @@ public class SimplePathStateBelief extends AbstractPathState implements PathStat
    */
   @Override
   public PathStateBelief getTruncatedPathStateBelief() {
-    final List<PathEdge> newEdges = Lists.newArrayList();
-    for (PathEdge edge1 : this.getPath().getEdges()) {
-      newEdges.add(edge1);
-      if (edge1.equals(this.getEdge())) {
-        break;
-      }
-    }
-    final SimpleInferredPath newPath = SimpleInferredPath.getInferredPath(newEdges, 
-        this.getPath().getIsBackward());
-    return new SimplePathStateBelief(newPath, this.rawStateBelief, this.edge);
+    
+    if (!this.isOnRoad())
+      return this;
+    
+    final InferredPath newPath = 
+        this.path.getPathTo(this.getEdge());
+    
+    return new SimplePathStateBelief(newPath, this.rawStateBelief);
+  }
+  
+  @Override
+  public PathState getTruncatedPathState() {
+    return getTruncatedPathStateBelief();
   }
   
   public static SimplePathStateBelief getPathStateBelief(
@@ -259,12 +264,7 @@ public class SimplePathStateBelief extends AbstractPathState implements PathStat
     Preconditions.checkArgument(!path.isNullPath()
         || state.getInputDimensionality() == 4);
     
-    PathEdge edge =
-          path.isNullPath() ? SimplePathEdge.getNullPathEdge()
-              : path.getEdgeForDistance(state
-                  .getMean().getElement(0), false);
-    
-    return new SimplePathStateBelief(path, state, edge);
+    return new SimplePathStateBelief(path, state);
   }
 
   public static PathStateBelief getPathStateBelief(
@@ -276,8 +276,7 @@ public class SimplePathStateBelief extends AbstractPathState implements PathStat
         new SimplePathStateBelief(
             oldPathState.getPath(),
             new MultivariateGaussian(oldPathState
-                .getRawState(), covariance),
-                oldPathState.getEdge());
+                .getRawState(), covariance));
     
     result.localStateBelief =
         new MultivariateGaussian(

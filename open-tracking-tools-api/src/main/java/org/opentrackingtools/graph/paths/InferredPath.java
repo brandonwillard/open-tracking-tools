@@ -112,4 +112,6 @@ public interface InferredPath extends Comparable<InferredPath> {
 
   public abstract PathState getStateOnPath(Vector result);
 
+  public abstract InferredPath getPathTo(PathEdge edge);
+
 }

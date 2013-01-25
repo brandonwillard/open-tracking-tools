@@ -10,14 +10,13 @@ import javax.annotation.Nonnull;
 import org.apache.commons.lang3.builder.CompareToBuilder;
 import org.opentrackingtools.graph.paths.InferredPath;
 import org.opentrackingtools.graph.paths.edges.PathEdge;
-import org.opentrackingtools.graph.paths.edges.impl.SimplePathEdge;
 import org.opentrackingtools.graph.paths.impl.SimpleInferredPath;
 import org.opentrackingtools.graph.paths.states.AbstractPathState;
 import org.opentrackingtools.graph.paths.states.PathState;
-import org.opentrackingtools.graph.paths.states.PathStateBelief;
 import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 
 public class SimplePathState extends AbstractPathState {
@@ -68,6 +67,10 @@ public class SimplePathState extends AbstractPathState {
 
   @Override
   public PathEdge getEdge() {
+    
+    if (!isOnRoad())
+      return Iterables.getOnlyElement(this.path.getEdges());
+          
     if (edge == null) {
       Preconditions.checkState(!path.isNullPath());
       this.edge = path.getEdgeForDistance(
@@ -135,16 +138,14 @@ public class SimplePathState extends AbstractPathState {
    * @return
    */
   @Override
-  public PathState getTruncatedPathStateBelief() {
-    final List<PathEdge> newEdges = Lists.newArrayList();
-    for (PathEdge edge1 : this.getPath().getEdges()) {
-      newEdges.add(edge1);
-      if (edge1.equals(this.getEdge())) {
-        break;
-      }
-    }
-    final SimpleInferredPath newPath = SimpleInferredPath.getInferredPath(newEdges, 
-        this.getPath().getIsBackward());
+  public PathState getTruncatedPathState() {
+    
+    if (!this.isOnRoad())
+      return this;
+    
+    final InferredPath newPath = 
+        this.path.getPathTo(this.getEdge());
+    
     return new SimplePathState(newPath, this.rawState);
   }
 }
