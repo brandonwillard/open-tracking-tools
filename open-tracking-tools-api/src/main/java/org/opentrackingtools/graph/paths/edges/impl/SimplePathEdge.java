@@ -7,20 +7,17 @@ import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 import gov.sandia.cognition.statistics.distribution.UnivariateGaussian;
 
 import org.opentrackingtools.GpsObservation;
-import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.graph.edges.InferredEdge;
 import org.opentrackingtools.graph.edges.impl.SimpleInferredEdge;
 import org.opentrackingtools.graph.paths.InferredPath;
 import org.opentrackingtools.graph.paths.edges.PathEdge;
 import org.opentrackingtools.graph.paths.states.PathStateBelief;
-import org.opentrackingtools.graph.paths.states.impl.SimplePathStateBelief;
 import org.opentrackingtools.impl.VehicleState;
 import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
 import org.opentrackingtools.statistics.impl.StatisticsUtil;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ComparisonChain;
-import com.google.common.collect.Iterables;
 import com.google.common.collect.Ordering;
 import com.vividsolutions.jts.geom.Geometry;
 
@@ -31,6 +28,7 @@ public class SimplePathEdge implements PathEdge {
   private final Boolean isBackward;
 
   private static SimplePathEdge emptyPathEdge = new SimplePathEdge(
+    // XXX TODO FIXME this should be here!
       SimpleInferredEdge.getEmptyEdge());
 
   private SimplePathEdge(InferredEdge edge) {
@@ -86,8 +84,7 @@ public class SimplePathEdge implements PathEdge {
       edgePredMarginalLogLik = this.marginalPredictiveLogLikelihood(
           state, path, beliefPrediction.getRawStateBelief());
       
-      locationPrediction =
-          SimplePathEdge.getPathStateBelief(path, edgePrediction);
+      locationPrediction = path.getStateBeliefOnPath(edgePrediction);
     }
 
     final double measurementPredLik;
@@ -117,12 +114,6 @@ public class SimplePathEdge implements PathEdge {
         edgePredTransLogLik, measurementPredLik);
   }
   
-  private static PathStateBelief getPathStateBelief(
-    InferredPath path, MultivariateGaussian edgePrediction) {
-    // TODO Auto-generated method stub
-    return null;
-  }
-
   /* (non-Javadoc)
    * @see org.opentrackingtools.graph.paths.edges.impl.PathEdge#marginalPredictiveLogLikelihood(org.opentrackingtools.impl.VehicleState, org.opentrackingtools.graph.paths.impl.InferredPath, gov.sandia.cognition.statistics.distribution.MultivariateGaussian)
    */
