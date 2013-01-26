@@ -239,7 +239,7 @@ public class Api extends Controller {
       for (final VehicleState state : record.getPostDistribution()
           .getDomain()) {
         if (state.getBelief().getEdge().getInferredEdge().getEdgeId().equals(edgeId))
-          observations.add(state.getObservation().getObsPoint());
+          observations.add(state.getObservation().getObsProjected());
       }
     }
 

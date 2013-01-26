@@ -107,7 +107,7 @@ public class SimplePathStateBelief extends AbstractPathState implements PathStat
   @Override
   public PathEdge getEdge() {
     if (!isOnRoad())
-      return Iterables.getOnlyElement(this.path.getEdges());
+      return Iterables.getOnlyElement(this.path.getPathEdges());
           
     if (edge == null) {
       Preconditions.checkState(!path.isNullPath());

@@ -19,8 +19,8 @@ import org.opentrackingtools.graph.paths.impl.InferredPathPrediction;
 import org.opentrackingtools.graph.paths.states.PathStateBelief;
 import org.opentrackingtools.graph.paths.states.impl.SimplePathStateBelief;
 import org.opentrackingtools.impl.VehicleState;
+import org.opentrackingtools.impl.VehicleStateInitialParameters;
 import org.opentrackingtools.impl.WrappedWeightedValue;
-import org.opentrackingtools.impl.VehicleState.VehicleStateInitialParameters;
 import org.opentrackingtools.statistics.distributions.impl.DefaultCountedDataDistribution;
 import org.opentrackingtools.statistics.distributions.impl.OnOffEdgeTransDirMulti;
 import org.opentrackingtools.statistics.filters.vehicles.AbstractVehicleTrackingFilter;
@@ -70,7 +70,7 @@ public abstract class AbstractVTPLFilter extends
               .getCount(state);
 
       final Set<InferredPath> instStateTransitions =
-          inferredGraph.getPaths(state, obs.getObsPoint());
+          inferredGraph.getPaths(state, obs.getObsProjected());
 
       state.getMovementFilter()
           .setCurrentTimeDiff(timeDiff);
@@ -190,7 +190,7 @@ public abstract class AbstractVTPLFilter extends
 
     sampledPathEntry = instStateDist.sample(rng);
 
-    if (sampledPathEntry.getPath().getEdges().size() > 1) {
+    if (sampledPathEntry.getPath().getPathEdges().size() > 1) {
       /*
        * TODO FIXME: cache the creation of these distributions
        */
@@ -202,7 +202,7 @@ public abstract class AbstractVTPLFilter extends
 
     } else {
       posteriorEdge =
-          sampledPathEntry.getPath().getEdges().get(0);
+          sampledPathEntry.getPath().getPathEdges().get(0);
     }
     predictionResults =
         sampledPathEntry.getEdgeToPredictiveBelief().get(

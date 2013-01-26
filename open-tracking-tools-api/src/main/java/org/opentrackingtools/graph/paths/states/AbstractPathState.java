@@ -301,27 +301,27 @@ public abstract class AbstractPathState extends
     if (this.isOnRoad() && otherState.isOnRoad()) {
 
       final PathEdge thisFirstEdge =
-          Iterables.getFirst(this.path.getEdges(), null);
+          Iterables.getFirst(this.path.getPathEdges(), null);
       final Geometry thisFirstActualGeom =
-          this.path.getIsBackward() ? thisFirstEdge
+          this.path.isBackward() ? thisFirstEdge
               .getGeometry().reverse() : thisFirstEdge
               .getGeometry();
 
       final PathEdge otherFirstEdge =
-          Iterables.getFirst(otherState.getPath().getEdges(),
+          Iterables.getFirst(otherState.getPath().getPathEdges(),
               null);
       final PathEdge otherLastEdge =
-          Iterables.getLast(otherState.getPath().getEdges(),
+          Iterables.getLast(otherState.getPath().getPathEdges(),
               null);
       final Geometry otherFirstActualGeom =
-          otherState.getPath().getIsBackward() ? otherFirstEdge
+          otherState.getPath().isBackward() ? otherFirstEdge
               .getGeometry().reverse() : otherFirstEdge
               .getGeometry();
 
       final Geometry otherLastActualGeom;
-      if (otherState.getPath().getEdges().size() > 1) {
+      if (otherState.getPath().getPathEdges().size() > 1) {
         otherLastActualGeom =
-            otherState.getPath().getIsBackward() ? otherLastEdge
+            otherState.getPath().isBackward() ? otherLastEdge
                 .getGeometry().reverse() : otherLastEdge
                 .getGeometry();
       } else {
@@ -348,7 +348,7 @@ public abstract class AbstractPathState extends
         result =
             headToTailDiff(
                 thisStateVec,
-                this.path.getIsBackward(),
+                this.path.isBackward(),
                 thisFirstEdge.getGeometry(),
                 otherStateVec,
                 otherState.getEdge().getDistToStartOfEdge(),
@@ -426,8 +426,8 @@ public abstract class AbstractPathState extends
          * Same start, same path-directions.
          */
         final Vector otherVec;
-        if (this.path.getIsBackward() == otherState.getPath()
-            .getIsBackward()) {
+        if (this.path.isBackward() == otherState.getPath()
+            .isBackward()) {
           otherVec = otherStateVec;
         } else {
           otherVec = otherStateVec.scale(-1d);
@@ -451,7 +451,7 @@ public abstract class AbstractPathState extends
                 * (Math.abs(otherStateVec.getElement(0)) - otherFirstEdge
                     .getLength());
         final double distDiff =
-            (this.path.getIsBackward() ? -1d : 1d)
+            (this.path.isBackward() ? -1d : 1d)
                 * (Math.abs(thisStateVec.getElement(0)) - adjustedLocation);
 
         final double thisVel = thisStateVec.getElement(1);
@@ -506,9 +506,9 @@ public abstract class AbstractPathState extends
      * going the same direction as this state.
      */
     final double thisDir =
-        thisState.getPath().getIsBackward() ? -1d : 1d;
+        thisState.getPath().isBackward() ? -1d : 1d;
     final double otherDir =
-        otherState.getPath().getIsBackward() ? -1d : 1d;
+        otherState.getPath().isBackward() ? -1d : 1d;
     final Vector otherStateVec =
         useRaw ? otherState.getRawState() : otherState
             .getGlobalState();
@@ -516,7 +516,7 @@ public abstract class AbstractPathState extends
         useRaw ? thisState.getRawState() : thisState
             .getGlobalState();
     final double otherDist =
-        (thisState.getPath().getIsBackward() ? -1d : 1d)
+        (thisState.getPath().isBackward() ? -1d : 1d)
             * (Math.abs(otherState.getPath()
                 .getTotalPathDistance()) - Math
                 .abs(otherStateVec.getElement(0)));

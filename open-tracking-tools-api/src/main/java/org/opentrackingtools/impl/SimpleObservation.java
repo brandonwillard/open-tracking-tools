@@ -1,6 +1,7 @@
 package org.opentrackingtools.impl;
 
 import gov.sandia.cognition.math.matrix.Vector;
+import gov.sandia.cognition.math.matrix.VectorFactory;
 
 import java.util.Date;
 
@@ -21,12 +22,12 @@ public class SimpleObservation implements GpsObservation {
   private final int recordNumber;
   private final Vector projPoint;
   private GpsObservation prevObs;
-  private final ProjectedCoordinate obsPoint;
+  private final ProjectedCoordinate coordsProjected;
 
   public SimpleObservation(String sourceId, Date timestamp,
     Coordinate coordsLatLon, Double velocity, Double heading,
-    Double accuracy, int recordNumber, Vector projPoint,
-    GpsObservation prevObs, ProjectedCoordinate obsPoint) {
+    Double accuracy, int recordNumber, GpsObservation prevObs, 
+    ProjectedCoordinate coordsProjected) {
     this.sourceId = sourceId;
     this.timestamp = timestamp;
     this.coordsLatLon = coordsLatLon;
@@ -34,9 +35,10 @@ public class SimpleObservation implements GpsObservation {
     this.heading = heading;
     this.accuracy = accuracy;
     this.recordNumber = recordNumber;
-    this.projPoint = projPoint;
+    this.projPoint = VectorFactory.getDefault().createVector2D(
+                      coordsProjected.x, coordsProjected.y);
     this.prevObs = prevObs;
-    this.obsPoint = obsPoint;
+    this.coordsProjected = coordsProjected;
   }
 
   @Override
@@ -65,8 +67,8 @@ public class SimpleObservation implements GpsObservation {
   }
 
   @Override
-  public ProjectedCoordinate getObsPoint() {
-    return this.obsPoint;
+  public ProjectedCoordinate getObsProjected() {
+    return this.coordsProjected;
   }
 
   @Override
@@ -146,7 +148,7 @@ public class SimpleObservation implements GpsObservation {
   public String toString() {
     return "Observation [vehicleId=" + sourceId 
         + ", timestamp=" + timestamp + ", obsCoords="
-        + obsPoint + ", obsPoint=" + obsPoint
+        + coordsProjected + ", obsPoint=" + coordsProjected
         + ", velocity=" + velocity + ", heading=" + heading
         + ", accuracy=" + accuracy + ", prevObs=" + prevObs
         + "]";

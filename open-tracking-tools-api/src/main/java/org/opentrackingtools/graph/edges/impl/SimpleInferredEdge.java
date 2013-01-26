@@ -327,7 +327,7 @@ public class SimpleInferredEdge implements InferredEdge {
    * @see org.opentrackingtools.graph.edges.impl.InferredEdge#isEmptyEdge()
    */
   @Override
-  public boolean isEmptyEdge() {
+  public boolean isNullEdge() {
     return this == emptyEdge;
   }
 

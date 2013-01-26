@@ -154,7 +154,7 @@ public class InferenceResultRecord {
      * XXX distributions are cloned, if given.
      */
     return new InferenceResultRecord(instance, observation.getTimestamp()
-        .getTime(), observation.getObsPoint(), actualResults,
+        .getTime(), observation.getObsProjected(), actualResults,
         infResults, postDist != null ? postDist.clone() : null,
         priorDist != null ? priorDist.clone() : null);
 
@@ -282,7 +282,7 @@ public class InferenceResultRecord {
      * (or edge?  seems unlikely).
      */
     final VehicleState cloneState = state.clone();
-    final Boolean isBackward = cloneState.getBelief().getPath().getIsBackward();
+    final Boolean isBackward = cloneState.getBelief().getPath().isBackward();
     final PathEdge currentEdge = cloneState.getBelief().getEdge();
     final MultivariateGaussian gbelief = cloneState.getBelief().getGroundBelief();
     final Matrix O =
@@ -337,7 +337,7 @@ public class InferenceResultRecord {
     final InferredPath path = cloneState.getBelief().getPath();
     if (path.getTotalPathDistance() != null)
       pathDirection = path.getTotalPathDistance() > 0d ? 1d : -1d;
-    for (final PathEdge edge : path.getEdges()) {
+    for (final PathEdge edge : path.getPathEdges()) {
       if (edge.isNullEdge())
         continue;
       

@@ -76,9 +76,7 @@ public class ObservationFactory {
     final SimpleObservation obs =
         new SimpleObservation(vehicleId, time, obsCoords,
             velocity, heading, accuracy, recordNumber, 
-            VectorFactory.getDefault().createVector2D(
-                      obsPoint.x, obsPoint.y)
-            , prevObs, obsPoint);
+            prevObs, obsPoint);
 
     vehiclesToRecords.put(vehicleId, obs);
 

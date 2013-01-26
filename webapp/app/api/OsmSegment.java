@@ -24,9 +24,9 @@ public class OsmSegment {
   
   public OsmSegment(InferredEdge edge) {
     this(edge.getEdgeId() != null ? edge.getEdgeId() : "none", 
-        edge.isEmptyEdge() ? null : edge.getGeometry(), 
+        edge.isNullEdge() ? null : edge.getGeometry(), 
         (!(edge.getBackingEdge() instanceof Edge) ||
-          edge.isEmptyEdge()) ? "no name" : 
+          edge.isNullEdge()) ? "no name" : 
             ((Edge)edge.getBackingEdge()).getName());
   }
 

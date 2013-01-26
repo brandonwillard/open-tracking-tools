@@ -30,7 +30,7 @@ import org.openplans.tools.tracking.server.shared.InferenceInstance;
 import org.openplans.tools.tracking.server.shared.ObservationFactory;
 import org.opentrackingtools.GpsObservation;
 import org.opentrackingtools.impl.TimeOrderException;
-import org.opentrackingtools.impl.VehicleState.VehicleStateInitialParameters;
+import org.opentrackingtools.impl.VehicleStateInitialParameters;
 
 import au.com.bytecode.opencsv.CSVReader;
 

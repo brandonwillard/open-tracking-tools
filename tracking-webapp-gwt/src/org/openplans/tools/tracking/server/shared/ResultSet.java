@@ -331,7 +331,7 @@ public class ResultSet {
       for (final InferredPath pathEntry : filterInfo
           .getEvaluatedPaths()) {
         final List<OsmSegment> edges = Lists.newArrayList();
-        for (final PathEdge edge : pathEntry.getEdges()) {
+        for (final PathEdge edge : pathEntry.getPathEdges()) {
           if (edge.getInferredEdge().getEdgeId() != null) {
             final OsmSegment segment =
                 new OsmSegment(edge.getInferredEdge());
@@ -355,7 +355,7 @@ public class ResultSet {
     final OsmSegmentWithVelocity osmSegment;
     final InferredEdge edge =
         state.getBelief().getEdge().getInferredEdge();
-    if (edge.isEmptyEdge()) {
+    if (edge.isNullEdge()) {
       final double velocity;
       if (edge instanceof SimpleInferredEdge)
         velocity = ((SimpleInferredEdge)edge).getVelocityPrecisionDist().getLocation();
@@ -394,7 +394,7 @@ public class ResultSet {
 
   @JsonSerialize
   public String getEspgCode() {
-    return this.state.getObservation().getObsPoint()
+    return this.state.getObservation().getObsProjected()
         .epsgCode();
   }
 

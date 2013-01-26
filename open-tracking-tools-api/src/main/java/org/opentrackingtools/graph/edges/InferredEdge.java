@@ -43,7 +43,7 @@ public interface InferredEdge extends Comparable<InferredEdge> {
 
   public abstract Vector getStartPoint();
 
-  public abstract boolean isEmptyEdge();
+  public abstract boolean isNullEdge();
 
   public abstract boolean hasReverse();
 

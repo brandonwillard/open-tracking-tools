@@ -22,9 +22,9 @@ import java.util.Set;
 import models.InferenceInstance;
 
 import org.opentrackingtools.impl.Simulation;
+import org.opentrackingtools.impl.VehicleStateInitialParameters;
 import org.opentrackingtools.impl.VehicleStatePerformanceResult;
 import org.opentrackingtools.impl.Simulation.SimulationParameters;
-import org.opentrackingtools.impl.VehicleState.VehicleStateInitialParameters;
 import org.opentrackingtools.impl.VehicleStatePerformanceResult.SufficientStatisticRecord;
 import org.opentrackingtools.statistics.filters.vehicles.AbstractVehicleTrackingFilter;
 import org.opentrackingtools.statistics.filters.vehicles.VehicleTrackingFilter;

@@ -49,23 +49,23 @@ import com.vividsolutions.jts.linearref.LengthIndexedLine;
  */
 public class SimpleInferredPath implements InferredPath {
 
-  private final ImmutableList<PathEdge> edges;
-  private final Double totalPathDistance;
+  protected final ImmutableList<PathEdge> edges;
+  protected final Double totalPathDistance;
 
   public List<String> edgeIds = Lists.newArrayList();
 
   /*
    * Note: single edges are considered forward
    */
-  private Boolean isBackward = null;
+  protected Boolean isBackward = null;
 
-  private final Geometry geometry;
-  private List<InferredEdge> normalEdges;
+  protected final Geometry geometry;
+  protected List<InferredEdge> normalEdges;
 
-  private static SimpleInferredPath emptyPath =
+  protected static InferredPath nullPath =
       new SimpleInferredPath();
 
-  private SimpleInferredPath() {
+  protected SimpleInferredPath() {
     this.edges =
         ImmutableList.of((PathEdge)SimplePathEdge.getNullPathEdge());
     this.totalPathDistance = null;
@@ -181,7 +181,7 @@ public class SimpleInferredPath implements InferredPath {
    */
   @Override
   public double clampToPath(final double distance) {
-    final double dir = this.getIsBackward() ? -1d : 1d;
+    final double dir = this.isBackward() ? -1d : 1d;
     final LengthIndexedLine lil =
         new LengthIndexedLine(this.getGeometry());
     final double clampedIndex =
@@ -194,7 +194,7 @@ public class SimpleInferredPath implements InferredPath {
     final CompareToBuilder comparator =
         new CompareToBuilder();
     comparator.append(this.edges.toArray(),
-        o.getEdges().toArray());
+        o.getPathEdges().toArray());
     return comparator.toComparison();
   }
 
@@ -287,7 +287,7 @@ public class SimpleInferredPath implements InferredPath {
    * @see org.opentrackingtools.graph.paths.impl.InferredPath#getEdges()
    */
   @Override
-  public ImmutableList<PathEdge> getEdges() {
+  public ImmutableList<PathEdge> getPathEdges() {
     return edges;
   }
 
@@ -303,7 +303,7 @@ public class SimpleInferredPath implements InferredPath {
    * @see org.opentrackingtools.graph.paths.impl.InferredPath#getIsBackward()
    */
   @Override
-  public Boolean getIsBackward() {
+  public Boolean isBackward() {
     return isBackward;
   }
 
@@ -329,7 +329,7 @@ public class SimpleInferredPath implements InferredPath {
         .getEdge()
         .getGeometry()
         .equalsTopo(
-            Iterables.getFirst(this.getEdges(), null)
+            Iterables.getFirst(this.getPathEdges(), null)
                 .getGeometry())))
       return null;
 
@@ -361,7 +361,7 @@ public class SimpleInferredPath implements InferredPath {
 
     final List<WrappedWeightedValue<PathEdge>> weightedPathEdges =
         Lists.newArrayList();
-    final List<? extends PathEdge> edgesLocal = this.getEdges();
+    final List<? extends PathEdge> edgesLocal = this.getPathEdges();
     //Collections.singletonList(Iterables.getLast(this.getEdges()));
     for (final PathEdge edge : edgesLocal) {
 
@@ -454,7 +454,7 @@ public class SimpleInferredPath implements InferredPath {
       if (!stateBelief.isOnRoad()) {
         AbstractRoadTrackingFilter
             .convertToRoadBelief(edgeStateBelief, this,
-                Iterables.getFirst(this.getEdges(), null),
+                Iterables.getFirst(this.getPathEdges(), null),
                 true);
       } else {
         final Vector convertedState =
@@ -553,7 +553,7 @@ public class SimpleInferredPath implements InferredPath {
    */
   @Override
   public boolean isNullPath() {
-    return this == emptyPath;
+    return this == nullPath;
   }
 
   /* (non-Javadoc)
@@ -578,20 +578,12 @@ public class SimpleInferredPath implements InferredPath {
     return true;
   }
 
-  /* (non-Javadoc)
-   * @see org.opentrackingtools.graph.paths.impl.InferredPath#setIsBackward(java.lang.Boolean)
-   */
-  @Override
-  public void setIsBackward(Boolean isBackward) {
-    this.isBackward = isBackward;
-  }
-
   @Override
   public String toString() {
-    if (this == emptyPath)
-      return "InferredPath [empty path]";
+    if (this.isNullPath())
+      return "SimpleInferredPath [null path]";
     else
-      return "InferredPath [edges=" + edgeIds
+      return "SimpleInferredPath [edges=" + edgeIds
           + ", totalPathDistance=" + totalPathDistance
           + "]";
   }
@@ -612,8 +604,8 @@ public class SimpleInferredPath implements InferredPath {
   //      return new InferredPath(inferredEdge);
   //  }
 
-  public static SimpleInferredPath getEmptyPath() {
-    return emptyPath;
+  public static InferredPath getNullPath() {
+    return nullPath;
   }
 
   public static SimpleInferredPath getInferredPath(
@@ -621,7 +613,7 @@ public class SimpleInferredPath implements InferredPath {
     if (newEdges.size() == 1) {
       final PathEdge edge = Iterables.getOnlyElement(newEdges);
       if (edge.isNullEdge())
-        return emptyPath;
+        return (SimpleInferredPath)nullPath;
     }
     return new SimpleInferredPath(ImmutableList.copyOf(newEdges),
         isBackward);
@@ -630,12 +622,12 @@ public class SimpleInferredPath implements InferredPath {
   public static SimpleInferredPath getInferredPath(
     PathEdge pathEdge) {
     if (pathEdge.isNullEdge())
-      return emptyPath;
+      return (SimpleInferredPath)nullPath;
     else
       return new SimpleInferredPath(pathEdge);
   }
 
-  public List<InferredEdge> getNormalEdges() {
+  public List<InferredEdge> getInferredEdges() {
     return normalEdges;
   }
 
@@ -655,7 +647,7 @@ public class SimpleInferredPath implements InferredPath {
   public InferredPath getPathTo(PathEdge edge) {
     
     final List<PathEdge> newEdges = Lists.newArrayList();
-    for (PathEdge edge1 : this.getEdges()) {
+    for (PathEdge edge1 : this.getPathEdges()) {
       newEdges.add(edge1);
       if (edge1.equals(edge)) {
         break;

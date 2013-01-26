@@ -203,7 +203,7 @@ public class OnOffEdgeTransDirMulti extends
 
   public double
       evaluate(InferredEdge from, InferredEdge to) {
-    if (from.isEmptyEdge()) {
+    if (from.isNullEdge()) {
       return getFreeMotionTransPrior()
           .getProbabilityFunction().evaluate(
               getTransitionType(from, to));
@@ -283,7 +283,7 @@ public class OnOffEdgeTransDirMulti extends
       return 0d;
 
     } else {
-      if (from.isEmptyEdge()) {
+      if (from.isNullEdge()) {
         return getFreeMotionTransPrior()
             .getProbabilityFunction().logEvaluate(
                 getTransitionType(from, to));
@@ -318,7 +318,7 @@ public class OnOffEdgeTransDirMulti extends
     Preconditions.checkNotNull(inferredEdge);
     Preconditions.checkNotNull(transferEdges);
 
-    if (inferredEdge.isEmptyEdge()) {
+    if (inferredEdge.isNullEdge()) {
       /*
        * We're currently in free-motion. If there are transfer edges, then
        * sample from those.
@@ -397,7 +397,7 @@ public class OnOffEdgeTransDirMulti extends
 
   public void update(InferredEdge from, InferredEdge to) {
     final Vector transType = getTransitionType(from, to);
-    if (from.isEmptyEdge()) {
+    if (from.isNullEdge()) {
       freeMotionTransEstimator.update(
           getFreeMotionTransProbPrior(), transType);
       freeMotionTransPrior
@@ -428,14 +428,14 @@ public class OnOffEdgeTransDirMulti extends
 
   public static Vector getTransitionType(InferredEdge from,
     InferredEdge to) {
-    if (from.isEmptyEdge()) {
-      if (to.isEmptyEdge()) {
+    if (from.isNullEdge()) {
+      if (to.isNullEdge()) {
         return stateOffToOff;
       } else {
         return stateOffToOn;
       }
     } else {
-      if (!to.isEmptyEdge()) {
+      if (!to.isNullEdge()) {
         return stateOnToOn;
       } else {
         return stateOnToOff;

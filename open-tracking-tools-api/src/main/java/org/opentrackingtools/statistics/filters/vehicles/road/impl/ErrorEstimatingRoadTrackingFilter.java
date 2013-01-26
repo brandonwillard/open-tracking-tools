@@ -461,13 +461,13 @@ public class ErrorEstimatingRoadTrackingFilter
     final PathStateBelief priorOnPath =
         priorPred.getPath().getStateBeliefOnPath(prior);
     Preconditions.checkState(Iterables.getFirst(
-        priorOnPath.getPath().getEdges(), null).equals(
-        Iterables.getFirst(priorPred.getPath().getEdges(),
+        priorOnPath.getPath().getPathEdges(), null).equals(
+        Iterables.getFirst(priorPred.getPath().getPathEdges(),
             null))
         && Iterables.getFirst(
-            priorPred.getPath().getEdges(), null).equals(
+            priorPred.getPath().getPathEdges(), null).equals(
             Iterables.getFirst(posterior.getPath()
-                .getEdges(), null)));
+                .getPathEdges(), null)));
 
     final Matrix F;
     final Matrix G;
@@ -482,7 +482,7 @@ public class ErrorEstimatingRoadTrackingFilter
           AbstractRoadTrackingFilter.getRoadObservation(
               obs, this.obsCovar, priorPred.getPath(),
               Iterables.getLast(priorPred.getPath()
-                  .getEdges()));
+                  .getPathEdges()));
 
       /*
        * Perform non-linear transform on y and obs cov. 

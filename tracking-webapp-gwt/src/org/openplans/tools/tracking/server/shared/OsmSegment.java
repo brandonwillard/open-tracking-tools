@@ -23,8 +23,8 @@ public class OsmSegment {
   
   public OsmSegment(InferredEdge parentStateEdge) {
     this(parentStateEdge.getEdgeId() != null ? parentStateEdge.getEdgeId() : "-1", 
-        parentStateEdge.isEmptyEdge() ? null : parentStateEdge.getGeometry(), 
-        parentStateEdge.isEmptyEdge() ? "empty" : parentStateEdge.toString());
+        parentStateEdge.isNullEdge() ? null : parentStateEdge.getGeometry(), 
+        parentStateEdge.isNullEdge() ? "empty" : parentStateEdge.toString());
   }
 
   public OsmSegment(String i, Geometry g, String name) {

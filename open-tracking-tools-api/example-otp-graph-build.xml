@@ -16,7 +16,7 @@
               <property name="lonTo" value="-73.935" />
             </bean>
           </property>
-            <property name="cacheDirectory" value="/tmp/osm" />
+            <property name="cacheDirectory" value="/tmp" />
         </bean> 
         </property>
         <property name="defaultWayPropertySetSource">
@@ -53,7 +53,7 @@
         </property>
         <property name="contractionFactor" value="0.995" /-->
 
-    <property name="path" value="/tmp/test-graph" />
+    <property name="path" value="/tmp" />
         <property name="graphBuilders">
             <list>
                 <!-- GTFS comes before OSM, because we use the loaded set of stops to determine our OSM coverage -->

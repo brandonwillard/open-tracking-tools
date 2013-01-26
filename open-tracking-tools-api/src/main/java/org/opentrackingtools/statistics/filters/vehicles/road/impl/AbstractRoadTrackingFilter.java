@@ -429,7 +429,7 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
         newBelief =
             currentBelief.getLocalStateBelief().clone();
         convertToRoadBelief(newBelief, path,
-            Iterables.getFirst(path.getEdges(), null),
+            Iterables.getFirst(path.getPathEdges(), null),
             true);
       } else {
         final PathStateBelief newBeliefOnPath =
@@ -505,7 +505,7 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
      * Since this projection was working wrt. positive movement,
      * we need to reconvert.
      */
-    if (path.getIsBackward()) {
+    if (path.isBackward()) {
       projState.scaleEquals(-1d);
     }
 
@@ -774,7 +774,7 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
     @Nullable PathEdge pathEdge, boolean useAbsVelocity) {
     
     MultivariateGaussian projBelief = getRoadBeliefFromGround(belief, 
-        path.getGeometry(), path.getIsBackward(), pathEdge.getGeometry(), 
+        path.getGeometry(), path.isBackward(), pathEdge.getGeometry(), 
         pathEdge.getDistToStartOfEdge(), useAbsVelocity);
     
     belief.setMean(projBelief.getMean());
@@ -898,7 +898,7 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
 
   public static PathEdgeProjection getRoadProjection(
     Vector locVelocity, InferredPath path, PathEdge pathEdge) {
-    return getRoadProjection(locVelocity, path.getGeometry(), path.getIsBackward(),
+    return getRoadProjection(locVelocity, path.getGeometry(), path.isBackward(),
         pathEdge.getGeometry(), pathEdge.getDistToStartOfEdge());
   }
   

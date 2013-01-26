@@ -21,11 +21,12 @@ import org.opentrackingtools.graph.paths.edges.PathEdge;
 import org.opentrackingtools.graph.paths.impl.InferredPathPrediction;
 import org.opentrackingtools.graph.paths.states.impl.SimplePathStateBelief;
 import org.opentrackingtools.impl.VehicleState;
-import org.opentrackingtools.impl.VehicleState.VehicleStateInitialParameters;
+import org.opentrackingtools.impl.VehicleStateInitialParameters;
 import org.opentrackingtools.statistics.distributions.impl.DefaultCountedDataDistribution;
 import org.opentrackingtools.statistics.distributions.impl.OnOffEdgeTransDirMulti;
 import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
 
+import com.google.common.base.Preconditions;
 import com.google.common.collect.Sets;
 
 public abstract class AbstractVTParticleFilterUpdater
@@ -45,12 +46,13 @@ public abstract class AbstractVTParticleFilterUpdater
 
   public long seed;
 
-  public AbstractVTParticleFilterUpdater(GpsObservation obs,
-    InferenceGraph graph,
-    VehicleStateInitialParameters parameters) {
-    this.initialObservation = obs;
-    this.inferenceGraph = graph;
-    this.parameters = parameters;
+  public AbstractVTParticleFilterUpdater(
+    @Nonnull GpsObservation obs,
+    @Nonnull InferenceGraph graph,
+    @Nonnull VehicleStateInitialParameters parameters) {
+    this.initialObservation = Preconditions.checkNotNull(obs);
+    this.inferenceGraph = Preconditions.checkNotNull(graph);
+    this.parameters = Preconditions.checkNotNull(parameters);
   }
 
   @Override
@@ -122,7 +124,7 @@ public abstract class AbstractVTParticleFilterUpdater
 
           final double lengthLocation =
               edge.getLengthIndexedLine().project(
-                  initialObservation.getObsPoint());
+                  initialObservation.getObsProjected());
 
           final Vector stateSmpl =
               trackingFilter.sampleStateTransDist(

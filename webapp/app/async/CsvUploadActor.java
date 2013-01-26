@@ -13,7 +13,7 @@ import models.InferenceInstance;
 
 import org.opentrackingtools.GpsObservation;
 import org.opentrackingtools.impl.TimeOrderException;
-import org.opentrackingtools.impl.VehicleState.VehicleStateInitialParameters;
+import org.opentrackingtools.impl.VehicleStateInitialParameters;
 
 import utils.ObservationFactory;
 

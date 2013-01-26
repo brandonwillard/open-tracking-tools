@@ -13,7 +13,6 @@ import org.opentrackingtools.GpsObservation;
 import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.graph.paths.states.PathState;
 import org.opentrackingtools.graph.paths.states.impl.SimplePathStateBelief;
-import org.opentrackingtools.impl.VehicleState.VehicleStateInitialParameters;
 import org.opentrackingtools.statistics.distributions.impl.OnOffEdgeTransDirMulti;
 import org.opentrackingtools.statistics.filters.vehicles.impl.VehicleTrackingPathSamplerFilterUpdater;
 import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
@@ -218,24 +217,18 @@ public class Simulation {
 
     final ProjectedCoordinate obsPoint =
         GeoUtils.convertToEuclidean(startCoord);
-    Vector projPoint = VectorFactory.getDefault().createVector2D(
-                startCoord.x, startCoord.y);
     
     GpsObservation initialObs = new SimpleObservation(
               this.simulationName,
               this.simParameters.getStartTime(),
               startCoord, null, null, null,
-              0, projPoint, null, obsPoint);
+              0, null, obsPoint);
 
-    if (initialObs != null) {
-      this.updater =
-          new VehicleTrackingPathSamplerFilterUpdater(
-              initialObs, graph,
-              this.simParameters.getStateParams());
-      this.updater.setRandom(rng);
-    } else {
-      this.updater = null;
-    }
+    this.updater =
+        new VehicleTrackingPathSamplerFilterUpdater(
+            initialObs, graph,
+            this.simParameters.getStateParams());
+    this.updater.setRandom(rng);
   }
 
   public VehicleState computeInitialState() {
@@ -340,15 +333,14 @@ public class Simulation {
 
     final Coordinate obsCoord =
         GeoUtils.convertToLatLon(thisLoc, vehicleState
-            .getObservation().getObsPoint());
+            .getObservation().getObsProjected());
 
     final int thisRecNum = vehicleState.getObservation().getRecordNumber();
     GpsObservation thisObs =
           new SimpleObservation(simulationName,
               new Date(time), obsCoord, null, null, null,
-              thisRecNum, thisLoc, 
-              vehicleState.getObservation(), vehicleState
-            .getObservation().getObsPoint());
+              thisRecNum, vehicleState.getObservation(), vehicleState
+            .getObservation().getObsProjected());
 
     final SimplePathStateBelief newStateBelief =
         SimplePathStateBelief.getPathStateBelief(

@@ -16,7 +16,7 @@ public interface GpsObservation extends Comparable<GpsObservation> {
 
   public abstract Coordinate getObsCoordsLatLon();
 
-  public abstract ProjectedCoordinate getObsPoint();
+  public abstract ProjectedCoordinate getObsProjected();
 
   public abstract GpsObservation getPreviousObservation();
 

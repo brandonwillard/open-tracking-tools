@@ -11,6 +11,7 @@ import org.opentrackingtools.GpsObservation;
 import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.graph.paths.InferredPath;
 import org.opentrackingtools.graph.paths.edges.PathEdge;
+import org.opentrackingtools.graph.paths.edges.impl.SimplePathEdge;
 import org.opentrackingtools.graph.paths.impl.SimpleInferredPath;
 import org.opentrackingtools.statistics.impl.DataCube;
 
@@ -20,16 +21,20 @@ import com.google.common.collect.Iterables;
 
 public class OtpInferredPath extends SimpleInferredPath {
   
-  public static OtpInferredPath getEmptyPath() {
-    return OtpInferredPath.getEmptyPath();
+  static {
+    nullPath = new OtpInferredPath();
+  }
+  
+  private OtpInferredPath() {
+    super();
   }
 
-  public static SimpleInferredPath getInferredPath(
+  public static OtpInferredPath getInferredPath(
     List<? extends PathEdge> newEdges, boolean isBackward) {
     if (newEdges.size() == 1) {
       final PathEdge edge = Iterables.getOnlyElement(newEdges);
       if (edge.isNullEdge())
-        return OtpInferredPath.getEmptyPath();
+        return (OtpInferredPath)nullPath;
     }
     return new OtpInferredPath(ImmutableList.copyOf(newEdges),
         isBackward);
@@ -44,10 +49,10 @@ public class OtpInferredPath extends SimpleInferredPath {
     super(edge);
   }
   
-  public static SimpleInferredPath getInferredPath(
+  public static OtpInferredPath getInferredPath(
     PathEdge pathEdge) {
     if (pathEdge.isNullEdge())
-      return OtpInferredPath.getEmptyPath();
+      return (OtpInferredPath)nullPath;
     else
       return new OtpInferredPath(pathEdge);
   }
@@ -75,7 +80,7 @@ public class OtpInferredPath extends SimpleInferredPath {
     if (ciInterval.withinInterval(0d))
       return;
 
-    for (final PathEdge edge : this.getEdges()) {
+    for (final PathEdge edge : this.getPathEdges()) {
       edge.getInferredEdge().update(stateBelief);
       
       if (!edge.isNullEdge()) {

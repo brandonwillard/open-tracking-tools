@@ -41,7 +41,7 @@ public class SimplePathEdge implements PathEdge {
 
   private SimplePathEdge(InferredEdge edge,
     double distToStartOfEdge, Boolean isBackward) {
-    Preconditions.checkArgument(!edge.isEmptyEdge());
+    Preconditions.checkArgument(!edge.isNullEdge());
     Preconditions.checkState(!isBackward
         || distToStartOfEdge <= 0d);
     this.edge = edge;
@@ -76,7 +76,7 @@ public class SimplePathEdge implements PathEdge {
      * Note: doesn't apply to free-movement, defaults to 0.
      */
     final double edgePredMarginalLogLik;
-    if (edge.isEmptyEdge()) {
+    if (edge.isNullEdge()) {
       edgePredMarginalLogLik = 0d;
       locationPrediction = beliefPrediction;
     } else {
@@ -504,7 +504,7 @@ public class SimplePathEdge implements PathEdge {
         || distToStart <= 0d);
 
     SimplePathEdge edge;
-    if (infEdge.isEmptyEdge() || isBackward == null) {
+    if (infEdge.isNullEdge() || isBackward == null) {
       edge = SimplePathEdge.getNullPathEdge();
     } else {
       edge = new SimplePathEdge(infEdge, distToStart, isBackward);

@@ -24,7 +24,7 @@ import org.opentrackingtools.graph.paths.states.impl.SimplePathState;
 import org.opentrackingtools.graph.paths.states.impl.SimplePathStateBelief;
 import org.opentrackingtools.impl.SimpleObservation;
 import org.opentrackingtools.impl.TimeOrderException;
-import org.opentrackingtools.impl.VehicleState.VehicleStateInitialParameters;
+import org.opentrackingtools.impl.VehicleStateInitialParameters;
 import org.opentrackingtools.statistics.filters.vehicles.particle_learning.impl.VehicleTrackingPLFilter;
 import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
 import org.opentrackingtools.statistics.filters.vehicles.road.impl.StandardRoadTrackingFilter;
@@ -131,7 +131,7 @@ public class InferredPathTest {
                 10.11d, 20d));
 
     final PathEdge edge1 =
-        Iterables.getFirst(path1.getEdges(), null);
+        Iterables.getFirst(path1.getPathEdges(), null);
 
     final Vector testVec1 =
         VectorFactory.getDenseDefault().createVector2D(
@@ -170,7 +170,7 @@ public class InferredPathTest {
                 1d / 10d, 10.11d));
 
     final PathEdge edge1 =
-        Iterables.getFirst(path1.getEdges(), null);
+        Iterables.getFirst(path1.getPathEdges(), null);
 
     final Vector testVec1 =
         VectorFactory.getDenseDefault().createVector2D(
@@ -488,13 +488,13 @@ public class InferredPathTest {
         new SimpleObservation("none", new Date(
             System.currentTimeMillis()), startCoord, 
             null, null, null,
-            0, projPoint, null, null);
+            0, null, null);
 
     final SimplePathStateBelief belief =
         SimplePathStateBelief.getPathStateBelief(newPath,
             startBelief);
     final MultivariateGaussian result =
-        Iterables.get(newPath.getEdges(), 1).getPriorPredictive(belief, obs);
+        Iterables.get(newPath.getPathEdges(), 1).getPriorPredictive(belief, obs);
 
     assertEquals("distance", -14d, result.getMean()
         .getElement(0), 1d);

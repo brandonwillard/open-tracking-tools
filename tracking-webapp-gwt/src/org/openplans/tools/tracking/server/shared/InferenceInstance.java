@@ -25,8 +25,8 @@ import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.graph.edges.InferredEdge;
 import org.opentrackingtools.graph.paths.edges.PathEdge;
 import org.opentrackingtools.impl.VehicleState;
+import org.opentrackingtools.impl.VehicleStateInitialParameters;
 import org.opentrackingtools.impl.VehicleStatePerformanceResult;
-import org.opentrackingtools.impl.VehicleState.VehicleStateInitialParameters;
 import org.opentrackingtools.statistics.filters.vehicles.VehicleTrackingFilter;
 import org.opentrackingtools.statistics.filters.vehicles.impl.FilterInformation;
 
@@ -277,11 +277,11 @@ public class InferenceInstance implements Comparable<InferenceInstance> {
          * since we already have that as the old 
          * destination edge.
          */
-        final List<? extends PathEdge> newPath = state.getBelief().getPath().getEdges();
+        final List<? extends PathEdge> newPath = state.getBelief().getPath().getPathEdges();
         for (PathEdge edge : 
           (path.isEmpty() || (newPath.size() == 1 
             && Iterables.getOnlyElement(newPath).isNullEdge())
-            || Iterables.getLast(path).getValue().isEmptyEdge()) 
+            || Iterables.getLast(path).getValue().isNullEdge()) 
             ? newPath : Iterables.skip(newPath, 1)) {
           path.add(Maps.immutableEntry(
               new Long(state.getObservation().getTimestamp().getTime()), 

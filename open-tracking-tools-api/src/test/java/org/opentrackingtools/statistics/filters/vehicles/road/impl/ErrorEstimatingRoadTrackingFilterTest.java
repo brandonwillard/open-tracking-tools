@@ -20,6 +20,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.opentrackingtools.GpsObservation;
 import org.opentrackingtools.graph.otp.impl.OtpGraph;
+import org.opentrackingtools.graph.paths.InferredPath;
 import org.opentrackingtools.graph.paths.edges.PathEdge;
 import org.opentrackingtools.graph.paths.edges.impl.SimplePathEdge;
 import org.opentrackingtools.graph.paths.impl.SimpleInferredPath;
@@ -28,7 +29,7 @@ import org.opentrackingtools.graph.paths.states.PathStateBelief;
 import org.opentrackingtools.graph.paths.states.impl.SimplePathStateBelief;
 import org.opentrackingtools.impl.TimeOrderException;
 import org.opentrackingtools.impl.VehicleState;
-import org.opentrackingtools.impl.VehicleState.VehicleStateInitialParameters;
+import org.opentrackingtools.impl.VehicleStateInitialParameters;
 import org.opentrackingtools.statistics.filters.vehicles.particle_learning.impl.VehicleTrackingPLFilter;
 import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
 import org.opentrackingtools.statistics.filters.vehicles.road.impl.ErrorEstimatingRoadTrackingFilter;
@@ -95,7 +96,7 @@ public class ErrorEstimatingRoadTrackingFilterTest {
     graph = mock(OtpGraph.class);
   }
 
-  private void simplePathTest(SimpleInferredPath startPath,
+  private void simplePathTest(InferredPath startPath,
     MultivariateGaussian startState, int iterations) {
 
     final boolean isOnRoad = !startPath.isNullPath();
@@ -150,7 +151,7 @@ public class ErrorEstimatingRoadTrackingFilterTest {
     final MultivariateGaussian.SufficientStatistic residualsSS =
         new MultivariateGaussian.SufficientStatistic();
 
-    SimpleInferredPath currentEstPath = startPath;
+    InferredPath currentEstPath = startPath;
 
     for (int i = 0; i < iterations; i++) {
       System.out.println("i=" + i);
@@ -167,21 +168,21 @@ public class ErrorEstimatingRoadTrackingFilterTest {
       final PathEdge presentEdge = currentState.getEdge();
       final PathEdge trueEdge = trueState.getEdge();
       if (!presentEdge.isNullEdge()) {
-        final List<SimplePathEdge> newEdges =
+        final List<PathEdge> newEdges =
             Lists.newArrayList();
         
-        final int trueIdx = startPath.getNormalEdges().indexOf(
+        final int trueIdx = ((SimpleInferredPath) startPath).getInferredEdges().indexOf(
             trueEdge.getInferredEdge());
-        final int presentIdx = startPath.getNormalEdges().indexOf(
+        final int presentIdx = ((SimpleInferredPath) startPath).getInferredEdges().indexOf(
             presentEdge.getInferredEdge());
         List<PathEdge> subList;
         final double direction;
         if (presentIdx < trueIdx) {
-          subList = Lists.newArrayList(startPath.getEdges().subList(presentIdx, trueIdx));
+          subList = Lists.newArrayList(startPath.getPathEdges().subList(presentIdx, trueIdx));
           subList.add(trueEdge);
           direction = 1d;
         } else if (presentIdx > trueIdx) {
-          subList = Lists.newArrayList(startPath.getEdges().subList(trueIdx, presentIdx));
+          subList = Lists.newArrayList(startPath.getPathEdges().subList(trueIdx, presentIdx));
           subList.add(presentEdge);
           Collections.reverse(subList); 
           direction = -1d;
@@ -195,7 +196,7 @@ public class ErrorEstimatingRoadTrackingFilterTest {
         
         PathEdge lastEdge = null;
         for (final PathEdge edge : subList) {
-          SimplePathEdge newEdge = SimplePathEdge.getEdge(
+          PathEdge newEdge = SimplePathEdge.getEdge(
               edge.getInferredEdge(),
               direction * (
                   lastEdge == null ? 0d : lastEdge.getLength() + lastEdge.getDistToStartOfEdge()),
@@ -382,8 +383,8 @@ public class ErrorEstimatingRoadTrackingFilterTest {
   @Test
   public void testGroundStateTransCovLearning()
       throws TimeOrderException {
-    final SimpleInferredPath startPath =
-        SimpleInferredPath.getEmptyPath();
+    final InferredPath startPath =
+        SimpleInferredPath.getNullPath();
     final Matrix covFactor =
         filter.getCovarianceFactor(false);
     final Matrix covar =
@@ -410,7 +411,7 @@ public class ErrorEstimatingRoadTrackingFilterTest {
   public void testRoadStateTransCovLearning1()
       throws TimeOrderException {
     final int iterations = 10000;
-    final SimpleInferredPath startPath =
+    final InferredPath startPath =
         TrackingTestUtils.makeTmpPath(this.graph, false,
             new Coordinate(-Math.pow(iterations, 2), 0d),
             new Coordinate(0d, 0d),
@@ -441,7 +442,7 @@ public class ErrorEstimatingRoadTrackingFilterTest {
   public void testRoadStateTransCovLearning2()
       throws TimeOrderException {
     final int iterations = 10000;
-    final SimpleInferredPath startPath =
+    final InferredPath startPath =
         TrackingTestUtils.makeTmpPath(this.graph, false,
             new Coordinate(-3000, -100d),
             new Coordinate(-2000, -100d),

@@ -28,7 +28,7 @@ import org.opentrackingtools.graph.paths.states.PathState;
 import org.opentrackingtools.graph.paths.states.PathStateBelief;
 import org.opentrackingtools.graph.paths.states.impl.SimplePathStateBelief;
 import org.opentrackingtools.impl.VehicleState;
-import org.opentrackingtools.impl.VehicleState.VehicleStateInitialParameters;
+import org.opentrackingtools.impl.VehicleStateInitialParameters;
 import org.opentrackingtools.statistics.distributions.impl.OnOffEdgeTransDirMulti;
 import org.opentrackingtools.statistics.filters.vehicles.particle_learning.AbstractVTParticleFilterUpdater;
 import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
@@ -173,7 +173,7 @@ public class VehicleTrackingPathSamplerFilterUpdater extends
     PathEdge currentEdge =
         this.inferenceGraph.getPathEdge(pathStateBelief.getEdge()
             .getInferredEdge(), 0d, pathStateBelief.getPath()
-            .getIsBackward());
+            .isBackward());
     PathEdge previousEdge = null;
     MultivariateGaussian newState = pathStateBelief.getLocalStateBelief().clone();
 
@@ -265,7 +265,7 @@ public class VehicleTrackingPathSamplerFilterUpdater extends
                   .getInferredEdge() : currentEdge
                   .getInferredEdge());
 
-      if (sampledEdge.isEmptyEdge()) {
+      if (sampledEdge.isNullEdge()) {
 
         if (totalDistToTravel != null) {
           /*

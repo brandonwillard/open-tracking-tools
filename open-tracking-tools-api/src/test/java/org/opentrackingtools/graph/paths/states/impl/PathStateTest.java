@@ -602,7 +602,7 @@ public class PathStateTest {
     final SimplePathState y =
         SimplePathState.getPathState(
             SimpleInferredPath.getInferredPath(SimplePathEdge.getEdge(
-                p1.getEdges().get(1).getInferredEdge(), 0d,
+                p1.getPathEdges().get(1).getInferredEdge(), 0d,
                 false)),
             VectorFactory.getDenseDefault().createVector2D(
                 5d, -1d));
@@ -633,7 +633,7 @@ public class PathStateTest {
     final SimplePathState y =
         SimplePathState.getPathState(
             SimpleInferredPath.getInferredPath(SimplePathEdge.getEdge(
-                p1.getEdges().get(1).getInferredEdge(), 0d,
+                p1.getPathEdges().get(1).getInferredEdge(), 0d,
                 true)),
             VectorFactory.getDenseDefault().createVector2D(
                 0d, -1d));

@@ -69,7 +69,7 @@ public class SimplePathState extends AbstractPathState {
   public PathEdge getEdge() {
     
     if (!isOnRoad())
-      return Iterables.getOnlyElement(this.path.getEdges());
+      return Iterables.getOnlyElement(this.path.getPathEdges());
           
     if (edge == null) {
       Preconditions.checkState(!path.isNullPath());

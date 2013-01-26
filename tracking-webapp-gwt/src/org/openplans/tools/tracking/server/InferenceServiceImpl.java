@@ -22,7 +22,7 @@ import org.openplans.tools.tracking.client.InferenceService;
 import org.opentrackingtools.GpsObservation;
 import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.graph.otp.impl.OtpGraph;
-import org.opentrackingtools.impl.VehicleState.VehicleStateInitialParameters;
+import org.opentrackingtools.impl.VehicleStateInitialParameters;
 import org.opentrackingtools.statistics.filters.vehicles.VehicleTrackingFilter;
 import org.opentrackingtools.statistics.filters.vehicles.impl.VehicleTrackingBootstrapFilter;
 import org.opentrackingtools.statistics.filters.vehicles.particle_learning.impl.VTErrorEstimatingPLFilter;

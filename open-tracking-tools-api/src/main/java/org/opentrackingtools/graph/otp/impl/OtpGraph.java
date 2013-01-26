@@ -266,6 +266,7 @@ public class OtpGraph implements InferenceGraph {
       CacheBuilder
           .newBuilder()
           .maximumSize(1000)
+          .concurrencyLevel(1)
           .build(
               new CacheLoader<PathKey, Set<InferredPath>>() {
                 @Override
@@ -334,16 +335,17 @@ public class OtpGraph implements InferenceGraph {
         currentState.getBelief().getEdge()
             .getInferredEdge();
     
-    Preconditions.checkArgument(currentEdge.getBackingEdge()
-        instanceof PlainStreetEdgeWithOSMData);
+    Preconditions.checkArgument(
+        currentEdge.isNullEdge()
+        || (currentEdge.getBackingEdge() instanceof PlainStreetEdgeWithOSMData));
 
     final Coordinate toCoord = key.getEndCoord();
 
     final Set<InferredPath> paths =
-        Collections.singleton((InferredPath)OtpInferredPath.getEmptyPath());
+        Sets.newHashSet(OtpInferredPath.getNullPath());
     final Set<Edge> startEdges = Sets.newHashSet();
 
-    if (!currentEdge.isEmptyEdge()) {
+    if (!currentEdge.isNullEdge()) {
 
       final PlainStreetEdgeWithOSMData edge =
           (PlainStreetEdgeWithOSMData) currentEdge
@@ -416,7 +418,7 @@ public class OtpGraph implements InferenceGraph {
         currentState.getMovementFilter()
             .getCurrentTimeDiff();
     final double edgeLength =
-        currentEdge.isEmptyEdge() ? 0d : currentEdge
+        currentEdge.isNullEdge() ? 0d : currentEdge
             .getLength();
     final double distanceMax =
         Math.max(
@@ -457,7 +459,7 @@ public class OtpGraph implements InferenceGraph {
           
           if (forwardResult != null) {
             final double distToObs = 
-                Iterables.getLast(forwardResult.getEdges()).getGeometry().distance(
+                Iterables.getLast(forwardResult.getPathEdges()).getGeometry().distance(
                     JTSFactoryFinder.getGeometryFactory().createPoint(
                         toCoord));
             if (distToObs - obsStdDevDistance > 0) {
@@ -746,7 +748,7 @@ public class OtpGraph implements InferenceGraph {
 
     final Coordinate fromCoord;
     if (!fromState.getBelief().getEdge().getInferredEdge()
-        .isEmptyEdge()) {
+        .isNullEdge()) {
       fromCoord =
           fromState.getBelief().getEdge().getInferredEdge()
               .getCenterPointCoord();
@@ -876,7 +878,7 @@ public class OtpGraph implements InferenceGraph {
         new HashSet<InferredPath>();
     for (final InferredPath path : paths) {
       PathTree cur = tree;
-      for (final PathEdge edge : path.getEdges()) {
+      for (final PathEdge edge : path.getPathEdges()) {
         cur = cur.apply(edge, path);
         if (cur.isLeaf()) {
           //we are visiting a node that was previously a leaf.  It is no longer a leaf
@@ -942,7 +944,7 @@ public class OtpGraph implements InferenceGraph {
 
   @Override
   public InferredPath getNullPath() {
-    return OtpInferredPath.getEmptyPath();
+    return OtpInferredPath.getNullPath();
   }
 
   @Override

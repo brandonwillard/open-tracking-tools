@@ -47,11 +47,11 @@ public interface InferredPath extends Comparable<InferredPath> {
   public abstract PathEdge getEdgeForDistance(double distance,
     boolean clamp);
 
-  public abstract ImmutableList<? extends PathEdge> getEdges();
+  public abstract ImmutableList<PathEdge> getPathEdges();
 
   public abstract Geometry getGeometry();
 
-  public abstract Boolean getIsBackward();
+  public abstract Boolean isBackward();
 
   /**
    * XXX: the state must have a prior predictive mean.
@@ -101,8 +101,6 @@ public interface InferredPath extends Comparable<InferredPath> {
    * @return
    */
   public abstract boolean isOnPath(double distance);
-
-  public abstract void setIsBackward(Boolean isBackward);
 
   public abstract void updateEdges(GpsObservation obs,
     MultivariateGaussian globalStateBelief, InferenceGraph inferredGraph);
