@@ -1,9 +1,13 @@
 package org.opentrackingtools.util;
 
+import gov.sandia.cognition.math.matrix.Matrix;
 import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.math.matrix.VectorFactory;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.ObjectOutputStream;
+import java.io.OutputStream;
 import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
@@ -20,14 +24,18 @@ import org.codehaus.jackson.map.SerializerProvider;
 import org.codehaus.jackson.node.ArrayNode;
 import org.geotools.geojson.geom.GeometryJSON;
 import org.opentrackingtools.GpsObservation;
+import org.opentrackingtools.graph.edges.InferredEdge;
+import org.opentrackingtools.graph.paths.InferredPath;
 import org.opentrackingtools.graph.paths.states.PathState;
 import org.opentrackingtools.graph.paths.states.PathStateBelief;
 import org.opentrackingtools.impl.SimpleObservation;
 import org.opentrackingtools.impl.VehicleState;
 import org.opentrackingtools.impl.VehicleStateInitialParameters;
 import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
+import org.springframework.jdbc.datasource.embedded.OutputStreamFactory;
 
 import com.google.common.base.Function;
+import com.google.common.collect.Iterables;
 import com.google.common.collect.Iterators;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -64,29 +72,58 @@ public class JsonUtils {
     public void serialize(PathState pathState, JsonGenerator jgen,
       SerializerProvider provider) throws IOException,
         JsonProcessingException {
+      
       final Map<String, Object> jsonResult =
           Maps.newHashMap();
+      
       jsonResult
           .put("state", pathState.getGlobalState());
       jsonResult
           .put(
-              "stateLoc", AbstractRoadTrackingFilter.getOg()
+              "stateLoc", 
+              AbstractRoadTrackingFilter.getOg()
               .times(pathState.getGroundState()));
-      jsonResult.put("edge", 
-          pathState.getEdge().getInferredEdge().isNullEdge() ?
-              "null" : new GeometryJSON().toString(pathState
-          .getEdge().getInferredEdge().getGeometry()));
+      
+      InferredPath path = pathState.getTruncatedPathState().getPath();
+      if (path.isNullPath())
+        jsonResult.put("path", null);
+      else
+        jsonResult.put("path", 
+            Iterators.transform(
+                Iterators.forArray(path.getGeometry().getCoordinates()), 
+                new Function<Coordinate, Double[]>() {
+                  @Override
+                  public Double[] apply(Coordinate input) {
+                    return new Double[] {input.x, input.y};
+                  }
+                }));
       
   
       if (pathState instanceof PathStateBelief) {
         final PathStateBelief simplePathStateBelief =
             (PathStateBelief) pathState;
         jsonResult.put("covariance", 
-            simplePathStateBelief.getCovariance().convertToVector());
+            simplePathStateBelief.getCovariance().toArray());
       }
       
       jgen.writeObject(jsonResult);
     }
+  }
+  
+  public static class MatrixSerializer extends JsonSerializer<Matrix> {
+
+    @Override
+    public Class<Matrix> handledType() {
+      return Matrix.class;
+    }
+    
+    @Override
+    public void serialize(Matrix value, JsonGenerator jgen,
+      SerializerProvider provider) throws IOException,
+        JsonProcessingException {
+      jgen.writeObject(value.toArray());
+    }
+    
   }
   
   public static class VectorSerializer extends JsonSerializer<Vector> {
@@ -117,9 +154,13 @@ public class JsonUtils {
       SerializerProvider provider) throws IOException,
         JsonProcessingException {
       
-//      Map<String, Object> output = Maps.newHashMap();
-//      output.put("state", value.getBelief());
-      jgen.writeObject(value.getBelief());
+      Map<String, Object> output = Maps.newHashMap();
+      Coordinate gpsMean = GeoUtils.convertToLatLon(
+          value.getMeanLocation(), 
+          value.getObservation().getObsProjected().getTransform());
+      output.put("meanLocation", new double[] {gpsMean.x, gpsMean.y});
+      output.put("state", value.getBelief());
+      jgen.writeObject(output);
     }
     
   }
@@ -141,7 +182,7 @@ public class JsonUtils {
     
   }
   
-  public static class ConfigDeserializer 
+  public static class VehicleStateInitialParametersDeserializer 
     extends JsonDeserializer<VehicleStateInitialParameters> {
 
     @Override

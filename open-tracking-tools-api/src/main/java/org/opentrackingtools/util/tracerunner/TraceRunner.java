@@ -12,6 +12,8 @@ import java.util.List;
 
 import org.codehaus.jackson.Version;
 import org.codehaus.jackson.map.ObjectMapper;
+import org.codehaus.jackson.map.SerializationConfig;
+import org.codehaus.jackson.map.annotate.JsonDeserialize;
 import org.codehaus.jackson.map.module.SimpleModule;
 import org.opentrackingtools.GpsObservation;
 import org.opentrackingtools.graph.InferenceGraph;
@@ -22,7 +24,7 @@ import org.opentrackingtools.impl.VehicleState;
 import org.opentrackingtools.impl.VehicleStateInitialParameters;
 import org.opentrackingtools.statistics.filters.vehicles.VehicleTrackingFilter;
 import org.opentrackingtools.util.GeoUtils;
-import org.opentrackingtools.util.JsonUtils.ConfigDeserializer;
+import org.opentrackingtools.util.JsonUtils.VehicleStateInitialParametersDeserializer;
 import org.opentrackingtools.util.JsonUtils.ObservationDeserializer;
 import org.opentrackingtools.util.JsonUtils.PathStateSerializer;
 import org.opentrackingtools.util.JsonUtils.VectorDeserializer;
@@ -38,6 +40,34 @@ import com.vividsolutions.jts.geom.Coordinate;
 
 public class TraceRunner {
 
+  public static class TraceRunnerConfig {
+
+    public String traceFileName;
+    public String outputFileName;
+    public String otpGraphLocation;
+    public VehicleStateInitialParameters initialParameters;
+    
+    public TraceRunnerConfig() {
+    }
+
+    public String getTraceFileName() {
+      return traceFileName;
+    }
+
+    public String getOutputFileName() {
+      return outputFileName;
+    }
+
+    public String getOtpGraphLocation() {
+      return otpGraphLocation;
+    }
+
+    public VehicleStateInitialParameters getInitialParameters() {
+      return initialParameters;
+    }
+    
+  }
+
   private static final SimpleDateFormat sdf =
       new SimpleDateFormat("yyyy-MM-dd hh:mm:ss");
   
@@ -47,7 +77,6 @@ public class TraceRunner {
      * Read config file and parse observations
      */
     String configFileName = args[0];
-    String traceFileName = args[1];
     File configFile = new File(configFileName);
     
     Version version = new Version(1, 0, 0, "SNAPSHOT"); 
@@ -57,13 +86,17 @@ public class TraceRunner {
     module = module.addSerializer(PathState.class, new PathStateSerializer());    
     module = module.addDeserializer(Vector.class, new VectorDeserializer());    
     module = module.addDeserializer(VehicleStateInitialParameters.class, 
-        new ConfigDeserializer());    
+        new VehicleStateInitialParametersDeserializer());    
 //    module = module.addDeserializer(GpsObservation.class, 
 //        new ObservationDeserializer());    
     
     // And then configure mapper to use it
     ObjectMapper objectMapper = new ObjectMapper();
     objectMapper.registerModule(module);
+    objectMapper.configure(SerializationConfig.Feature.INDENT_OUTPUT, true);
+    
+    TraceRunnerConfig config = objectMapper.readValue(configFile, 
+        TraceRunnerConfig.class); 
     
     final VehicleStateInitialParameters ip;
     
@@ -74,7 +107,7 @@ public class TraceRunner {
     
     List<GpsObservation> observations = Lists.newArrayList();
     final CSVReader gpsReader =
-        new CSVReader(new FileReader(traceFileName), ';');
+        new CSVReader(new FileReader(config.getTraceFileName()), ';');
     
     // TODO take json observations
 //      observations = objectMapper.readValue(
@@ -116,10 +149,7 @@ public class TraceRunner {
     /*
      * Create the filter
      */
-    VehicleTrackingFilter<GpsObservation, VehicleState> filter;
-    
-    final InferenceGraph graph = new OtpGraph(
-        "/home/bwillard/openplans/OpenTripPlanner/test-graph", null);
+    final InferenceGraph graph = new OtpGraph(config.getOtpGraphLocation(), null);
     final GpsObservation initialObs = Iterables.getFirst(observations, null);
     
     Class<?> filterType = 
@@ -130,7 +160,8 @@ public class TraceRunner {
           VehicleStateInitialParameters.class, 
           Boolean.class);
       
-    filter = (VehicleTrackingFilter) ctor.newInstance(initialObs, graph, ip, true);
+    VehicleTrackingFilter<GpsObservation, VehicleState> filter = 
+        (VehicleTrackingFilter) ctor.newInstance(initialObs, graph, ip, true);
     
     filter.getRandom().setSeed(ip.getSeed());
     DataDistribution<VehicleState> priorBelief = filter.createInitialLearnedObject();
@@ -145,10 +176,13 @@ public class TraceRunner {
       
       filter.update(priorBelief, obs);
     }
+    
     System.out.println("Finished processing observations");
     
-    File outputFile = new File(traceFileName + "-filtered.json");
+    File outputFile = new File(config.getOutputFileName());
     objectMapper.writeValue(outputFile, results);
+    
+    System.out.println("Output written to " + config.getOutputFileName());
   }
 
 }
