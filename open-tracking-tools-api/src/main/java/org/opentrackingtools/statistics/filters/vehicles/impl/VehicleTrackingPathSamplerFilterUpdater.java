@@ -27,6 +27,7 @@ import org.opentrackingtools.graph.paths.edges.PathEdge;
 import org.opentrackingtools.graph.paths.states.PathState;
 import org.opentrackingtools.graph.paths.states.PathStateBelief;
 import org.opentrackingtools.graph.paths.states.impl.SimplePathStateBelief;
+import org.opentrackingtools.graph.paths.util.PathUtils;
 import org.opentrackingtools.impl.VehicleState;
 import org.opentrackingtools.impl.VehicleStateInitialParameters;
 import org.opentrackingtools.statistics.distributions.impl.OnOffEdgeTransDirMulti;
@@ -282,7 +283,7 @@ public class VehicleTrackingPathSamplerFilterUpdater extends
          * convert the covariance as well.
          */
         if (!currentEdge.isNullEdge()) {
-          AbstractRoadTrackingFilter.convertToGroundBelief(
+          PathUtils.convertToGroundBelief(
               newState, currentEdge, false, true);
           
           /*
@@ -364,7 +365,7 @@ public class VehicleTrackingPathSamplerFilterUpdater extends
          * Note: sampledEdge is the start edge in this case.
          */
         if (newState.getMean().getDimensionality() == 4) {
-          newState = AbstractRoadTrackingFilter.getRoadBeliefFromGround(
+          newState = PathUtils.getRoadBeliefFromGround(
               newState, sampledEdge, true);
         } else {
           /*

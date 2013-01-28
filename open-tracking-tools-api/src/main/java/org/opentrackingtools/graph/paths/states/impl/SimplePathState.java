@@ -13,6 +13,7 @@ import org.opentrackingtools.graph.paths.edges.PathEdge;
 import org.opentrackingtools.graph.paths.impl.SimpleInferredPath;
 import org.opentrackingtools.graph.paths.states.AbstractPathState;
 import org.opentrackingtools.graph.paths.states.PathState;
+import org.opentrackingtools.graph.paths.util.PathUtils;
 import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
 
 import com.google.common.base.Preconditions;
@@ -90,7 +91,7 @@ public class SimplePathState extends AbstractPathState {
       return this.groundState;
 
     this.groundState =
-        AbstractRoadTrackingFilter.convertToGroundState(
+        PathUtils.getGroundStateFromRoad(
             this.globalState, this.getEdge(), true);
 
     return this.groundState;
@@ -129,7 +130,10 @@ public class SimplePathState extends AbstractPathState {
     @Nonnull InferredPath path, @Nonnull Vector state) {
     Preconditions.checkArgument(!path.isNullPath()
         || state.getDimensionality() == 4);
-    return new SimplePathState(path, state);
+    
+    final Vector adjState = PathUtils.checkAndConvertState(state, path);
+    
+    return new SimplePathState(path, adjState);
   }
 
   /**

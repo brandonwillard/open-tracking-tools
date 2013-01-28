@@ -13,6 +13,7 @@ import org.opentrackingtools.graph.paths.edges.PathEdge;
 import org.opentrackingtools.graph.paths.states.AbstractPathState;
 import org.opentrackingtools.graph.paths.states.PathState;
 import org.opentrackingtools.graph.paths.states.PathStateBelief;
+import org.opentrackingtools.graph.paths.util.PathUtils;
 import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
 import org.opentrackingtools.statistics.impl.StatisticsUtil;
 
@@ -132,15 +133,11 @@ public class SimplePathStateBelief extends AbstractPathState implements PathStat
 
   public MultivariateGaussian getGroundBelief() {
     if (this.groundBelief == null) {
-      final MultivariateGaussian newBelief =
-          this.globalStateBelief.clone();
-      AbstractRoadTrackingFilter.convertToGroundBelief(
-          newBelief, this.getEdge(), true);
-      this.groundBelief = newBelief;
-      return newBelief;
-    } else {
-      return this.groundBelief;
-    }
+      this.groundBelief = PathUtils.getGroundBeliefFromRoad(this.globalStateBelief, 
+          this.getEdge(), isOnRoad());
+    } 
+    
+    return this.groundBelief;
   }
 
   @Override
@@ -261,14 +258,25 @@ public class SimplePathStateBelief extends AbstractPathState implements PathStat
   public static SimplePathStateBelief getPathStateBelief(
     @Nonnull InferredPath path,
     @Nonnull MultivariateGaussian state) {
+    
     Preconditions.checkArgument(!path.isNullPath()
         || state.getInputDimensionality() == 4);
     
-    return new SimplePathStateBelief(path, state);
+    final MultivariateGaussian adjState = PathUtils.checkAndConvertBelief(state, path);
+    
+    return new SimplePathStateBelief(path, adjState);
   }
 
+  /**
+   * Simply adds a covariance to a PathState to produce a PathStateBelief.
+   * 
+   * @param oldPathState
+   * @param covariance
+   * @return
+   */
   public static PathStateBelief getPathStateBelief(
     SimplePathState oldPathState, Matrix covariance) {
+    
     Preconditions.checkState(oldPathState.getRawState()
         .getDimensionality() == covariance.getNumColumns());
     

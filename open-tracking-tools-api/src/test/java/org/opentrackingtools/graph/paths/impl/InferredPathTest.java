@@ -480,15 +480,13 @@ public class InferredPathTest {
             new Coordinate(0, 0));
 
     Coordinate startCoord = new Coordinate(10, -5);
-//    final ProjectedCoordinate obsPoint =
-//        GeoUtils.convertToEuclidean(startCoord);
-    Vector projPoint = VectorFactory.getDefault().createVector2D(
-                startCoord.x, startCoord.y);
+    final ProjectedCoordinate obsPoint =
+        new ProjectedCoordinate(null, startCoord, startCoord);
     final GpsObservation obs =
         new SimpleObservation("none", new Date(
             System.currentTimeMillis()), startCoord, 
             null, null, null,
-            0, null, null);
+            0, null, obsPoint);
 
     final SimplePathStateBelief belief =
         SimplePathStateBelief.getPathStateBelief(newPath,

@@ -17,6 +17,7 @@ import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.graph.paths.InferredPath;
 import org.opentrackingtools.graph.paths.states.PathState;
 import org.opentrackingtools.graph.paths.states.PathStateBelief;
+import org.opentrackingtools.graph.paths.util.PathUtils;
 import org.opentrackingtools.impl.VehicleState;
 import org.opentrackingtools.statistics.filters.impl.AdjKalmanFilter;
 import org.opentrackingtools.statistics.impl.StatisticsUtil;
@@ -479,7 +480,7 @@ public class ErrorEstimatingRoadTrackingFilter
 
     if (posterior.isOnRoad()) {
       final MultivariateGaussian obsProjBelief =
-          AbstractRoadTrackingFilter.getRoadObservation(
+          PathUtils.getRoadObservation(
               obs, this.obsCovar, priorPred.getPath(),
               Iterables.getLast(priorPred.getPath()
                   .getPathEdges()));

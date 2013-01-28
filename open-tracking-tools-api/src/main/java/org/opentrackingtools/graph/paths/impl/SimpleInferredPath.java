@@ -25,6 +25,7 @@ import org.opentrackingtools.graph.paths.states.PathState;
 import org.opentrackingtools.graph.paths.states.PathStateBelief;
 import org.opentrackingtools.graph.paths.states.impl.SimplePathState;
 import org.opentrackingtools.graph.paths.states.impl.SimplePathStateBelief;
+import org.opentrackingtools.graph.paths.util.PathUtils;
 import org.opentrackingtools.impl.VehicleState;
 import org.opentrackingtools.impl.WrappedWeightedValue;
 import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
@@ -224,35 +225,14 @@ public class SimpleInferredPath implements InferredPath {
    * @see org.opentrackingtools.graph.paths.impl.InferredPath#getCheckedStateOnPath(gov.sandia.cognition.math.matrix.Vector, double)
    */
   @Override
-  public PathState getStateOnPath(Vector state,
-    double tolerance) {
-    Preconditions.checkArgument(tolerance >= 0d);
+  public PathState getStateOnPath(Vector state) {
     Preconditions.checkState(!isNullPath() || state.getDimensionality() == 4);
 
     if (isNullPath()) {
       return SimplePathState.getPathState(this, state);
     }
-    
-    final Vector newState = state.clone();
-    final double distance = newState.getElement(0);
-    final double direction = Math.signum(totalPathDistance);
-    final double overTheEndDist =
-        direction * distance - Math.abs(totalPathDistance);
-    if (overTheEndDist > 0d) {
-      if (overTheEndDist > tolerance) {
-        return null;
-      } else {
-        newState.setElement(0, totalPathDistance);
-      }
-    } else if (direction * distance < 0d) {
-      if (direction * distance < tolerance) {
-        return null;
-      } else {
-        newState.setElement(0, direction * 0d);
-      }
-    }
 
-    return SimplePathState.getPathState(this, newState);
+    return SimplePathState.getPathState(this, state);
   }
 
   /* (non-Javadoc)
@@ -434,40 +414,70 @@ public class SimpleInferredPath implements InferredPath {
         weightedPathEdges, pathLogLik);
   }
 
-  /* (non-Javadoc)
-   * @see org.opentrackingtools.graph.paths.impl.InferredPath#getStateBeliefOnPath(org.opentrackingtools.graph.paths.states.impl.PathStateBelief)
-   */
   @Override
-  public SimplePathStateBelief getStateBeliefOnPath(
+  public PathStateBelief getStateBeliefOnPath(
     PathStateBelief stateBelief) {
     final MultivariateGaussian edgeStateBelief;
     /*
      * Make sure it starts on this path.
      */
-    if (!this.isNullPath()) {
-      edgeStateBelief =
-          stateBelief.getGlobalStateBelief().clone();
-      /*
-       * Note that we force projection onto the first edge
-       * in this path.
-       */
-      if (!stateBelief.isOnRoad()) {
-        AbstractRoadTrackingFilter
-            .convertToRoadBelief(edgeStateBelief, this,
-                Iterables.getFirst(this.getPathEdges(), null),
-                true);
-      } else {
-        final Vector convertedState =
-            this.getStateOnPath(stateBelief).getRawState();
-        Preconditions.checkState(convertedState != null);
-        edgeStateBelief.setMean(convertedState);
-      }
-    } else {
+    if (this.isNullPath()) {
       edgeStateBelief = stateBelief.getGroundBelief();
+    } else {
+      
+      final SimplePathState startState =
+          SimplePathState.getPathState(this, VectorFactory
+              .getDefault().createVector2D(0d, 0d));
+  
+      final Vector diff = startState.minus(stateBelief);
+      diff.negativeEquals();
+  
+      edgeStateBelief = new MultivariateGaussian(
+          VectorFactory.getDefault().createVector2D(
+              this.clampToPath(diff.getElement(0)),
+              diff.getElement(1)), stateBelief.getCovariance());
+  
+      /*
+       * Make sure that we're still on the same edge,
+       * or that we had the same starting edge.
+       * 
+       */
+      if (!Iterables
+          .getFirst(this.edges, null)
+          .getGeometry()
+          .equalsTopo(
+              Iterables.getFirst(this.edges, null)
+                  .getGeometry())) {
+        boolean foundMatch = false;
+        for (final PathEdge thisEdge : this.edges) {
+          if (thisEdge.isOnEdge(edgeStateBelief.getMean().getElement(0))
+              && stateBelief.getEdge().getGeometry()
+                  .equalsTopo(thisEdge.getGeometry())) {
+            foundMatch = true;
+            break;
+          }
+        }
+  
+        if (!foundMatch)
+          return null;
+      }
+  
+  
+      assert (this.isOnPath(edgeStateBelief.getMean().getElement(0)));
+      assert Preconditions.checkNotNull(SimplePathState
+          .getPathState(this, edgeStateBelief.getMean())
+          .minus(stateBelief)
+          .isZero(
+              AbstractRoadTrackingFilter
+                  .getEdgeLengthErrorTolerance())
+          ? Boolean.TRUE : null);
     }
 
-    return SimplePathStateBelief.getPathStateBelief(this,
+    // TODO set raw belief?
+    PathStateBelief result = SimplePathStateBelief.getPathStateBelief(this,
         edgeStateBelief);
+    
+    return result;
   }
 
   /* (non-Javadoc)
@@ -477,56 +487,63 @@ public class SimpleInferredPath implements InferredPath {
   public PathState getStateOnPath(
     PathState currentState) {
 
-    Preconditions.checkState(!this.isNullPath());
-
-    final SimplePathState startState =
-        SimplePathState.getPathState(this, VectorFactory
-            .getDefault().createVector2D(0d, 0d));
-
-    final Vector diff = startState.minus(currentState);
-    diff.negativeEquals();
-
-    final Vector normState =
-        VectorFactory.getDefault().createVector2D(
-            this.clampToPath(diff.getElement(0)),
-            diff.getElement(1));
-
-    /*
-     * Make sure that we're still on the same edge,
-     * or that we had the same starting edge.
-     * 
-     */
-    if (!Iterables
-        .getFirst(this.edges, null)
-        .getGeometry()
-        .equalsTopo(
-            Iterables.getFirst(this.edges, null)
-                .getGeometry())) {
-      boolean foundMatch = false;
-      for (final PathEdge thisEdge : this.edges) {
-        if (thisEdge.isOnEdge(normState.getElement(0))
-            && currentState.getEdge().getGeometry()
-                .equalsTopo(thisEdge.getGeometry())) {
-          foundMatch = true;
-          break;
+    final Vector adjState;
+    if (this.isNullPath()) {
+      adjState = currentState.getGroundState();
+    } else {
+  
+      final SimplePathState startState =
+          SimplePathState.getPathState(this, VectorFactory
+              .getDefault().createVector2D(0d, 0d));
+  
+      final Vector diff = startState.minus(currentState);
+      diff.negativeEquals();
+  
+      adjState =
+          VectorFactory.getDefault().createVector2D(
+              this.clampToPath(diff.getElement(0)),
+              diff.getElement(1));
+  
+      /*
+       * Make sure that we're still on the same edge,
+       * or that we had the same starting edge.
+       * 
+       */
+      if (!Iterables
+          .getFirst(this.edges, null)
+          .getGeometry()
+          .equalsTopo(
+              Iterables.getFirst(this.edges, null)
+                  .getGeometry())) {
+        boolean foundMatch = false;
+        for (final PathEdge thisEdge : this.edges) {
+          if (thisEdge.isOnEdge(adjState.getElement(0))
+              && currentState.getEdge().getGeometry()
+                  .equalsTopo(thisEdge.getGeometry())) {
+            foundMatch = true;
+            break;
+          }
         }
+  
+        if (!foundMatch)
+          return null;
       }
-
-      if (!foundMatch)
-        return null;
+  
+  
+      assert (this.isOnPath(adjState.getElement(0)));
+      assert Preconditions.checkNotNull(SimplePathState
+          .getPathState(this, adjState)
+          .minus(currentState)
+          .isZero(
+              AbstractRoadTrackingFilter
+                  .getEdgeLengthErrorTolerance())
+          ? Boolean.TRUE : null);
     }
-
-
-    assert (this.isOnPath(normState.getElement(0)));
-    assert Preconditions.checkNotNull(SimplePathState
-        .getPathState(this, normState)
-        .minus(currentState)
-        .isZero(
-            AbstractRoadTrackingFilter
-                .getEdgeLengthErrorTolerance())
-        ? Boolean.TRUE : null);
-
-    return SimplePathState.getPathState(this, normState);
+  
+    // TODO set raw state?
+    PathState result = SimplePathState.getPathState(this, adjState);
+    
+    return result;
   }
 
   /* (non-Javadoc)
@@ -635,12 +652,6 @@ public class SimpleInferredPath implements InferredPath {
   public PathStateBelief getStateBeliefOnPath(
     MultivariateGaussian belief) {
     return SimplePathStateBelief.getPathStateBelief(this, belief);
-  }
-
-  @Override
-  public PathState getStateOnPath(Vector state) {
-    return this.getStateOnPath(state, 
-        AbstractRoadTrackingFilter.getEdgeLengthErrorTolerance());
   }
 
   @Override

@@ -7,13 +7,11 @@ import java.util.Map;
 
 import org.opentrackingtools.GpsObservation;
 import org.opentrackingtools.graph.InferenceGraph;
-import org.opentrackingtools.graph.edges.InferredEdge;
 import org.opentrackingtools.graph.paths.edges.PathEdge;
 import org.opentrackingtools.graph.paths.edges.impl.EdgePredictiveResults;
 import org.opentrackingtools.graph.paths.impl.InferredPathPrediction;
 import org.opentrackingtools.graph.paths.states.PathState;
 import org.opentrackingtools.graph.paths.states.PathStateBelief;
-import org.opentrackingtools.graph.paths.states.impl.SimplePathStateBelief;
 import org.opentrackingtools.impl.VehicleState;
 import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
 
@@ -32,8 +30,7 @@ public interface InferredPath extends Comparable<InferredPath> {
    * @param distance
    * @return
    */
-  public abstract PathState getStateOnPath(Vector state,
-    double tolerance);
+  public abstract PathState getStateOnPath(Vector state);
 
   /**
    * Returns the farthest PathEdge that the given distance could correspond to.
@@ -107,8 +104,6 @@ public interface InferredPath extends Comparable<InferredPath> {
 
   public abstract PathStateBelief getStateBeliefOnPath(
     MultivariateGaussian rawStateBelief);
-
-  public abstract PathState getStateOnPath(Vector result);
 
   public abstract InferredPath getPathTo(PathEdge edge);
 
