@@ -1,7 +1,9 @@
 package org.opentrackingtools.graph.paths.impl;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.testng.AssertJUnit.assertEquals;
+import static org.testng.AssertJUnit.assertTrue;
+import org.testng.annotations.Test;
+import org.testng.annotations.BeforeMethod;
 import static org.mockito.Mockito.mock;
 import gov.sandia.cognition.math.matrix.Matrix;
 import gov.sandia.cognition.math.matrix.MatrixFactory;
@@ -11,8 +13,6 @@ import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 
 import java.util.Date;
 
-import org.junit.Before;
-import org.junit.Test;
 import org.opentrackingtools.GpsObservation;
 import org.opentrackingtools.graph.otp.impl.OtpGraph;
 import org.opentrackingtools.graph.paths.InferredPath;
@@ -40,7 +40,7 @@ public class InferredPathTest {
   private AbstractRoadTrackingFilter<?> filter;
   private OtpGraph graph;
 
-  @Before
+  @BeforeMethod
   public void setUp() throws Exception {
 
     vehicleStateInitialParams =
@@ -65,7 +65,7 @@ public class InferredPathTest {
     graph = mock(OtpGraph.class);
   }
 
-  @Test(expected = IllegalStateException.class)
+  @Test(enabled=false, expectedExceptions = IllegalStateException.class)
   public void testBadConversion() {
     final SimpleInferredPath startPath =
         TrackingTestUtils.makeTmpPath(graph, true,

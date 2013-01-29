@@ -1,7 +1,9 @@
 package org.opentrackingtools.statistics.filters.vehicles.road.impl;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.testng.AssertJUnit.assertEquals;
+import static org.testng.AssertJUnit.assertTrue;
+import org.testng.annotations.Test;
+import org.testng.annotations.BeforeMethod;
 import static org.mockito.Mockito.mock;
 import gov.sandia.cognition.math.matrix.Matrix;
 import gov.sandia.cognition.math.matrix.MatrixFactory;
@@ -11,8 +13,6 @@ import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 
 import java.util.Random;
 
-import org.junit.Before;
-import org.junit.Test;
 import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.graph.edges.impl.SimpleInferredEdge;
 import org.opentrackingtools.graph.otp.impl.OtpGraph;
@@ -40,7 +40,7 @@ public class AbstractRoadTrackingFilterTest {
   private AbstractRoadTrackingFilter<?> filter;
   private OtpGraph graph;
 
-  @Before
+  @BeforeMethod
   public void setUp() throws Exception {
 
     vehicleStateInitialParams =

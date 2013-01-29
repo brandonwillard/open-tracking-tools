@@ -1,7 +1,9 @@
 package org.opentrackingtools.graph.paths.states.impl;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.testng.AssertJUnit.assertEquals;
+import static org.testng.AssertJUnit.assertTrue;
+import org.testng.annotations.Test;
+import org.testng.annotations.BeforeMethod;
 import static org.mockito.Mockito.mock;
 
 import java.util.ArrayList;
@@ -10,8 +12,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import org.junit.Before;
-import org.junit.Test;
 import org.opentrackingtools.graph.edges.impl.SimpleInferredEdge;
 import org.opentrackingtools.graph.otp.impl.OtpGraph;
 import org.opentrackingtools.graph.paths.edges.impl.SimplePathEdge;
@@ -38,7 +38,7 @@ public class UniquePathTest {
     return gf.createLineString(coordinates);
   }
 
-  @Before
+  @BeforeMethod
   public void testSetup() {
 
   }

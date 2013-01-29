@@ -1,7 +1,9 @@
 package org.opentrackingtools.graph.paths.states.impl;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.testng.AssertJUnit.assertEquals;
+import static org.testng.AssertJUnit.assertTrue;
+import org.testng.annotations.Test;
+import org.testng.annotations.BeforeMethod;
 import static org.mockito.Mockito.mock;
 import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.math.matrix.VectorFactory;
@@ -9,9 +11,6 @@ import gov.sandia.cognition.math.matrix.VectorFactory;
 import java.util.List;
 
 import org.geotools.geometry.jts.JTSFactoryFinder;
-import org.junit.Before;
-import org.junit.Ignore;
-import org.junit.Test;
 import org.opentrackingtools.graph.edges.InferredEdge;
 import org.opentrackingtools.graph.edges.impl.SimpleInferredEdge;
 import org.opentrackingtools.graph.otp.impl.OtpGraph;
@@ -19,9 +18,9 @@ import org.opentrackingtools.graph.paths.InferredPath;
 import org.opentrackingtools.graph.paths.edges.impl.SimplePathEdge;
 import org.opentrackingtools.graph.paths.impl.SimpleInferredPath;
 import org.opentrackingtools.graph.paths.impl.TrackingTestUtils;
-import org.opentrackingtools.graph.paths.states.AbstractPathState;
-import org.opentrackingtools.graph.paths.states.AbstractPathState.PathMergeResults;
 import org.opentrackingtools.graph.paths.states.impl.SimplePathState;
+import org.opentrackingtools.graph.paths.util.PathUtils;
+import org.opentrackingtools.graph.paths.util.PathUtils.PathMergeResults;
 import org.opentripplanner.routing.edgetype.PlainStreetEdge;
 import org.opentripplanner.routing.edgetype.StreetTraversalPermission;
 import org.opentripplanner.routing.graph.Edge;
@@ -57,7 +56,7 @@ public class PathStateTest {
         isBackward, coords);
   }
 
-  @Test(expected = IllegalArgumentException.class)
+  @Test(expectedExceptions = IllegalArgumentException.class)
   public void testBadPathError() {
     final List<SimplePathEdge> edges2_rev =
         Lists.newArrayList(SimplePathEdge.getEdge(ie2_rev, 0,
@@ -92,8 +91,7 @@ public class PathStateTest {
     assertEquals("rev diff", diff.scale(-1), diff2);
   }
 
-  @Ignore
-  @Test
+  @Test(enabled = false)
   public void testDistanceBetween10() {
     /* FIXME!
      * Test double overlaps: overlaps on the first
@@ -142,8 +140,7 @@ public class PathStateTest {
         _numericError);
   }
 
-  @Ignore
-  @Test
+  @Test(enabled = false)
   public void testDistanceBetween11() {
     /*
      * FIXME!
@@ -466,6 +463,12 @@ public class PathStateTest {
     assertEquals("vel", -1.6d, difference.getElement(1), 0d);
   }
 
+  /**
+   * This test checks that a difference from a state
+   * on the first edge of a path that overlaps its first
+   * edge, but going the opposite direction, at the end
+   * will use the first edge only.
+   */
   @Test
   public void testDistanceBetween22() {
     final SimpleInferredPath otherPath =
@@ -491,8 +494,7 @@ public class PathStateTest {
     assertEquals("vel", -1.6d, difference.getElement(1), 0d);
   }
 
-  @Ignore
-  @Test(expected = IllegalStateException.class)
+  @Test(enabled = false, expectedExceptions = IllegalStateException.class)
   public void testDistanceBetween2exp() {
     /*
      * TODO: remove or make relevant again.
@@ -588,8 +590,7 @@ public class PathStateTest {
         _numericError);
   }
 
-  @Ignore
-  @Test
+  @Test(enabled = false)
   public void testDistanceBetween5() {
     /*
      * FIXME!
@@ -619,8 +620,7 @@ public class PathStateTest {
     assertTrue("rev diff", diff2.scale(-1).equals(diff));
   }
 
-  @Ignore
-  @Test
+  @Test(enabled = false)
   public void testDistanceBetween6() {
     /*
      * FIXME!
@@ -656,8 +656,7 @@ public class PathStateTest {
   /**
    * Deferring these non-overlapping tests until we decide to implement this.
    */
-  @Ignore
-  @Test
+  @Test(enabled = false)
   public void testDistanceBetween7() {
     /*
      * Test that edges touching the start or end, same direction, 
@@ -692,8 +691,7 @@ public class PathStateTest {
   /**
    * Deferring these non-overlapping tests until we decide to implement this.
    */
-  @Ignore
-  @Test
+  @Test(enabled = false)
   public void testDistanceBetween8() {
     /*
      * Test that edges touching the start or end, but
@@ -736,8 +734,7 @@ public class PathStateTest {
   /**
    * Deferring this test until we implement the functionality.
    */
-  @Ignore
-  @Test
+  @Test(enabled = false)
   public void testDistanceBetween9() {
     /*
      * Test large overlaps (one edge
@@ -793,8 +790,8 @@ public class PathStateTest {
     final Geometry from = path1.getGeometry();
     final Geometry to = path2.getGeometry();
 
-    final PathMergeResults res1 =
-        AbstractPathState.mergePaths(from, 35d, to, 35d);
+    final PathUtils.PathMergeResults res1 =
+        PathUtils.mergePaths(from, 35d, to, 35d);
 
     final Geometry expRes1 =
         JTSFactoryFinder.getGeometryFactory()
@@ -811,15 +808,15 @@ public class PathStateTest {
     assertTrue(res1.getPath().equalsExact(expRes1));
     assertTrue(!res1.isToIsReversed());
 
-    final PathMergeResults res2 =
-        AbstractPathState.mergePaths(from, 35d,
+    final PathUtils.PathMergeResults res2 =
+        PathUtils.mergePaths(from, 35d,
             to.reverse(), 5d);
 
     assertTrue(res2.getPath().equalsExact(expRes1));
     assertTrue(res2.isToIsReversed());
 
-    final PathMergeResults res3 =
-        AbstractPathState.mergePaths(from, 2.5d, to, 5d);
+    final PathUtils.PathMergeResults res3 =
+        PathUtils.mergePaths(from, 2.5d, to, 5d);
 
     final Geometry expRes3 =
         JTSFactoryFinder.getGeometryFactory()
@@ -837,8 +834,8 @@ public class PathStateTest {
         makeTmpPath(false, new Coordinate(10, 10),
             new Coordinate(20, 10), new Coordinate(20, 20));
 
-    final PathMergeResults res4 =
-        AbstractPathState.mergePaths(path11.getGeometry(),
+    final PathUtils.PathMergeResults res4 =
+        PathUtils.mergePaths(path11.getGeometry(),
             17.5d, to, 2.5d);
 
     final Geometry expRes2 =
@@ -854,8 +851,8 @@ public class PathStateTest {
     assertTrue(res4.getPath().equalsExact(expRes2));
     assertTrue(res4.isToIsReversed());
 
-    final PathMergeResults res5 =
-        AbstractPathState.mergePaths(path11.getGeometry(),
+    final PathUtils.PathMergeResults res5 =
+        PathUtils.mergePaths(path11.getGeometry(),
             7.5d, to, 2.5d);
 
     final Geometry expRes5 =
@@ -880,22 +877,22 @@ public class PathStateTest {
                     new Coordinate(10, 10),
                     new Coordinate(0, 10),
                     new Coordinate(0, 0) });
-    final PathMergeResults res6 =
-        AbstractPathState
+    final PathUtils.PathMergeResults res6 =
+        PathUtils
             .mergePaths(p12, 37.5d, p12, 32.5d);
 
     assertTrue(res6.getPath().equalsExact(p12));
     assertTrue(!res6.isToIsReversed());
 
-    final PathMergeResults res7 =
-        AbstractPathState.mergePaths(p12, 37.5d,
+    final PathUtils.PathMergeResults res7 =
+        PathUtils.mergePaths(p12, 37.5d,
             p12.reverse(), 32.5d);
 
     assertTrue(res7.getPath().equalsExact(p12));
     assertTrue(res7.isToIsReversed());
   }
 
-  @Before
+  @BeforeMethod
   public void testSetup() {
     graph = new Graph();
     /*

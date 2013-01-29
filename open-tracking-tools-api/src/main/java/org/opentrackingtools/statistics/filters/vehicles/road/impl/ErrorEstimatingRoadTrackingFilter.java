@@ -564,9 +564,9 @@ public class ErrorEstimatingRoadTrackingFilter
     PathStateBelief priorPredictiveState, Random rng) {
 
     final PathStateBelief priorState =
-        state.getBelief().clone();
-    //        priorPredictiveState.getPath().getStateBeliefOnPath(
-    //            state.getBelief());
+            priorPredictiveState.getPath().getStateBeliefOnPath(
+                state.getBelief());
+    
     final PathState newPrevStateSample =
         sampleSmoothedPrevState(priorState,
             priorPredictiveState, posteriorState,

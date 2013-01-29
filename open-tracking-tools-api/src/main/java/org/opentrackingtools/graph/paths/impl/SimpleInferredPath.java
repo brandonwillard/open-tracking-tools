@@ -148,24 +148,18 @@ public class SimpleInferredPath implements InferredPath {
         direction * this.geometry.getLength();
   }
 
-  /*
-   * Dangerous, since it loses direction info.
+  /**
+   * Produce a path starting at this edge.
+   * @param edge
    */
-  //  private InferredPath(InferredEdge inferredEdge) {
-  //    Preconditions.checkArgument(!inferredEdge.isEmptyEdge());
-  //    this.edges =
-  //        ImmutableList.of(PathEdge.getEdge(inferredEdge, 0d, false));
-  //    this.totalPathDistance = inferredEdge.getLength();
-  //    this.isBackward = Boolean.FALSE;
-  //    this.edgeIds.add(inferredEdge.getEdgeId());
-  //    this.geometry = inferredEdge.getGeometry();
-  //  }
-
   protected SimpleInferredPath(PathEdge edge) {
     Preconditions.checkArgument(!edge.isNullEdge());
-    Preconditions
-        .checkArgument(edge.getDistToStartOfEdge() == 0d);
-    this.edges = ImmutableList.of(edge);
+    
+    // TODO FIXME remove specific PathEdge type.
+    this.edges = ImmutableList.<PathEdge>of(
+        SimplePathEdge.getEdge(edge.getInferredEdge(), 
+            0, edge.isBackward()));
+    
     this.normalEdges = ImmutableList.of(edge.getInferredEdge());
     this.isBackward = edge.isBackward();
     this.totalPathDistance =

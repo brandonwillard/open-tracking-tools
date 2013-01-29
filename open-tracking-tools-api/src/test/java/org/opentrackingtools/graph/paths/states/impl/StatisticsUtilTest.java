@@ -1,6 +1,8 @@
 package org.opentrackingtools.graph.paths.states.impl;
 
-import static org.junit.Assert.assertTrue;
+import static org.testng.AssertJUnit.assertTrue;
+import org.testng.annotations.Test;
+import org.testng.annotations.BeforeMethod;
 import gov.sandia.cognition.math.matrix.Matrix;
 import gov.sandia.cognition.math.matrix.MatrixFactory;
 import gov.sandia.cognition.math.matrix.Vector;
@@ -12,13 +14,11 @@ import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 
 import java.util.Random;
 
-import org.junit.Before;
-import org.junit.Test;
 import org.opentrackingtools.statistics.impl.StatisticsUtil;
 
 public class StatisticsUtilTest {
 
-  @Before
+  @BeforeMethod
   public void setUp() throws Exception {
 
   }

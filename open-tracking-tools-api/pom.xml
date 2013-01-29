@@ -90,48 +90,6 @@
           <artifactId>maven-surefire-plugin</artifactId>
           <version>2.12</version>
         </plugin>
-<!--         <plugin> -->
-<!--           m2eclipse lifecycle mapping configuration -->
-<!--           should not affect builds outside IDE -->
-<!--           <groupId>org.eclipse.m2e</groupId> -->
-<!--           <artifactId>lifecycle-mapping</artifactId> -->
-<!--           <version>1.0.0</version> -->
-<!--           <configuration> -->
-<!--             <lifecycleMappingMetadata> -->
-<!--               <pluginExecutions> -->
-<!--                 <pluginExecution> -->
-<!--                   <pluginExecutionFilter> -->
-<!--                     <groupId>org.codehaus.mojo</groupId> -->
-<!--                     <artifactId>exec-maven-plugin</artifactId> -->
-<!--                     <versionRange>[1.0,)</versionRange> -->
-<!--                     <goals> -->
-<!--                       <goal>java</goal> -->
-<!--                       <goal>build</goal> -->
-<!--                     </goals> -->
-<!--                   </pluginExecutionFilter> -->
-<!--                   <action> -->
-<!--                     <execute /> -->
-<!--                   </action> -->
-<!--                 </pluginExecution> -->
-<!--                 <pluginExecution> -->
-<!--                   <pluginExecutionFilter> -->
-<!--                     <groupId>org.apache.maven.plugins</groupId> -->
-<!--                     <artifactId>maven-jar-plugin</artifactId> -->
-<!--                     <versionRange>[2.2,)</versionRange> -->
-<!--                     <goals> -->
-<!--                       <goal>jar</goal> -->
-<!--                     </goals> -->
-<!--                   </pluginExecutionFilter> -->
-<!--                   <action> -->
-<!--                     <execute> -->
-<!--                       <runOnIncremental>false</runOnIncremental> -->
-<!--                     </execute> -->
-<!--                   </action> -->
-<!--                 </pluginExecution> -->
-<!--               </pluginExecutions> -->
-<!--             </lifecycleMappingMetadata> -->
-<!--           </configuration> -->
-<!--         </plugin> -->
       </plugins>
     </pluginManagement>
   </build>
@@ -172,6 +130,11 @@
   </repositories>
 
   <dependencies>
+    <dependency>
+      <groupId>org.testng</groupId>
+      <artifactId>testng</artifactId>
+      <version>6.8</version>
+    </dependency> 
     <dependency>
       <groupId>com.jhlabs</groupId>
       <artifactId>javaproj</artifactId>

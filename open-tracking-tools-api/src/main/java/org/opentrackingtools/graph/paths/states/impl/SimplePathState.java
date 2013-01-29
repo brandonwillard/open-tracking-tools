@@ -87,12 +87,14 @@ public class SimplePathState extends AbstractPathState {
 
   @Override
   public Vector getGroundState() {
-    if (this.groundState != null)
-      return this.groundState;
-
-    this.groundState =
-        PathUtils.getGroundStateFromRoad(
-            this.globalState, this.getEdge(), true);
+    if (!this.isOnRoad())
+      return this.globalState;
+    
+    if (this.groundState == null) {
+      this.groundState =
+          PathUtils.getGroundStateFromRoad(
+              this.globalState, this.getEdge(), true);
+    }
 
     return this.groundState;
   }

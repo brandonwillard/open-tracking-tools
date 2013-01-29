@@ -1,13 +1,13 @@
 package org.opentrackingtools.graph.paths.states.impl;
 
-import static org.junit.Assert.fail;
+import org.testng.annotations.Test;
+import org.testng.annotations.BeforeMethod;
+import org.testng.Assert;
 import gov.sandia.cognition.statistics.DataDistribution;
 
 import java.util.List;
 
-import org.junit.Before;
 import org.junit.Ignore;
-import org.junit.Test;
 import org.opentrackingtools.GpsObservation;
 import org.opentrackingtools.graph.otp.impl.OtpGraph;
 import org.opentrackingtools.impl.Simulation;
@@ -18,7 +18,6 @@ import org.opentrackingtools.statistics.filters.vehicles.VehicleTrackingFilter;
 
 import com.google.common.collect.Lists;
 
-@Ignore("unfinished")
 public class SimulationTestHarness {
 
   private final OtpGraph graph;
@@ -37,11 +36,11 @@ public class SimulationTestHarness {
     this.filter = filter;
   }
 
-  @Before
+  @BeforeMethod(enabled=false)
   public void setUp() throws Exception {
   }
 
-  @Test
+  @Test(enabled=false)
   public void test() {
     VehicleState vehicleState =
         this.sim.computeInitialState();
@@ -66,7 +65,7 @@ public class SimulationTestHarness {
       posteriorDistributions.add(currentState.clone());
     }
 
-    fail("Not yet implemented");
+    Assert.fail("Not yet implemented");
   }
 
 }

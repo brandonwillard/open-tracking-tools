@@ -35,47 +35,6 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
     extends AbstractCloneableSerializable implements
     Comparable<T> {
 
-  public static class PathEdgeProjection {
-
-    private final Matrix projMatrix;
-    private final Vector offset;
-    private final Vector positiveState;
-    private final Entry<Matrix, Vector> otherProjection;
-
-    public PathEdgeProjection(
-      Entry<Matrix, Vector> projPair, Vector posState,
-      Entry<Matrix, Vector> otherProj) {
-      this.projMatrix = projPair.getKey();
-      this.offset = projPair.getValue();
-      this.positiveState = posState;
-      this.otherProjection = otherProj;
-    }
-
-    public Vector getOffset() {
-      return offset;
-    }
-
-    public Entry<Matrix, Vector> getOtherProjection() {
-      return otherProjection;
-    }
-
-    public Vector getPositiveState() {
-      return positiveState;
-    }
-
-    public Matrix getProjMatrix() {
-      return projMatrix;
-    }
-
-    @Override
-    public String toString() {
-      return "PathEdgeProjection [projMatrix=" + projMatrix
-          + ", offset=" + offset + ", otherProjection="
-          + otherProjection + "]";
-    }
-
-  }
-
   /**
    * 
    */

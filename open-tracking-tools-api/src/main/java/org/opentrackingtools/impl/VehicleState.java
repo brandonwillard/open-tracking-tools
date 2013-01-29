@@ -21,6 +21,7 @@ import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadT
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ComparisonChain;
 import com.google.common.collect.Iterables;
+import com.vividsolutions.jts.geom.Geometry;
 
 /**
  * This class represents the state of a vehicle, which is made up of the
@@ -112,7 +113,7 @@ public class VehicleState implements
    * edges
    */
   protected final OnOffEdgeTransDirMulti edgeTransitionDist;
-  private final GpsObservation observationFactory;
+  private final GpsObservation observation;
   private VehicleState parentState = null;
 
   private final Double distanceFromPreviousState;
@@ -139,7 +140,7 @@ public class VehicleState implements
     Preconditions.checkNotNull(updatedFilter);
     Preconditions.checkNotNull(belief);
 
-    this.observationFactory = observationFactory;
+    this.observation = observationFactory;
     this.movementFilter = updatedFilter;
     this.belief = belief.clone();
     this.graph = inferredGraph;
@@ -208,7 +209,7 @@ public class VehicleState implements
     this.belief = other.belief.clone();
     this.edgeTransitionDist =
         other.edgeTransitionDist.clone();
-    this.observationFactory = other.observationFactory;
+    this.observation = other.observation;
     this.distanceFromPreviousState =
         other.distanceFromPreviousState;
     this.parentState = other.parentState;
@@ -284,7 +285,7 @@ public class VehicleState implements
   }
 
   public GpsObservation getObservation() {
-    return observationFactory;
+    return observation;
   }
 
   public VehicleState getParentState() {
@@ -336,7 +337,7 @@ public class VehicleState implements
     final StringBuilder builder = new StringBuilder();
     builder.append("VehicleState [belief=").append(belief)
         .append(", observation=")
-        .append(observationFactory.getTimestamp()).append("]");
+        .append(observation.getTimestamp()).append("]");
     return builder.toString();
   }
 
@@ -416,17 +417,17 @@ public class VehicleState implements
         .equals(other.movementFilter)) {
       return false;
     }
-    if (thisState.observationFactory == null) {
-      if (other.observationFactory != null) {
+    if (thisState.observation == null) {
+      if (other.observation != null) {
         return false;
       }
-    } else if (!thisState.observationFactory
-        .equals(other.observationFactory)) {
+    } else if (!thisState.observation
+        .equals(other.observation)) {
       return false;
     }
     return true;
   }
-
+  
   protected static int oneStateHashCode(VehicleState state) {
     final int prime = 31;
     int result = 1;
@@ -448,8 +449,8 @@ public class VehicleState implements
     result =
         prime
             * result
-            + ((state.observationFactory == null) ? 0
-                : state.observationFactory.hashCode());
+            + ((state.observation == null) ? 0
+                : state.observation.hashCode());
     return result;
   }
 
