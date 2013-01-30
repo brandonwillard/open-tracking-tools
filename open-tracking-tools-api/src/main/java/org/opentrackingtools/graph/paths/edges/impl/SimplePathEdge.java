@@ -29,7 +29,7 @@ public class SimplePathEdge implements PathEdge {
 
   private static SimplePathEdge emptyPathEdge = new SimplePathEdge(
     // XXX TODO FIXME this should be here!
-      SimpleInferredEdge.getEmptyEdge());
+      SimpleInferredEdge.getNullEdge());
 
   private SimplePathEdge(InferredEdge edge) {
     this.edge = edge;
@@ -350,6 +350,7 @@ public class SimplePathEdge implements PathEdge {
    * @param relative
    * @return the state on the edge or null if it's
    */
+  @Override
   public Vector getCheckedStateOnEdge(Vector state,
     double tolerance, boolean relative) {
     Preconditions.checkState(!isNullEdge());

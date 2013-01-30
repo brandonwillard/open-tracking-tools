@@ -1,9 +1,8 @@
 package org.opentrackingtools.graph.paths.impl;
 
-import static org.testng.AssertJUnit.assertEquals;
-import static org.testng.AssertJUnit.assertTrue;
 import org.testng.annotations.Test;
 import org.testng.annotations.BeforeMethod;
+import org.testng.AssertJUnit;
 import static org.mockito.Mockito.mock;
 import gov.sandia.cognition.math.matrix.Matrix;
 import gov.sandia.cognition.math.matrix.MatrixFactory;
@@ -17,7 +16,6 @@ import org.opentrackingtools.GpsObservation;
 import org.opentrackingtools.graph.otp.impl.OtpGraph;
 import org.opentrackingtools.graph.paths.InferredPath;
 import org.opentrackingtools.graph.paths.edges.PathEdge;
-import org.opentrackingtools.graph.paths.edges.impl.SimplePathEdge;
 import org.opentrackingtools.graph.paths.impl.SimpleInferredPath;
 import org.opentrackingtools.graph.paths.states.PathStateBelief;
 import org.opentrackingtools.graph.paths.states.impl.SimplePathState;
@@ -28,7 +26,6 @@ import org.opentrackingtools.impl.VehicleStateInitialParameters;
 import org.opentrackingtools.statistics.filters.vehicles.particle_learning.impl.VehicleTrackingPLFilter;
 import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
 import org.opentrackingtools.statistics.filters.vehicles.road.impl.StandardRoadTrackingFilter;
-import org.opentrackingtools.util.GeoUtils;
 import org.opentrackingtools.util.geom.ProjectedCoordinate;
 
 import com.google.common.collect.Iterables;
@@ -115,8 +112,8 @@ public class InferredPathTest {
     final Vector result =
         newPath.getStateOnPath(startState).getRawState();
 
-    assertEquals("dist", -12d, result.getElement(0), 0d);
-    assertEquals("dist", 1d, result.getElement(1), 0d);
+    AssertJUnit.assertEquals("dist", -12d, result.getElement(0), 0d);
+    AssertJUnit.assertEquals("dist", 1d, result.getElement(1), 0d);
 
   }
 
@@ -139,7 +136,7 @@ public class InferredPathTest {
     final Vector result1 =
         edge1.getCheckedStateOnEdge(testVec1, 1e-7d, false);
 
-    assertEquals(0d, result1.getElement(0), 0d);
+    AssertJUnit.assertEquals(0d, result1.getElement(0), 0d);
 
     final Vector testVec2 =
         VectorFactory.getDenseDefault().createVector2D(
@@ -147,7 +144,7 @@ public class InferredPathTest {
     final Vector result2 =
         edge1.getCheckedStateOnEdge(testVec2, 1e-7d, false);
 
-    assertEquals(1e-12d, result2.getElement(0), 0d);
+    AssertJUnit.assertEquals(1e-12d, result2.getElement(0), 0d);
 
     final Vector testVec3 =
         VectorFactory.getDenseDefault().createVector2D(
@@ -155,7 +152,7 @@ public class InferredPathTest {
     final Vector result3 =
         edge1.getCheckedStateOnEdge(testVec3, 1e-7d, false);
 
-    assertEquals(null, result3);
+    AssertJUnit.assertEquals(null, result3);
 
   }
 
@@ -178,7 +175,7 @@ public class InferredPathTest {
     final Vector result1 =
         edge1.getCheckedStateOnEdge(testVec1, 1e-7d, false);
 
-    assertEquals(0d, result1.getElement(0), 0d);
+    AssertJUnit.assertEquals(0d, result1.getElement(0), 0d);
 
     final Vector testVec2 =
         VectorFactory.getDenseDefault().createVector2D(
@@ -186,7 +183,7 @@ public class InferredPathTest {
     final Vector result2 =
         edge1.getCheckedStateOnEdge(testVec2, 1e-7d, false);
 
-    assertEquals(-1e-12d, result2.getElement(0), 0d);
+    AssertJUnit.assertEquals(-1e-12d, result2.getElement(0), 0d);
 
     final Vector testVec3 =
         VectorFactory.getDenseDefault().createVector2D(
@@ -194,7 +191,7 @@ public class InferredPathTest {
     final Vector result3 =
         edge1.getCheckedStateOnEdge(testVec3, 1e-7d, false);
 
-    assertEquals(null, result3);
+    AssertJUnit.assertEquals(null, result3);
 
   }
 
@@ -218,9 +215,9 @@ public class InferredPathTest {
     final Vector groundLoc =
         AbstractRoadTrackingFilter.getOg().times(
             currentBelief.getGroundState());
-    assertEquals("initial state x", 10d,
+    AssertJUnit.assertEquals("initial state x", 10d,
         groundLoc.getElement(0), 0d);
-    assertEquals("initial state y", 0d,
+    AssertJUnit.assertEquals("initial state y", 0d,
         groundLoc.getElement(1), 0d);
 
     final InferredPath newPath =
@@ -232,9 +229,9 @@ public class InferredPathTest {
     final PathStateBelief result =
         newPath.getStateBeliefOnPath(currentBelief);
 
-    assertEquals("distance", -10d, result
+    AssertJUnit.assertEquals("distance", -10d, result
         .getGlobalStateBelief().getMean().getElement(0), 0d);
-    assertEquals("velocity", 5d / 30d, result
+    AssertJUnit.assertEquals("velocity", 5d / 30d, result
         .getGlobalStateBelief().getMean().getElement(1), 0d);
 
   }
@@ -259,9 +256,9 @@ public class InferredPathTest {
     final Vector groundLoc =
         AbstractRoadTrackingFilter.getOg().times(
             currentBelief.getGroundState());
-    assertEquals("initial state x", 0d,
+    AssertJUnit.assertEquals("initial state x", 0d,
         groundLoc.getElement(0), 0d);
-    assertEquals("initial state y", 0d,
+    AssertJUnit.assertEquals("initial state y", 0d,
         groundLoc.getElement(1), 0d);
 
     final InferredPath newPath =
@@ -273,9 +270,9 @@ public class InferredPathTest {
     final PathStateBelief result =
         newPath.getStateBeliefOnPath(currentBelief);
 
-    assertEquals("distance", -0d, result
+    AssertJUnit.assertEquals("distance", -0d, result
         .getGlobalStateBelief().getMean().getElement(0), 0d);
-    assertEquals("velocity", -1d, result
+    AssertJUnit.assertEquals("velocity", -1d, result
         .getGlobalStateBelief().getMean().getElement(1), 0d);
 
   }
@@ -300,9 +297,9 @@ public class InferredPathTest {
     final Vector groundLoc =
         AbstractRoadTrackingFilter.getOg().times(
             currentBelief.getGroundState());
-    assertEquals("initial state x", 2.5d,
+    AssertJUnit.assertEquals("initial state x", 2.5d,
         groundLoc.getElement(0), 0d);
-    assertEquals("initial state y", 0d,
+    AssertJUnit.assertEquals("initial state y", 0d,
         groundLoc.getElement(1), 0d);
 
     final InferredPath newPath =
@@ -314,9 +311,9 @@ public class InferredPathTest {
     final PathStateBelief result =
         newPath.getStateBeliefOnPath(currentBelief);
 
-    assertEquals("distance", 2.5d, result
+    AssertJUnit.assertEquals("distance", 2.5d, result
         .getGlobalStateBelief().getMean().getElement(0), 0d);
-    assertEquals("velocity", 1d, result
+    AssertJUnit.assertEquals("velocity", 1d, result
         .getGlobalStateBelief().getMean().getElement(1), 0d);
 
   }
@@ -347,9 +344,9 @@ public class InferredPathTest {
     final PathStateBelief result =
         newPath.getStateBeliefOnPath(currentBelief);
 
-    assertEquals("distance", -2.5d, result
+    AssertJUnit.assertEquals("distance", -2.5d, result
         .getGlobalStateBelief().getMean().getElement(0), 0d);
-    assertEquals("velocity", 1d, result
+    AssertJUnit.assertEquals("velocity", 1d, result
         .getGlobalStateBelief().getMean().getElement(1), 0d);
 
   }
@@ -383,9 +380,9 @@ public class InferredPathTest {
     final PathStateBelief result =
         newPath.getStateBeliefOnPath(currentBelief);
 
-    assertEquals("distance", 7.5d, result
+    AssertJUnit.assertEquals("distance", 7.5d, result
         .getGlobalStateBelief().getMean().getElement(0), 0d);
-    assertEquals("velocity", -1d, result
+    AssertJUnit.assertEquals("velocity", -1d, result
         .getGlobalStateBelief().getMean().getElement(1), 0d);
 
   }
@@ -419,9 +416,9 @@ public class InferredPathTest {
     final PathStateBelief result =
         newPath.getStateBeliefOnPath(currentBelief);
 
-    assertEquals("distance", -7.5d, result
+    AssertJUnit.assertEquals("distance", -7.5d, result
         .getGlobalStateBelief().getMean().getElement(0), 0d);
-    assertEquals("velocity", 1d, result
+    AssertJUnit.assertEquals("velocity", 1d, result
         .getGlobalStateBelief().getMean().getElement(1), 0d);
 
   }
@@ -455,9 +452,9 @@ public class InferredPathTest {
     final PathStateBelief result =
         newPath.getStateBeliefOnPath(currentBelief);
 
-    assertEquals("distance", 7.5d, result
+    AssertJUnit.assertEquals("distance", 7.5d, result
         .getGlobalStateBelief().getMean().getElement(0), 0d);
-    assertEquals("velocity", 1d, result
+    AssertJUnit.assertEquals("velocity", 1d, result
         .getGlobalStateBelief().getMean().getElement(1), 0d);
 
   }
@@ -494,9 +491,9 @@ public class InferredPathTest {
     final MultivariateGaussian result =
         Iterables.get(newPath.getPathEdges(), 1).getPriorPredictive(belief, obs);
 
-    assertEquals("distance", -14d, result.getMean()
+    AssertJUnit.assertEquals("distance", -14d, result.getMean()
         .getElement(0), 1d);
-    assertTrue("velocity direction", startBelief.getMean()
+    AssertJUnit.assertTrue("velocity direction", startBelief.getMean()
         .getElement(1) > result.getMean().getElement(1));
   }
 

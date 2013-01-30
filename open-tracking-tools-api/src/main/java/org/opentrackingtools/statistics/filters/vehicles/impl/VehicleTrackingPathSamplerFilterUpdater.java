@@ -2,7 +2,6 @@ package org.opentrackingtools.statistics.filters.vehicles.impl;
 
 import gov.sandia.cognition.math.matrix.MatrixFactory;
 import gov.sandia.cognition.math.matrix.Vector;
-import gov.sandia.cognition.math.matrix.VectorFactory;
 import gov.sandia.cognition.math.matrix.mtj.DenseMatrix;
 import gov.sandia.cognition.statistics.DataDistribution;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
@@ -21,12 +20,9 @@ import org.geotools.geometry.jts.JTSFactoryFinder;
 import org.opentrackingtools.GpsObservation;
 import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.graph.edges.InferredEdge;
-import org.opentrackingtools.graph.otp.impl.OtpGraph;
 import org.opentrackingtools.graph.paths.InferredPath;
 import org.opentrackingtools.graph.paths.edges.PathEdge;
-import org.opentrackingtools.graph.paths.states.PathState;
 import org.opentrackingtools.graph.paths.states.PathStateBelief;
-import org.opentrackingtools.graph.paths.states.impl.SimplePathStateBelief;
 import org.opentrackingtools.graph.paths.util.PathUtils;
 import org.opentrackingtools.impl.VehicleState;
 import org.opentrackingtools.impl.VehicleStateInitialParameters;
@@ -36,7 +32,6 @@ import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadT
 import org.opentrackingtools.statistics.filters.vehicles.road.impl.StandardRoadTrackingFilter;
 import org.opentrackingtools.statistics.impl.StatisticsUtil;
 import org.opentrackingtools.util.GeoUtils;
-import org.opentripplanner.routing.edgetype.StreetEdge;
 
 import com.google.common.base.Preconditions;
 import com.google.common.base.Predicate;
@@ -44,6 +39,7 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.vividsolutions.jts.geom.Coordinate;
+import com.vividsolutions.jts.geom.Envelope;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.Polygon;
 
@@ -318,8 +314,9 @@ public class VehicleTrackingPathSamplerFilterUpdater extends
         final Coordinate newLoc =
             new Coordinate(newState.getMean().getElement(0),
                 newState.getMean().getElement(2));
-        if (!this.inferenceGraph.getProjGraphExtent()
-            .contains(newLoc)) {
+        Envelope graphExtent = this.inferenceGraph.getProjGraphExtent();
+        if (!graphExtent.isNull() && 
+            !graphExtent.contains(newLoc)) {
           /*
            * We're outside the bounds, so truncate at the bound edge.
            * TODO FIXME: This is an abrupt stop, and most filters won't

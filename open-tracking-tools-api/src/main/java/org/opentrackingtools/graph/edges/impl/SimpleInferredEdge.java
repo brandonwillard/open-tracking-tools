@@ -6,21 +6,10 @@ import gov.sandia.cognition.statistics.bayesian.conjugate.UnivariateGaussianMean
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 import gov.sandia.cognition.statistics.distribution.NormalInverseGammaDistribution;
 
-import java.util.Collection;
-import java.util.List;
-
 import javax.annotation.Nonnull;
 
-import org.apache.commons.lang.builder.CompareToBuilder;
 import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.graph.edges.InferredEdge;
-import org.opentrackingtools.graph.otp.impl.OtpGraph;
-import org.opentripplanner.routing.edgetype.TurnEdge;
-import org.opentripplanner.routing.graph.Edge;
-import org.opentripplanner.routing.graph.Vertex;
-
-import com.google.common.base.Preconditions;
-import com.google.common.collect.Lists;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.linearref.LengthIndexedLine;
@@ -200,10 +189,12 @@ public class SimpleInferredEdge implements InferredEdge {
     return revOnLine;
   }
 
+  @Override
   public Object getBackingEdge() {
     return this.backingEdge;
   }
 
+  @Override
   public String getEdgeId() {
     return edgeId.toString();
   }
@@ -340,7 +331,7 @@ public class SimpleInferredEdge implements InferredEdge {
           + getLength() + "]";
   }
 
-  public static SimpleInferredEdge getEmptyEdge() {
+  public static SimpleInferredEdge getNullEdge() {
     return SimpleInferredEdge.emptyEdge;
   }
 

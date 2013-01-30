@@ -3,11 +3,7 @@ package org.opentrackingtools.graph.paths.impl;
 import gov.sandia.cognition.math.LogMath;
 import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.math.matrix.VectorFactory;
-import gov.sandia.cognition.statistics.bayesian.BayesianCredibleInterval;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
-import gov.sandia.cognition.statistics.distribution.UnivariateGaussian;
-
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -16,7 +12,6 @@ import org.geotools.geometry.jts.JTSFactoryFinder;
 import org.opentrackingtools.GpsObservation;
 import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.graph.edges.InferredEdge;
-import org.opentrackingtools.graph.otp.impl.OtpGraph;
 import org.opentrackingtools.graph.paths.InferredPath;
 import org.opentrackingtools.graph.paths.edges.PathEdge;
 import org.opentrackingtools.graph.paths.edges.impl.EdgePredictiveResults;
@@ -25,14 +20,9 @@ import org.opentrackingtools.graph.paths.states.PathState;
 import org.opentrackingtools.graph.paths.states.PathStateBelief;
 import org.opentrackingtools.graph.paths.states.impl.SimplePathState;
 import org.opentrackingtools.graph.paths.states.impl.SimplePathStateBelief;
-import org.opentrackingtools.graph.paths.util.PathUtils;
 import org.opentrackingtools.impl.VehicleState;
 import org.opentrackingtools.impl.WrappedWeightedValue;
 import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
-import org.opentrackingtools.statistics.impl.DataCube;
-import org.opentrackingtools.statistics.impl.StatisticsUtil;
-
-import com.google.common.annotations.Beta;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
@@ -75,7 +65,7 @@ public class SimpleInferredPath implements InferredPath {
   }
 
   protected SimpleInferredPath(ImmutableList<PathEdge> edges,
-    boolean isBackward) {
+    Boolean isBackward) {
     Preconditions.checkArgument(edges.size() > 0);
     Preconditions
         .checkState(Iterables.getFirst(edges, null)
@@ -599,6 +589,7 @@ public class SimpleInferredPath implements InferredPath {
           + "]";
   }
 
+  @Override
   public void updateEdges(GpsObservation obs,
     MultivariateGaussian stateBelief, InferenceGraph graph) {
 
@@ -620,7 +611,7 @@ public class SimpleInferredPath implements InferredPath {
   }
 
   public static SimpleInferredPath getInferredPath(
-    List<? extends PathEdge> newEdges, boolean isBackward) {
+    List<? extends PathEdge> newEdges, Boolean isBackward) {
     if (newEdges.size() == 1) {
       final PathEdge edge = Iterables.getOnlyElement(newEdges);
       if (edge.isNullEdge())

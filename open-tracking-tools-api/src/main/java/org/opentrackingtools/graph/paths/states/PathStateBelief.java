@@ -35,5 +35,6 @@ public interface PathStateBelief extends PathState, Cloneable {
 
   public abstract PathStateBelief getTruncatedPathStateBelief();
 
+  @Override
   public abstract PathStateBelief clone();
 }

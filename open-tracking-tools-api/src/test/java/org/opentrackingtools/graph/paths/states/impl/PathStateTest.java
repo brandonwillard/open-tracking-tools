@@ -1,8 +1,7 @@
 package org.opentrackingtools.graph.paths.states.impl;
 
-import static org.testng.AssertJUnit.assertEquals;
-import static org.testng.AssertJUnit.assertTrue;
 import org.testng.annotations.Test;
+import org.testng.AssertJUnit;
 import org.testng.annotations.BeforeMethod;
 import static org.mockito.Mockito.mock;
 import gov.sandia.cognition.math.matrix.Vector;
@@ -20,7 +19,6 @@ import org.opentrackingtools.graph.paths.impl.SimpleInferredPath;
 import org.opentrackingtools.graph.paths.impl.TrackingTestUtils;
 import org.opentrackingtools.graph.paths.states.impl.SimplePathState;
 import org.opentrackingtools.graph.paths.util.PathUtils;
-import org.opentrackingtools.graph.paths.util.PathUtils.PathMergeResults;
 import org.opentripplanner.routing.edgetype.PlainStreetEdge;
 import org.opentripplanner.routing.edgetype.StreetTraversalPermission;
 import org.opentripplanner.routing.graph.Edge;
@@ -79,16 +77,16 @@ public class PathStateTest {
         SimplePathState.getPathState(p1, VectorFactory
             .getDenseDefault().createVector2D(7d, 2d));
     final Vector diff = y.minus(x);
-    assertEquals("distance", 2d, diff.getElement(0),
+    AssertJUnit.assertEquals("distance", 2d, diff.getElement(0),
         _numericError);
-    assertEquals("velocity", 1d, diff.getElement(1),
+    AssertJUnit.assertEquals("velocity", 1d, diff.getElement(1),
         _numericError);
 
     /*
      * Check for symmetry
      */
     final Vector diff2 = x.minus(y);
-    assertEquals("rev diff", diff.scale(-1), diff2);
+    AssertJUnit.assertEquals("rev diff", diff.scale(-1), diff2);
   }
 
   @Test(enabled = false)
@@ -116,15 +114,15 @@ public class PathStateTest {
         SimplePathState.getPathState(path2, VectorFactory
             .getDenseDefault().createVector2D(5d, 1d));
     final Vector diff = y.minus(x);
-    assertEquals("distance", 0d, diff.getElement(0),
+    AssertJUnit.assertEquals("distance", 0d, diff.getElement(0),
         _numericError);
-    assertEquals("velocity", 2d, diff.getElement(1),
+    AssertJUnit.assertEquals("velocity", 2d, diff.getElement(1),
         _numericError);
 
     final Vector diff2 = x.minus(y);
-    assertEquals("rev distance", 50d, diff2.getElement(0),
+    AssertJUnit.assertEquals("rev distance", 50d, diff2.getElement(0),
         _numericError);
-    assertEquals("rev velocity", 0d, diff2.getElement(1),
+    AssertJUnit.assertEquals("rev velocity", 0d, diff2.getElement(1),
         _numericError);
 
     final SimplePathState x2 =
@@ -134,9 +132,9 @@ public class PathStateTest {
         SimplePathState.getPathState(path2, VectorFactory
             .getDenseDefault().createVector2D(5d, 1d));
     final Vector diff3 = x2.minus(y2);
-    assertEquals("distance", 32.5d, diff3.getElement(0),
+    AssertJUnit.assertEquals("distance", 32.5d, diff3.getElement(0),
         _numericError);
-    assertEquals("velocity", 0d, diff3.getElement(1),
+    AssertJUnit.assertEquals("velocity", 0d, diff3.getElement(1),
         _numericError);
   }
 
@@ -161,15 +159,15 @@ public class PathStateTest {
         SimplePathState.getPathState(path1, VectorFactory
             .getDenseDefault().createVector2D(8.5d, 1d));
     final Vector diff = y.minus(x);
-    assertEquals("distance", -13.5d, diff.getElement(0),
+    AssertJUnit.assertEquals("distance", -13.5d, diff.getElement(0),
         _numericError);
-    assertEquals("velocity", -2d, diff.getElement(1),
+    AssertJUnit.assertEquals("velocity", -2d, diff.getElement(1),
         _numericError);
 
     final Vector diff2 = x.minus(y);
-    assertEquals("rev distance", -13.5d,
+    AssertJUnit.assertEquals("rev distance", -13.5d,
         diff2.getElement(0), _numericError);
-    assertEquals("rev velocity", -2d, diff2.getElement(1),
+    AssertJUnit.assertEquals("rev velocity", -2d, diff2.getElement(1),
         _numericError);
   }
 
@@ -195,7 +193,7 @@ public class PathStateTest {
     final Vector difference =
         stateOnNewPath.minus(startState);
 
-    assertTrue(difference.isZero(1e-7));
+    AssertJUnit.assertTrue(difference.isZero(1e-7));
   }
 
   @Test
@@ -220,7 +218,7 @@ public class PathStateTest {
     final Vector difference =
         stateOnNewPath.minus(startState);
 
-    assertTrue(difference.isZero(1e-7));
+    AssertJUnit.assertTrue(difference.isZero(1e-7));
   }
 
   @Test
@@ -245,7 +243,7 @@ public class PathStateTest {
     final Vector difference =
         stateOnNewPath.minus(startState);
 
-    assertTrue(difference.isZero(1e-7));
+    AssertJUnit.assertTrue(difference.isZero(1e-7));
   }
 
   @Test
@@ -273,7 +271,7 @@ public class PathStateTest {
     final Vector difference =
         stateOnNewPath.minus(startState);
 
-    assertTrue(difference.isZero(1e-7));
+    AssertJUnit.assertTrue(difference.isZero(1e-7));
   }
 
   @Test
@@ -300,9 +298,9 @@ public class PathStateTest {
 
     final Vector difference = thisState.minus(otherState);
 
-    assertEquals("dist", -121d, difference.getElement(0),
+    AssertJUnit.assertEquals("dist", -121d, difference.getElement(0),
         1d);
-    assertEquals("vel", -14.65d, difference.getElement(1),
+    AssertJUnit.assertEquals("vel", -14.65d, difference.getElement(1),
         1d);
   }
 
@@ -332,7 +330,7 @@ public class PathStateTest {
     final Vector difference =
         stateOnNewPath.minus(startState);
 
-    assertTrue(difference.isZero(1e-7));
+    AssertJUnit.assertTrue(difference.isZero(1e-7));
   }
 
   @Test
@@ -358,8 +356,8 @@ public class PathStateTest {
 
     final Vector difference = thisState.minus(otherState);
 
-    assertEquals("dist", 0d, difference.getElement(0), 0d);
-    assertEquals("vel", 0d, difference.getElement(1), 0d);
+    AssertJUnit.assertEquals("dist", 0d, difference.getElement(0), 0d);
+    AssertJUnit.assertEquals("vel", 0d, difference.getElement(1), 0d);
   }
 
   @Test
@@ -394,7 +392,7 @@ public class PathStateTest {
         SimplePathState.getPathState(thisPath, result);
     final Vector difference = stateOnThis.minus(otherState);
 
-    assertTrue(difference.isZero(1e-7));
+    AssertJUnit.assertTrue(difference.isZero(1e-7));
   }
 
   @Test
@@ -408,9 +406,9 @@ public class PathStateTest {
             VectorFactory.getDenseDefault().createVector2D(
                 p1_neg.getTotalPathDistance() + 7d, -2d));
     final Vector diff2 = x.minus(y);
-    assertEquals("distance", -2d, diff2.getElement(0),
+    AssertJUnit.assertEquals("distance", -2d, diff2.getElement(0),
         _numericError);
-    assertEquals("velocity", 3d, diff2.getElement(1),
+    AssertJUnit.assertEquals("velocity", 3d, diff2.getElement(1),
         _numericError);
   }
 
@@ -434,8 +432,8 @@ public class PathStateTest {
 
     final Vector difference = thisState.minus(otherState);
 
-    assertEquals("dist", -37d, difference.getElement(0), 0d);
-    assertEquals("vel", 3.5d, difference.getElement(1), 0d);
+    AssertJUnit.assertEquals("dist", -37d, difference.getElement(0), 0d);
+    AssertJUnit.assertEquals("vel", 3.5d, difference.getElement(1), 0d);
   }
 
   @Test
@@ -459,8 +457,8 @@ public class PathStateTest {
 
     final Vector difference = thisState.minus(otherState);
 
-    assertEquals("dist", -49d, difference.getElement(0), 0d);
-    assertEquals("vel", -1.6d, difference.getElement(1), 0d);
+    AssertJUnit.assertEquals("dist", -49d, difference.getElement(0), 0d);
+    AssertJUnit.assertEquals("vel", -1.6d, difference.getElement(1), 0d);
   }
 
   /**
@@ -490,8 +488,8 @@ public class PathStateTest {
 
     final Vector difference = thisState.minus(otherState);
 
-    assertEquals("dist", -49d, difference.getElement(0), 0d);
-    assertEquals("vel", -1.6d, difference.getElement(1), 0d);
+    AssertJUnit.assertEquals("dist", -49d, difference.getElement(0), 0d);
+    AssertJUnit.assertEquals("vel", -1.6d, difference.getElement(1), 0d);
   }
 
   @Test(enabled = false, expectedExceptions = IllegalStateException.class)
@@ -523,9 +521,9 @@ public class PathStateTest {
         SimplePathState.getPathState(p2, VectorFactory
             .getDenseDefault().createVector2D(17.5d, -1d));
     final Vector diff = y.minus(x);
-    assertEquals("distance", 15d, diff.getElement(0),
+    AssertJUnit.assertEquals("distance", 15d, diff.getElement(0),
         _numericError);
-    assertEquals("velocity", -2d, diff.getElement(1),
+    AssertJUnit.assertEquals("velocity", -2d, diff.getElement(1),
         _numericError);
   }
 
@@ -542,9 +540,9 @@ public class PathStateTest {
                 new Coordinate(0, 20)), VectorFactory
             .getDenseDefault().createVector2D(-17.5d, -1d));
     final Vector diff = y.minus(x);
-    assertEquals("distance", -15d, diff.getElement(0),
+    AssertJUnit.assertEquals("distance", -15d, diff.getElement(0),
         _numericError);
-    assertEquals("velocity", 0d, diff.getElement(1),
+    AssertJUnit.assertEquals("velocity", 0d, diff.getElement(1),
         _numericError);
   }
 
@@ -561,9 +559,9 @@ public class PathStateTest {
         SimplePathState.getPathState(p2, VectorFactory
             .getDenseDefault().createVector2D(17.5d, 1d));
     final Vector diff2 = y2.minus(x2);
-    assertEquals("distance", 20d, diff2.getElement(0),
+    AssertJUnit.assertEquals("distance", 20d, diff2.getElement(0),
         _numericError);
-    assertEquals("velocity", 2d, diff2.getElement(1),
+    AssertJUnit.assertEquals("velocity", 2d, diff2.getElement(1),
         _numericError);
   }
 
@@ -584,9 +582,9 @@ public class PathStateTest {
                 new Coordinate(0, 20)), VectorFactory
             .getDenseDefault().createVector2D(-17.5d, 1d));
     final Vector diff2 = y2.minus(x2);
-    assertEquals("distance", -20d, diff2.getElement(0),
+    AssertJUnit.assertEquals("distance", -20d, diff2.getElement(0),
         _numericError);
-    assertEquals("velocity", 0d, diff2.getElement(1),
+    AssertJUnit.assertEquals("velocity", 0d, diff2.getElement(1),
         _numericError);
   }
 
@@ -608,16 +606,16 @@ public class PathStateTest {
             VectorFactory.getDenseDefault().createVector2D(
                 5d, -1d));
     final Vector diff = y.minus(x);
-    assertEquals("distance", 10d, diff.getElement(0),
+    AssertJUnit.assertEquals("distance", 10d, diff.getElement(0),
         _numericError);
-    assertEquals("velocity", -2d, diff.getElement(1),
+    AssertJUnit.assertEquals("velocity", -2d, diff.getElement(1),
         _numericError);
 
     /*
      * Check for symmetry
      */
     final Vector diff2 = x.minus(y);
-    assertTrue("rev diff", diff2.scale(-1).equals(diff));
+    AssertJUnit.assertTrue("rev diff", diff2.scale(-1).equals(diff));
   }
 
   @Test(enabled = false)
@@ -638,18 +636,18 @@ public class PathStateTest {
             VectorFactory.getDenseDefault().createVector2D(
                 0d, -1d));
     final Vector diff = y.minus(x);
-    assertEquals("distance", -15d, diff.getElement(0),
+    AssertJUnit.assertEquals("distance", -15d, diff.getElement(0),
         _numericError);
-    assertEquals("velocity", 0d, diff.getElement(1),
+    AssertJUnit.assertEquals("velocity", 0d, diff.getElement(1),
         _numericError);
 
     /*
      * Check for symmetry
      */
     final Vector diff2 = x.minus(y);
-    assertEquals("rev distance", -15d, diff2.getElement(0),
+    AssertJUnit.assertEquals("rev distance", -15d, diff2.getElement(0),
         _numericError);
-    assertEquals("rev velocity", 0d, diff2.getElement(1),
+    AssertJUnit.assertEquals("rev velocity", 0d, diff2.getElement(1),
         _numericError);
   }
 
@@ -675,9 +673,9 @@ public class PathStateTest {
                 false)), VectorFactory.getDenseDefault()
             .createVector2D(5d, 1d));
     final Vector diff = y.minus(x);
-    assertEquals("distance", 20d, diff.getElement(0),
+    AssertJUnit.assertEquals("distance", 20d, diff.getElement(0),
         _numericError);
-    assertEquals("velocity", 0d, diff.getElement(1),
+    AssertJUnit.assertEquals("velocity", 0d, diff.getElement(1),
         _numericError);
 
     /*
@@ -685,7 +683,7 @@ public class PathStateTest {
      * when something touches the beginning it works
      */
     final Vector diff2 = x.minus(y);
-    assertTrue("rev diff", diff2.scale(-1).equals(diff));
+    AssertJUnit.assertTrue("rev diff", diff2.scale(-1).equals(diff));
   }
 
   /**
@@ -715,9 +713,9 @@ public class PathStateTest {
                 false)), VectorFactory.getDenseDefault()
             .createVector2D(5d, -1d));
     final Vector diff = y.minus(x);
-    assertEquals("distance", -20d, diff.getElement(0),
+    AssertJUnit.assertEquals("distance", -20d, diff.getElement(0),
         _numericError);
-    assertEquals("velocity", 0d, diff.getElement(1),
+    AssertJUnit.assertEquals("velocity", 0d, diff.getElement(1),
         _numericError);
 
     /*
@@ -725,9 +723,9 @@ public class PathStateTest {
      * when something touches the beginning it works
      */
     final Vector diff2 = x.minus(y);
-    assertEquals("rev distance", -20d, diff2.getElement(0),
+    AssertJUnit.assertEquals("rev distance", -20d, diff2.getElement(0),
         _numericError);
-    assertEquals("rev velocity", 0d, diff2.getElement(1),
+    AssertJUnit.assertEquals("rev velocity", 0d, diff2.getElement(1),
         _numericError);
   }
 
@@ -756,15 +754,15 @@ public class PathStateTest {
         SimplePathState.getPathState(pOther, VectorFactory
             .getDenseDefault().createVector2D(5d, -1d));
     final Vector diff = y.minus(x);
-    assertEquals("distance", -10d, diff.getElement(0),
+    AssertJUnit.assertEquals("distance", -10d, diff.getElement(0),
         _numericError);
-    assertEquals("velocity", 0d, diff.getElement(1),
+    AssertJUnit.assertEquals("velocity", 0d, diff.getElement(1),
         _numericError);
 
     final Vector diff2 = x.minus(y);
-    assertEquals("rev distance", -10d, diff2.getElement(0),
+    AssertJUnit.assertEquals("rev distance", -10d, diff2.getElement(0),
         _numericError);
-    assertEquals("rev velocity", 0d, diff2.getElement(1),
+    AssertJUnit.assertEquals("rev velocity", 0d, diff2.getElement(1),
         _numericError);
   }
 
@@ -805,15 +803,15 @@ public class PathStateTest {
                     new Coordinate(0, 10),
                     new Coordinate(0, 0) });
 
-    assertTrue(res1.getPath().equalsExact(expRes1));
-    assertTrue(!res1.isToIsReversed());
+    AssertJUnit.assertTrue(res1.getPath().equalsExact(expRes1));
+    AssertJUnit.assertTrue(!res1.isToIsReversed());
 
     final PathUtils.PathMergeResults res2 =
         PathUtils.mergePaths(from, 35d,
             to.reverse(), 5d);
 
-    assertTrue(res2.getPath().equalsExact(expRes1));
-    assertTrue(res2.isToIsReversed());
+    AssertJUnit.assertTrue(res2.getPath().equalsExact(expRes1));
+    AssertJUnit.assertTrue(res2.isToIsReversed());
 
     final PathUtils.PathMergeResults res3 =
         PathUtils.mergePaths(from, 2.5d, to, 5d);
@@ -827,8 +825,8 @@ public class PathStateTest {
                     new Coordinate(10, 10),
                     new Coordinate(20, 10), });
 
-    assertTrue(res3.getPath().equalsExact(expRes3));
-    assertTrue(res3.isToIsReversed());
+    AssertJUnit.assertTrue(res3.getPath().equalsExact(expRes3));
+    AssertJUnit.assertTrue(res3.isToIsReversed());
 
     final InferredPath path11 =
         makeTmpPath(false, new Coordinate(10, 10),
@@ -848,8 +846,8 @@ public class PathStateTest {
                     new Coordinate(20, 10),
                     new Coordinate(20, 20) });
 
-    assertTrue(res4.getPath().equalsExact(expRes2));
-    assertTrue(res4.isToIsReversed());
+    AssertJUnit.assertTrue(res4.getPath().equalsExact(expRes2));
+    AssertJUnit.assertTrue(res4.isToIsReversed());
 
     final PathUtils.PathMergeResults res5 =
         PathUtils.mergePaths(path11.getGeometry(),
@@ -866,8 +864,8 @@ public class PathStateTest {
                 //               new Coordinate(0, 0)
                 });
 
-    assertTrue(res5.getPath().equalsExact(expRes5));
-    assertTrue(res5.isToIsReversed());
+    AssertJUnit.assertTrue(res5.getPath().equalsExact(expRes5));
+    AssertJUnit.assertTrue(res5.isToIsReversed());
 
     final Geometry p12 =
         JTSFactoryFinder.getGeometryFactory()
@@ -881,17 +879,18 @@ public class PathStateTest {
         PathUtils
             .mergePaths(p12, 37.5d, p12, 32.5d);
 
-    assertTrue(res6.getPath().equalsExact(p12));
-    assertTrue(!res6.isToIsReversed());
+    AssertJUnit.assertTrue(res6.getPath().equalsExact(p12));
+    AssertJUnit.assertTrue(!res6.isToIsReversed());
 
     final PathUtils.PathMergeResults res7 =
         PathUtils.mergePaths(p12, 37.5d,
             p12.reverse(), 32.5d);
 
-    assertTrue(res7.getPath().equalsExact(p12));
-    assertTrue(res7.isToIsReversed());
+    AssertJUnit.assertTrue(res7.getPath().equalsExact(p12));
+    AssertJUnit.assertTrue(res7.isToIsReversed());
   }
 
+  @Test
   @BeforeMethod
   public void testSetup() {
     graph = new Graph();

@@ -17,7 +17,6 @@ import org.opentrackingtools.graph.paths.edges.PathEdge;
 import org.opentrackingtools.graph.paths.edges.impl.EdgePredictiveResults;
 import org.opentrackingtools.graph.paths.impl.InferredPathPrediction;
 import org.opentrackingtools.graph.paths.states.PathStateBelief;
-import org.opentrackingtools.graph.paths.states.impl.SimplePathStateBelief;
 import org.opentrackingtools.impl.VehicleState;
 import org.opentrackingtools.impl.VehicleStateInitialParameters;
 import org.opentrackingtools.impl.WrappedWeightedValue;
@@ -29,7 +28,6 @@ import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadT
 import org.opentrackingtools.statistics.impl.StatisticsUtil;
 
 import com.google.common.collect.HashMultimap;
-import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Multimap;
@@ -69,7 +67,7 @@ public abstract class AbstractVTPLFilter extends
           ((DefaultCountedDataDistribution<VehicleState>) target)
               .getCount(state);
 
-      final Set<InferredPath> instStateTransitions =
+      final Collection<InferredPath> instStateTransitions =
           inferredGraph.getPaths(state, obs.getObsProjected());
 
       state.getMovementFilter()
@@ -275,8 +273,9 @@ public abstract class AbstractVTPLFilter extends
      * along paths in sequence, we need to adjust the prior
      */
     final PathStateBelief pathAdjustedPriorBelief =
-        updatedBelief.getPath().getStateBeliefOnPath(
-             priorPathStateBelief.getRawStateBelief());
+        priorPathStateBelief;
+//        updatedBelief.getPath().getStateBeliefOnPath(
+//             priorPathStateBelief.getRawStateBelief());
 //        SimplePathStateBelief.getPathStateBelief(updatedBelief
 //            .getPath(),
 //                 priorPathStateBelief.getRawStateBelief(),

@@ -129,11 +129,12 @@
     </repository>
   </repositories>
 
-  <dependencies>
+  <dependencies> 
     <dependency>
       <groupId>org.testng</groupId>
       <artifactId>testng</artifactId>
       <version>6.8</version>
+      <scope>test</scope>
     </dependency> 
     <dependency>
       <groupId>com.jhlabs</groupId>
@@ -168,6 +169,11 @@
     <dependency>
       <groupId>org.geotools</groupId>
       <artifactId>gt-main</artifactId>
+      <version>${geotools.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.geotools</groupId>
+      <artifactId>gt-graph</artifactId>
       <version>${geotools.version}</version>
     </dependency>
     <dependency>

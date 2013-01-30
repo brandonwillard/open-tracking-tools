@@ -1,8 +1,8 @@
 package org.opentrackingtools.statistics.filters.vehicles.road.impl;
 
-import static org.testng.AssertJUnit.assertTrue;
 import org.testng.annotations.Test;
 import org.testng.annotations.BeforeMethod;
+import org.testng.AssertJUnit;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.stub;
 import gov.sandia.cognition.math.matrix.Matrix;
@@ -338,7 +338,7 @@ public class ErrorEstimatingRoadTrackingFilterTest {
       
       final Matrix obsMean =
           filter.getObsVariancePrior().getMean();
-      assertTrue(obsMean.minus(trueObsCov).normFrobenius()
+      AssertJUnit.assertTrue(obsMean.minus(trueObsCov).normFrobenius()
           / obsMean.normFrobenius() <= 0.4d);
   
       final Matrix stateTransMean =
@@ -348,7 +348,7 @@ public class ErrorEstimatingRoadTrackingFilterTest {
       final Matrix stateTransDiff =
           stateTransMean.minus(trueStateCov);
   
-      assertTrue(stateTransDiff.normFrobenius()
+      AssertJUnit.assertTrue(stateTransDiff.normFrobenius()
           / stateTransMean.normFrobenius() <= 0.5d);
 
     }
@@ -367,7 +367,7 @@ public class ErrorEstimatingRoadTrackingFilterTest {
     
     final Matrix obsMean =
         filter.getObsVariancePrior().getMean();
-    assertTrue(obsMean.minus(trueObsCov).normFrobenius()
+    AssertJUnit.assertTrue(obsMean.minus(trueObsCov).normFrobenius()
         / obsMean.normFrobenius() <= 0.4d);
 
     final Matrix stateTransMean =
@@ -377,7 +377,7 @@ public class ErrorEstimatingRoadTrackingFilterTest {
     final Matrix stateTransDiff =
         stateTransMean.minus(trueStateCov);
 
-    assertTrue(stateTransDiff.normFrobenius()
+    AssertJUnit.assertTrue(stateTransDiff.normFrobenius()
         / stateTransMean.normFrobenius() <= 0.4d);
 
   }

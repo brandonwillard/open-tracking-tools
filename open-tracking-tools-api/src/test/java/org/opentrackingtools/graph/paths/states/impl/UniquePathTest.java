@@ -1,8 +1,7 @@
 package org.opentrackingtools.graph.paths.states.impl;
 
-import static org.testng.AssertJUnit.assertEquals;
-import static org.testng.AssertJUnit.assertTrue;
 import org.testng.annotations.Test;
+import org.testng.AssertJUnit;
 import org.testng.annotations.BeforeMethod;
 import static org.mockito.Mockito.mock;
 
@@ -38,6 +37,7 @@ public class UniquePathTest {
     return gf.createLineString(coordinates);
   }
 
+  @Test
   @BeforeMethod
   public void testSetup() {
 
@@ -91,7 +91,7 @@ public class UniquePathTest {
 
     //a single path should be passed unchanged.
     OtpGraph.makeUnique(paths);
-    assertEquals(1, paths.size());
+    AssertJUnit.assertEquals(1, paths.size());
 
     final List<SimplePathEdge> edges2 =
         Arrays.asList(SimplePathEdge.getEdge(SimpleInferredEdge.getInferredEdge(
@@ -102,7 +102,7 @@ public class UniquePathTest {
 
     //two non-overlapping paths should not be compressed
     OtpGraph.makeUnique(paths);
-    assertEquals(2, paths.size());
+    AssertJUnit.assertEquals(2, paths.size());
 
     final List<SimplePathEdge> edges3 =
         Arrays.asList(SimplePathEdge.getEdge(SimpleInferredEdge.getInferredEdge(
@@ -115,8 +115,8 @@ public class UniquePathTest {
 
     //an overlapping path should supersede a smaller one
     OtpGraph.makeUnique(paths);
-    assertEquals(2, paths.size());
-    assertTrue(paths.contains(p3));
+    AssertJUnit.assertEquals(2, paths.size());
+    AssertJUnit.assertTrue(paths.contains(p3));
 
     //the most complicated example
     final List<SimplePathEdge> edges4 =

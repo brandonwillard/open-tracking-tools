@@ -84,7 +84,7 @@ public abstract class AbstractVTParticleFilterUpdater
       final AbstractRoadTrackingFilter<?> tmpTrackingFilter =
           this.createRoadTrackingFilter();
       final MultivariateGaussian tmpInitialBelief =
-          tmpTrackingFilter.createInitialLearnedObject();
+          tmpTrackingFilter.getGroundFilter().createInitialLearnedObject();
       final Vector xyPoint =
           initialObservation.getProjectedPoint();
       tmpInitialBelief.setMean(VectorFactory.getDefault()

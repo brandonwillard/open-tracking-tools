@@ -1,12 +1,7 @@
 package org.opentrackingtools.graph.edges;
 
-import java.util.Collection;
-import java.util.List;
-
 import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
-
-import org.opentrackingtools.graph.InferenceGraph;
 
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;

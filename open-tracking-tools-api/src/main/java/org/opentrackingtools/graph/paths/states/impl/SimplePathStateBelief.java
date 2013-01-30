@@ -131,6 +131,7 @@ public class SimplePathStateBelief extends AbstractPathState implements PathStat
     return globalStateBelief;
   }
 
+  @Override
   public MultivariateGaussian getGroundBelief() {
     
     if (!this.isOnRoad())

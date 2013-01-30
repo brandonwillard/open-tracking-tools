@@ -3,7 +3,6 @@ package org.opentrackingtools.impl;
 import gov.sandia.cognition.math.matrix.Matrix;
 import gov.sandia.cognition.math.matrix.MatrixFactory;
 import gov.sandia.cognition.math.matrix.Vector;
-import gov.sandia.cognition.math.matrix.VectorFactory;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 
 import java.util.Date;
@@ -308,11 +307,8 @@ public class Simulation {
   private VehicleState sampleState(
     VehicleState vehicleState, long time) {
 
-    final AbstractRoadTrackingFilter<?> trackingFilter =
-        vehicleState.getMovementFilter().clone();
-
-    trackingFilter.setCurrentTimeDiff(this.simParameters
-        .getFrequency());
+    vehicleState.getMovementFilter().setCurrentTimeDiff(
+        this.simParameters.getFrequency());
 
     final OnOffEdgeTransDirMulti currentEdgeTrans =
         vehicleState.getEdgeTransitionDist().clone();
@@ -339,8 +335,9 @@ public class Simulation {
     GpsObservation thisObs =
           new SimpleObservation(simulationName,
               new Date(time), obsCoord, null, null, null,
-              thisRecNum, vehicleState.getObservation(), vehicleState
-            .getObservation().getObsProjected());
+              thisRecNum, vehicleState.getObservation(), 
+              new ProjectedCoordinate(GeoUtils.getTransform(obsCoord), 
+                  GeoUtils.makeCoordinate(thisLoc), obsCoord));
 
     final SimplePathStateBelief newStateBelief =
         SimplePathStateBelief.getPathStateBelief(
@@ -355,7 +352,7 @@ public class Simulation {
 
     final VehicleState newState =
         new VehicleState(this.inferredGraph, thisObs,
-            trackingFilter, newStateBelief,
+            vehicleState.getMovementFilter(), newStateBelief,
             currentEdgeTrans, vehicleState);
 
     return newState;

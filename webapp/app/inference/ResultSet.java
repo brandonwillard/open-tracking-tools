@@ -393,7 +393,11 @@ public class ResultSet {
   
   @JsonSerialize
   public Double getDistanceFromPreviousState() {
-    return this.state.getDistanceFromPreviousState();
+    final VehicleState parentState =this.state.getParentState();
+    if (parentState != null) {
+      return this.state.getBelief().minus(parentState.getBelief()).norm2();
+    }
+    return null;
   }
 
   @JsonSerialize

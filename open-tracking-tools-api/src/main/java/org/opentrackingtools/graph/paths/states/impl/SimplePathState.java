@@ -1,7 +1,5 @@
 package org.opentrackingtools.graph.paths.states.impl;
 
-import java.util.List;
-
 import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.util.ObjectUtil;
 
@@ -10,7 +8,6 @@ import javax.annotation.Nonnull;
 import org.apache.commons.lang3.builder.CompareToBuilder;
 import org.opentrackingtools.graph.paths.InferredPath;
 import org.opentrackingtools.graph.paths.edges.PathEdge;
-import org.opentrackingtools.graph.paths.impl.SimpleInferredPath;
 import org.opentrackingtools.graph.paths.states.AbstractPathState;
 import org.opentrackingtools.graph.paths.states.PathState;
 import org.opentrackingtools.graph.paths.util.PathUtils;
@@ -18,7 +15,6 @@ import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadT
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Iterables;
-import com.google.common.collect.Lists;
 
 public class SimplePathState extends AbstractPathState {
 

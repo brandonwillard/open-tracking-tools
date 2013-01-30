@@ -1,6 +1,5 @@
 package org.opentrackingtools.impl;
 
-import gov.sandia.cognition.math.matrix.AbstractVector;
 import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.statistics.ComputableDistribution;
 import gov.sandia.cognition.statistics.ProbabilityFunction;
@@ -13,15 +12,12 @@ import jj2000.j2k.NotImplementedError;
 import org.apache.commons.lang.builder.CompareToBuilder;
 import org.opentrackingtools.GpsObservation;
 import org.opentrackingtools.graph.InferenceGraph;
-import org.opentrackingtools.graph.paths.impl.InferredPathPrediction;
 import org.opentrackingtools.graph.paths.states.PathStateBelief;
 import org.opentrackingtools.statistics.distributions.impl.OnOffEdgeTransDirMulti;
 import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
 
 import com.google.common.base.Preconditions;
-import com.google.common.collect.ComparisonChain;
 import com.google.common.collect.Iterables;
-import com.vividsolutions.jts.geom.Geometry;
 
 /**
  * This class represents the state of a vehicle, which is made up of the
@@ -116,8 +112,6 @@ public class VehicleState implements
   private final GpsObservation observation;
   private VehicleState parentState = null;
 
-  private final Double distanceFromPreviousState;
-
   private final InferenceGraph graph;
 
   // private final int initialHashCode;
@@ -154,25 +148,6 @@ public class VehicleState implements
             || belief.getEdge().equals(
                 Iterables.getLast(belief.getPath()
                     .getPathEdges())));
-    /*
-     * This is the constructor used when creating transition states, so this is
-     * where we'll need to reset the distance measures
-     */
-    if (parentState != null) {
-      final Vector dist =
-          this.belief.minus(parentState.belief);
-      if (dist.getDimensionality() == 2) {
-        this.distanceFromPreviousState =
-            AbstractRoadTrackingFilter.getOr().times(dist)
-                .norm2();
-      } else {
-        this.distanceFromPreviousState =
-            AbstractRoadTrackingFilter.getOg().times(dist)
-                .norm2();
-      }
-    } else {
-      this.distanceFromPreviousState = null;
-    }
 
     this.edgeTransitionDist = edgeTransitionDist;
 
@@ -210,8 +185,6 @@ public class VehicleState implements
     this.edgeTransitionDist =
         other.edgeTransitionDist.clone();
     this.observation = other.observation;
-    this.distanceFromPreviousState =
-        other.distanceFromPreviousState;
     this.parentState = other.parentState;
 
     // DEBUG
@@ -256,10 +229,6 @@ public class VehicleState implements
 
   public PathStateBelief getBelief() {
     return belief;
-  }
-
-  public Double getDistanceFromPreviousState() {
-    return distanceFromPreviousState;
   }
 
   public OnOffEdgeTransDirMulti getEdgeTransitionDist() {

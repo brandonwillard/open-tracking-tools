@@ -1,8 +1,8 @@
-package org.opentrackingtools.graph.paths.states.impl;
+package org.opentrackingtools.statistics;
 
-import static org.testng.AssertJUnit.assertTrue;
 import org.testng.annotations.Test;
 import org.testng.annotations.BeforeMethod;
+import org.testng.AssertJUnit;
 import gov.sandia.cognition.math.matrix.Matrix;
 import gov.sandia.cognition.math.matrix.MatrixFactory;
 import gov.sandia.cognition.math.matrix.Vector;
@@ -37,7 +37,7 @@ public class StatisticsUtilTest {
         StatisticsUtil.rootOfSemiDefinite(mat);
     final Matrix localChol = StatisticsUtil.getCholR(mat);
 
-    assertTrue(chol.equals(localChol, 1e-5));
+    AssertJUnit.assertTrue(chol.equals(localChol, 1e-5));
 
     final Random rng = new Random(1234567);
 
@@ -72,8 +72,8 @@ public class StatisticsUtilTest {
     final Matrix cov1 = ss1.getCovariance();
     ss2.getCovariance();
 
-    assertTrue(ss1.getMean().isZero(1e-5));
-    assertTrue(mat.equals(cov1, 1e-5));
+    AssertJUnit.assertTrue(ss1.getMean().isZero(1e-5));
+    AssertJUnit.assertTrue(mat.equals(cov1, 1e-5));
   }
 
   @Test
@@ -102,7 +102,7 @@ public class StatisticsUtilTest {
       System.out.println(ss.getMean());
     }
 
-    assertTrue(Math.abs(ss.getMean().sum()) < 1d);
+    AssertJUnit.assertTrue(Math.abs(ss.getMean().sum()) < 1d);
 
   }
 

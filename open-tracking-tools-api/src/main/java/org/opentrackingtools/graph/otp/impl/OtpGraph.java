@@ -2,13 +2,11 @@ package org.opentrackingtools.graph.otp.impl;
 
 import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.math.matrix.mtj.DenseMatrix;
-import gov.sandia.cognition.statistics.Distribution;
 import gov.sandia.cognition.statistics.DistributionWithMean;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 
 import java.io.File;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -23,6 +21,7 @@ import org.opentrackingtools.graph.paths.InferredPath;
 import org.opentrackingtools.graph.paths.algorithms.otp.impl.MultiDestinationAStar;
 import org.opentrackingtools.graph.paths.edges.PathEdge;
 import org.opentrackingtools.graph.paths.edges.impl.SimplePathEdge;
+import org.opentrackingtools.graph.paths.impl.SimpleInferredPath;
 import org.opentrackingtools.impl.VehicleState;
 import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
 import org.opentrackingtools.statistics.impl.DataCube;
@@ -52,7 +51,6 @@ import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.common.collect.HashMultimap;
-import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -342,7 +340,7 @@ public class OtpGraph implements InferenceGraph {
     final Coordinate toCoord = key.getEndCoord();
 
     final Set<InferredPath> paths =
-        Sets.newHashSet(OtpInferredPath.getNullPath());
+        Sets.newHashSet(SimpleInferredPath.getNullPath());
     final Set<Edge> startEdges = Sets.newHashSet();
 
     if (!currentEdge.isNullEdge()) {
@@ -721,6 +719,7 @@ public class OtpGraph implements InferenceGraph {
     return streetEdges;
   }
 
+  @Override
   public Collection<InferredEdge> getNearbyEdges(Vector loc,
     double radius) {
     Preconditions
@@ -939,12 +938,12 @@ public class OtpGraph implements InferenceGraph {
 
   @Override
   public InferredEdge getNullInferredEdge() {
-    return SimpleInferredEdge.getEmptyEdge();
+    return SimpleInferredEdge.getNullEdge();
   }
 
   @Override
   public InferredPath getNullPath() {
-    return OtpInferredPath.getNullPath();
+    return SimpleInferredPath.getNullPath();
   }
 
   @Override
@@ -958,7 +957,7 @@ public class OtpGraph implements InferenceGraph {
   }
 
   @Override
-  public PathEdge getPathEdge(InferredEdge edge, double d, boolean isBackward) {
+  public PathEdge getPathEdge(InferredEdge edge, double d, Boolean isBackward) {
     return SimplePathEdge.getEdge(edge, d, isBackward);
   }
 
@@ -969,8 +968,8 @@ public class OtpGraph implements InferenceGraph {
 
   @Override
   public InferredPath getInferredPath(List<PathEdge> currentPath,
-    boolean isBackward) {
-    return OtpInferredPath.getInferredPath(currentPath, isBackward);
+    Boolean isBackward) {
+    return SimpleInferredPath.getInferredPath(currentPath, isBackward);
   }
 
   @Override

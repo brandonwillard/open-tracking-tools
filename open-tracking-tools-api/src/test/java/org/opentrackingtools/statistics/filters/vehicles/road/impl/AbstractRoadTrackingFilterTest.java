@@ -1,9 +1,8 @@
 package org.opentrackingtools.statistics.filters.vehicles.road.impl;
 
-import static org.testng.AssertJUnit.assertEquals;
-import static org.testng.AssertJUnit.assertTrue;
 import org.testng.annotations.Test;
 import org.testng.annotations.BeforeMethod;
+import org.testng.AssertJUnit;
 import static org.mockito.Mockito.mock;
 import gov.sandia.cognition.math.matrix.Matrix;
 import gov.sandia.cognition.math.matrix.MatrixFactory;
@@ -13,7 +12,6 @@ import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 
 import java.util.Random;
 
-import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.graph.edges.impl.SimpleInferredEdge;
 import org.opentrackingtools.graph.otp.impl.OtpGraph;
 import org.opentrackingtools.graph.paths.edges.PathEdge;
@@ -113,7 +111,7 @@ public class AbstractRoadTrackingFilterTest {
     final PathEdge pathEdge =
         SimplePathEdge.getEdge(infEdge, -46d, true);
 
-    assertTrue(PathUtils.isIsoMapping(
+    AssertJUnit.assertTrue(PathUtils.isIsoMapping(
         mean, projMean, pathEdge));
   }
 
@@ -146,9 +144,9 @@ public class AbstractRoadTrackingFilterTest {
     final PathStateBelief result =
         filter.predict(currentBelief, newPath);
 
-    assertEquals("dist", -5d, result.getGlobalState()
+    AssertJUnit.assertEquals("dist", -5d, result.getGlobalState()
         .getElement(0), 0d);
-    assertEquals("new path", newPath, result.getPath());
+    AssertJUnit.assertEquals("new path", newPath, result.getPath());
 
     final MultivariateGaussian startBelief2 =
         new MultivariateGaussian(VectorFactory.getDefault()
@@ -160,9 +158,9 @@ public class AbstractRoadTrackingFilterTest {
     final PathStateBelief result2 =
         filter.predict(currentBelief2, newPath);
 
-    assertEquals("dist 2", -15d, result2.getGlobalState()
+    AssertJUnit.assertEquals("dist 2", -15d, result2.getGlobalState()
         .getElement(0), 0d);
-    assertEquals("new path 2", newPath, result2.getPath());
+    AssertJUnit.assertEquals("new path 2", newPath, result2.getPath());
 
   }
 
@@ -191,8 +189,8 @@ public class AbstractRoadTrackingFilterTest {
 
     final Matrix factErr = filter.getQg().minus(rfact);
 
-    assertTrue(varErr.normFrobenius() < 1d);
-    assertTrue(factErr.normFrobenius() < 1e-5d);
+    AssertJUnit.assertTrue(varErr.normFrobenius() < 1d);
+    AssertJUnit.assertTrue(factErr.normFrobenius() < 1e-5d);
 
   }
 
@@ -221,8 +219,8 @@ public class AbstractRoadTrackingFilterTest {
 
     final Matrix factErr = filter.getQr().minus(rfact);
 
-    assertTrue(varErr.normFrobenius() < 1d);
-    assertTrue(factErr.normFrobenius() < 1e-5d);
+    AssertJUnit.assertTrue(varErr.normFrobenius() < 1d);
+    AssertJUnit.assertTrue(factErr.normFrobenius() < 1e-5d);
 
   }
 

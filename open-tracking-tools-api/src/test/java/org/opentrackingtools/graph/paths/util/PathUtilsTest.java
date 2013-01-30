@@ -3,7 +3,6 @@ package org.opentrackingtools.graph.paths.util;
 
 import org.testng.annotations.Test;
 import org.testng.annotations.DataProvider;
-import org.testng.annotations.Test;
 import org.testng.internal.junit.ArrayAsserts;
 
 import static org.mockito.Mockito.mock;

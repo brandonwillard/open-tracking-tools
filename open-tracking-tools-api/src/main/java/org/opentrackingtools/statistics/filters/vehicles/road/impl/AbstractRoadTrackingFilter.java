@@ -10,8 +10,6 @@ import gov.sandia.cognition.math.signals.LinearDynamicalSystem;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 import gov.sandia.cognition.util.AbstractCloneableSerializable;
 
-import java.util.List;
-import java.util.Map.Entry;
 import java.util.Random;
 
 import javax.annotation.Nonnull;
@@ -20,14 +18,12 @@ import org.opentrackingtools.GpsObservation;
 import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.graph.paths.InferredPath;
 import org.opentrackingtools.graph.paths.edges.PathEdge;
-import org.opentrackingtools.graph.paths.states.PathState;
 import org.opentrackingtools.graph.paths.states.PathStateBelief;
 import org.opentrackingtools.graph.paths.util.PathUtils;
 import org.opentrackingtools.impl.VehicleState;
 import org.opentrackingtools.statistics.filters.impl.AdjKalmanFilter;
 import org.opentrackingtools.statistics.impl.StatisticsUtil;
 
-import com.beust.jcommander.internal.Lists;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Iterables;
 
@@ -179,11 +175,6 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
     return clone;
   }
 
-  public MultivariateGaussian createInitialLearnedObject() {
-    return new MultivariateGaussian(groundFilter.getModel()
-        .getState(), groundFilter.getModelCovariance());
-  }
-
   public Matrix getCovarianceFactor(boolean isRoad) {
     return getCovarianceFactor(this.currentTimeDiff, isRoad);
   }
@@ -300,6 +291,16 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
       this.roadFilter.setMeasurementCovariance(obsProj
           .getCovariance());
       updatedBelief = priorPathStateBelief.getGlobalStateBelief().clone();
+      
+      /*
+       * Clamp the projected obs
+       */
+      if (!priorPathStateBelief.getPath().isOnPath(obsProj.getMean().getElement(0))) {
+        obsProj.getMean().setElement(0, 
+            priorPathStateBelief.getPath().clampToPath(
+                obsProj.getMean().getElement(0)));
+      }
+      
       this.roadFilter.measure(updatedBelief,
           obsProj.getMean());
 
@@ -383,6 +384,15 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
         newBelief = newBeliefOnPath.getGlobalStateBelief();
       }
       roadFilter.predict(newBelief);
+      
+      /*
+       * Clamp to path
+       */
+      final double distance = AbstractRoadTrackingFilter.getOr().times(
+          newBelief.getMean()).getElement(0);
+      if (!path.isOnPath(distance)) {
+        newBelief.getMean().setElement(0, path.clampToPath(distance));
+      }
     }
 
     return path.getStateBeliefOnPath(newBelief);
@@ -430,9 +440,9 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
         MultivariateGaussian.sample(VectorFactory
             .getDenseDefault().createVector(dim / 2),
             sampleCovChol, rng);
-    final Vector stateSmpl =
-        state.plus(this.getCovarianceFactor(dim == 2)
-            .times(qSmpl));
+    final Matrix covFactor = this.getCovarianceFactor(dim == 2);
+    final Vector error = covFactor.times(qSmpl);
+    final Vector stateSmpl = state.plus(error);
     return stateSmpl;
   }
 

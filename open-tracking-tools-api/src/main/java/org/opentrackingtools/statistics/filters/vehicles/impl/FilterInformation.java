@@ -15,7 +15,6 @@ import org.opentrackingtools.impl.WrappedWeightedValue;
 
 import com.google.common.base.Objects;
 import com.google.common.collect.HashBasedTable;
-import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Table;
 

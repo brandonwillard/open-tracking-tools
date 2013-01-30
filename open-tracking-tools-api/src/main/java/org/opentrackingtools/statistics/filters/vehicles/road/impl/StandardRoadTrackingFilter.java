@@ -9,7 +9,6 @@ import java.util.Random;
 
 import org.opentrackingtools.GpsObservation;
 import org.opentrackingtools.graph.paths.states.PathStateBelief;
-import org.opentrackingtools.graph.paths.states.impl.SimplePathStateBelief;
 import org.opentrackingtools.impl.VehicleState;
 import org.opentrackingtools.statistics.filters.impl.AdjKalmanFilter;
 
