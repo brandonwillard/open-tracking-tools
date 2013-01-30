@@ -252,6 +252,9 @@ public class ErrorEstimatingRoadTrackingFilter
         .setCurrentStateSample(this.currentStateSample != null
             ? this.currentStateSample.clone() : null);
     clone
+        .setPrevStateSample(this.prevStateSample != null
+            ? this.prevStateSample.clone() : null);
+    clone
         .setObsVariancePrior(this.obsVariancePrior.clone());
     clone
         .setOffRoadStateVariancePrior(this.offRoadStateVariancePrior
@@ -266,10 +269,12 @@ public class ErrorEstimatingRoadTrackingFilter
   public int compareTo(ErrorEstimatingRoadTrackingFilter o) {
     final CompareToBuilder comparator =
         new CompareToBuilder();
+    
     comparator.append(((DenseVector) this.obsVariancePrior
         .convertToVector()).getArray(), ((DenseVector) o
         .getObsVariancePrior().convertToVector())
         .getArray());
+    
     comparator.append(
         ((DenseVector) this.onRoadStateVariancePrior
             .convertToVector()).getArray(),
@@ -280,8 +285,12 @@ public class ErrorEstimatingRoadTrackingFilter
             .convertToVector()).getArray(),
         ((DenseVector) o.getOffRoadStateVariancePrior()
             .convertToVector()).getArray());
+    
     comparator.append(this.currentStateSample,
         o.getCurrentStateSample());
+    comparator.append(this.prevStateSample,
+        o.getPrevStateSample());
+    
     return comparator.toComparison();
   }
 
@@ -308,6 +317,14 @@ public class ErrorEstimatingRoadTrackingFilter
       }
     } else if (!currentStateSample
         .equals(other.currentStateSample)) {
+      return false;
+    }
+    if (prevStateSample == null) {
+      if (other.prevStateSample != null) {
+        return false;
+      }
+    } else if (!prevStateSample
+        .equals(other.prevStateSample)) {
       return false;
     }
     if (obsVariancePrior == null) {
@@ -371,6 +388,11 @@ public class ErrorEstimatingRoadTrackingFilter
             * result
             + ((currentStateSample == null) ? 0
                 : currentStateSample.hashCode());
+    result =
+        prime
+            * result
+            + ((prevStateSample == null) ? 0
+                : prevStateSample.hashCode());
     result =
         prime
             * result

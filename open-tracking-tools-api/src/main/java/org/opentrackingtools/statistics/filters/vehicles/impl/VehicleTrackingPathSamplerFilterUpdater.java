@@ -161,11 +161,7 @@ public class VehicleTrackingPathSamplerFilterUpdater extends
     PathStateBelief pathStateBelief,
     AbstractRoadTrackingFilter<?> movementFilter) {
 
-    /*
-     * TODO FIXME there should probably be a flag for this debug stuff
-     */
     final Random rng = this.random;
-    rng.setSeed(this.seed);
 
     PathEdge currentEdge =
         this.inferenceGraph.getPathEdge(pathStateBelief.getEdge()

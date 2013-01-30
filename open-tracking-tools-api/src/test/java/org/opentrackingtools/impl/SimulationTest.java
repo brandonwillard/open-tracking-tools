@@ -60,7 +60,7 @@ public class SimulationTest {
     
     SimulationParameters simParams = new SimulationParameters(
         new Coordinate(40, -70), 
-        new Date(0l), 360000, 15, false, vehicleStateInitialParams);
+        new Date(0l), 66000, 15, false, vehicleStateInitialParams);
     
     sim = new Simulation("test-sim", graph, simParams, 
         vehicleStateInitialParams);
