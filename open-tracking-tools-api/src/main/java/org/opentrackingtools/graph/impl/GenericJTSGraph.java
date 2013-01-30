@@ -10,16 +10,21 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.geotools.geometry.jts.JTS;
 import org.geotools.graph.build.line.DirectedLineStringGraphGenerator;
 import org.geotools.graph.path.AStarShortestPathFinder;
 import org.geotools.graph.path.Path;
 import org.geotools.graph.structure.DirectedEdge;
 import org.geotools.graph.structure.Edge;
 import org.geotools.graph.structure.Node;
+import org.geotools.graph.structure.basic.BasicDirectedNode;
 import org.geotools.graph.structure.line.BasicDirectedXYNode;
 import org.geotools.graph.structure.line.XYNode;
 import org.geotools.graph.traverse.standard.AStarIterator.AStarFunctions;
 import org.geotools.graph.traverse.standard.AStarIterator.AStarNode;
+import org.geotools.graph.util.geom.GeometryUtil;
+import org.opengis.referencing.operation.MathTransform;
+import org.opengis.referencing.operation.TransformException;
 import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.graph.edges.InferredEdge;
 import org.opentrackingtools.graph.edges.impl.SimpleInferredEdge;
@@ -42,6 +47,7 @@ import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Envelope;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.LineString;
+import com.vividsolutions.jts.geom.Point;
 import com.vividsolutions.jts.index.strtree.STRtree;
 
 public class GenericJTSGraph implements InferenceGraph {
@@ -67,12 +73,29 @@ public class GenericJTSGraph implements InferenceGraph {
    */
   private static final double MAX_STATE_SNAP_RADIUS = 350d;
 
+  final private Envelope gpsEnv = new Envelope();
+  final private Envelope projEnv = new Envelope();
   
+  /**
+   * The given collection of lines should be in GPS coordinates,
+   * since they will be projected here.
+   * @param lines
+   */
   public GenericJTSGraph(Collection<LineString> lines) {
     graphGenerator = new DirectedLineStringGraphGenerator();
     for (LineString edge : lines) {
-      graphGenerator.add(edge);
-      edgeIndex.insert(edge.getEnvelopeInternal(), edge);
+      
+      gpsEnv.expandToInclude(edge.getEnvelopeInternal());
+      final MathTransform transform = GeoUtils.getTransform(edge.getCoordinate());
+      Geometry projectedEdge; 
+      try {
+        projectedEdge = JTS.transform(edge, transform);
+        projEnv.expandToInclude(projectedEdge.getEnvelopeInternal());
+        graphGenerator.add(projectedEdge);
+        edgeIndex.insert(projectedEdge.getEnvelopeInternal(), projectedEdge);
+      } catch (final TransformException e) {
+        e.printStackTrace();
+      }
     }
     edgeIndex.build();
   }
@@ -233,8 +256,7 @@ public class GenericJTSGraph implements InferenceGraph {
 
   @Override
   public Envelope getGPSGraphExtent() {
-    // TODO FIXME how to handle this?
-    return null;
+    return gpsEnv;
   }
 
   @Override
@@ -268,7 +290,7 @@ public class GenericJTSGraph implements InferenceGraph {
     toEnv.expandBy(radius);
     final Set<InferredEdge> streetEdges = Sets.newHashSet();
     for (final Object obj : edgeIndex.query(toEnv)) {
-      final Edge edge = (Edge) obj;
+      final Edge edge = (Edge) this.graphGenerator.get(obj);
       final InferredEdge infEdge = getInferredEdge(edge);
       streetEdges.add(infEdge);
     }
@@ -322,11 +344,7 @@ public class GenericJTSGraph implements InferenceGraph {
 
   @Override
   public Envelope getProjGraphExtent() {
-    Envelope env = new Envelope();
-    for (Object v : this.graphGenerator.getGraph().getNodes()) {
-        env.expandToInclude(((BasicDirectedXYNode)v).getCoordinate());
-    }
-    return env; 
+    return projEnv; 
   }
 
   @Override

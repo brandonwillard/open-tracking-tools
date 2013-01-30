@@ -146,13 +146,13 @@ public abstract class AbstractVTParticleFilterUpdater
            * Sample an initial prior for the transition probabilities
            */
           final Vector edgePriorParams =
-              state.getEdgeTransitionDist()
-                  .getEdgeMotionTransProbPrior()
-                  .sample(this.random);
+              OnOffEdgeTransDirMulti.checkedSample(
+                state.getEdgeTransitionDist()
+                  .getEdgeMotionTransProbPrior(), this.random);
           final Vector freeDriorParams =
+              OnOffEdgeTransDirMulti.checkedSample(
               state.getEdgeTransitionDist()
-                  .getFreeMotionTransProbPrior()
-                  .sample(this.random);
+                  .getFreeMotionTransProbPrior(), this.random);
           state.getEdgeTransitionDist()
               .getEdgeMotionTransPrior()
               .setParameters(edgePriorParams);
@@ -205,13 +205,14 @@ public abstract class AbstractVTParticleFilterUpdater
        * Sample an initial prior for the transition probabilities
        */
       final Vector edgeDriorParams =
-          state.getEdgeTransitionDist()
-              .getEdgeMotionTransProbPrior()
-              .sample(this.random);
+          OnOffEdgeTransDirMulti.checkedSample(
+            state.getEdgeTransitionDist()
+                .getEdgeMotionTransProbPrior(), this.random);
       final Vector freeDriorParams =
-          state.getEdgeTransitionDist()
-              .getFreeMotionTransProbPrior()
-              .sample(this.random);
+          OnOffEdgeTransDirMulti.checkedSample(
+            state.getEdgeTransitionDist()
+                .getFreeMotionTransProbPrior(), this.random);
+      
       state.getEdgeTransitionDist()
           .getEdgeMotionTransPrior()
           .setParameters(edgeDriorParams);

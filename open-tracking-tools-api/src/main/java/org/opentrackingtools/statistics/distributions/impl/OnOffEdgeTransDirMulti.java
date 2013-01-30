@@ -3,6 +3,10 @@ package org.opentrackingtools.statistics.distributions.impl;
 import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.math.matrix.VectorFactory;
 import gov.sandia.cognition.math.matrix.mtj.DenseVector;
+import gov.sandia.cognition.statistics.ClosedFormComputableDiscreteDistribution;
+import gov.sandia.cognition.statistics.ClosedFormComputableDistribution;
+import gov.sandia.cognition.statistics.ComputableDistribution;
+import gov.sandia.cognition.statistics.Distribution;
 import gov.sandia.cognition.statistics.bayesian.conjugate.MultinomialBayesianEstimator;
 import gov.sandia.cognition.statistics.distribution.DirichletDistribution;
 import gov.sandia.cognition.statistics.distribution.MultinomialDistribution;
@@ -12,11 +16,16 @@ import java.util.List;
 import java.util.Random;
 
 import org.apache.commons.lang.builder.CompareToBuilder;
+import org.apache.commons.math.FunctionEvaluationException;
 import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.graph.edges.InferredEdge;
 import org.opentrackingtools.statistics.impl.StatisticsUtil;
 
+import com.google.common.base.Function;
 import com.google.common.base.Preconditions;
+import com.google.common.base.Predicate;
+import com.google.common.collect.Iterables;
+import com.google.common.collect.Iterators;
 import com.google.common.collect.Lists;
 
 /**
@@ -69,6 +78,8 @@ public class OnOffEdgeTransDirMulti extends
       .getDefault().copyValues(1d, 0d);
   private static final Vector stateOnToOff = VectorFactory
       .getDefault().copyValues(0d, 1d);
+
+  private static final Double zeroTolerance = 1e-6;
 
   /**
    * Initialize prior from the given hyper prior parameters, using the hyper
@@ -327,7 +338,7 @@ public class OnOffEdgeTransDirMulti extends
         return graph.getNullInferredEdge();
       } else {
         final Vector sample =
-            this.getFreeMotionTransPrior().sample(rng);
+            checkedSample(this.getFreeMotionTransPrior(), rng);
 
         if (sample.equals(stateOffToOn)) {
           final List<InferredEdge> support =
@@ -347,8 +358,8 @@ public class OnOffEdgeTransDirMulti extends
        */
       final Vector sample =
           transferEdges.contains(
-              graph.getNullInferredEdge()) ? this
-              .getEdgeMotionTransPrior().sample(rng)
+              graph.getNullInferredEdge()) ? 
+                  checkedSample(this.getEdgeMotionTransPrior(), rng)
               : stateOnToOn;
 
       if (sample.equals(stateOnToOff)
@@ -363,6 +374,47 @@ public class OnOffEdgeTransDirMulti extends
 
     }
 
+  }
+  
+  /**
+   * This method restricts sampling when probabilities have collapsed
+   * on one value in the domain.  It allows us to emulate a deterministic 
+   * distribution and eliminate on- or off-roading.  Also, it prevents
+   * Foundry's gamma sampler from taking forever.
+   * @param dist
+   * @param rng
+   * @return
+   */
+  public static Vector checkedSample(
+    final ClosedFormComputableDistribution<Vector> dist, Random rng) {
+    
+    if (dist instanceof ClosedFormComputableDiscreteDistribution) {
+      ClosedFormComputableDiscreteDistribution<Vector> distDiscrete =
+          (ClosedFormComputableDiscreteDistribution<Vector>) dist;
+      Vector one = Iterators.find(distDiscrete.getDomain().iterator(), 
+          new Predicate<Vector>() {
+            @Override
+            public boolean apply(Vector input) {
+              return Math.abs(1 - dist.getProbabilityFunction().evaluate(input))
+                  <= zeroTolerance;
+            }
+      }, null);
+      
+      return one == null ? dist.sample(rng) : one;
+      
+    } else if (dist instanceof DirichletDistribution) {
+      for (int i = 0; i < dist.getMean().getDimensionality(); i++) {
+        if (Math.abs(1 - dist.getMean().getElement(i))
+                  <= zeroTolerance) {
+          Vector result = VectorFactory.getDefault().createVector(
+              dist.getMean().getDimensionality());
+          result.setElement(i, 1d);
+          return result;
+        }
+      }
+    } 
+    
+    return dist.sample(rng);
   }
 
   public void setEdgeMotionTransPrior(
