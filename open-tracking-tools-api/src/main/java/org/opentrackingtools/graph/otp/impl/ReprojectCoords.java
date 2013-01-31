@@ -58,8 +58,7 @@ public class ReprojectCoords implements GraphBuilder {
       for (final Vertex v : graph.getVertices()) {
         final AbstractVertex abv = ((AbstractVertex) v);
         final ProjectedCoordinate converted =
-            GeoUtils.convertToEuclidean(GeoUtils
-                .reverseCoordinates(abv.getCoordinate()));
+            GeoUtils.convertToEuclidean(abv.getCoordinate());
 
         xfield.set(abv, converted.x);
         yfield.set(abv, converted.y);
@@ -75,9 +74,7 @@ public class ReprojectCoords implements GraphBuilder {
               GeoUtils.projectLonLatGeom(orig);
 
           // XXX: sets the user data in the geom object to the projection object
-          final Coordinate refLatLon =
-              GeoUtils.reverseCoordinates(orig
-                  .getCoordinate());
+          final Coordinate refLatLon = orig.getCoordinate();
 
           // TODO FIXME XXX: what about when the geoms cross zones?
           // why not just put the unprojected geom here?

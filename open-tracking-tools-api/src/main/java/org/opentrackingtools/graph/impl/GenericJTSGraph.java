@@ -17,12 +17,9 @@ import org.geotools.graph.path.Path;
 import org.geotools.graph.structure.DirectedEdge;
 import org.geotools.graph.structure.Edge;
 import org.geotools.graph.structure.Node;
-import org.geotools.graph.structure.basic.BasicDirectedNode;
-import org.geotools.graph.structure.line.BasicDirectedXYNode;
 import org.geotools.graph.structure.line.XYNode;
 import org.geotools.graph.traverse.standard.AStarIterator.AStarFunctions;
 import org.geotools.graph.traverse.standard.AStarIterator.AStarNode;
-import org.geotools.graph.util.geom.GeometryUtil;
 import org.opengis.referencing.operation.MathTransform;
 import org.opengis.referencing.operation.TransformException;
 import org.opentrackingtools.graph.InferenceGraph;
@@ -47,7 +44,6 @@ import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Envelope;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.LineString;
-import com.vividsolutions.jts.geom.Point;
 import com.vividsolutions.jts.index.strtree.STRtree;
 
 public class GenericJTSGraph implements InferenceGraph {

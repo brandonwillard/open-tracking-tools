@@ -206,9 +206,8 @@ public class Simulation {
     
     final Coordinate startCoord;
     if (this.simParameters.getStartCoordinate() == null) {
-      startCoord =
-          GeoUtils.reverseCoordinates(this.inferredGraph.
-              getGPSGraphExtent().centre());
+      startCoord = this.inferredGraph.
+          getGPSGraphExtent().centre();
     } else {
       startCoord =
           this.simParameters.getStartCoordinate();

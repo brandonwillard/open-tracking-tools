@@ -297,48 +297,44 @@ public class VehicleTrackingPathSamplerFilterUpdater extends
         /*
          * Add some transition noise.
          */
-        //        final Matrix sampleCovChol = StatisticsUtil.getCholR(movementFilter.getQg());
-        //        final Vector qSmpl = MultivariateGaussian.sample(projectedMean, 
-        //            sampleCovChol.transpose(), rng);
-        //        newState = projectedMean.plus(movementFilter.getCovarianceFactor(false).times(qSmpl));
         newState.setMean(movementFilter.sampleStateTransDist(
                 projectedMean, rng));
 
         /*
          * Adjust for graph bounds.
          */
-        final Coordinate newLoc =
-            new Coordinate(newState.getMean().getElement(0),
-                newState.getMean().getElement(2));
-        Envelope graphExtent = this.inferenceGraph.getProjGraphExtent();
-        if (!graphExtent.isNull() && 
-            !graphExtent.contains(newLoc)) {
-          /*
-           * We're outside the bounds, so truncate at the bound edge.
-           * TODO FIXME: This is an abrupt stop, and most filters won't
-           * handle it well.  For comparisons, it's fine, since both
-           * filters will likely suffer, no?
-           */
-          final Vector oldLoc =
-              AbstractRoadTrackingFilter.getOg().times(
-                  pathStateBelief.getGroundState());
-          final Polygon extent =
-              JTS.toGeometry(this.inferenceGraph
-                  .getProjGraphExtent());
-          final Geometry intersection =
-              extent.intersection(JTSFactoryFinder
-                  .getGeometryFactory().createLineString(
-                      new Coordinate[] {
-                          GeoUtils.getCoordinates(oldLoc),
-                          //               new Coordinate(startEdge.getEdge().getCenterPointCoord()), 
-                          newLoc }));
-          newState.getMean().setElement(0,
-              intersection.getCoordinates()[1].x);
-          newState.getMean().setElement(1, 0d);
-          newState.getMean().setElement(2,
-              intersection.getCoordinates()[1].y);
-          newState.getMean().setElement(3, 0d);
-        }
+//        final Coordinate newLoc =
+//            new Coordinate(newState.getMean().getElement(0),
+//                newState.getMean().getElement(2));
+//        Envelope graphExtent = this.inferenceGraph.getProjGraphExtent();
+//        if (!graphExtent.isNull() && 
+//            !graphExtent.contains(newLoc)) {
+//          /*
+//           * We're outside the bounds, so truncate at the bound edge.
+//           * TODO FIXME: This is an abrupt stop, and most filters won't
+//           * handle it well.  For comparisons, it's fine, since both
+//           * filters will likely suffer, no?
+//           */
+//          final Vector oldLoc =
+//              AbstractRoadTrackingFilter.getOg().times(
+//                  pathStateBelief.getGroundState());
+//          final Polygon extent =
+//              JTS.toGeometry(this.inferenceGraph
+//                  .getProjGraphExtent());
+//          final Geometry intersection =
+//              extent.intersection(JTSFactoryFinder
+//                  .getGeometryFactory().createLineString(
+//                      new Coordinate[] {
+//                          GeoUtils.getCoordinates(oldLoc),
+//                          //               new Coordinate(startEdge.getEdge().getCenterPointCoord()), 
+//                          newLoc }));
+//          newState.getMean().setElement(0,
+//              intersection.getCoordinates()[1].x);
+//          newState.getMean().setElement(1, 0d);
+//          newState.getMean().setElement(2,
+//              intersection.getCoordinates()[1].y);
+//          newState.getMean().setElement(3, 0d);
+//        }
 
         currentEdge = this.inferenceGraph.getNullPathEdge();
         currentPath.add(this.inferenceGraph.getNullPathEdge());

@@ -5,8 +5,6 @@ import gov.sandia.cognition.math.matrix.VectorFactory;
 import gov.sandia.cognition.math.matrix.mtj.DenseVector;
 import gov.sandia.cognition.statistics.ClosedFormComputableDiscreteDistribution;
 import gov.sandia.cognition.statistics.ClosedFormComputableDistribution;
-import gov.sandia.cognition.statistics.ComputableDistribution;
-import gov.sandia.cognition.statistics.Distribution;
 import gov.sandia.cognition.statistics.bayesian.conjugate.MultinomialBayesianEstimator;
 import gov.sandia.cognition.statistics.distribution.DirichletDistribution;
 import gov.sandia.cognition.statistics.distribution.MultinomialDistribution;
@@ -16,15 +14,12 @@ import java.util.List;
 import java.util.Random;
 
 import org.apache.commons.lang.builder.CompareToBuilder;
-import org.apache.commons.math.FunctionEvaluationException;
 import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.graph.edges.InferredEdge;
 import org.opentrackingtools.statistics.impl.StatisticsUtil;
 
-import com.google.common.base.Function;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Predicate;
-import com.google.common.collect.Iterables;
 import com.google.common.collect.Iterators;
 import com.google.common.collect.Lists;
 

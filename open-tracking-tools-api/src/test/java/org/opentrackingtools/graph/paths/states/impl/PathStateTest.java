@@ -890,7 +890,6 @@ public class PathStateTest {
     AssertJUnit.assertTrue(res7.isToIsReversed());
   }
 
-  @Test
   @BeforeMethod
   public void testSetup() {
     graph = new Graph();

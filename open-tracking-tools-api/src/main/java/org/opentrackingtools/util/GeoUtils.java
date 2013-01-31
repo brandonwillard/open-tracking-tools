@@ -25,7 +25,7 @@ public class GeoUtils {
     final MathTransform transform = getTransform(latlon);
     final Coordinate to = new Coordinate();
     try {
-      JTS.transform(reverseCoordinates(latlon), to,
+      JTS.transform(latlon, to,
           transform);
     } catch (final TransformException e) {
       e.printStackTrace();
@@ -77,15 +77,15 @@ public class GeoUtils {
    * -lat-long-to-utm
    */
   public static int
-      getEPSGCodefromUTS(Coordinate refLatLon) {
+      getEPSGCodefromUTS(Coordinate refLonLat) {
     // define base EPSG code value of all UTM zones;
     int epsg_code = 32600;
     // add 100 for all zones in southern hemisphere
-    if (refLatLon.x < 0) {
+    if (refLonLat.y < 0) {
       epsg_code += 100;
     }
     // finally, add zone number to code
-    epsg_code += getUTMZoneForLongitude(refLatLon.y);
+    epsg_code += getUTMZoneForLongitude(refLonLat.x);
 
     return epsg_code;
   }
@@ -104,24 +104,22 @@ public class GeoUtils {
   }
 
   public static MathTransform getTransform(
-    Coordinate refLatLon) {
+    Coordinate refLonLat) {
     //    MathTransformFactory mtFactory = ReferencingFactoryFinder.getMathTransformFactory(null);
     //    ReferencingFactoryContainer factories = new ReferencingFactoryContainer(null);
 
-    final GeographicCRS geoCRS =
-        org.geotools.referencing.crs.DefaultGeographicCRS.WGS84;
     try {
       final CRSAuthorityFactory crsAuthorityFactory =
           CRS.getAuthorityFactory(true);
-
-      //      final CoordinateReferenceSystem mapCRS =
-      //          crsAuthorityFactory
-      //              .createCoordinateReferenceSystem(googleWebMercatorCode);
+      
+    final GeographicCRS geoCRS =
+        crsAuthorityFactory.createGeographicCRS("EPSG:4326");
+//        org.geotools.referencing.crs.DefaultGeographicCRS.WGS84;
 
       final CoordinateReferenceSystem dataCRS =
           crsAuthorityFactory
               .createCoordinateReferenceSystem("EPSG:"
-                  + getEPSGCodefromUTS(refLatLon));
+                  + getEPSGCodefromUTS(refLonLat));
 
       //      parameters = mtFactory.getDefaultParameters("Transverse_Mercator");
       //
@@ -226,8 +224,7 @@ public class GeoUtils {
       @Override
       public void filter(Coordinate coord) {
         final ProjectedCoordinate converted =
-            GeoUtils.convertToEuclidean(GeoUtils
-                .reverseCoordinates(coord));
+            GeoUtils.convertToEuclidean(coord);
         coord.setCoordinate(converted);
       }
     });
@@ -236,8 +233,8 @@ public class GeoUtils {
     return geom;
   }
 
-  public static Coordinate reverseCoordinates(
-    Coordinate startCoord) {
-    return new Coordinate(startCoord.y, startCoord.x);
-  }
+//  public static Coordinate reverseCoordinates(
+//    Coordinate startCoord) {
+//    return new Coordinate(startCoord.y, startCoord.x);
+//  }
 }

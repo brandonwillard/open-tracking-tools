@@ -107,8 +107,7 @@ public class Api extends Controller {
     final Coordinate rawCoords =
         new Coordinate(Double.parseDouble(x), Double.parseDouble(y));
     
-    final Coordinate refLatLon = GeoUtils.reverseCoordinates(
-        graph.getGPSGraphExtent().centre());
+    final Coordinate refLatLon = graph.getGPSGraphExtent().centre();
     final MathTransform transform = GeoUtils.getTransform(refLatLon);
     final String epsgCode = "EPSG:" + GeoUtils.getEPSGCodefromUTS(refLatLon);
     Coordinate coords = GeoUtils.convertToLatLon(transform, rawCoords);
