@@ -1,6 +1,7 @@
 package org.opentrackingtools.graph.paths.impl;
 
 import gov.sandia.cognition.math.LogMath;
+import gov.sandia.cognition.math.matrix.Matrix;
 import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.math.matrix.VectorFactory;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
@@ -20,6 +21,8 @@ import org.opentrackingtools.graph.paths.states.PathState;
 import org.opentrackingtools.graph.paths.states.PathStateBelief;
 import org.opentrackingtools.graph.paths.states.impl.SimplePathState;
 import org.opentrackingtools.graph.paths.states.impl.SimplePathStateBelief;
+import org.opentrackingtools.graph.paths.util.PathUtils;
+import org.opentrackingtools.graph.paths.util.PathUtils.PathEdgeProjection;
 import org.opentrackingtools.impl.VehicleState;
 import org.opentrackingtools.impl.WrappedWeightedValue;
 import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
@@ -404,10 +407,30 @@ public class SimpleInferredPath implements InferredPath {
     
     final PathState onThisPath = 
         this.getStateOnPath(stateBelief);
-    
+    final Matrix covar;
+    if (this.isNullPath()) {
+      covar = stateBelief.getGroundBelief().getCovariance();
+    } else {
+      if (!stateBelief.isOnRoad()) {
+        /*
+         * Project covar to edge 
+         */
+        PathEdgeProjection proj = 
+            PathUtils.getRoadProjection(stateBelief.getGroundState(), 
+                geometry, isBackward, 
+                isBackward ? onThisPath.getEdge().getGeometry().reverse()
+                    : onThisPath.getEdge().getGeometry(), 
+                onThisPath.getEdge().getDistToStartOfEdge());
+        final Matrix C = stateBelief.getCovariance();
+        covar = proj.getProjMatrix().transpose().times(C)
+                .times(proj.getProjMatrix());
+      } else {
+        covar = stateBelief.getGlobalStateBelief().getCovariance();
+      }
+    }
     return SimplePathStateBelief.getPathStateBelief(this,
         new MultivariateGaussian(onThisPath.getGlobalState(), 
-          stateBelief.getCovariance()));
+          covar));
   }
 
   /* (non-Javadoc)
@@ -425,8 +448,6 @@ public class SimpleInferredPath implements InferredPath {
       final PathState startState =
           this.getStateOnPath(VectorFactory
               .getDefault().createVector2D(0d, 0d));
-//          SimplePathState.getPathState(this, VectorFactory
-//              .getDefault().createVector2D(0d, 0d));
   
       final Vector diff = startState.minus(currentState);
       diff.negativeEquals();

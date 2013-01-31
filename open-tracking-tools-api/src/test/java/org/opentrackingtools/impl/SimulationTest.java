@@ -5,6 +5,7 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 import org.testng.AssertJUnit;
 import org.testng.annotations.Test;
+import org.testng.asserts.Assertion;
 import org.testng.AssertJUnit;
 import org.geotools.data.simple.SimpleFeatureSource;
 import org.geotools.factory.FactoryRegistryException;
@@ -14,6 +15,7 @@ import org.geotools.grid.Lines;
 import org.geotools.grid.ortholine.LineOrientation;
 import org.geotools.grid.ortholine.OrthoLineDef;
 import org.geotools.referencing.CRS;
+import org.geotools.referencing.operation.projection.ProjectionException;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -27,6 +29,7 @@ import gov.sandia.cognition.math.matrix.MatrixFactory;
 import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.math.matrix.VectorFactory;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
+import gov.sandia.cognition.statistics.distribution.MultivariateGaussian.SufficientStatistic;
 
 import org.opengis.feature.Feature;
 import org.opengis.referencing.FactoryException;
@@ -53,6 +56,9 @@ public class SimulationTest {
   private InferenceGraph graph;
   private Coordinate startCoord;
   private Matrix avgTransform;
+  private double[] movementZeroArray;
+  private double[] obsErrorZeroArray;
+  private Simulation sim;
 
   @BeforeTest
   public void setUp() throws NoSuchAuthorityCodeException, FactoryRegistryException, FactoryException, IOException {
@@ -176,7 +182,7 @@ public class SimulationTest {
     SimulationParameters simParams = new SimulationParameters(
         startCoord, new Date(0l), duration, 15, false, vehicleStateInitialParams);
     
-    Simulation sim = new Simulation("test-sim", graph, simParams, 
+    sim = new Simulation("test-sim", graph, simParams, 
         vehicleStateInitialParams);
     
     long time = sim.getSimParameters().getStartTime().getTime();
@@ -190,79 +196,121 @@ public class SimulationTest {
     final MultivariateGaussian.SufficientStatistic transitionsSS =
         new MultivariateGaussian.SufficientStatistic();
     
-    double[] obsErrorZeroArray = null;
-    double[] movementZeroArray = null;
+    obsErrorZeroArray = null;
+    movementZeroArray = null;
     
     final long approxRuns = sim.getSimParameters().getDuration()/
         sim.getSimParameters().getFrequency();
     
+    updateStats(vehicleState, obsErrorSS, movementSS, transitionsSS, 
+        generalizeMoveDiff);
+    
     do {
-      
-      final Vector obsError = vehicleState.getObservation().getProjectedPoint().
-          minus(vehicleState.getMeanLocation());
-      obsErrorSS.update(obsError);
-      
-      System.out.println("obsError=" + obsErrorSS.getMean());
-      
-      final VehicleState parentState = vehicleState.getParentState();
-      if (parentState != null) {
-        PathStateBelief predictedState = parentState.getMovementFilter()
-            .predict(parentState.getBelief(), vehicleState.getBelief().getPath());
-        
-        final Vector movementDiff = vehicleState.getBelief().minus(
-           predictedState);
-             
-        if (generalizeMoveDiff && movementDiff.getDimensionality() == 4) {
-          final Vector movementDiffAvg = avgTransform.times(movementDiff);
-          movementSS.update(movementDiffAvg);
-        } else {
-          movementSS.update(movementDiff);
-        }
-        System.out.println("movementMean=" + movementSS.getMean());
-        
-        Vector transType = OnOffEdgeTransDirMulti.getTransitionType(
-            parentState.getBelief().getEdge().getInferredEdge(), 
-            vehicleState.getBelief().getEdge().getInferredEdge());
-        
-        if (parentState.getBelief().isOnRoad()) {
-          transType = transType.stack(AbstractRoadTrackingFilter.zeros2D);
-        } else {
-          transType = AbstractRoadTrackingFilter.zeros2D.stack(transType);
-        }
-        
-        transitionsSS.update(transType);
-        System.out.println("transitionsMean=" + transitionsSS.getMean());
+      try {
+        vehicleState = sim.stepSimulation(vehicleState);
+        updateStats(vehicleState, obsErrorSS, movementSS, transitionsSS, 
+            generalizeMoveDiff);
+        time = vehicleState.getObservation().getTimestamp().getTime();
+      } catch (ProjectionException ex) {
+        vehicleState = resetState(vehicleState);
+//        if (vehicleState.getParentState() != null)
+//          vehicleState.setParentState(resetState(vehicleState.getParentState()));
+        System.out.println("Outside of projection!  Flipped state velocities");
       }
-      
-      if (movementSS.getCount() > Math.min(approxRuns/16, 25)) {
-        if (obsErrorZeroArray == null)
-          obsErrorZeroArray = VectorFactory.getDefault()
-            .createVector(obsErrorSS.getMean().getDimensionality())
-            .toArray();
-        
-        AssertJUnit.assertArrayEquals(obsErrorZeroArray,
-          obsErrorSS.getMean().toArray(), 5);
-      
-        if (movementZeroArray == null)
-          movementZeroArray = VectorFactory.getDefault()
-            .createVector(movementSS.getMean().getDimensionality())
-            .toArray();
-        
-        AssertJUnit.assertArrayEquals(movementZeroArray,
-        movementSS.getMean().toArray(), 6);
-      }
-      
-      vehicleState = sim.stepSimulation(vehicleState);
-      time = vehicleState.getObservation().getTimestamp().getTime();
       
     } while (time < sim.getSimParameters().getEndTime().getTime());
     
+    AssertJUnit.assertTrue(movementSS.getCount() > 0.95d * approxRuns );
 
     System.out.println(obsErrorSS.getMean());
     System.out.println(movementSS.getMean());
     System.out.println(transitionsSS.getMean());
     
     
+  }
+
+
+  private void updateStats(VehicleState vehicleState,
+    SufficientStatistic obsErrorSS, SufficientStatistic movementSS,
+    SufficientStatistic transitionsSS, boolean generalizeMoveDiff) {
+          
+    final Vector obsError = vehicleState.getObservation().getProjectedPoint().
+        minus(vehicleState.getMeanLocation());
+    obsErrorSS.update(obsError);
+    
+    System.out.println("obsError=" + obsErrorSS.getMean());
+    
+    final VehicleState parentState = vehicleState.getParentState();
+    if (parentState != null) {
+      PathStateBelief predictedState = parentState.getMovementFilter()
+          .predict(parentState.getBelief(), vehicleState.getBelief().getPath());
+      
+      final Vector movementDiff = vehicleState.getBelief().minus(
+         predictedState);
+           
+      if (generalizeMoveDiff && movementDiff.getDimensionality() == 4) {
+        final Vector movementDiffAvg = avgTransform.times(movementDiff);
+        movementSS.update(movementDiffAvg);
+      } else {
+        movementSS.update(movementDiff);
+      }
+      System.out.println("movementMean=" + movementSS.getMean());
+      
+      Vector transType = OnOffEdgeTransDirMulti.getTransitionType(
+          parentState.getBelief().getEdge().getInferredEdge(), 
+          vehicleState.getBelief().getEdge().getInferredEdge());
+      
+      if (parentState.getBelief().isOnRoad()) {
+        transType = transType.stack(AbstractRoadTrackingFilter.zeros2D);
+      } else {
+        transType = AbstractRoadTrackingFilter.zeros2D.stack(transType);
+      }
+      
+      transitionsSS.update(transType);
+      System.out.println("transitionsMean=" + transitionsSS.getMean());
+    }
+    
+    final long approxRuns = sim.getSimParameters().getDuration()/
+        sim.getSimParameters().getFrequency();
+    if (movementSS.getCount() > Math.min(approxRuns/16, 25)) {
+      if (obsErrorZeroArray == null)
+        obsErrorZeroArray = VectorFactory.getDefault()
+          .createVector(obsErrorSS.getMean().getDimensionality())
+          .toArray();
+      
+      AssertJUnit.assertArrayEquals(obsErrorZeroArray,
+        obsErrorSS.getMean().toArray(), 5);
+    
+      if (movementZeroArray == null)
+        movementZeroArray = VectorFactory.getDefault()
+          .createVector(movementSS.getMean().getDimensionality())
+          .toArray();
+      
+      AssertJUnit.assertArrayEquals(movementZeroArray,
+      movementSS.getMean().toArray(), 1);
+    }
+
+  }
+
+
+  private VehicleState resetState(VehicleState vehicleState) {
+    
+    return sim.computeInitialState();
+//    final MultivariateGaussian beliefDist = 
+//          vehicleState.getBelief().getGlobalStateBelief().clone();
+//    if (vehicleState.getBelief().isOnRoad()) {
+//      beliefDist.getMean().setElement(1, -beliefDist.getMean().getElement(1));
+//    } else {
+//      beliefDist.getMean().setElement(1, -beliefDist.getMean().getElement(1));
+//      beliefDist.getMean().setElement(3, -beliefDist.getMean().getElement(3));
+//    }
+//    PathStateBelief belief = 
+//          vehicleState.getBelief().getPath().getStateBeliefOnPath(beliefDist);
+//    return new VehicleState(graph, 
+//        vehicleState.getObservation(), 
+//        vehicleState.getMovementFilter(), 
+//        belief, vehicleState.edgeTransitionDist, 
+//        vehicleState.getParentState());
   }
   
 }

@@ -109,11 +109,11 @@ public class PathUtils {
           AbstractRoadTrackingFilter.getOr().times(state).getElement(0);
       final PathEdge edge = path.getEdgeForDistance(dist, false);
       
-      adjState = getGroundStateFromRoad(state, edge, false);
+      adjState = getGroundStateFromRoad(state, edge, true);
   
     } else if (!path.isNullPath() && state.getDimensionality() != 2) {
       
-      adjState = getRoadStateFromGround(state, path, false);
+      adjState = getRoadStateFromGround(state, path, true);
     } else {
       adjState = state;
     }
@@ -137,11 +137,11 @@ public class PathUtils {
           AbstractRoadTrackingFilter.getOr().times(belief.getMean()).getElement(0);
       final PathEdge edge = path.getEdgeForDistance(dist, false);
       
-      adjBelief = getGroundBeliefFromRoad(belief, edge, false);
+      adjBelief = getGroundBeliefFromRoad(belief, edge, true);
   
     } else if (!path.isNullPath() && belief.getInputDimensionality() != 2) {
       
-      adjBelief = getRoadBeliefFromGround(belief, path, false);
+      adjBelief = getRoadBeliefFromGround(belief, path, true);
     } else {
       if (!path.isNullPath()) {
         Preconditions.checkState(
@@ -151,6 +151,10 @@ public class PathUtils {
       }
       adjBelief = belief;
     }
+    
+    Preconditions.checkState(belief.getMean().getDimensionality()
+        == belief.getCovariance().getNumColumns()
+        && belief.getCovariance().isSquare());
     
     return adjBelief;
   }
@@ -168,7 +172,7 @@ public class PathUtils {
         .getInputDimensionality() == 4);
     final MultivariateGaussian tmpMg =
         getRoadBeliefFromGround(belief, path.getGeometry(),
-            path.isBackward(), null, 0, false);
+            path.isBackward(), null, 0, useAbsVelocity);
     return tmpMg;
   }
   /**
@@ -187,7 +191,7 @@ public class PathUtils {
     final MultivariateGaussian tmpMg =
         getRoadBeliefFromGround(belief, 
             edge.isBackward() ? edge.getGeometry().reverse() : edge.getGeometry(), 
-            edge.isBackward(), null, 0, true);
+            edge.isBackward(), null, 0, useAbsVelocity);
     tmpMg.getMean().setElement(
         0,
         tmpMg.getMean().getElement(0)
@@ -493,8 +497,8 @@ public class PathUtils {
     
     Preconditions.checkArgument(locVelocity.getDimensionality() == 2
         || locVelocity.getDimensionality() == 4);
-    Preconditions.checkArgument(edgeGeometry == null
-        || pathGeometry.contains(edgeGeometry));
+//    Preconditions.checkArgument(edgeGeometry == null
+//        || pathGeometry.contains(edgeGeometry));
   
     if (locVelocity.getDimensionality() == 2)
       return null;
@@ -688,7 +692,7 @@ public class PathUtils {
         .getInputDimensionality() == 4);
     final MultivariateGaussian tmpMg =
         getRoadBeliefFromGround(belief, 
-            edge.getGeometry(), false, null, 0, true);
+            edge.getGeometry(), false, null, 0, useAbsVelocity);
     return tmpMg;
   }
 

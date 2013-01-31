@@ -529,13 +529,13 @@ function drawCoords(lat, lon, popupMessage, pan, justMarker, color, opacity) {
   return marker;
 }
 
-function drawProjectedCoords(x, y, popupMessage, pan, epsgCode) {
-  var latLon = convertToLatLon(new Proj4js.Point(x, y), epsgCode);
-  var marker = drawCoords(latLon.lat, latLon.lng, popupMessage, pan);
-  map.invalidateSize();
-
-  return marker;
-}
+//function drawProjectedCoords(x, y, popupMessage, pan, epsgCode) {
+//  var latLon = convertToLatLon(new Proj4js.Point(x, y), epsgCode);
+//  var marker = drawCoords(latLon.lat, latLon.lng, popupMessage, pan);
+//  map.invalidateSize();
+//
+//  return marker;
+//}
 
 function addCoordinates() {
 

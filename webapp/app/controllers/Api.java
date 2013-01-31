@@ -97,8 +97,8 @@ public class Api extends Controller {
       IOException {
     Coordinate center = graph.getGPSGraphExtent().centre();
     Map<String, Double> result = Maps.newHashMap();
-    result.put("lat", center.y);
-    result.put("lng", center.x);
+    result.put("lat", center.x);
+    result.put("lng", center.y);
     renderJSON(jsonMapper.writeValueAsString(result));
   }
   
@@ -114,8 +114,8 @@ public class Api extends Controller {
     final String epsgCode = "EPSG:" + GeoUtils.getEPSGCodefromUTS(refLatLon);
     Coordinate coords = GeoUtils.convertToLatLon(transform, rawCoords);
     Map<String, Object> jsonResults = Maps.newHashMap();
-    jsonResults.put("x", coords.x);
-    jsonResults.put("y", coords.y);
+    jsonResults.put("lat", coords.x);
+    jsonResults.put("lng", coords.y);
     jsonResults.put("epsgCode", epsgCode);
 
     renderJSON(jsonMapper.writeValueAsString(jsonResults));

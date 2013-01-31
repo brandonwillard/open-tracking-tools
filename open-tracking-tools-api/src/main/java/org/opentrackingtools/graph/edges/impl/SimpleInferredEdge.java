@@ -175,7 +175,7 @@ public class SimpleInferredEdge implements InferredEdge {
    */
   @Override
   public Coordinate getCoordOnEdge(Vector obsPoint) {
-    if (this == SimpleInferredEdge.emptyEdge)
+    if (this.isNullEdge())
       return null;
     final Coordinate revObsPoint =
         new Coordinate(obsPoint.getElement(1),
@@ -196,7 +196,7 @@ public class SimpleInferredEdge implements InferredEdge {
 
   @Override
   public String getEdgeId() {
-    return edgeId.toString();
+    return String.valueOf(edgeId);
   }
 
   /* (non-Javadoc)
@@ -260,7 +260,7 @@ public class SimpleInferredEdge implements InferredEdge {
    */
   @Override
   public Vector getPointOnEdge(Coordinate obsPoint) {
-    if (this == SimpleInferredEdge.emptyEdge)
+    if (this.isNullEdge())
       return null;
     final LinearLocation here =
         locationIndexedLine.project(obsPoint);
@@ -325,7 +325,7 @@ public class SimpleInferredEdge implements InferredEdge {
   @Override
   public String toString() {
     if (this == emptyEdge)
-      return "InferredEdge [empty edge]";
+      return "InferredEdge [null]";
     else
       return "InferredEdge [edgeId=" + edgeId + ", length="
           + getLength() + "]";

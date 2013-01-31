@@ -36,12 +36,12 @@ public class ResultSet {
 
   static public class EvaluatedPathInfo {
     final List<OsmSegment> pathEdges;
-    final double totalDistance;
+    final Double totalDistance;
     final private Integer startEdge;
     final private Integer endEdge;
 
     public EvaluatedPathInfo(List<OsmSegment> pathEdges,
-      double totalDistance, Integer startEdge,
+      Double totalDistance, Integer startEdge,
       Integer endEdge) {
       this.pathEdges = pathEdges;
       this.totalDistance = totalDistance;
@@ -65,7 +65,7 @@ public class ResultSet {
     }
 
     @JsonSerialize
-    public double getTotalDistance() {
+    public Double getTotalDistance() {
       return totalDistance;
     }
 
@@ -359,7 +359,7 @@ public class ResultSet {
     final OsmSegmentWithVelocity osmSegment;
     final InferredEdge edge =
         state.getBelief().getEdge().getInferredEdge();
-    if (edge.isNullEdge()) {
+    if (!edge.isNullEdge()) {
       final double velocity;
       if (edge instanceof SimpleInferredEdge)
         velocity = ((SimpleInferredEdge)edge).getVelocityPrecisionDist().getLocation();

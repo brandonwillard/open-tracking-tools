@@ -609,12 +609,10 @@ public class OtpGraph implements InferenceGraph {
   @Override
   public List<InferredEdge> getIncomingTransferableEdges(InferredEdge infEdge) {
     
-    Preconditions.checkArgument(infEdge.getBackingEdge() instanceof SimpleInferredEdge);
-
     final List<InferredEdge> result = Lists.newArrayList();
     for (final Edge edge : OtpGraph
         .filterForStreetEdges(
-            ((Edge)((SimpleInferredEdge)infEdge.getBackingEdge()))
+            ((Edge)(infEdge.getBackingEdge()))
             .getFromVertex().getIncoming())) {
       if (this.getBaseGraph().getIdForEdge(edge) != null)
         result.add(this.getInferredEdge(edge));
@@ -633,12 +631,10 @@ public class OtpGraph implements InferenceGraph {
   @Override
   public List<InferredEdge> getOutgoingTransferableEdges(InferredEdge infEdge) {
     
-    Preconditions.checkArgument(infEdge.getBackingEdge() instanceof SimpleInferredEdge);
-    
     final List<InferredEdge> result = Lists.newArrayList();
     for (final Edge edge : OtpGraph
         .filterForStreetEdges(
-            ((Edge)((SimpleInferredEdge)infEdge.getBackingEdge()))
+            ((Edge)(infEdge.getBackingEdge()))
             .getToVertex().getOutgoingStreetEdges())) {
       result.add(this.getInferredEdge(edge));
     }

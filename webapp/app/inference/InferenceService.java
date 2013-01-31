@@ -10,13 +10,14 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import models.InferenceInstance;
+
 import org.opentrackingtools.GpsObservation;
 import org.opentrackingtools.impl.VehicleStateInitialParameters;
 import org.opentrackingtools.statistics.filters.vehicles.particle_learning.impl.VehicleTrackingPLFilter;
 
-import models.InferenceInstance;
-
 import play.Logger;
+import play.mvc.Util;
 import utils.ObservationFactory;
 import akka.actor.UntypedActor;
 
@@ -142,6 +143,7 @@ public class InferenceService extends UntypedActor {
     return Lists.newArrayList(vehicleToInstance.values());
   }
 
+  @Util
   public static InferenceInstance getOrCreateInferenceInstance(
     String vehicleId,
     VehicleStateInitialParameters initialParameters,

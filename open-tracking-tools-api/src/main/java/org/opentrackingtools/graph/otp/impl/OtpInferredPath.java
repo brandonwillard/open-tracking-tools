@@ -9,6 +9,7 @@ import gov.sandia.cognition.statistics.distribution.UnivariateGaussian;
 
 import org.opentrackingtools.GpsObservation;
 import org.opentrackingtools.graph.InferenceGraph;
+import org.opentrackingtools.graph.paths.InferredPath;
 import org.opentrackingtools.graph.paths.edges.PathEdge;
 import org.opentrackingtools.graph.paths.impl.SimpleInferredPath;
 import org.opentrackingtools.statistics.impl.DataCube;
@@ -19,14 +20,16 @@ import com.google.common.collect.Iterables;
 
 public class OtpInferredPath extends SimpleInferredPath {
   
-  static {
-    nullPath = new OtpInferredPath();
-  }
+  private static OtpInferredPath nullPath = new OtpInferredPath();
   
   private OtpInferredPath() {
     super();
   }
-
+  
+  public static InferredPath getNullPath() {
+    return nullPath;
+  }
+  
   public static OtpInferredPath getInferredPath(
     List<? extends PathEdge> newEdges, boolean isBackward) {
     if (newEdges.size() == 1) {

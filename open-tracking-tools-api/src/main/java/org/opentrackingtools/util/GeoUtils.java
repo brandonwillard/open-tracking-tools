@@ -45,7 +45,7 @@ public class GeoUtils {
     MathTransform transform, Coordinate xy) throws NoninvertibleTransformException, TransformException {
     final Coordinate to = new Coordinate();
     JTS.transform(xy, to, transform.inverse());
-    return new Coordinate(to.y, to.x);
+    return new Coordinate(to.x, to.y);
   }
 
   public static Coordinate convertToLatLon(Vector vec,

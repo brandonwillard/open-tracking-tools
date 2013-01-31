@@ -12,6 +12,7 @@ import org.opentrackingtools.graph.edges.impl.SimpleInferredEdge;
 import org.opentrackingtools.graph.paths.InferredPath;
 import org.opentrackingtools.graph.paths.edges.PathEdge;
 import org.opentrackingtools.graph.paths.states.PathStateBelief;
+import org.opentrackingtools.graph.paths.util.PathUtils.PathEdgeProjection;
 import org.opentrackingtools.impl.VehicleState;
 import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
 import org.opentrackingtools.statistics.impl.StatisticsUtil;
@@ -27,7 +28,7 @@ public class SimplePathEdge implements PathEdge {
   private final Double distToStartOfEdge;
   private final Boolean isBackward;
 
-  private static SimplePathEdge emptyPathEdge = new SimplePathEdge(
+  private final static SimplePathEdge emptyPathEdge = new SimplePathEdge(
     // XXX TODO FIXME this should be here!
       SimpleInferredEdge.getNullEdge());
 
