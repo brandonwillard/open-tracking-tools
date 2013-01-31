@@ -14,6 +14,7 @@ import org.geotools.grid.Lines;
 import org.geotools.grid.ortholine.LineOrientation;
 import org.geotools.grid.ortholine.OrthoLineDef;
 import org.geotools.referencing.CRS;
+
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Date;
@@ -21,6 +22,8 @@ import java.util.List;
 
 
 
+import gov.sandia.cognition.math.matrix.Matrix;
+import gov.sandia.cognition.math.matrix.MatrixFactory;
 import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.math.matrix.VectorFactory;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
@@ -29,12 +32,15 @@ import org.opengis.feature.Feature;
 import org.opengis.referencing.FactoryException;
 import org.opengis.referencing.NoSuchAuthorityCodeException;
 import org.opengis.referencing.crs.CoordinateReferenceSystem;
+import org.opengis.referencing.operation.NoninvertibleTransformException;
+import org.opengis.referencing.operation.TransformException;
 import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.graph.impl.GenericJTSGraph;
 import org.opentrackingtools.graph.paths.states.PathStateBelief;
 import org.opentrackingtools.impl.Simulation.SimulationParameters;
 import org.opentrackingtools.statistics.distributions.impl.OnOffEdgeTransDirMulti;
 import org.opentrackingtools.statistics.filters.vehicles.impl.VehicleTrackingBootstrapFilter;
+import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
 import org.opentrackingtools.util.GeoUtils;
 
 import com.google.common.collect.Lists;
@@ -46,6 +52,7 @@ public class SimulationTest {
   
   private InferenceGraph graph;
   private Coordinate startCoord;
+  private Matrix avgTransform;
 
   @BeforeTest
   public void setUp() throws NoSuchAuthorityCodeException, FactoryRegistryException, FactoryException, IOException {
@@ -84,11 +91,22 @@ public class SimulationTest {
     
     while (iter.hasNext()) {
       Feature feature = iter.next();
-      edges.add((LineString)feature.getDefaultGeometryProperty().getValue());
+      LineString geom = (LineString)feature.getDefaultGeometryProperty().getValue();
+      edges.add(geom);
+      /*
+       * Add the reverse so that there are no dead-ends to mess with 
+       * the test results
+       */
+      edges.add((LineString) geom.reverse());
     }
     
     graph = new GenericJTSGraph(edges);
     
+    avgTransform = MatrixFactory.getDefault().copyArray(
+        new double[][] {
+            {1, 0, 1, 0},
+            {0, 1, 0, 1}
+        }).scale(1d/2d);
   }
   
   
@@ -108,7 +126,9 @@ public class SimulationTest {
                 Double.MAX_VALUE), VectorFactory.getDefault()
                 .createVector2D(Double.MAX_VALUE, 1d),
             VehicleTrackingBootstrapFilter.class.getName(), 25,
-            15, 2159585l)
+            15, 2159585l),
+        Boolean.FALSE,
+            66000
         },
         {
           /*
@@ -118,23 +138,43 @@ public class SimulationTest {
             .getDefault().createVector2D(100d, 100d), 20,
             VectorFactory.getDefault().createVector1D(
                 6.25e-4), 30, VectorFactory.getDefault()
-                .createVector2D(6.25e-4, 6.25e-4), 20,
+                .createVector2D(6.25e-5, 6.25e-5), 20,
             VectorFactory.getDefault().createVector2D(
                 Double.MAX_VALUE, 1d), 
             VectorFactory.getDefault().createVector2D(
                 1d, Double.MAX_VALUE),
             VehicleTrackingBootstrapFilter.class.getName(), 25,
-            15, 2159585l)
+            10, 215955l),
+        Boolean.FALSE,
+            66000
+        }, 
+        {
+          /*
+           * Mixed 
+           */
+        new VehicleStateInitialParameters(VectorFactory
+            .getDefault().createVector2D(100d, 100d), 20,
+            VectorFactory.getDefault().createVector1D(
+                6.25e-4), 30, VectorFactory.getDefault()
+                .createVector2D(6.25e-4, 6.25e-4), 20,
+            VectorFactory.getDefault().createVector2D(
+                1d, 1d), 
+            VectorFactory.getDefault().createVector2D(
+                1d, 1d),
+            VehicleTrackingBootstrapFilter.class.getName(), 25,
+            15, 21595857l), 
+            Boolean.TRUE,
+            46000
         }
     };
   }
   
   @Test(dataProvider="initialStateData")
-  public void runSimulation(VehicleStateInitialParameters vehicleStateInitialParams) {
+  public void runSimulation(VehicleStateInitialParameters vehicleStateInitialParams,
+    boolean generalizeMoveDiff, long duration) throws NoninvertibleTransformException, TransformException {
     
     SimulationParameters simParams = new SimulationParameters(
-        startCoord, 
-        new Date(0l), 66000, 15, false, vehicleStateInitialParams);
+        startCoord, new Date(0l), duration, 15, false, vehicleStateInitialParams);
     
     Simulation sim = new Simulation("test-sim", graph, simParams, 
         vehicleStateInitialParams);
@@ -150,13 +190,19 @@ public class SimulationTest {
     final MultivariateGaussian.SufficientStatistic transitionsSS =
         new MultivariateGaussian.SufficientStatistic();
     
+    double[] obsErrorZeroArray = null;
+    double[] movementZeroArray = null;
+    
+    final long approxRuns = sim.getSimParameters().getDuration()/
+        sim.getSimParameters().getFrequency();
+    
     do {
-      System.out.println("obs=" + vehicleState.getObservation().getProjectedPoint());
-      System.out.println("mean=" + vehicleState.getMeanLocation());
       
       final Vector obsError = vehicleState.getObservation().getProjectedPoint().
           minus(vehicleState.getMeanLocation());
       obsErrorSS.update(obsError);
+      
+      System.out.println("obsError=" + obsErrorSS.getMean());
       
       final VehicleState parentState = vehicleState.getParentState();
       if (parentState != null) {
@@ -165,14 +211,45 @@ public class SimulationTest {
         
         final Vector movementDiff = vehicleState.getBelief().minus(
            predictedState);
-           
-        System.out.println("movementDiff=" + movementDiff);
-        movementSS.update(movementDiff);
+             
+        if (generalizeMoveDiff && movementDiff.getDimensionality() == 4) {
+          final Vector movementDiffAvg = avgTransform.times(movementDiff);
+          movementSS.update(movementDiffAvg);
+        } else {
+          movementSS.update(movementDiff);
+        }
         System.out.println("movementMean=" + movementSS.getMean());
         
-        transitionsSS.update(OnOffEdgeTransDirMulti.getTransitionType(
+        Vector transType = OnOffEdgeTransDirMulti.getTransitionType(
             parentState.getBelief().getEdge().getInferredEdge(), 
-            vehicleState.getBelief().getEdge().getInferredEdge()));
+            vehicleState.getBelief().getEdge().getInferredEdge());
+        
+        if (parentState.getBelief().isOnRoad()) {
+          transType = transType.stack(AbstractRoadTrackingFilter.zeros2D);
+        } else {
+          transType = AbstractRoadTrackingFilter.zeros2D.stack(transType);
+        }
+        
+        transitionsSS.update(transType);
+        System.out.println("transitionsMean=" + transitionsSS.getMean());
+      }
+      
+      if (movementSS.getCount() > Math.min(approxRuns/16, 25)) {
+        if (obsErrorZeroArray == null)
+          obsErrorZeroArray = VectorFactory.getDefault()
+            .createVector(obsErrorSS.getMean().getDimensionality())
+            .toArray();
+        
+        AssertJUnit.assertArrayEquals(obsErrorZeroArray,
+          obsErrorSS.getMean().toArray(), 5);
+      
+        if (movementZeroArray == null)
+          movementZeroArray = VectorFactory.getDefault()
+            .createVector(movementSS.getMean().getDimensionality())
+            .toArray();
+        
+        AssertJUnit.assertArrayEquals(movementZeroArray,
+        movementSS.getMean().toArray(), 6);
       }
       
       vehicleState = sim.stepSimulation(vehicleState);
@@ -186,15 +263,6 @@ public class SimulationTest {
     System.out.println(transitionsSS.getMean());
     
     
-    AssertJUnit.assertArrayEquals(
-       VectorFactory.getDefault().createVector(obsErrorSS.getMean().getDimensionality())
-        .toArray(),
-      obsErrorSS.getMean().toArray(), 5);
-    
-    AssertJUnit.assertArrayEquals(
-      VectorFactory.getDefault().createVector(movementSS.getMean().getDimensionality())
-        .toArray(),
-      movementSS.getMean().toArray(), 5);
   }
   
 }

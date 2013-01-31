@@ -401,67 +401,13 @@ public class SimpleInferredPath implements InferredPath {
   @Override
   public PathStateBelief getStateBeliefOnPath(
     PathStateBelief stateBelief) {
-    final MultivariateGaussian edgeStateBelief;
-    /*
-     * Make sure it starts on this path.
-     */
-    if (this.isNullPath()) {
-      edgeStateBelief = stateBelief.getGroundBelief();
-    } else {
-      
-      final SimplePathState startState =
-          SimplePathState.getPathState(this, VectorFactory
-              .getDefault().createVector2D(0d, 0d));
-  
-      final Vector diff = startState.minus(stateBelief);
-      diff.negativeEquals();
-  
-      edgeStateBelief = new MultivariateGaussian(
-          VectorFactory.getDefault().createVector2D(
-              this.clampToPath(diff.getElement(0)),
-              diff.getElement(1)), stateBelief.getCovariance());
-  
-      /*
-       * Make sure that we're still on the same edge,
-       * or that we had the same starting edge.
-       * 
-       */
-      if (!Iterables
-          .getFirst(this.edges, null)
-          .getGeometry()
-          .equalsTopo(
-              Iterables.getFirst(this.edges, null)
-                  .getGeometry())) {
-        boolean foundMatch = false;
-        for (final PathEdge thisEdge : this.edges) {
-          if (thisEdge.isOnEdge(edgeStateBelief.getMean().getElement(0))
-              && stateBelief.getEdge().getGeometry()
-                  .equalsTopo(thisEdge.getGeometry())) {
-            foundMatch = true;
-            break;
-          }
-        }
-  
-        if (!foundMatch)
-          return null;
-      }
-  
-  
-      assert (this.isOnPath(edgeStateBelief.getMean().getElement(0)));
-      assert Preconditions.checkNotNull(SimplePathState
-          .getPathState(this, edgeStateBelief.getMean())
-          .minus(stateBelief)
-          .isZero(
-              AbstractRoadTrackingFilter
-                  .getEdgeLengthErrorTolerance())
-          ? Boolean.TRUE : null);
-    }
-
-    // TODO set raw belief?
-    PathStateBelief result = SimplePathStateBelief.getPathStateBelief(this,
-        edgeStateBelief);
     
-    return result;
+    final PathState onThisPath = 
+        this.getStateOnPath(stateBelief);
+    
+    return SimplePathStateBelief.getPathStateBelief(this,
+        new MultivariateGaussian(onThisPath.getGlobalState(), 
+          stateBelief.getCovariance()));
   }
 
   /* (non-Javadoc)
@@ -476,9 +422,11 @@ public class SimpleInferredPath implements InferredPath {
       adjState = currentState.getGroundState();
     } else {
   
-      final SimplePathState startState =
-          SimplePathState.getPathState(this, VectorFactory
+      final PathState startState =
+          this.getStateOnPath(VectorFactory
               .getDefault().createVector2D(0d, 0d));
+//          SimplePathState.getPathState(this, VectorFactory
+//              .getDefault().createVector2D(0d, 0d));
   
       final Vector diff = startState.minus(currentState);
       diff.negativeEquals();

@@ -8,6 +8,8 @@ import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 import java.util.Date;
 import java.util.Random;
 
+import org.opengis.referencing.operation.NoninvertibleTransformException;
+import org.opengis.referencing.operation.TransformException;
 import org.opentrackingtools.GpsObservation;
 import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.graph.paths.states.PathState;
@@ -304,7 +306,7 @@ public class Simulation {
   }
 
   private VehicleState sampleState(
-    VehicleState vehicleState, long time) {
+    VehicleState vehicleState, long time) throws NoninvertibleTransformException, TransformException {
 
     vehicleState.getMovementFilter().setCurrentTimeDiff(
         this.simParameters.getFrequency());
@@ -316,10 +318,7 @@ public class Simulation {
      * Run through the edges, predict movement and reset the belief.
      */
     final PathState newPathState =
-        this.updater.sampleNextState(
-            vehicleState.getEdgeTransitionDist(),
-            vehicleState.getBelief(),
-            vehicleState.getMovementFilter());
+        this.updater.sampleNextState(vehicleState);
 
     final Matrix gCov =
         vehicleState.getMovementFilter().getObsCovar();
@@ -330,7 +329,7 @@ public class Simulation {
         GeoUtils.convertToLatLon(thisLoc, vehicleState
             .getObservation().getObsProjected());
 
-    final int thisRecNum = vehicleState.getObservation().getRecordNumber();
+    final int thisRecNum = 1 + vehicleState.getObservation().getRecordNumber();
     GpsObservation thisObs =
           new SimpleObservation(simulationName,
               new Date(time), obsCoord, null, null, null,
@@ -358,7 +357,7 @@ public class Simulation {
   }
 
   public VehicleState stepSimulation(
-    VehicleState currentState) {
+    VehicleState currentState) throws NoninvertibleTransformException, TransformException {
     final long time =
         currentState.getObservation().getTimestamp()
             .getTime()

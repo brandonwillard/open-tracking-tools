@@ -23,9 +23,9 @@ public interface InferredPath extends Comparable<InferredPath> {
   public abstract double clampToPath(double distance);
 
   /**
-   * Does the same as {@link #isOnPath(double)} except it returns the trimmed
-   * location if it falls within allowable error, and works with/returns a state
-   * vector.
+   * Creates a PathState for the given state vector.
+   * This method will truncate if the vector is not within
+   * the path length.
    * 
    * @param distance
    * @return
@@ -66,8 +66,6 @@ public interface InferredPath extends Comparable<InferredPath> {
         Map<PathEdge, EdgePredictiveResults> edgeToPreBeliefAndLogLik);
 
   /**
-   * TODO FIXME: make this a generic getStateOnPath (replace the other one).
-   * 
    * @see {@link SimpleInferredPath#getStateOnPath(PathState)}
    * @param stateBelief
    * @return
@@ -102,9 +100,22 @@ public interface InferredPath extends Comparable<InferredPath> {
   public abstract void updateEdges(GpsObservation obs,
     MultivariateGaussian globalStateBelief, InferenceGraph inferredGraph);
 
+   /**
+    * Creates a PathState for the given state distribution.
+    * This method will truncate if the mean is not within
+    * the path length.
+    * 
+    * @param rawStateBelief
+    * @return
+    */
   public abstract PathStateBelief getStateBeliefOnPath(
     MultivariateGaussian rawStateBelief);
 
+  /**
+   * Returns a path truncated at the given edge. 
+   * @param edge
+   * @return
+   */
   public abstract InferredPath getPathTo(PathEdge edge);
 
 }

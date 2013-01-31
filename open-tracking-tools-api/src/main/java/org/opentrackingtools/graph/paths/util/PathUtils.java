@@ -329,6 +329,16 @@ public class PathUtils {
                 state.minus(
                     projPair.getOffset()));
     
+    /*
+     * When there is no exactly orthogonal line to the edge
+     * we must clip the result.
+     */
+    final LengthIndexedLine lil =
+        new LengthIndexedLine(pathGeometry);
+    final double clampedIndex =
+        lil.clampIndex(projMean.getElement(0));
+    projMean.setElement(0, clampedIndex);
+    
     if (pathIsBackwards)
       projMean.scaleEquals(-1d);
 
@@ -379,6 +389,16 @@ public class PathUtils {
             .times(
                 belief.getMean().minus(
                     projPair.getOffset()));
+    
+    /*
+     * When there is no exactly orthogonal line to the edge
+     * we must clip the result.
+     */
+    final LengthIndexedLine lil =
+        new LengthIndexedLine(pathGeometry);
+    final double clampedIndex =
+        lil.clampIndex(projMean.getElement(0));
+    projMean.setElement(0, clampedIndex);
     
     if (pathIsBackwards)
       projMean.scaleEquals(-1d);

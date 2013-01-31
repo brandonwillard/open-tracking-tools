@@ -11,6 +11,7 @@ import org.opengis.referencing.crs.CRSAuthorityFactory;
 import org.opengis.referencing.crs.CoordinateReferenceSystem;
 import org.opengis.referencing.crs.GeographicCRS;
 import org.opengis.referencing.operation.MathTransform;
+import org.opengis.referencing.operation.NoninvertibleTransformException;
 import org.opengis.referencing.operation.TransformException;
 import org.opentrackingtools.util.geom.ProjectedCoordinate;
 
@@ -41,25 +42,21 @@ public class GeoUtils {
   }
 
   public static Coordinate convertToLatLon(
-    MathTransform transform, Coordinate xy) {
+    MathTransform transform, Coordinate xy) throws NoninvertibleTransformException, TransformException {
     final Coordinate to = new Coordinate();
-    try {
-      JTS.transform(xy, to, transform.inverse());
-    } catch (final TransformException e) {
-      e.printStackTrace();
-    }
+    JTS.transform(xy, to, transform.inverse());
     return new Coordinate(to.y, to.x);
   }
 
   public static Coordinate convertToLatLon(Vector vec,
-    MathTransform transform) {
+    MathTransform transform) throws NoninvertibleTransformException, TransformException {
     final Coordinate point =
         new Coordinate(vec.getElement(0), vec.getElement(1));
     return convertToLatLon(transform, point);
   }
 
   public static Coordinate convertToLatLon(Vector vec,
-    ProjectedCoordinate projCoord) {
+    ProjectedCoordinate projCoord) throws NoninvertibleTransformException, TransformException {
     final Coordinate point =
         new Coordinate(vec.getElement(0), vec.getElement(1));
     return convertToLatLon(projCoord.getTransform(), point);
@@ -195,7 +192,9 @@ public class GeoUtils {
         final Coordinate to = new Coordinate();
         try {
           JTS.transform(coord, to, projection.inverse());
-        } catch (final TransformException e) {
+        } catch (NoninvertibleTransformException e) {
+          e.printStackTrace();
+        } catch (TransformException e) {
           e.printStackTrace();
         }
         coord.setCoordinate(to);

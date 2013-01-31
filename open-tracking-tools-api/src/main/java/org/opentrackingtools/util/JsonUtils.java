@@ -19,6 +19,8 @@ import org.codehaus.jackson.map.JsonDeserializer;
 import org.codehaus.jackson.map.JsonSerializer;
 import org.codehaus.jackson.map.SerializerProvider;
 import org.codehaus.jackson.node.ArrayNode;
+import org.opengis.referencing.operation.NoninvertibleTransformException;
+import org.opengis.referencing.operation.TransformException;
 import org.opentrackingtools.GpsObservation;
 import org.opentrackingtools.graph.paths.InferredPath;
 import org.opentrackingtools.graph.paths.states.PathState;
@@ -147,11 +149,18 @@ public class JsonUtils {
         JsonProcessingException {
       
       Map<String, Object> output = Maps.newHashMap();
-      Coordinate gpsMean = GeoUtils.convertToLatLon(
-          value.getMeanLocation(), 
-          value.getObservation().getObsProjected().getTransform());
-      output.put("meanLocation", new double[] {gpsMean.x, gpsMean.y});
-      output.put("state", value.getBelief());
+      Coordinate gpsMean;
+      try {
+        gpsMean = GeoUtils.convertToLatLon(
+            value.getMeanLocation(), 
+            value.getObservation().getObsProjected().getTransform());
+        output.put("meanLocation", new double[] {gpsMean.x, gpsMean.y});
+        output.put("state", value.getBelief());
+      } catch (NoninvertibleTransformException e) {
+        e.printStackTrace();
+      } catch (TransformException e) {
+        e.printStackTrace();
+      }
       jgen.writeObject(output);
     }
     

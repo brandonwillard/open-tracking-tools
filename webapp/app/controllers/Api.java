@@ -32,6 +32,8 @@ import org.codehaus.jackson.JsonGenerationException;
 import org.codehaus.jackson.map.JsonMappingException;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.opengis.referencing.operation.MathTransform;
+import org.opengis.referencing.operation.NoninvertibleTransformException;
+import org.opengis.referencing.operation.TransformException;
 import org.opentrackingtools.GpsObservation;
 import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.graph.edges.InferredEdge;
@@ -102,7 +104,7 @@ public class Api extends Controller {
   
   public static void convertToLatLon(String x, String y)
       throws JsonGenerationException, JsonMappingException,
-      IOException {
+      IOException, NoninvertibleTransformException, TransformException {
 
     final Coordinate rawCoords =
         new Coordinate(Double.parseDouble(x), Double.parseDouble(y));
