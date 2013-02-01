@@ -1108,7 +1108,7 @@ function createParticleEntry(particleTypeId, epsgCode, particleIsBest, particleW
 }
 
 function createStateLink(id, stateObj) {
-  var coordPair = stateObj.stateLoc[0] + ',' + stateObj.stateLoc[2];
+  var coordPair = stateObj.stateLoc[0] + ',' + stateObj.stateLoc[1];
   var stateVec = createMatrixString(stateObj.state, true);
   var stateLink = jQuery('<a name="' + id + '" title="'
       + coordPair
@@ -1454,8 +1454,8 @@ L.WKTtoFeature.parseLinestring = function(wkt, options) {
   // collect vertices into a line
   var line = [];
   for ( var vi = 0, vl = verts.length; vi < vl; vi++) {
-    var lng = parseFloat(verts[vi].split(" ")[0]);
-    var lat = parseFloat(verts[vi].split(" ")[1]);
+    var lng = parseFloat(verts[vi].split(" ")[1]);
+    var lat = parseFloat(verts[vi].split(" ")[0]);
     line[line.length] = convertToLatLon({
       x : lng,
       y : lat

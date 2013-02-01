@@ -44,6 +44,7 @@ import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Envelope;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.LineString;
+import com.vividsolutions.jts.geom.Point;
 import com.vividsolutions.jts.index.strtree.STRtree;
 
 public class GenericJTSGraph implements InferenceGraph {
@@ -86,6 +87,7 @@ public class GenericJTSGraph implements InferenceGraph {
       Geometry projectedEdge; 
       try {
         projectedEdge = JTS.transform(edge, transform);
+        projectedEdge.setUserData(edge.getCoordinate());
         projEnv.expandToInclude(projectedEdge.getEnvelopeInternal());
         graphGenerator.add(projectedEdge);
         edgeIndex.insert(projectedEdge.getEnvelopeInternal(), projectedEdge);
@@ -112,7 +114,7 @@ public class GenericJTSGraph implements InferenceGraph {
     public double h(Node n) {
   
       final double distance =
-          ((XYNode)n).getCoordinate().distance(
+          ((Point)n.getObject()).getCoordinate().distance(
               toCoord);
   
       if (distance < obsStdDevDistance)
@@ -206,8 +208,10 @@ public class GenericJTSGraph implements InferenceGraph {
             pathEdges.add(getPathEdge(infEdge, distToStart, isBackward));
             distToStart += isBackward ? -infEdge.getLength() : infEdge.getLength();
           }
-          paths.add(getInferredPath(pathEdges, isBackward));
+          if (!pathEdges.isEmpty())
+            paths.add(getInferredPath(pathEdges, isBackward));
         } catch (Exception e) {
+          log.warn("Exception during A* search:" + e);
         }
       }
     }

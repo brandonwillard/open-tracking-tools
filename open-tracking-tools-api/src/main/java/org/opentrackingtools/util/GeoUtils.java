@@ -74,15 +74,15 @@ public class GeoUtils {
    * -lat-long-to-utm
    */
   public static int
-      getEPSGCodefromUTS(Coordinate refLonLat) {
+      getEPSGCodefromUTS(Coordinate refLatLon) {
     // define base EPSG code value of all UTM zones;
     int epsg_code = 32600;
     // add 100 for all zones in southern hemisphere
-    if (refLonLat.y < 0) {
+    if (refLatLon.x < 0) {
       epsg_code += 100;
     }
     // finally, add zone number to code
-    epsg_code += getUTMZoneForLongitude(refLonLat.x);
+    epsg_code += getUTMZoneForLongitude(refLatLon.y);
 
     return epsg_code;
   }
@@ -101,22 +101,22 @@ public class GeoUtils {
   }
 
   public static MathTransform getTransform(
-    Coordinate refLonLat) {
+    Coordinate refLatLon) {
     //    MathTransformFactory mtFactory = ReferencingFactoryFinder.getMathTransformFactory(null);
     //    ReferencingFactoryContainer factories = new ReferencingFactoryContainer(null);
 
     try {
       final CRSAuthorityFactory crsAuthorityFactory =
-          CRS.getAuthorityFactory(true);
+          CRS.getAuthorityFactory(false);
       
-    final GeographicCRS geoCRS =
-        crsAuthorityFactory.createGeographicCRS("EPSG:4326");
+      final GeographicCRS geoCRS =
+          crsAuthorityFactory.createGeographicCRS("EPSG:4326");
 //        org.geotools.referencing.crs.DefaultGeographicCRS.WGS84;
 
       final CoordinateReferenceSystem dataCRS =
           crsAuthorityFactory
               .createCoordinateReferenceSystem("EPSG:"
-                  + getEPSGCodefromUTS(refLonLat));
+                  + getEPSGCodefromUTS(refLatLon));
 
       //      parameters = mtFactory.getDefaultParameters("Transverse_Mercator");
       //

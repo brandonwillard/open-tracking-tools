@@ -18,6 +18,7 @@ import inference.OsmSegmentWithVelocity;
 import java.awt.geom.Point2D;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
@@ -31,12 +32,25 @@ import models.InferenceInstance;
 import org.codehaus.jackson.JsonGenerationException;
 import org.codehaus.jackson.map.JsonMappingException;
 import org.codehaus.jackson.map.ObjectMapper;
+import org.geotools.data.simple.SimpleFeatureSource;
+import org.geotools.factory.FactoryRegistryException;
+import org.geotools.feature.FeatureIterator;
+import org.geotools.geometry.jts.ReferencedEnvelope;
+import org.geotools.grid.Lines;
+import org.geotools.grid.ortholine.LineOrientation;
+import org.geotools.grid.ortholine.OrthoLineDef;
+import org.geotools.referencing.CRS;
+import org.opengis.feature.Feature;
+import org.opengis.referencing.FactoryException;
+import org.opengis.referencing.NoSuchAuthorityCodeException;
+import org.opengis.referencing.crs.CoordinateReferenceSystem;
 import org.opengis.referencing.operation.MathTransform;
 import org.opengis.referencing.operation.NoninvertibleTransformException;
 import org.opengis.referencing.operation.TransformException;
 import org.opentrackingtools.GpsObservation;
 import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.graph.edges.InferredEdge;
+import org.opentrackingtools.graph.impl.GenericJTSGraph;
 import org.opentrackingtools.graph.otp.impl.OtpGraph;
 import org.opentrackingtools.impl.VehicleState;
 import org.opentrackingtools.impl.VehicleStatePerformanceResult;
@@ -60,37 +74,74 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.vividsolutions.jts.geom.Coordinate;
+import com.vividsolutions.jts.geom.Envelope;
+import com.vividsolutions.jts.geom.LineString;
 
 public class Api extends Controller {
 
   public static final SimpleDateFormat sdf = new SimpleDateFormat(
       "yyyy-MM-dd hh:mm:ss");
 
-  public static InferenceGraph graph = new OtpGraph(
-      Play.configuration.getProperty("application.graphPath"), null);
-
+  public static InferenceGraph graph;
+//    = new OtpGraph(
+//        Play.configuration.getProperty("application.graphPath"), null);
+  
+  static {
+    /*
+     * Create a grid
+     */
+    CoordinateReferenceSystem crs;
+    try {
+      crs = CRS.getAuthorityFactory(true).createGeographicCRS("EPSG:4326");
+    
+      final Coordinate startCoord = new Coordinate(40.7549, -73.97749);
+      
+      Envelope tmpEnv = new Envelope(startCoord);
+      
+      final double appMeter = GeoUtils.getMetersInAngleDegrees(1d);
+      tmpEnv.expandBy(appMeter * 10e3);
+      
+      ReferencedEnvelope gridBounds = new ReferencedEnvelope(
+         tmpEnv.getMinX() ,tmpEnv.getMaxX() , 
+         tmpEnv.getMinY() , tmpEnv.getMaxY(), crs);
+      
+      List<OrthoLineDef> lineDefs = Arrays.asList(
+          // vertical (longitude) lines
+          new OrthoLineDef(LineOrientation.VERTICAL, 1, appMeter * 100d),
+    
+          // horizontal (latitude) lines
+          new OrthoLineDef(LineOrientation.HORIZONTAL, 1, appMeter * 100d)
+          );
+    
+      SimpleFeatureSource grid = Lines.createOrthoLines(gridBounds, lineDefs);
+      FeatureIterator iter;
+      iter = grid.getFeatures().features();
+      List<LineString> edges = Lists.newArrayList();
+      while (iter.hasNext()) {
+        Feature feature = iter.next();
+        LineString geom = (LineString)feature.getDefaultGeometryProperty().getValue();
+        edges.add(geom);
+        /*
+         * Add the reverse so that there are no dead-ends to mess with 
+         * the test results
+         */
+        edges.add((LineString) geom.reverse());
+      }
+      
+      graph = new GenericJTSGraph(edges);
+      
+    } catch (NoSuchAuthorityCodeException e1) {
+      e1.printStackTrace();
+    } catch (FactoryRegistryException e1) {
+      e1.printStackTrace();
+    } catch (FactoryException e1) {
+      e1.printStackTrace();
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+  }
+  
   public static ObjectMapper jsonMapper = new ObjectMapper();
-
-//  public static void convertToLatLon(String x, String y, String lat, String lon)
-//      throws JsonGenerationException, JsonMappingException,
-//      IOException {
-//
-//    final Coordinate rawCoords =
-//        new Coordinate(Double.parseDouble(x), Double.parseDouble(y));
-//    
-//    final Coordinate refLatLon =
-//        new Coordinate(Double.parseDouble(lat), Double.parseDouble(lon));
-//    
-//    final MathTransform transform = GeoUtils.getTransform(refLatLon);
-//    final String epsgCode = "EPSG:" + GeoUtils.getEPSGCodefromUTS(refLatLon);
-//    Coordinate coords = GeoUtils.convertToLatLon(transform, rawCoords);
-//    Map<String, Object> jsonResults = Maps.newHashMap();
-//    jsonResults.put("x", coords.x);
-//    jsonResults.put("y", coords.y);
-//    jsonResults.put("epsgCode", epsgCode);
-//
-//    renderJSON(jsonMapper.writeValueAsString(jsonResults));
-//  }
   
   public static void getGraphCenter()
       throws JsonGenerationException, JsonMappingException,

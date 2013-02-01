@@ -10,7 +10,9 @@
       <class name="org.opentrackingtools.statistics.filters.vehicles.particle_learning.impl.VehicleTrackingPLFilterTest"/>
       <class name="org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilterTest"/>
       <class name="org.opentrackingtools.statistics.filters.vehicles.road.impl.ErrorEstimatingRoadTrackingFilterTest"/>
+<!--       <class name="org.opentrackingtools.statistics.filters.vehicles.road.impl.ErrorEstimatingRoadTrackingFilterGraphTest"/> -->
       <class name="org.opentrackingtools.graph.paths.util.PathUtilsTest"/>
+      <class name="org.opentrackingtools.util.GeoUtilsTest"/>
       <class name="org.opentrackingtools.statistics.StatisticsUtilTest"/>
     </classes>
   </test> <!-- Test -->

@@ -1,4 +1,4 @@
-package org.opentrackingtools.impl;
+package org.opentrackingtools.statistics.filters.vehicles.road.impl;
 
 import org.testng.annotations.BeforeTest;
 import org.testng.annotations.DataProvider;
@@ -28,6 +28,7 @@ import gov.sandia.cognition.math.matrix.Matrix;
 import gov.sandia.cognition.math.matrix.MatrixFactory;
 import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.math.matrix.VectorFactory;
+import gov.sandia.cognition.statistics.DataDistribution;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian.SufficientStatistic;
 
@@ -40,9 +41,13 @@ import org.opengis.referencing.operation.TransformException;
 import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.graph.impl.GenericJTSGraph;
 import org.opentrackingtools.graph.paths.states.PathStateBelief;
+import org.opentrackingtools.impl.Simulation;
 import org.opentrackingtools.impl.Simulation.SimulationParameters;
+import org.opentrackingtools.impl.VehicleState;
+import org.opentrackingtools.impl.VehicleStateInitialParameters;
 import org.opentrackingtools.statistics.distributions.impl.OnOffEdgeTransDirMulti;
 import org.opentrackingtools.statistics.filters.vehicles.impl.VehicleTrackingBootstrapFilter;
+import org.opentrackingtools.statistics.filters.vehicles.particle_learning.impl.VTErrorEstimatingPLFilter;
 import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
 import org.opentrackingtools.util.GeoUtils;
 
@@ -51,14 +56,17 @@ import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Envelope;
 import com.vividsolutions.jts.geom.LineString;
 
-public class SimulationTest {
+public class ErrorEstimatingRoadTrackingFilterGraphTest {
   
   private InferenceGraph graph;
   private Coordinate startCoord;
   private Matrix avgTransform;
+  private Simulation sim;
   private double[] movementZeroArray;
   private double[] obsErrorZeroArray;
-  private Simulation sim;
+  private static final double[] sixteenZeros = new double[] {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+  private static final double[] fourZeros = new double[] {0, 0, 0, 0};
+  private static final double[] twoZeros = new double[] {0, 0};
 
   @BeforeTest
   public void setUp() throws NoSuchAuthorityCodeException, FactoryRegistryException, FactoryException, IOException {
@@ -187,32 +195,44 @@ public class SimulationTest {
     
     long time = sim.getSimParameters().getStartTime().getTime();
     
-    VehicleState vehicleState = sim.computeInitialState();
+    VehicleState trueVehicleState = sim.computeInitialState();
+    
+    VTErrorEstimatingPLFilter filter = 
+      new VTErrorEstimatingPLFilter(trueVehicleState.getObservation(),
+          graph, vehicleStateInitialParams, true);
+    
+    DataDistribution<VehicleState> vehicleStateDist = 
+        filter.createInitialLearnedObject();
     
     final MultivariateGaussian.SufficientStatistic obsErrorSS =
         new MultivariateGaussian.SufficientStatistic();
-    final MultivariateGaussian.SufficientStatistic movementSS =
+    final MultivariateGaussian.SufficientStatistic obsCovErrorSS =
+        new MultivariateGaussian.SufficientStatistic();
+    final MultivariateGaussian.SufficientStatistic onRoadCovErrorSS =
+        new MultivariateGaussian.SufficientStatistic();
+    final MultivariateGaussian.SufficientStatistic offRoadCovErrorSS =
         new MultivariateGaussian.SufficientStatistic();
     final MultivariateGaussian.SufficientStatistic transitionsSS =
         new MultivariateGaussian.SufficientStatistic();
     
-    obsErrorZeroArray = null;
-    movementZeroArray = null;
-    
     final long approxRuns = sim.getSimParameters().getDuration()/
         sim.getSimParameters().getFrequency();
     
-    updateStats(vehicleState, obsErrorSS, movementSS, transitionsSS, 
-        generalizeMoveDiff);
+    updateStats(vehicleStateDist, trueVehicleState, obsErrorSS, obsCovErrorSS, 
+        onRoadCovErrorSS, offRoadCovErrorSS, transitionsSS, generalizeMoveDiff);
     
     do {
       try {
-        vehicleState = sim.stepSimulation(vehicleState);
-        updateStats(vehicleState, obsErrorSS, movementSS, transitionsSS, 
-            generalizeMoveDiff);
-        time = vehicleState.getObservation().getTimestamp().getTime();
+        trueVehicleState = sim.stepSimulation(trueVehicleState);
+        
+        filter.update(vehicleStateDist, trueVehicleState.getObservation());
+        
+        updateStats(vehicleStateDist, trueVehicleState, obsErrorSS, obsCovErrorSS, 
+            onRoadCovErrorSS, offRoadCovErrorSS, transitionsSS, generalizeMoveDiff);
+        
+        time = trueVehicleState.getObservation().getTimestamp().getTime();
       } catch (ProjectionException ex) {
-        vehicleState = resetState(vehicleState);
+        trueVehicleState = resetState(trueVehicleState);
 //        if (vehicleState.getParentState() != null)
 //          vehicleState.setParentState(resetState(vehicleState.getParentState()));
         System.out.println("Outside of projection!  Flipped state velocities");
@@ -220,76 +240,115 @@ public class SimulationTest {
       
     } while (time < sim.getSimParameters().getEndTime().getTime());
     
-    AssertJUnit.assertTrue(movementSS.getCount() > 0.95d * approxRuns );
-
-    System.out.println(obsErrorSS.getMean());
-    System.out.println(movementSS.getMean());
-    System.out.println(transitionsSS.getMean());
-    
-    
+    AssertJUnit.assertTrue(transitionsSS.getCount() > 0.95d * approxRuns );
   }
 
 
-  private void updateStats(VehicleState vehicleState,
-    SufficientStatistic obsErrorSS, SufficientStatistic movementSS,
+  private void updateStats(DataDistribution<VehicleState> vehicleStateDist, 
+    VehicleState trueVehicleState,
+    SufficientStatistic obsErrorSS, 
+    SufficientStatistic obsCovErrorSS,
+    SufficientStatistic onRoadCovErrorSS,
+    SufficientStatistic offRoadCovErrorSS,
     SufficientStatistic transitionsSS, boolean generalizeMoveDiff) {
-          
-    final Vector obsError = vehicleState.getObservation().getProjectedPoint().
-        minus(vehicleState.getMeanLocation());
-    obsErrorSS.update(obsError);
     
-    System.out.println("obsError=" + obsErrorSS.getMean());
-    
-    final VehicleState parentState = vehicleState.getParentState();
-    if (parentState != null) {
-      PathStateBelief predictedState = parentState.getMovementFilter()
-          .predict(parentState.getBelief(), vehicleState.getBelief().getPath());
+    SufficientStatistic obsErrorStat = 
+        new MultivariateGaussian.SufficientStatistic();
+    SufficientStatistic obsCovErrorStat = 
+        new MultivariateGaussian.SufficientStatistic();
+    SufficientStatistic onRoadCovErrorStat = 
+        new MultivariateGaussian.SufficientStatistic();
+    SufficientStatistic offRoadCovErrorStat = 
+        new MultivariateGaussian.SufficientStatistic();
+    SufficientStatistic transitionsErrorStat = 
+        new MultivariateGaussian.SufficientStatistic();
+        
+    for (VehicleState state : vehicleStateDist.getDomain()) {
+      final Vector obsError = trueVehicleState.getObservation().getProjectedPoint().
+          minus(state.getMeanLocation());
+      obsErrorStat.update(obsError);
       
-      final Vector movementDiff = vehicleState.getBelief().minus(
-         predictedState);
-           
-      if (generalizeMoveDiff && movementDiff.getDimensionality() == 4) {
-        final Vector movementDiffAvg = avgTransform.times(movementDiff);
-        movementSS.update(movementDiffAvg);
-      } else {
-        movementSS.update(movementDiff);
+      final Matrix obsCovMean = ((ErrorEstimatingRoadTrackingFilter) state.getMovementFilter())
+        .getObsVariancePrior().getMean();
+      final Matrix obsCovError = obsCovMean.minus(
+          trueVehicleState.getMovementFilter().getObsCovar());
+      obsCovErrorStat.update(obsCovError.convertToVector());
+      
+      final Matrix onRoadCovMean = ((ErrorEstimatingRoadTrackingFilter) state.getMovementFilter())
+        .getOnRoadStateVariancePrior().getMean();
+      final Matrix onRoadCovFactor = state.getMovementFilter().getCovarianceFactor(true);
+      final Matrix onRoadCovError = onRoadCovFactor.times(onRoadCovMean)
+          .times(onRoadCovFactor.transpose()).minus(
+          trueVehicleState.getMovementFilter().getOnRoadStateTransCovar());
+      onRoadCovErrorStat.update(onRoadCovError.convertToVector());
+      
+      final Matrix offRoadCovMean = ((ErrorEstimatingRoadTrackingFilter) state.getMovementFilter())
+        .getOffRoadStateVariancePrior().getMean();
+      final Matrix offRoadCovFactor = state.getMovementFilter().getCovarianceFactor(false);
+      final Matrix offRoadCovError = offRoadCovFactor.times(offRoadCovMean)
+          .times(offRoadCovFactor.transpose()).minus(
+          trueVehicleState.getMovementFilter().getOffRoadStateTransCovar());
+      offRoadCovErrorStat.update(offRoadCovError.convertToVector());
+      
+      final VehicleState parentState = state.getParentState();
+      if (parentState != null) {
+        
+        Vector transType = OnOffEdgeTransDirMulti.getTransitionType(
+            parentState.getBelief().getEdge().getInferredEdge(), 
+            state.getBelief().getEdge().getInferredEdge());
+        
+        if (parentState.getBelief().isOnRoad()) {
+          transType = transType.stack(AbstractRoadTrackingFilter.zeros2D);
+        } else {
+          transType = AbstractRoadTrackingFilter.zeros2D.stack(transType);
+        }
+        
+        final Vector trueTransProbs = trueVehicleState.getEdgeTransitionDist()
+            .getEdgeMotionTransPrior().getMean().stack(
+                trueVehicleState.getEdgeTransitionDist().
+                getFreeMotionTransPrior().getMean());
+        
+        transitionsErrorStat.update(
+            transType.minus(trueTransProbs));
       }
-      System.out.println("movementMean=" + movementSS.getMean());
-      
-      Vector transType = OnOffEdgeTransDirMulti.getTransitionType(
-          parentState.getBelief().getEdge().getInferredEdge(), 
-          vehicleState.getBelief().getEdge().getInferredEdge());
-      
-      if (parentState.getBelief().isOnRoad()) {
-        transType = transType.stack(AbstractRoadTrackingFilter.zeros2D);
-      } else {
-        transType = AbstractRoadTrackingFilter.zeros2D.stack(transType);
-      }
-      
-      transitionsSS.update(transType);
-      System.out.println("transitionsMean=" + transitionsSS.getMean());
     }
+    
+    obsErrorSS.update(obsErrorStat.getMean());
+    obsCovErrorSS.update(obsCovErrorStat.getMean());
+    onRoadCovErrorSS.update(onRoadCovErrorStat.getMean());
+    offRoadCovErrorSS.update(offRoadCovErrorStat.getMean());
+    if (transitionsErrorStat.getMean() != null)
+      transitionsSS.update(transitionsErrorStat.getMean());
+      
+    System.out.println("obsError=" + obsErrorSS.getMean());
+    System.out.println("obsCovError=" + obsCovErrorSS.getMean());
+    System.out.println("onRoadCovError=" + onRoadCovErrorSS.getMean());
+    System.out.println("offRoadCovError=" + offRoadCovErrorSS.getMean());
+    System.out.println("transitionsMean=" + transitionsSS.getMean());
     
     final long approxRuns = sim.getSimParameters().getDuration()/
         sim.getSimParameters().getFrequency();
-    if (movementSS.getCount() > Math.min(approxRuns/16, 25)) {
+    if (obsErrorSS.getCount() > Math.min(approxRuns/16, 25)) {
+      
       if (obsErrorZeroArray == null)
         obsErrorZeroArray = VectorFactory.getDefault()
           .createVector(obsErrorSS.getMean().getDimensionality())
           .toArray();
       
-      AssertJUnit.assertArrayEquals(obsErrorZeroArray,
+      AssertJUnit.assertArrayEquals(
+          obsErrorSS.getMean().getDimensionality() == 4 ?
+              fourZeros : twoZeros,
         obsErrorSS.getMean().toArray(), 5);
     
-      if (movementZeroArray == null)
-        movementZeroArray = VectorFactory.getDefault()
-          .createVector(movementSS.getMean().getDimensionality())
-          .toArray();
+      AssertJUnit.assertArrayEquals(fourZeros,
+        obsCovErrorSS.getMean().toArray(), 1);
       
-      AssertJUnit.assertArrayEquals(movementZeroArray,
-      movementSS.getMean().toArray(), 1);
+      AssertJUnit.assertArrayEquals(fourZeros,
+        onRoadCovErrorSS.getMean().toArray(), 0.01);
+      
+      AssertJUnit.assertArrayEquals(sixteenZeros,
+        offRoadCovErrorSS.getMean().toArray(), 0.01);
     }
-
   }
 
 
