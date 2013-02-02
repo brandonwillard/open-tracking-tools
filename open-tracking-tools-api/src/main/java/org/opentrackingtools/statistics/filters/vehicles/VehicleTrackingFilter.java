@@ -12,7 +12,7 @@ public interface VehicleTrackingFilter<ObservationType, ParameterType>
   FilterInformation getFilterInformation(
     ObservationType observation);
 
-  double getLastProcessedTime();
+  Long getLastProcessedTime();
 
   @Override
   Random getRandom();

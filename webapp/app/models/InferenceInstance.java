@@ -212,7 +212,7 @@ public class InferenceInstance implements Comparable<InferenceInstance> {
   private boolean shouldProcessUpdate(GpsObservation obs) {
     if (filter != null) {
       final double timeDiff =
-          filter.getLastProcessedTime() == 0 ? 1d
+          filter.getLastProcessedTime() == null ? 1d
               : (obs.getTimestamp().getTime() - filter.getLastProcessedTime()) / 1000;
   
       if (timeDiff <= 0) {

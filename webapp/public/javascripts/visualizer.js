@@ -234,18 +234,19 @@ Ext.onReady(function() {
   
   vehicleId = jQuery('#vehicleId').html();
   
-  $.ajax({
-    url : '/api/traces',
-    async : false,
-    dataType : 'json',
-    data : {
-      vehicleId : vehicleId//,
-//      recordNumber : recordNumber,
-    },
-    success : function(data) {
-      lines = data;
-    }
-  });
+  if (vehicleId) {
+    $.ajax({
+      url : '/api/traces',
+      async : false,
+      dataType : 'json',
+      data : {
+        vehicleId : vehicleId
+      },
+      success : function(data) {
+        lines = data;
+      }
+    });
+  }
 
   
   var postGrid = Ext.create('Ext.grid.Panel', {
@@ -781,7 +782,7 @@ function drawEdge(edge, edgeType, layerOnly) {
     weight = 20;
     opacity = 0.2;
     groupType = evaluatedGroup;
-  } else if (edgeType == EdgeType.ADDED) {
+  } else {
     color = "green";
     weight = 20;
     opacity = 0.2;
@@ -808,6 +809,10 @@ function drawEdge(edge, edgeType, layerOnly) {
   };
 
   var layers = new Array(geojson);
+  
+  data.geom.coordinates.forEach(function(element, index, array) {  
+    array[index] = [element[1], element[0]] })
+  
   geojson.addData(data.geom);
 
   var arrowhead;
@@ -1006,7 +1011,7 @@ function createParticleEntry(particleTypeId, epsgCode, particleIsBest, particleW
 
   var edgeDesc = "free";
   var edgeId = particleData.infResults.inferredEdge.id;
-  if (edgeId != null) {
+  if (edgeId != null && edgeId != -1) {
     edgeDesc = edgeId
         + " ("
         + parseFloat(particleData.infResults.inferredEdge.length)
@@ -1340,8 +1345,8 @@ function renderPath(pathSegments, pathDirection, edgeType, layerOnly) {
       }
 
       for ( var k in segmentInfo.geom.coordinates) {
-        latLngs.push(new L.LatLng(segmentInfo.geom.coordinates[k][1],
-            segmentInfo.geom.coordinates[k][0]));
+        latLngs.push(new L.LatLng(segmentInfo.geom.coordinates[k][0],
+            segmentInfo.geom.coordinates[k][1]));
       }
     }
   }
@@ -1480,8 +1485,8 @@ L.WKTtoFeature.parseMultiLinestring = function(wkt, options) {
     var line = [];
     var verts = lsmatch[1].split(getVerts);
     for ( var i = 0; i < verts.length; i++) {
-      var lng = parseFloat(verts[i].split(" ")[0]);
-      var lat = parseFloat(verts[i].split(" ")[1]);
+      var lng = parseFloat(verts[i].split(" ")[1]);
+      var lat = parseFloat(verts[i].split(" ")[0]);
       line[line.length] = convertToLatLon({
         x : lng,
         y : lat

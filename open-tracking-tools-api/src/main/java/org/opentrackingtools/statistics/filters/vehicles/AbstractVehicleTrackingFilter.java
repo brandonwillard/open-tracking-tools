@@ -35,7 +35,7 @@ public abstract class AbstractVehicleTrackingFilter extends
    */
   protected final InferenceGraph inferredGraph;
 
-  protected double prevTime = 0;
+  protected Long prevTime = null;
 
   protected DataDistribution<VehicleState> previousResampleDist;
 
@@ -108,7 +108,7 @@ public abstract class AbstractVehicleTrackingFilter extends
   }
 
   @Override
-  public double getLastProcessedTime() {
+  public Long getLastProcessedTime() {
     return prevTime;
   }
 
@@ -124,13 +124,14 @@ public abstract class AbstractVehicleTrackingFilter extends
 
   /**
    * Note: this skips observations with a time delta of zero or less.
+   * The filter must be initialized by calling {@link #createInitialLearnedObject()}
    */
   @Override
   public void update(DataDistribution<VehicleState> target,
     GpsObservation obs) {
 
     final double timeDiff =
-        prevTime == 0d
+        prevTime == null 
             ? 0d
             : (obs.getTimestamp().getTime() - prevTime) / 1000d;
 

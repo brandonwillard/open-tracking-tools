@@ -6,6 +6,7 @@ import gov.sandia.cognition.statistics.DistributionWithMean;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 
 import java.util.Collection;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -17,6 +18,8 @@ import org.geotools.graph.path.Path;
 import org.geotools.graph.structure.DirectedEdge;
 import org.geotools.graph.structure.Edge;
 import org.geotools.graph.structure.Node;
+import org.geotools.graph.structure.basic.BasicDirectedEdge;
+import org.geotools.graph.structure.basic.BasicDirectedNode;
 import org.geotools.graph.structure.line.XYNode;
 import org.geotools.graph.traverse.standard.AStarIterator.AStarFunctions;
 import org.geotools.graph.traverse.standard.AStarIterator.AStarNode;
@@ -39,6 +42,8 @@ import org.slf4j.LoggerFactory;
 import com.beust.jcommander.internal.Lists;
 import com.beust.jcommander.internal.Maps;
 import com.google.common.base.Preconditions;
+import com.google.common.base.Predicate;
+import com.google.common.collect.Iterables;
 import com.google.common.collect.Sets;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Envelope;
@@ -95,6 +100,28 @@ public class GenericJTSGraph implements InferenceGraph {
         e.printStackTrace();
       }
     }
+    /*
+     * Initialize the id map
+     * TODO is there some way to do this lazily?  the
+     * general problem is that we might want to query
+     * an edge by it's id, yet it hasn't been initialized,
+     * so it doesn't get into the map (by the way, we
+     * have to keep our own map; the internal graph doesn't
+     * do that).
+     */
+    for (Object obj : graphGenerator.getGraph().getEdges()) {
+      final BasicDirectedEdge edge = (BasicDirectedEdge) obj;
+//      @SuppressWarnings("unchecked")
+//      Edge oppositeEdge = Iterables.find(graphGenerator.getGraph().getEdges(), 
+//        new Predicate<Object>() {
+//          @Override
+//          public boolean apply(Object input) {
+//            return ((LineString)((BasicDirectedEdge)input).getObject())
+//                .equalsExact(((LineString)edge.getObject()).reverse());
+//          }
+//      }, null);
+      getInferredEdge(edge);
+    }
     edgeIndex.build();
   }
   
@@ -126,6 +153,15 @@ public class GenericJTSGraph implements InferenceGraph {
     
     @Override
     public double cost(AStarNode n1, AStarNode n2) {
+      final BasicDirectedNode dn1 = (BasicDirectedNode) n1.getNode();
+      final BasicDirectedNode dn2 = (BasicDirectedNode) n2.getNode();
+      
+      /*
+       * Make sure this direction is traversable
+       */
+      if (dn1.getOutEdge(dn2) == null)
+        return Double.POSITIVE_INFINITY;
+      
       return 0d;
     }
   }
@@ -155,7 +191,7 @@ public class GenericJTSGraph implements InferenceGraph {
               MAX_STATE_SNAP_RADIUS);
 
       startEdges.addAll(getNearbyEdges(
-            fromState.getBelief().getGroundState(), beliefDistance));
+            fromState.getMeanLocation(), beliefDistance));
     }
 
     final Set<InferredEdge> endEdges = Sets.newHashSet();
@@ -183,7 +219,12 @@ public class GenericJTSGraph implements InferenceGraph {
     if (endEdges.isEmpty())
       return paths;
     
+    
     for (InferredEdge startEdge : startEdges) {
+      
+      // TODO FIXME determine when/how backward movement fits in
+      paths.add(getInferredPath(getPathEdge(startEdge, 0, false)));
+      
       for (InferredEdge endEdge : endEdges) {
         final Node source = ((DirectedEdge)startEdge.getBackingEdge()).getInNode();
         final Node target = ((DirectedEdge)endEdge.getBackingEdge()).getOutNode();
@@ -202,11 +243,18 @@ public class GenericJTSGraph implements InferenceGraph {
           final boolean isBackward = false;
           List<PathEdge> pathEdges = Lists.newArrayList();
           double distToStart = 0d;
-          for (Object edgeObj : path.getEdges()) {
-            Edge edge = (Edge)edgeObj;
-            InferredEdge infEdge = getInferredEdge(edge);
-            pathEdges.add(getPathEdge(infEdge, distToStart, isBackward));
-            distToStart += isBackward ? -infEdge.getLength() : infEdge.getLength();
+          Iterator iter = path.riterator();
+          BasicDirectedNode prevNode = null;
+          while (iter.hasNext()) {
+            BasicDirectedNode node = (BasicDirectedNode)iter.next();
+            if (prevNode != null && node.equals(prevNode)) {
+              Edge edge = Preconditions.checkNotNull(node.getOutEdge(node));
+              
+              InferredEdge infEdge = getInferredEdge(edge);
+              pathEdges.add(getPathEdge(infEdge, distToStart, isBackward));
+              distToStart += isBackward ? -infEdge.getLength() : infEdge.getLength();
+            }
+            prevNode = node;
           }
           if (!pathEdges.isEmpty())
             paths.add(getInferredPath(pathEdges, isBackward));
@@ -281,6 +329,7 @@ public class GenericJTSGraph implements InferenceGraph {
   @Override
   public Collection<InferredEdge> getNearbyEdges(Vector projLocation,
     double radius) {
+    Preconditions.checkArgument(projLocation.getDimensionality() == 2);
     return getNearbyEdges(GeoUtils.makeCoordinate(projLocation), radius);
   }
   

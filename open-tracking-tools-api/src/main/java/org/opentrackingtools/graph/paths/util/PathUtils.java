@@ -21,6 +21,7 @@ import org.opentrackingtools.graph.paths.edges.PathEdge;
 import org.opentrackingtools.graph.paths.edges.impl.SimplePathEdge;
 import org.opentrackingtools.graph.paths.impl.SimpleInferredPath;
 import org.opentrackingtools.graph.paths.states.PathState;
+import org.opentrackingtools.impl.VehicleState;
 import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
 import org.opentrackingtools.statistics.impl.StatisticsUtil;
 import org.opentrackingtools.util.GeoUtils;
@@ -157,6 +158,29 @@ public class PathUtils {
         && belief.getCovariance().isSquare());
     
     return adjBelief;
+  }
+  
+  public static Geometry getMovementPath(VehicleState state) {
+    if (state.getBelief().isOnRoad()
+        && state.getParentState() != null) {
+      final Geometry fullPath = state.getBelief().getPath()
+          .getGeometry();
+      final PathState prevStateOnPath = 
+          state.getBelief().getPath().getStateOnPath(state.getBelief());
+      final double distStart = prevStateOnPath.getGlobalState()
+          .getElement(0);
+      final double distEnd = state.getBelief().getGlobalState()
+          .getElement(0);
+      final LinearLocation startLoc = LengthLocationMap.
+          getLocation(fullPath, distStart);
+      final LinearLocation endLoc = LengthLocationMap.
+          getLocation(fullPath, distEnd);
+      LocationIndexedLine lil = new LocationIndexedLine(fullPath);
+      return lil.extractLine(startLoc, endLoc);
+    } else {
+      return JTSFactoryFinder.getGeometryFactory()
+          .createPoint(new Coordinate());
+    }
   }
   
   /**

@@ -32,6 +32,7 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
+import com.vividsolutions.jts.geom.LineString;
 import com.vividsolutions.jts.linearref.LengthIndexedLine;
 
 /**
@@ -76,7 +77,7 @@ public class SimpleInferredPath implements InferredPath {
     this.edges = edges;
     this.isBackward = isBackward;
     this.normalEdges = Lists.newArrayList();
-
+    
     PathEdge lastEdge = null;
     //    double absTotalDistance = 0d;
     final List<Coordinate> coords = Lists.newArrayList();
@@ -462,34 +463,35 @@ public class SimpleInferredPath implements InferredPath {
        * or that we had the same starting edge.
        * 
        */
-      if (!Iterables
-          .getFirst(this.edges, null)
-          .getGeometry()
-          .equalsTopo(
-              Iterables.getFirst(this.edges, null)
-                  .getGeometry())) {
-        boolean foundMatch = false;
-        for (final PathEdge thisEdge : this.edges) {
-          if (thisEdge.isOnEdge(adjState.getElement(0))
-              && currentState.getEdge().getGeometry()
-                  .equalsTopo(thisEdge.getGeometry())) {
-            foundMatch = true;
-            break;
-          }
-        }
-  
-        if (!foundMatch)
-          return null;
-      }
+//      if (!Iterables
+//          .getFirst(this.edges, null)
+//          .getGeometry()
+//          .equalsTopo(
+//              Iterables.getFirst(this.edges, null)
+//                  .getGeometry())) {
+//        boolean foundMatch = false;
+//        for (final PathEdge thisEdge : this.edges) {
+//          if (thisEdge.isOnEdge(adjState.getElement(0))
+//              && currentState.getEdge().getGeometry()
+//                  .equalsTopo(thisEdge.getGeometry())) {
+//            foundMatch = true;
+//            break;
+//          }
+//        }
+//  
+//        if (!foundMatch)
+//          return null;
+//      }
   
   
       assert (this.isOnPath(adjState.getElement(0)));
-      assert Preconditions.checkNotNull(SimplePathState
-          .getPathState(this, adjState)
-          .minus(currentState)
-          .isZero(
-              AbstractRoadTrackingFilter
-                  .getEdgeLengthErrorTolerance())
+      assert !currentState.isOnRoad() || Preconditions.checkNotNull(
+          SimplePathState
+            .getPathState(this, adjState)
+            .minus(currentState)
+            .isZero(
+                AbstractRoadTrackingFilter
+                    .getEdgeLengthErrorTolerance())
           ? Boolean.TRUE : null);
     }
   

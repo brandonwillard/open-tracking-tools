@@ -35,7 +35,9 @@ import org.codehaus.jackson.map.ObjectMapper;
 import org.geotools.data.simple.SimpleFeatureSource;
 import org.geotools.factory.FactoryRegistryException;
 import org.geotools.feature.FeatureIterator;
+import org.geotools.geometry.jts.JTSFactoryFinder;
 import org.geotools.geometry.jts.ReferencedEnvelope;
+import org.geotools.graph.util.geom.GeometryUtil;
 import org.geotools.grid.Lines;
 import org.geotools.grid.ortholine.LineOrientation;
 import org.geotools.grid.ortholine.OrthoLineDef;
@@ -52,6 +54,7 @@ import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.graph.edges.InferredEdge;
 import org.opentrackingtools.graph.impl.GenericJTSGraph;
 import org.opentrackingtools.graph.otp.impl.OtpGraph;
+import org.opentrackingtools.graph.paths.impl.TrackingTestUtils;
 import org.opentrackingtools.impl.VehicleState;
 import org.opentrackingtools.impl.VehicleStatePerformanceResult;
 import org.opentrackingtools.impl.VehicleTrackingPerformanceEvaluator;
@@ -75,7 +78,11 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Envelope;
+import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.LineString;
+import com.vividsolutions.jts.geom.MultiLineString;
+import com.vividsolutions.jts.index.strtree.STRtree;
+import com.vividsolutions.jts.operation.linemerge.LineMerger;
 
 public class Api extends Controller {
 
@@ -87,56 +94,17 @@ public class Api extends Controller {
 //        Play.configuration.getProperty("application.graphPath"), null);
   
   static {
-    /*
-     * Create a grid
-     */
-    CoordinateReferenceSystem crs;
+      
     try {
-      crs = CRS.getAuthorityFactory(true).createGeographicCRS("EPSG:4326");
-    
-      final Coordinate startCoord = new Coordinate(40.7549, -73.97749);
-      
-      Envelope tmpEnv = new Envelope(startCoord);
-      
-      final double appMeter = GeoUtils.getMetersInAngleDegrees(1d);
-      tmpEnv.expandBy(appMeter * 10e3);
-      
-      ReferencedEnvelope gridBounds = new ReferencedEnvelope(
-         tmpEnv.getMinX() ,tmpEnv.getMaxX() , 
-         tmpEnv.getMinY() , tmpEnv.getMaxY(), crs);
-      
-      List<OrthoLineDef> lineDefs = Arrays.asList(
-          // vertical (longitude) lines
-          new OrthoLineDef(LineOrientation.VERTICAL, 1, appMeter * 100d),
-    
-          // horizontal (latitude) lines
-          new OrthoLineDef(LineOrientation.HORIZONTAL, 1, appMeter * 100d)
-          );
-    
-      SimpleFeatureSource grid = Lines.createOrthoLines(gridBounds, lineDefs);
-      FeatureIterator iter;
-      iter = grid.getFeatures().features();
-      List<LineString> edges = Lists.newArrayList();
-      while (iter.hasNext()) {
-        Feature feature = iter.next();
-        LineString geom = (LineString)feature.getDefaultGeometryProperty().getValue();
-        edges.add(geom);
-        /*
-         * Add the reverse so that there are no dead-ends to mess with 
-         * the test results
-         */
-        edges.add((LineString) geom.reverse());
-      }
-      
-      graph = new GenericJTSGraph(edges);
-      
-    } catch (NoSuchAuthorityCodeException e1) {
-      e1.printStackTrace();
-    } catch (FactoryRegistryException e1) {
-      e1.printStackTrace();
-    } catch (FactoryException e1) {
-      e1.printStackTrace();
+      graph = new GenericJTSGraph(TrackingTestUtils.createGridGraph(
+          new Coordinate(40.7549, -73.97749)));
+    } catch (NoSuchAuthorityCodeException e) {
+      e.printStackTrace();
+    } catch (FactoryRegistryException e) {
+      e.printStackTrace();
     } catch (IOException e) {
+      e.printStackTrace();
+    } catch (FactoryException e) {
       e.printStackTrace();
     }
   }

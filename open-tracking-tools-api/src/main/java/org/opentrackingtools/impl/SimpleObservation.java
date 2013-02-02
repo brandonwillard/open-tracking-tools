@@ -146,12 +146,14 @@ public class SimpleObservation implements GpsObservation {
   
   @Override
   public String toString() {
-    return "Observation [vehicleId=" + sourceId 
-        + ", timestamp=" + timestamp + ", obsCoords="
-        + coordsProjected + ", obsPoint=" + coordsProjected
-        + ", velocity=" + velocity + ", heading=" + heading
-        + ", accuracy=" + accuracy + ", prevObs=" + prevObs
-        + "]";
+    StringBuilder builder = new StringBuilder();
+    builder.append("SimpleObservation [sourceId=").append(sourceId)
+        .append(", timestamp=").append(timestamp)
+        .append(", coordsLatLon=").append(coordsLatLon)
+        .append(", recordNumber=").append(recordNumber)
+        .append(", coordsProjected=").append(coordsProjected)
+        .append("]");
+    return builder.toString();
   }
 
   public void reset() {
