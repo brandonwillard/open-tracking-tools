@@ -14,6 +14,8 @@
 
 var vehicleId;
 var startLatLng;
+var globalEpsgCode = null;
+
 $.ajax({
   url : '/api/getGraphCenter',
   dataType : 'json',
@@ -21,8 +23,10 @@ $.ajax({
   cache : true,
   success : function(data) {
     startLatLng = new L.LatLng(data.lat, data.lng);
+    globalEpsgCode = "EPSG:" + data.epsgCode;
   }
 });
+
 var map;
 
 var vertexLayer = null, edgeLayer = null;
@@ -46,8 +50,6 @@ var allInfMeansGroup = new L.LayerGroup();
 
 var lines = new Array();
 
-// FIXME hack!
-var globalEpsgCode = null;
 
 var interval = null;
 var paths = null;
@@ -334,7 +336,7 @@ Ext.onReady(function() {
           region: 'west',
           xtype: 'panel',
           split: true,
-          width: '50%',
+          width: '100%',
           collapsible: true,
           html: '<div id="map"></div>',
           id: 'mapContainer',
@@ -346,6 +348,7 @@ Ext.onReady(function() {
         minHeight: 400,
         xtype: 'tabpanel', 
         activeTab: 1,      
+        hidden: lines.length == 0,
         items: [
           {
             title: 'Prior',
@@ -501,42 +504,53 @@ function addEdge() {
   map.invalidateSize();
 }
 
-function drawCoords(lat, lon, popupMessage, pan, justMarker, color, opacity) {
+function drawCoords(lat, lon, settings) {
   var latlng = new L.LatLng(parseFloat(lat), parseFloat(lon));
 
-  if (!color)
-    color = '#0c0';
-  if (!opacity)
-    opacity = 1;
+  if (!settings) {
+    settings = {
+       color: '#000',
+       fillColor: '#0c0',
+       opacity: 1,
+       fillOpacity: 1,
+       justMarker: false, 
+       pan: false,
+       popupMessage: null,
+       weight: 1
+    }
+  }
+  
+  marker = new L.Circle(latlng, 10, settings
+  );
+  if (settings.popupMessage != null)
+    marker.bindPopup(settings.popupMessage);
 
-  marker = new L.Circle(latlng, 10, {
-    color : color,
-    opacity : opacity,
-    lat : parseFloat(lat),
-    lon : parseFloat(lon),
-    weight : 1
-  });
-  if (popupMessage != null)
-    marker.bindPopup(popupMessage);
-
-  if (justMarker)
+  if (settings.justMarker)
     return marker;
 
   pointsGroup.addLayer(marker);
 
-  if (pan)
+  if (settings.pan)
     map.panTo(latlng);
 
   return marker;
 }
 
-//function drawProjectedCoords(x, y, popupMessage, pan, epsgCode) {
-//  var latLon = convertToLatLon(new Proj4js.Point(x, y), epsgCode);
-//  var marker = drawCoords(latLon.lat, latLon.lng, popupMessage, pan);
-//  map.invalidateSize();
-//
-//  return marker;
-//}
+function drawProjectedCoords(x, y, settings) {
+  
+  var epsg; 
+  if (!settings || !settings.epsg) {
+    epsg = globalEpsgCode;
+  } else {
+    epsg = settings.epsg;
+  }
+    
+  var latLon = convertToLatLon(new Proj4js.Point(x, y), epsg);
+  var marker = drawCoords(latLon.lat, latLon.lng, settings);
+  map.invalidateSize();
+
+  return marker;
+}
 
 function addCoordinates() {
 
@@ -754,8 +768,13 @@ EdgeType = {
 function drawEdge(edge, edgeType, layerOnly) {
 
   var result = null;
-  var data = edge;
-  var velocity = edge.velocity;
+  var data; 
+  if (!isNaN(parseInt(edge))) {
+    data = getEdgeFromId(edge);
+  } else {
+    data = edge;
+  }
+  velocity = data.velocity;
   var avg_velocity = Math.abs(velocity);
 
   var color;
@@ -943,7 +962,8 @@ function renderParticles(recordNumber, isPrior) {
             }
 
             var epsgCode = particleData.particle.observedPoint.epsgCode;
-            globalEpsgCode = epsgCode;
+            if (!globalEpsgCode)
+              globalEpsgCode = epsgCode;
 
             var particleEntry = createParticleEntry('current_' + type,
                 epsgCode, particleData.isBest, particleData.weight, particleData.particleNumber,
@@ -982,7 +1002,8 @@ fields: [
          {name: 'onTransPrior'}
          ] 
 */
-function createParticleEntry(particleTypeId, epsgCode, particleIsBest, particleWeight, particleNumber, 
+function createParticleEntry(particleTypeId, epsgCode, 
+    particleIsBest, particleWeight, particleNumber, 
     particleData, particleMeans, particleEdges) {
   
   var resultArray = {};
@@ -1002,10 +1023,9 @@ function createParticleEntry(particleTypeId, epsgCode, particleIsBest, particleW
   var locLink = createStateLink(locLinkName, particleData.infResults.pathState);
   var meanLatLon = convertToLatLon(particleData.infResults.meanCoords, epsgCode);
   
-  particleMeans.addLayer(drawCoords(meanLatLon.lat,
-      meanLatLon.lng, null, false, true, null, 0.5
-          + particleWeight
-          * particleData.infResults.particleCount));
+  particleMeans.addLayer(drawCoords(meanLatLon.lat, meanLatLon.lng, 
+      {popupMessage: null, pan: false, justMarker: true, color: '#0c0', 
+        opacity: 0.5 + particleWeight * particleData.infResults.particleCount}));
   
   resultArray['mean'] = locLink.prop('outerHTML');
 
@@ -1038,7 +1058,7 @@ function createParticleEntry(particleTypeId, epsgCode, particleIsBest, particleW
 
   var stateSample = particleData.infResults.currentStateSample;
   if (stateSample !== null) {
-    var smplLocLinkName = particleTypeId + '_stateSample_' + particleNumber
+    var smplLocLinkName = particleTypeId + '_currStateSample_' + particleNumber
         + '_mean';
     var stateLink = createStateLink(smplLocLinkName, stateSample);
     resultArray['currentStateSample'] = stateLink.prop('outerHTML');
@@ -1046,9 +1066,9 @@ function createParticleEntry(particleTypeId, epsgCode, particleIsBest, particleW
   
   var prevStateSample = particleData.infResults.prevStateSample;
   if (prevStateSample !== null) {
-    var smplLocLinkName = particleTypeId + '_stateSample_' + particleNumber
+    var smplLocLinkName = particleTypeId + '_prevStateSample_' + particleNumber
         + '_mean';
-    var stateLink = createStateLink(smplLocLinkName, stateSample);
+    var stateLink = createStateLink(smplLocLinkName, prevStateSample);
     resultArray['prevStateSample'] = stateLink.prop('outerHTML');
   }
 
@@ -1169,8 +1189,9 @@ function createHoverPointLink(link, latlon) {
         var localLoc = event.data;
         var marker = this.marker;
         if (marker == null) {
-          marker = drawCoords(localLoc.lat, localLoc.lng, null, false, false,
-              'red');
+          marker = drawCoords(localLoc.lat, localLoc.lng, 
+              {popupMessage: null, pan: false, justMarker: false, color: 'red',
+                opacity: 1});
           this.marker = marker;
         } else {
           pointsGroup.addLayer(marker);

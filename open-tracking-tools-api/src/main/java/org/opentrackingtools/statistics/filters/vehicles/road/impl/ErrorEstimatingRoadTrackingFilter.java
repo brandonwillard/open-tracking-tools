@@ -501,11 +501,15 @@ public class ErrorEstimatingRoadTrackingFilter
     final Matrix Sigma;
 
     if (posterior.isOnRoad()) {
+      /*
+       * Force the observation onto the posterior edge,
+       * since it's our best guess as to where it 
+       * actually is.
+       */
       final MultivariateGaussian obsProjBelief =
           PathUtils.getRoadObservation(
               obs, this.obsCovar, priorPred.getPath(),
-              Iterables.getLast(priorPred.getPath()
-                  .getPathEdges()));
+              posterior.getEdge());
 
       /*
        * Perform non-linear transform on y and obs cov. 

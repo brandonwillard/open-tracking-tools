@@ -123,18 +123,18 @@ public class VehicleState implements
   private int hash = 0;
 
   public VehicleState(InferenceGraph inferredGraph,
-    GpsObservation observationFactory,
+    GpsObservation observation,
     AbstractRoadTrackingFilter<?> updatedFilter,
     PathStateBelief belief,
     OnOffEdgeTransDirMulti edgeTransitionDist,
     VehicleState parentState) {
 
     Preconditions.checkNotNull(inferredGraph);
-    Preconditions.checkNotNull(observationFactory);
+    Preconditions.checkNotNull(observation);
     Preconditions.checkNotNull(updatedFilter);
     Preconditions.checkNotNull(belief);
 
-    this.observation = observationFactory;
+    this.observation = observation;
     this.movementFilter = updatedFilter;
     this.belief = belief.clone();
     this.graph = inferredGraph;
@@ -156,18 +156,15 @@ public class VehicleState implements
      * Reset the parent's parent state so that we don't keep these objects
      * forever.
      */
-    // state.parentState = null;
 
     final double timeDiff;
-    if (observationFactory.getPreviousObservation() != null) {
+    if (observation.getPreviousObservation() != null) {
       timeDiff =
-          (observationFactory.getTimestamp().getTime() - observationFactory
+          (observation.getTimestamp().getTime() - observation
               .getPreviousObservation().getTimestamp()
               .getTime()) / 1000d;
-    } else {
-      timeDiff = 30d;
-    }
-    this.movementFilter.setCurrentTimeDiff(timeDiff);
+      this.movementFilter.setCurrentTimeDiff(timeDiff);
+    } 
 
     // DEBUG
     // this.initialHashCode = this.hashCode();

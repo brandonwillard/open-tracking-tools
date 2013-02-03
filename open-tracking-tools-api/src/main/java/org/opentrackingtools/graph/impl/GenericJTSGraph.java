@@ -129,10 +129,13 @@ public class GenericJTSGraph implements InferenceGraph {
     
     final Coordinate toCoord;
     final double obsStdDevDistance;
+//    final private Edge startEdge;
     
     public VehicleStateAStarFunction(Node destination, 
       Coordinate toCoord, double obsStdDevDistance) {
+//      Edge startEdge, Coordinate toCoord, double obsStdDevDistance) {
       super(destination);
+//      this.startEdge = startEdge;
       this.toCoord = toCoord;
       this.obsStdDevDistance = obsStdDevDistance;
     }
@@ -156,11 +159,27 @@ public class GenericJTSGraph implements InferenceGraph {
       final BasicDirectedNode dn1 = (BasicDirectedNode) n1.getNode();
       final BasicDirectedNode dn2 = (BasicDirectedNode) n2.getNode();
       
+      Edge edgeBetween = dn1.getOutEdge(dn2);
       /*
        * Make sure this direction is traversable
        */
-      if (dn1.getOutEdge(dn2) == null)
+      if (edgeBetween == null)
         return Double.POSITIVE_INFINITY;
+      
+      /*
+       * If these are the first nodes, then make sure
+       * they travel the direction of the edge
+       */
+//      if (n1.getParent() == null) {
+//        if (!edgeBetween.equals(startEdge))
+//          return Double.POSITIVE_INFINITY;
+//      }
+      
+      /*
+       * TODO
+       * Compute distance past projected value
+       */
+      
       
       return 0d;
     }
@@ -194,7 +213,6 @@ public class GenericJTSGraph implements InferenceGraph {
             fromState.getMeanLocation(), beliefDistance));
     }
 
-    final Set<InferredEdge> endEdges = Sets.newHashSet();
 
     final double obsStdDevDistance =
         Math.min(
@@ -203,20 +221,18 @@ public class GenericJTSGraph implements InferenceGraph {
                     .getMovementFilter().getObsCovar()),
             MAX_OBS_SNAP_RADIUS);
 
-    double maxEndEdgeLength = Double.NEGATIVE_INFINITY;
+    final Set<Node> endNodes= Sets.newHashSet();
     for (final InferredEdge edge: getNearbyEdges(toCoord,
         obsStdDevDistance)) {
-      
-      if (edge.getLength() > maxEndEdgeLength)
-        maxEndEdgeLength = edge.getLength();
-
-      endEdges.add(edge);
+      final DirectedEdge bEdge = ((DirectedEdge)edge.getBackingEdge());
+      endNodes.add(bEdge.getNodeA());
+      endNodes.add(bEdge.getNodeB());
     }
 
     Set<InferredPath> paths = Sets.newHashSet();
     paths.add(getNullPath());
     
-    if (endEdges.isEmpty())
+    if (endNodes.isEmpty())
       return paths;
     
     
@@ -225,12 +241,21 @@ public class GenericJTSGraph implements InferenceGraph {
       // TODO FIXME determine when/how backward movement fits in
       paths.add(getInferredPath(getPathEdge(startEdge, 0, false)));
       
-      for (InferredEdge endEdge : endEdges) {
-        final Node source = ((DirectedEdge)startEdge.getBackingEdge()).getInNode();
-        final Node target = ((DirectedEdge)endEdge.getBackingEdge()).getOutNode();
+      final DirectedEdge bStartEdge = ((DirectedEdge)startEdge.getBackingEdge());
+      final Node source = bStartEdge.getOutNode();
         
-        AStarFunctions afuncs = new VehicleStateAStarFunction(
-            target, toCoord, obsStdDevDistance);
+      /*
+       * Use this set to avoid recomputing subpaths of 
+       * our current paths.
+       */
+      Set<Node> reachedEndNodes = Sets.newHashSet(source);
+      for (Node target : endNodes) {
+        
+        if (reachedEndNodes.contains(target))
+          continue;
+        
+        AStarFunctions afuncs = new VehicleStateAStarFunction(target, 
+            toCoord, obsStdDevDistance);
         
         AStarShortestPathFinder aStarIter = new AStarShortestPathFinder(
             this.graphGenerator.getGraph(), source, target, afuncs);
@@ -239,25 +264,26 @@ public class GenericJTSGraph implements InferenceGraph {
         try {
           Path path = aStarIter.getPath();
           
-          // TODO FIXME determine when/how backward movement fits in
-          final boolean isBackward = false;
           List<PathEdge> pathEdges = Lists.newArrayList();
           double distToStart = 0d;
           Iterator iter = path.riterator();
-          BasicDirectedNode prevNode = null;
+          BasicDirectedNode prevNode = (BasicDirectedNode) bStartEdge.getInNode();
           while (iter.hasNext()) {
             BasicDirectedNode node = (BasicDirectedNode)iter.next();
-            if (prevNode != null && node.equals(prevNode)) {
-              Edge edge = Preconditions.checkNotNull(node.getOutEdge(node));
-              
-              InferredEdge infEdge = getInferredEdge(edge);
-              pathEdges.add(getPathEdge(infEdge, distToStart, isBackward));
-              distToStart += isBackward ? -infEdge.getLength() : infEdge.getLength();
-            }
+            Edge edge = Preconditions.checkNotNull(prevNode.getOutEdge(node));
+            
+            InferredEdge infEdge = getInferredEdge(edge);
+            pathEdges.add(getPathEdge(infEdge, distToStart, false));
+            distToStart += infEdge.getLength();
+            
+            reachedEndNodes.add(node);
             prevNode = node;
           }
           if (!pathEdges.isEmpty())
-            paths.add(getInferredPath(pathEdges, isBackward));
+            paths.add(getInferredPath(pathEdges, false));
+          
+          // TODO if we want backward paths, then simply reverse this one 
+          
         } catch (Exception e) {
           log.warn("Exception during A* search:" + e);
         }

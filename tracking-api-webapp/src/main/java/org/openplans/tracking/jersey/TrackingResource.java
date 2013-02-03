@@ -70,7 +70,7 @@ public class TrackingResource {
 
 	public TrackingResource() {
 		File configFile = new File(
-				"/Users/asutula/Documents/OpenPlans/Projects/OpenTrackingTools/Code/open-tracking-tools/open-tracking-tools-api/runner-test-config.json");
+				"/home/bwillard/openplans/open-tracking-tools/open-tracking-tools-api/runner-test-config.json");
 
 		Version version = new Version(1, 0, 0, "SNAPSHOT");
 		SimpleModule module = new SimpleModule("MyModuleName", version);
@@ -95,6 +95,7 @@ public class TrackingResource {
 		} catch (Exception e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
+			return;
 		}
 		System.out.println("Loaded config:" + _ip);
 

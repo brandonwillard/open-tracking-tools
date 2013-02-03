@@ -115,9 +115,10 @@ public class Api extends Controller {
       throws JsonGenerationException, JsonMappingException,
       IOException {
     Coordinate center = graph.getGPSGraphExtent().centre();
-    Map<String, Double> result = Maps.newHashMap();
+    Map<String, Object> result = Maps.newHashMap();
     result.put("lat", center.x);
     result.put("lng", center.y);
+    result.put("epsgCode", GeoUtils.getEPSGCodefromUTS(center));
     renderJSON(jsonMapper.writeValueAsString(result));
   }
   

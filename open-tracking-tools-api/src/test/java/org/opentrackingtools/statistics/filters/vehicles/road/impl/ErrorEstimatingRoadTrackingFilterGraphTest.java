@@ -64,12 +64,10 @@ public class ErrorEstimatingRoadTrackingFilterGraphTest {
   private Coordinate startCoord;
   private Matrix avgTransform;
   private Simulation sim;
-  private double[] movementZeroArray;
   private double[] obsErrorZeroArray;
-  private static final double[] sixteenZeros = new double[] {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
   private static final double[] fourZeros = new double[] {0, 0, 0, 0};
   private static final double[] twoZeros = new double[] {0, 0};
-
+  private static final double[] oneZero = new double[] {0};
   @BeforeTest
   public void setUp() throws NoSuchAuthorityCodeException, FactoryRegistryException, FactoryException, IOException {
     
@@ -243,18 +241,22 @@ public class ErrorEstimatingRoadTrackingFilterGraphTest {
       
       final Matrix onRoadCovMean = ((ErrorEstimatingRoadTrackingFilter) state.getMovementFilter())
         .getOnRoadStateVariancePrior().getMean();
-      final Matrix onRoadCovFactor = state.getMovementFilter().getCovarianceFactor(true);
-      final Matrix onRoadCovError = onRoadCovFactor.times(onRoadCovMean)
-          .times(onRoadCovFactor.transpose()).minus(
-          trueVehicleState.getMovementFilter().getOnRoadStateTransCovar());
+//      final Matrix onRoadCovFactor = state.getMovementFilter().getCovarianceFactor(true);
+//      final Matrix onRoadCovError = onRoadCovFactor.times(onRoadCovMean)
+//          .times(onRoadCovFactor.transpose()).minus(
+//          trueVehicleState.getMovementFilter().getOnRoadStateTransCovar());
+      final Matrix onRoadCovError = onRoadCovMean.minus(
+          trueVehicleState.getMovementFilter().getQr());
       onRoadCovErrorStat.update(onRoadCovError.convertToVector());
       
       final Matrix offRoadCovMean = ((ErrorEstimatingRoadTrackingFilter) state.getMovementFilter())
         .getOffRoadStateVariancePrior().getMean();
-      final Matrix offRoadCovFactor = state.getMovementFilter().getCovarianceFactor(false);
-      final Matrix offRoadCovError = offRoadCovFactor.times(offRoadCovMean)
-          .times(offRoadCovFactor.transpose()).minus(
-          trueVehicleState.getMovementFilter().getOffRoadStateTransCovar());
+//      final Matrix offRoadCovFactor = state.getMovementFilter().getCovarianceFactor(false);
+//      final Matrix offRoadCovError = offRoadCovFactor.times(offRoadCovMean)
+//          .times(offRoadCovFactor.transpose()).minus(
+//          trueVehicleState.getMovementFilter().getOffRoadStateTransCovar());
+      final Matrix offRoadCovError = offRoadCovMean.minus(
+          trueVehicleState.getMovementFilter().getQg());
       offRoadCovErrorStat.update(offRoadCovError.convertToVector());
       
       final VehicleState parentState = state.getParentState();
@@ -295,7 +297,7 @@ public class ErrorEstimatingRoadTrackingFilterGraphTest {
     
     final long approxRuns = sim.getSimParameters().getDuration()/
         sim.getSimParameters().getFrequency();
-    if (obsErrorSS.getCount() > Math.min(approxRuns/16, 25)) {
+    if (obsErrorSS.getCount() > 0 ) {//Math.min(approxRuns/16, 25)) {
       
       if (obsErrorZeroArray == null)
         obsErrorZeroArray = VectorFactory.getDefault()
@@ -305,16 +307,21 @@ public class ErrorEstimatingRoadTrackingFilterGraphTest {
       AssertJUnit.assertArrayEquals(
           obsErrorSS.getMean().getDimensionality() == 4 ?
               fourZeros : twoZeros,
-        obsErrorSS.getMean().toArray(), 5);
+        obsErrorSS.getMean().toArray(), 3d * Math.sqrt(
+            trueVehicleState.getMovementFilter().getObsCovar().normFrobenius()));
     
 //      AssertJUnit.assertArrayEquals(fourZeros,
-//        obsCovErrorSS.getMean().toArray(), 1);
-//      
-//      AssertJUnit.assertArrayEquals(fourZeros,
-//        onRoadCovErrorSS.getMean().toArray(), 0.01);
-//      
-//      AssertJUnit.assertArrayEquals(sixteenZeros,
-//        offRoadCovErrorSS.getMean().toArray(), 0.01);
+//        obsCovErrorSS.getMean().toArray(), 5);
+      
+      AssertJUnit.assertArrayEquals(oneZero,
+        onRoadCovErrorSS.getMean().toArray(), 
+        0.4d *
+            trueVehicleState.getMovementFilter().getQr().normFrobenius());
+      
+      AssertJUnit.assertArrayEquals(fourZeros,
+        offRoadCovErrorSS.getMean().toArray(), 
+        0.4d *
+            trueVehicleState.getMovementFilter().getQg().normFrobenius());
     }
   }
 

@@ -256,7 +256,7 @@
   </dependencyManagement>
 
   <properties>
-    <otp.version>0.7.10-SNAPSHOT</otp.version>
+    <otp.version>0.7.10</otp.version>
     <geotools.version>8.0-M4</geotools.version>
     <jersey.version>1.11</jersey.version>
     <spring.version>3.0.5.RELEASE</spring.version>
