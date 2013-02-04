@@ -12,8 +12,8 @@ import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 
 import java.util.Random;
 
+import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.graph.edges.impl.SimpleInferredEdge;
-import org.opentrackingtools.graph.otp.impl.OtpGraph;
 import org.opentrackingtools.graph.paths.edges.PathEdge;
 import org.opentrackingtools.graph.paths.edges.impl.SimplePathEdge;
 import org.opentrackingtools.graph.paths.impl.SimpleInferredPath;
@@ -22,6 +22,7 @@ import org.opentrackingtools.graph.paths.states.PathStateBelief;
 import org.opentrackingtools.graph.paths.states.impl.SimplePathStateBelief;
 import org.opentrackingtools.graph.paths.util.PathUtils;
 import org.opentrackingtools.impl.VehicleStateInitialParameters;
+import org.opentrackingtools.statistics.distributions.impl.AdjMultivariateGaussian;
 import org.opentrackingtools.statistics.filters.vehicles.particle_learning.impl.VehicleTrackingPLFilter;
 import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
 import org.opentrackingtools.statistics.filters.vehicles.road.impl.StandardRoadTrackingFilter;
@@ -35,8 +36,8 @@ import com.vividsolutions.jts.geom.LineString;
 public class AbstractRoadTrackingFilterTest {
 
   private VehicleStateInitialParameters vehicleStateInitialParams;
-  private AbstractRoadTrackingFilter<?> filter;
-  private OtpGraph graph;
+  private AbstractRoadTrackingFilter filter;
+  private InferenceGraph graph;
 
   @BeforeMethod
   public void setUp() throws Exception {
@@ -50,41 +51,27 @@ public class AbstractRoadTrackingFilterTest {
             VectorFactory.getDefault().createVector2D(5d,
                 95d), VectorFactory.getDefault()
                 .createVector2D(95d, 5d),
-            VehicleTrackingPLFilter.class.getName(), 25,
-            30, 0l);
+            VehicleTrackingPLFilter.class.getName(), 
+            StandardRoadTrackingFilter.class.getName(),
+            25, 30, 0l);
 
+    graph = mock(InferenceGraph.class);
+    
     /*
      * We're using StandardRoadTrackingFilter, but 
      * only the parts with implementations in 
      * AbstractRoadTrackingFilter
      */
     filter =
-        new StandardRoadTrackingFilter(
-            vehicleStateInitialParams.getObsCov(),
-            vehicleStateInitialParams.getOffRoadStateCov(),
-            vehicleStateInitialParams.getOnRoadStateCov(),
-            vehicleStateInitialParams.getInitialObsFreq());
-    //        mock(AbstractRoadTrackingFilter.class);
-    //    filter.setObsCovar(
-    //        MatrixFactory.getDenseDefault().createDiagonal(
-    //        vehicleStateInitialParams.getObsCov()));
-    //    filter.setOnRoadStateTransCovar(
-    //        MatrixFactory.getDenseDefault().createDiagonal(
-    //        vehicleStateInitialParams.getOnRoadStateCov()));
-    //    filter.setOffRoadStateTransCovar(
-    //        MatrixFactory.getDenseDefault().createDiagonal(
-    //        vehicleStateInitialParams.getOffRoadStateCov()));
-    //    filter.setCurrentTimeDiff(
-    //        vehicleStateInitialParams.getInitialObsFreq());
-
-    graph = mock(OtpGraph.class);
+        new StandardRoadTrackingFilter(null,
+            graph, vehicleStateInitialParams, null);
   }
 
   /**
    * Check that road-to-ground coordinates is an isomorphism.
    */
   @Test
-  public void test1() {
+  public void testGroundProjection1() {
 
     final Vector mean =
         VectorFactory.getDenseDefault().copyArray(
@@ -119,7 +106,7 @@ public class AbstractRoadTrackingFilterTest {
    * Check that road prediction from one path to another is consistent.
    */
   @Test
-  public void test2() {
+  public void testPrediction1() {
 
     final SimpleInferredPath startPath =
         TrackingTestUtils.makeTmpPath(graph, true,
@@ -130,7 +117,7 @@ public class AbstractRoadTrackingFilterTest {
             new double[][] { new double[] { 126.56, 8.44 },
                 new double[] { 8.44, 0.56 } });
     final MultivariateGaussian startBelief =
-        new MultivariateGaussian(VectorFactory.getDefault()
+        new AdjMultivariateGaussian(VectorFactory.getDefault()
             .createVector2D(-0d, -5d / 30d), covar);
     final SimplePathStateBelief currentBelief =
         SimplePathStateBelief.getPathStateBelief(startPath,
@@ -149,7 +136,7 @@ public class AbstractRoadTrackingFilterTest {
     AssertJUnit.assertEquals("new path", newPath, result.getPath());
 
     final MultivariateGaussian startBelief2 =
-        new MultivariateGaussian(VectorFactory.getDefault()
+        new AdjMultivariateGaussian(VectorFactory.getDefault()
             .createVector2D(-0d, 5d / 30d), covar);
     final SimplePathStateBelief currentBelief2 =
         SimplePathStateBelief.getPathStateBelief(startPath,
@@ -189,7 +176,7 @@ public class AbstractRoadTrackingFilterTest {
 
     final Matrix factErr = filter.getQg().minus(rfact);
 
-    AssertJUnit.assertTrue(varErr.normFrobenius() < 1d);
+    AssertJUnit.assertTrue(varErr.normFrobenius() < 5e-1d);
     AssertJUnit.assertTrue(factErr.normFrobenius() < 1e-5d);
 
   }

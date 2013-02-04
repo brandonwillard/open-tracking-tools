@@ -9,6 +9,7 @@ import java.lang.reflect.Constructor;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
+import java.util.Random;
 
 import org.codehaus.jackson.Version;
 import org.codehaus.jackson.map.ObjectMapper;
@@ -151,15 +152,22 @@ public class TraceRunner {
     final GpsObservation initialObs = Iterables.getFirst(observations, null);
     
     Class<?> filterType = 
-        Class.forName(ip.getFilterTypeName());
+        Class.forName(ip.getParticleFilterTypeName());
       
     Constructor<?> ctor = filterType.getConstructor(GpsObservation.class, 
           InferenceGraph.class,
           VehicleStateInitialParameters.class, 
-          Boolean.class);
+          Boolean.class, Random.class);
       
+    Random rng;
+    if (ip.getSeed() != 0)
+      rng = new Random(ip.getSeed());
+    else
+      rng = new Random();
+          
     VehicleTrackingFilter<GpsObservation, VehicleState> filter = 
-        (VehicleTrackingFilter) ctor.newInstance(initialObs, graph, ip, true);
+        (VehicleTrackingFilter) ctor.newInstance(initialObs, graph, ip, true, 
+            rng);
     
     filter.getRandom().setSeed(ip.getSeed());
     DataDistribution<VehicleState> priorBelief = filter.createInitialLearnedObject();

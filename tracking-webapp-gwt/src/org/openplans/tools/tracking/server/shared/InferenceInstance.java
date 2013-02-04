@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Queue;
+import java.util.Random;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 import org.apache.log4j.Logger;
@@ -29,6 +30,8 @@ import org.opentrackingtools.impl.VehicleStateInitialParameters;
 import org.opentrackingtools.impl.VehicleStatePerformanceResult;
 import org.opentrackingtools.statistics.filters.vehicles.VehicleTrackingFilter;
 import org.opentrackingtools.statistics.filters.vehicles.impl.FilterInformation;
+import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
+import org.opentrackingtools.statistics.filters.vehicles.road.impl.RoadTrackingFilterGraphTest;
 
 import com.google.common.base.Stopwatch;
 import com.google.common.collect.ComparisonChain;
@@ -79,7 +82,8 @@ public class InferenceInstance implements Comparable<InferenceInstance> {
   private final RingAccumulator<MutableDouble> averager =
       new RingAccumulator<MutableDouble>();
   
-  private final Class<? extends VehicleTrackingFilter> filterType;
+  private final Class<? extends VehicleTrackingFilter> particleFilterType;
+  private final Class<? extends AbstractRoadTrackingFilter> roadFilterType;
   
   public InferenceInstance(String vehicleId, VehicleStateInitialParameters simParameters,
     INFO_LEVEL infoLevel, VehicleStateInitialParameters parameters) {
@@ -88,7 +92,8 @@ public class InferenceInstance implements Comparable<InferenceInstance> {
     this.vehicleId = vehicleId;
     this.simSeed = parameters.getSeed();
     this.infoLevel = infoLevel;
-		    this.filterType = InferenceServiceImpl.getFilters().get(parameters.getFilterTypeName());
+    this.particleFilterType = InferenceServiceImpl.getParticleFilters().get(parameters.getParticleFilterTypeName());
+    this.roadFilterType = InferenceServiceImpl.getRoadFilters().get(parameters.getRoadFilterTypeName());
     
     // TODO FIXME: set collect_paths based on infoLevel?
     if (_collectedPathLength > 0) {
@@ -233,10 +238,10 @@ public class InferenceInstance implements Comparable<InferenceInstance> {
 
       Constructor<? extends VehicleTrackingFilter> ctor;
       try {
-        ctor = filterType.getConstructor(GpsObservation.class, InferenceGraph.class,
-            VehicleStateInitialParameters.class, Boolean.class);
+        ctor = particleFilterType.getConstructor(GpsObservation.class, InferenceGraph.class,
+            VehicleStateInitialParameters.class, Boolean.class, Random.class);
         filter = ctor.newInstance(obs, inferredGraph, initialParameters,
-          new Boolean(infoLevel.compareTo(INFO_LEVEL.DEBUG) >= 0));
+          new Boolean(infoLevel.compareTo(INFO_LEVEL.DEBUG) >= 0), new Random());
         filter.getRandom().setSeed(simSeed);
         postBelief = filter.createInitialLearnedObject();
       } catch (SecurityException e) {
@@ -313,7 +318,7 @@ public class InferenceInstance implements Comparable<InferenceInstance> {
   }
 
   public Class<? extends VehicleTrackingFilter> getFilterType() {
-    return filterType;
+    return particleFilterType;
   }
 
   private Map<VehicleState, List<OffRoadPath>> stateToOffRoadPaths = Maps.newHashMap();

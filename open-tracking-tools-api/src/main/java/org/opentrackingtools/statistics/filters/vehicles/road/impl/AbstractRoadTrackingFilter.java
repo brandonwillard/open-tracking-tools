@@ -7,6 +7,8 @@ import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.math.matrix.VectorFactory;
 import gov.sandia.cognition.math.matrix.mtj.DenseMatrix;
 import gov.sandia.cognition.math.signals.LinearDynamicalSystem;
+import gov.sandia.cognition.statistics.bayesian.AbstractKalmanFilter;
+import gov.sandia.cognition.statistics.bayesian.KalmanFilter;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 import gov.sandia.cognition.util.AbstractCloneableSerializable;
 
@@ -21,19 +23,26 @@ import org.opentrackingtools.graph.paths.edges.PathEdge;
 import org.opentrackingtools.graph.paths.states.PathStateBelief;
 import org.opentrackingtools.graph.paths.util.PathUtils;
 import org.opentrackingtools.impl.VehicleState;
+import org.opentrackingtools.impl.VehicleStateInitialParameters;
+import org.opentrackingtools.statistics.distributions.impl.AdjMultivariateGaussian;
 import org.opentrackingtools.statistics.filters.impl.AdjKalmanFilter;
 import org.opentrackingtools.statistics.impl.StatisticsUtil;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Iterables;
 
-public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingFilter<T>>
+public abstract class AbstractRoadTrackingFilter
     extends AbstractCloneableSerializable implements
-    Comparable<T> {
+    Comparable<AbstractRoadTrackingFilter> {
 
-  /**
-   * 
-   */
+  protected AbstractRoadTrackingFilter(
+    GpsObservation obs,
+    InferenceGraph graph, 
+    VehicleStateInitialParameters params,
+    Random rng){
+    this.graph = graph;
+  }
+  
   private static final long serialVersionUID =
       -3818533301279461087L;
 
@@ -51,7 +60,7 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
    * The filter that applies movement and updates prior distributions for the
    * ground model.
    */
-  protected AdjKalmanFilter groundFilter;
+  protected AbstractKalmanFilter groundFilter;
 
   /**
    * State movement and observation model for the road-state.
@@ -62,7 +71,7 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
    * The filter that applies movement and updates prior distributions for the
    * road model.
    */
-  protected AdjKalmanFilter roadFilter;
+  protected AbstractKalmanFilter roadFilter;
 
   /**
    * Instantaneous road-state transition error covariance in units of
@@ -109,7 +118,7 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
   /**
    * Extracts the velocity from a road state.
    */
-  protected static Vector Vr;
+  protected static Matrix Vr;
 
   /**
    * This matrix converts (x, y, vx, vy) to (x, vx, y, vy).
@@ -123,9 +132,9 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
                 new double[][] { { 0, 1, 0, 0 },
                     { 0, 0, 0, 1 } });
 
-    Vr =
-        VectorFactory.getDenseDefault().createVector2D(0,
-            1d);
+    Vr = MatrixFactory.getDenseDefault()
+            .copyArray(
+                new double[][] { {0, 1} });
 
     Og = MatrixFactory.getDefault().createMatrix(2, 4);
     Og.setElement(0, 0, 1);
@@ -152,9 +161,9 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
   protected transient InferenceGraph graph;
 
   @Override
-  public AbstractRoadTrackingFilter<T> clone() {
-    final AbstractRoadTrackingFilter<T> clone =
-        (AbstractRoadTrackingFilter<T>) super.clone();
+  public AbstractRoadTrackingFilter clone() {
+    final AbstractRoadTrackingFilter clone =
+        (AbstractRoadTrackingFilter) super.clone();
     clone.currentTimeDiff = this.currentTimeDiff;
     clone.groundFilter = this.groundFilter.clone();
     clone.groundModel = this.groundModel.clone();
@@ -188,7 +197,7 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
     return currentTimeDiff;
   }
 
-  public AdjKalmanFilter getGroundFilter() {
+  public AbstractKalmanFilter getGroundFilter() {
     return groundFilter;
   }
 
@@ -220,7 +229,7 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
     return Qr;
   }
 
-  public AdjKalmanFilter getRoadFilter() {
+  public AbstractKalmanFilter getRoadFilter() {
     return roadFilter;
   }
 
@@ -248,7 +257,7 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
         .getMeasurementCovariance());
 
     final MultivariateGaussian res =
-        new MultivariateGaussian(Og.times(projBelief
+        new AdjMultivariateGaussian(Og.times(projBelief
             .getMean()), Q);
     return res;
   }
@@ -433,13 +442,27 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
   public Vector sampleStateTransDist(Vector state,
     Random rng) {
     final int dim = state.getDimensionality();
-    final Matrix sampleCovChol =
-        StatisticsUtil.rootOfSemiDefinite(dim == 4 ? this
-            .getQg() : this.getQr());
-    final Vector qSmpl =
-        MultivariateGaussian.sample(VectorFactory
-            .getDenseDefault().createVector(dim / 2),
-            sampleCovChol, rng);
+    final Matrix cov = dim == 4 ? this.getQg() : this.getQr();
+//    final Matrix sampleCovChol =
+//        StatisticsUtil.rootOfSemiDefinite(dim == 4 ? this
+//            .getQg() : this.getQr());
+    
+    /*
+     * Do this so that we are somewhat distribution
+     * agnostic.
+     */
+    final MultivariateGaussian sampler = 
+        dim == 4 ? this.groundFilter.createInitialLearnedObject()
+            : this.roadFilter.createInitialLearnedObject();
+    sampler.setMean(VectorFactory.getDefault().createVector(
+       cov.getNumColumns()));
+    sampler.setCovariance(cov);
+        
+    final Vector qSmpl = sampler.sample(rng);
+//        MultivariateGaussian.sample(VectorFactory
+//            .getDenseDefault().createVector(dim / 2),
+//            sampleCovChol, rng);
+    
     final Matrix covFactor = this.getCovarianceFactor(dim == 2);
     final Vector error = covFactor.times(qSmpl);
     final Vector stateSmpl = state.plus(error);
@@ -736,7 +759,7 @@ public abstract class AbstractRoadTrackingFilter<T extends AbstractRoadTrackingF
     return Vg;
   }
 
-  public static Vector getVr() {
+  public static Matrix getVr() {
     return Vr;
   }
 

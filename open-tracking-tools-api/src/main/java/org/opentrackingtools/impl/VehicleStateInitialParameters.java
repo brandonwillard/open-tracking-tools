@@ -16,7 +16,8 @@ public class VehicleStateInitialParameters extends
   private final Vector onTransitionProbs;
   private final long seed;
   private final int numParticles;
-  private final String filterTypeName;
+  private final String particleFilterTypeName;
+  private final String roadFilterTypeName;
   private final int initialObsFreq;
   private final int obsCovDof;
   private final int onRoadCovDof;
@@ -26,8 +27,8 @@ public class VehicleStateInitialParameters extends
     int obsCovDof, Vector onRoadStateCov,
     int onRoadCovDof, Vector offRoadStateCov,
     int offRoadCovDof, Vector offProbs, Vector onProbs,
-    String filterTypeName, int numParticles,
-    int initialObsFreq, long seed) {
+    String particleFilterTypeName, String roadFilterTypeName,
+    int numParticles, int initialObsFreq, long seed) {
     this.obsCovDof = obsCovDof;
     this.onRoadCovDof = onRoadCovDof;
     this.offRoadCovDof = offRoadCovDof;
@@ -38,8 +39,17 @@ public class VehicleStateInitialParameters extends
     this.offTransitionProbs = offProbs;
     this.onTransitionProbs = onProbs;
     this.seed = seed;
-    this.filterTypeName = filterTypeName;
+    this.particleFilterTypeName = particleFilterTypeName;
+    this.roadFilterTypeName = roadFilterTypeName;
     this.initialObsFreq = initialObsFreq;
+  }
+
+  public String getParticleFilterTypeName() {
+    return particleFilterTypeName;
+  }
+
+  public String getRoadFilterTypeName() {
+    return roadFilterTypeName;
   }
 
   @Override
@@ -63,12 +73,20 @@ public class VehicleStateInitialParameters extends
     }
     final VehicleStateInitialParameters other =
         (VehicleStateInitialParameters) obj;
-    if (filterTypeName == null) {
-      if (other.filterTypeName != null) {
+    if (particleFilterTypeName == null) {
+      if (other.particleFilterTypeName != null) {
         return false;
       }
-    } else if (!filterTypeName
-        .equals(other.filterTypeName)) {
+    } else if (!particleFilterTypeName
+        .equals(other.particleFilterTypeName)) {
+      return false;
+    }
+    if (roadFilterTypeName == null) {
+      if (other.roadFilterTypeName != null) {
+        return false;
+      }
+    } else if (!roadFilterTypeName
+        .equals(other.roadFilterTypeName)) {
       return false;
     }
     if (initialObsFreq != other.initialObsFreq) {
@@ -131,10 +149,6 @@ public class VehicleStateInitialParameters extends
     return true;
   }
 
-  public String getFilterTypeName() {
-    return filterTypeName;
-  }
-
   public int getInitialObsFreq() {
     return this.initialObsFreq;
   }
@@ -186,8 +200,13 @@ public class VehicleStateInitialParameters extends
     result =
         prime
             * result
-            + ((filterTypeName == null) ? 0
-                : filterTypeName.hashCode());
+            + ((particleFilterTypeName == null) ? 0
+                : particleFilterTypeName.hashCode());
+    result =
+        prime
+            * result
+            + ((roadFilterTypeName == null) ? 0
+                : roadFilterTypeName.hashCode());
     result = prime * result + initialObsFreq;
     result = prime * result + numParticles;
     result =
@@ -235,8 +254,11 @@ public class VehicleStateInitialParameters extends
         .append(", onTransitionProbs=")
         .append(onTransitionProbs).append(", seed=")
         .append(seed).append(", numParticles=")
-        .append(numParticles).append(", filterTypeName=")
-        .append(filterTypeName)
+        .append(numParticles)
+        .append(", particleFilterTypeName=")
+        .append(particleFilterTypeName)
+        .append(", roadFilterTypeName=")
+        .append(roadFilterTypeName)
         .append(", initialObsFreq=")
         .append(initialObsFreq).append(", obsCovDof=")
         .append(obsCovDof).append(", onRoadCovDof=")
@@ -248,7 +270,8 @@ public class VehicleStateInitialParameters extends
   @Override
   public int compareTo(VehicleStateInitialParameters o) {
    return new CompareToBuilder()
-     .append(this.filterTypeName, o.filterTypeName)
+     .append(this.particleFilterTypeName, o.particleFilterTypeName)
+     .append(this.roadFilterTypeName, o.roadFilterTypeName)
      .append(this.initialObsFreq, o.initialObsFreq)
      .append(this.numParticles, o.numParticles)
      .append(this.obsCov.toArray(), o.obsCov.toArray())

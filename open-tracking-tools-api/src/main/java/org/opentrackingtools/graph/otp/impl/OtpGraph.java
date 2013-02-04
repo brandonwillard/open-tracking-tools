@@ -14,6 +14,7 @@ import java.util.Set;
 
 import org.geotools.geometry.jts.JTSFactoryFinder;
 import org.netlib.blas.BLAS;
+import org.opentrackingtools.GpsObservation;
 import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.graph.edges.InferredEdge;
 import org.opentrackingtools.graph.edges.impl.SimpleInferredEdge;
@@ -687,7 +688,7 @@ public class OtpGraph implements InferenceGraph {
   @Override
   public Collection<InferredEdge> getNearbyEdges(
     DistributionWithMean<Vector> initialBelief,
-    AbstractRoadTrackingFilter<?> trackingFilter) {
+    AbstractRoadTrackingFilter trackingFilter) {
     
     Preconditions.checkArgument(initialBelief.getMean()
         .getDimensionality() == 4);
@@ -738,7 +739,7 @@ public class OtpGraph implements InferenceGraph {
    */
   @Override
   public Set<InferredPath> getPaths(VehicleState fromState,
-    Coordinate toCoord) {
+    GpsObservation obs) {
     Preconditions.checkNotNull(fromState);
 
     final Coordinate fromCoord;
@@ -757,7 +758,7 @@ public class OtpGraph implements InferenceGraph {
 
     final Set<InferredPath> paths = Sets.newHashSet();
     final PathKey startEndEntry =
-        new PathKey(fromState, fromCoord, toCoord, 0d);
+        new PathKey(fromState, fromCoord, obs.getObsProjected(), 0d);
 
     paths.addAll(pathsCache.getUnchecked(startEndEntry));
     //    paths.addAll(computeUniquePaths(startEndEntry));

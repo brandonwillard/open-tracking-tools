@@ -19,7 +19,7 @@ import java.util.List;
 import java.util.Random;
 
 import org.opentrackingtools.GpsObservation;
-import org.opentrackingtools.graph.otp.impl.OtpGraph;
+import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.graph.paths.InferredPath;
 import org.opentrackingtools.graph.paths.edges.PathEdge;
 import org.opentrackingtools.graph.paths.edges.impl.SimplePathEdge;
@@ -30,6 +30,7 @@ import org.opentrackingtools.graph.paths.states.impl.SimplePathStateBelief;
 import org.opentrackingtools.impl.TimeOrderException;
 import org.opentrackingtools.impl.VehicleState;
 import org.opentrackingtools.impl.VehicleStateInitialParameters;
+import org.opentrackingtools.statistics.distributions.impl.AdjMultivariateGaussian;
 import org.opentrackingtools.statistics.filters.vehicles.particle_learning.impl.VehicleTrackingPLFilter;
 import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
 import org.opentrackingtools.statistics.filters.vehicles.road.impl.ErrorEstimatingRoadTrackingFilter;
@@ -43,7 +44,7 @@ public class ErrorEstimatingRoadTrackingFilterTest {
 
   private VehicleStateInitialParameters vehicleStateInitialParams;
   private ErrorEstimatingRoadTrackingFilter filter;
-  private OtpGraph graph;
+  private InferenceGraph graph;
 
   private Vector
       sampleTransition(Vector state,
@@ -74,9 +75,12 @@ public class ErrorEstimatingRoadTrackingFilterTest {
             VectorFactory.getDefault().createVector2D(5d,
                 95d), VectorFactory.getDefault()
                 .createVector2D(95d, 5d),
-            VehicleTrackingPLFilter.class.getName(), 25,
-            30, 0l);
+            VehicleTrackingPLFilter.class.getName(), 
+            StandardRoadTrackingFilter.class.getName(),
+            25, 30, 0l);
 
+    graph = mock(InferenceGraph.class);
+    
     /*
      * We're using StandardRoadTrackingFilter, but 
      * only the parts with implementations in 
@@ -84,17 +88,9 @@ public class ErrorEstimatingRoadTrackingFilterTest {
      */
     filter =
         new ErrorEstimatingRoadTrackingFilter(
-            graph,
-            vehicleStateInitialParams.getObsCov(),
-            vehicleStateInitialParams.getObsCovDof(),
-            vehicleStateInitialParams.getOffRoadStateCov(),
-            vehicleStateInitialParams.getOffRoadCovDof(),
-            vehicleStateInitialParams.getOnRoadStateCov(),
-            vehicleStateInitialParams.getOnRoadCovDof(),
-            vehicleStateInitialParams.getInitialObsFreq(),
+            null, graph, vehicleStateInitialParams,
             new Random(1234567890));
 
-    graph = mock(OtpGraph.class);
   }
 
   private void simplePathTest(InferredPath startPath,
@@ -328,7 +324,7 @@ public class ErrorEstimatingRoadTrackingFilterTest {
       trueState = 
           startPath.getStateBeliefOnPath(
               trueState.getPath().getStateBeliefOnPath(
-                new MultivariateGaussian(newStateMean,
+                new AdjMultivariateGaussian(newStateMean,
                     trueCovar)));
       stub(obs.getProjectedPoint()).toReturn(
           MultivariateGaussian.sample(
@@ -400,7 +396,7 @@ public class ErrorEstimatingRoadTrackingFilterTest {
             covFactor.transpose());
 
     final MultivariateGaussian startState =
-        new MultivariateGaussian(VectorFactory.getDefault()
+        new AdjMultivariateGaussian(VectorFactory.getDefault()
             .copyArray(new double[] { 0d, 1d, 0d, 1d }),
             covar);
 
@@ -430,7 +426,7 @@ public class ErrorEstimatingRoadTrackingFilterTest {
                     .getOnRoadStateCov())).times(
             covFactor.transpose());
     final MultivariateGaussian startState =
-        new MultivariateGaussian(
+        new AdjMultivariateGaussian(
             VectorFactory.getDefault()
                 .copyArray(
                     new double[] { 0d,
@@ -469,7 +465,7 @@ public class ErrorEstimatingRoadTrackingFilterTest {
                     .getOnRoadStateCov())).times(
             covFactor.transpose());
     final MultivariateGaussian startState =
-        new MultivariateGaussian(
+        new AdjMultivariateGaussian(
             VectorFactory.getDefault()
                 .copyArray(
                     new double[] { 4300d, 0d }), covar);

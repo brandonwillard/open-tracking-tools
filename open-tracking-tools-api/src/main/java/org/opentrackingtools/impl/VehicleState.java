@@ -92,7 +92,7 @@ public class VehicleState implements
   /*
    * These members represent the state/parameter samples/sufficient statistics.
    */
-  private final AbstractRoadTrackingFilter<?> movementFilter;
+  private final AbstractRoadTrackingFilter movementFilter;
 
   /**
    * This could be the 4D ground-coordinates dist. for free motion, or the 2D
@@ -124,7 +124,7 @@ public class VehicleState implements
 
   public VehicleState(InferenceGraph inferredGraph,
     GpsObservation observation,
-    AbstractRoadTrackingFilter<?> updatedFilter,
+    AbstractRoadTrackingFilter updatedFilter,
     PathStateBelief belief,
     OnOffEdgeTransDirMulti edgeTransitionDist,
     VehicleState parentState) {
@@ -246,7 +246,7 @@ public class VehicleState implements
     return AbstractRoadTrackingFilter.getOg().times(v);
   }
 
-  public AbstractRoadTrackingFilter<?> getMovementFilter() {
+  public AbstractRoadTrackingFilter getMovementFilter() {
     return movementFilter;
   }
 

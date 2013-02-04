@@ -1,4 +1,4 @@
-package org.opentrackingtools.graph.paths.states.impl;
+package org.opentrackingtools.graph.paths.otp;
 
 import org.testng.annotations.Test;
 import org.testng.AssertJUnit;

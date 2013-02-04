@@ -25,8 +25,10 @@ import org.opentrackingtools.graph.otp.impl.OtpGraph;
 import org.opentrackingtools.impl.VehicleStateInitialParameters;
 import org.opentrackingtools.statistics.filters.vehicles.VehicleTrackingFilter;
 import org.opentrackingtools.statistics.filters.vehicles.impl.VehicleTrackingBootstrapFilter;
-import org.opentrackingtools.statistics.filters.vehicles.particle_learning.impl.VTErrorEstimatingPLFilter;
 import org.opentrackingtools.statistics.filters.vehicles.particle_learning.impl.VehicleTrackingPLFilter;
+import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
+import org.opentrackingtools.statistics.filters.vehicles.road.impl.ErrorEstimatingRoadTrackingFilter;
+import org.opentrackingtools.statistics.filters.vehicles.road.impl.StandardRoadTrackingFilter;
 
 import com.google.common.base.Strings;
 import com.google.common.collect.Iterables;
@@ -69,16 +71,21 @@ public class InferenceServiceImpl extends RemoteServiceServlet
   
   final Logger log = Logger.getLogger(InferenceInstance.class);
   
-  private static Map<String, Class<? extends VehicleTrackingFilter>> filtersMap = Maps.newHashMap();
+  private static Map<String, Class<? extends VehicleTrackingFilter>> particleFiltersMap = Maps.newHashMap();
   static {
-    filtersMap.put(VTErrorEstimatingPLFilter.class.getName(), VTErrorEstimatingPLFilter.class);
-    filtersMap.put(VehicleTrackingPLFilter.class.getName(), VehicleTrackingPLFilter.class);
-    filtersMap.put(VehicleTrackingBootstrapFilter.class.getName(), VehicleTrackingBootstrapFilter.class);
+    particleFiltersMap.put(VehicleTrackingPLFilter.class.getName(), VehicleTrackingPLFilter.class);
+    particleFiltersMap.put(VehicleTrackingBootstrapFilter.class.getName(), VehicleTrackingBootstrapFilter.class);
+  }
+  
+  private static Map<String, Class<? extends AbstractRoadTrackingFilter>> roadFiltersMap = Maps.newHashMap();
+  static {
+    roadFiltersMap.put(ErrorEstimatingRoadTrackingFilter.class.getName(), ErrorEstimatingRoadTrackingFilter.class);
+    roadFiltersMap.put(StandardRoadTrackingFilter.class.getName(), StandardRoadTrackingFilter.class);
   }
   
   @Override
   public Set<String> getFilterTypes() {
-    return new HashSet<String>(filtersMap.keySet());
+    return new HashSet<String>(particleFiltersMap.keySet());
   }
   
   public enum INFO_LEVEL {
@@ -112,6 +119,7 @@ public class InferenceServiceImpl extends RemoteServiceServlet
           VectorFactory.getDefault().createVector2D(5d, 95d),
           VectorFactory.getDefault().createVector2D(95d, 5d), 
           VehicleTrackingPLFilter.class.getName(),
+          StandardRoadTrackingFilter.class.getName(),
           25, 30, 0l);
 
   static public final int THREAD_COUNT;
@@ -134,7 +142,7 @@ public class InferenceServiceImpl extends RemoteServiceServlet
       Maps.newConcurrentMap();
 
   public static final String defaultFilterName = 
-      Iterables.getFirst(filtersMap.keySet(), null);
+      Iterables.getFirst(particleFiltersMap.keySet(), null);
 
   public static INFO_LEVEL defaultInfoLevel = INFO_LEVEL.ALL_RESULTS;
 
@@ -220,7 +228,6 @@ public class InferenceServiceImpl extends RemoteServiceServlet
   public static void
       processRecords(List<GpsObservation> observations,
         VehicleStateInitialParameters initialParameters,
-        String filterTypeName,
         INFO_LEVEL level) throws InterruptedException {
 
     final Multimap<InferenceInstance, GpsObservation> instanceToObs = TreeMultimap.create();
@@ -256,8 +263,12 @@ public class InferenceServiceImpl extends RemoteServiceServlet
         defaultVehicleStateInitialParams;
   }
 
-  public static Map<String, Class<? extends VehicleTrackingFilter>> getFilters() {
-  	return filtersMap;
+  public static Map<String, Class<? extends VehicleTrackingFilter>> getParticleFilters() {
+  	return particleFiltersMap;
+  }
+  
+  public static Map<String, Class<? extends AbstractRoadTrackingFilter>> getRoadFilters() {
+  	return roadFiltersMap;
   }
 
   public static InferenceGraph getGraph() {

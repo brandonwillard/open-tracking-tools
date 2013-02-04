@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Queue;
+import java.util.Random;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 import org.apache.log4j.Logger;
@@ -100,7 +101,7 @@ public class InferenceInstance implements Comparable<InferenceInstance> {
     this.vehicleId = vehicleId;
     this.simSeed = parameters.getSeed();
     this.infoLevel = infoLevel;
-    this.filterType = Application.getFilters().get(parameters.getFilterTypeName());
+    this.filterType = Application.getFilters().get(parameters.getParticleFilterTypeName());
     
     // TODO FIXME: set collect_paths based on infoLevel?
     if (_collectedPathLength > 0) {
@@ -245,9 +246,15 @@ public class InferenceInstance implements Comparable<InferenceInstance> {
       Constructor<? extends VehicleTrackingFilter> ctor;
       try {
         ctor = filterType.getConstructor(GpsObservation.class, InferenceGraph.class,
-            VehicleStateInitialParameters.class, Boolean.class);
+            VehicleStateInitialParameters.class, Boolean.class, Random.class);
+        Random rng;
+        if (initialParameters.getSeed() != 0)
+          rng = new Random(initialParameters.getSeed());
+        else
+          rng = new Random();
+          
         filter = ctor.newInstance(obs, inferredGraph, initialParameters,
-          new Boolean(infoLevel.compareTo(INFO_LEVEL.DEBUG) >= 0));
+          new Boolean(infoLevel.compareTo(INFO_LEVEL.DEBUG) >= 0), rng);
         filter.getRandom().setSeed(simSeed);
         postBelief = filter.createInitialLearnedObject();
       } catch (SecurityException e) {

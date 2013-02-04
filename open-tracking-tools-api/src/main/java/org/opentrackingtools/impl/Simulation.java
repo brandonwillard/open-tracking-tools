@@ -5,6 +5,7 @@ import gov.sandia.cognition.math.matrix.MatrixFactory;
 import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 
+import java.lang.reflect.InvocationTargetException;
 import java.util.Date;
 import java.util.Random;
 
@@ -14,6 +15,7 @@ import org.opentrackingtools.GpsObservation;
 import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.graph.paths.states.PathState;
 import org.opentrackingtools.graph.paths.states.impl.SimplePathStateBelief;
+import org.opentrackingtools.statistics.distributions.impl.AdjMultivariateGaussian;
 import org.opentrackingtools.statistics.distributions.impl.OnOffEdgeTransDirMulti;
 import org.opentrackingtools.statistics.filters.vehicles.impl.VehicleTrackingPathSamplerFilterUpdater;
 import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
@@ -34,12 +36,13 @@ public class Simulation {
     private final Date endTime;
     private final long duration;
     private final long frequency;
+    private final boolean canMoveBackward;
     private final boolean performInference;
     private final VehicleStateInitialParameters stateParams;
 
     public SimulationParameters(Coordinate startCoordinate,
       Date startTime, long duration, long frequency,
-      boolean performInference,
+      boolean performInference, boolean canMoveBackward,
       VehicleStateInitialParameters stateParams) {
       this.stateParams = stateParams;
       this.performInference = performInference;
@@ -49,6 +52,11 @@ public class Simulation {
       this.endTime =
           new Date(startTime.getTime() + duration * 1000);
       this.duration = duration;
+      this.canMoveBackward = canMoveBackward;
+    }
+
+    public boolean isCanMoveBackward() {
+      return canMoveBackward;
     }
 
     @Override
@@ -181,17 +189,14 @@ public class Simulation {
 
   private final SimulationParameters simParameters;
 
-  private final String filterTypeName;
   private final VehicleTrackingPathSamplerFilterUpdater updater;
 
   public Simulation(String simulationName, InferenceGraph graph,
     SimulationParameters simParameters,
-    VehicleStateInitialParameters infParams) {
+    VehicleStateInitialParameters infParams) throws SecurityException, IllegalArgumentException, ClassNotFoundException, NoSuchMethodException, InstantiationException, IllegalAccessException, InvocationTargetException {
 
     this.simParameters = simParameters;
     this.infParameters = infParams;
-    this.filterTypeName =
-        simParameters.getStateParams().getFilterTypeName();
 
     this.inferredGraph = graph;
     this.simulationName = simulationName;
@@ -226,8 +231,7 @@ public class Simulation {
 
     this.updater =
         new VehicleTrackingPathSamplerFilterUpdater(
-            initialObs, graph,
-            this.simParameters.getStateParams());
+            initialObs, graph, this.simParameters.getStateParams(), rng);
     this.updater.setRandom(rng);
   }
 
@@ -252,8 +256,12 @@ public class Simulation {
     return vehicleState;
   }
 
-  public String getFilterTypeName() {
-    return filterTypeName;
+  public String getParticleFilterTypeName() {
+    return simParameters.getStateParams().getParticleFilterTypeName();
+  }
+  
+  public String getRoadFilterTypeName() {
+    return simParameters.getStateParams().getRoadFilterTypeName();
   }
 
   public InferenceGraph getInferredGraph() {
@@ -340,7 +348,7 @@ public class Simulation {
     final SimplePathStateBelief newStateBelief =
         SimplePathStateBelief.getPathStateBelief(
             newPathState.getPath(),
-            new MultivariateGaussian(newPathState
+            new AdjMultivariateGaussian(newPathState
                 .getGlobalState(), MatrixFactory
                 .getDiagonalDefault().createMatrix(
                     newPathState.getGlobalState()

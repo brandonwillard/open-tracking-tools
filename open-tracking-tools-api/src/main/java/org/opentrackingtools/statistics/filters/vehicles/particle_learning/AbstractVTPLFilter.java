@@ -43,8 +43,9 @@ public abstract class AbstractVTPLFilter extends
   public AbstractVTPLFilter(GpsObservation obs,
     InferenceGraph inferredGraph,
     VehicleStateInitialParameters parameters,
-    AbstractVTParticleFilterUpdater updater, Boolean isDebug) {
-    super(obs, inferredGraph, parameters, updater, isDebug);
+    AbstractVTParticleFilterUpdater updater, 
+    Boolean isDebug, Random rng) {
+    super(obs, inferredGraph, parameters, updater, isDebug, rng);
   }
 
   @Override
@@ -68,7 +69,7 @@ public abstract class AbstractVTPLFilter extends
               .getCount(state);
 
       final Collection<InferredPath> instStateTransitions =
-          inferredGraph.getPaths(state, obs.getObsProjected());
+          inferredGraph.getPaths(state, obs);
 
       state.getMovementFilter()
           .setCurrentTimeDiff(timeDiff);
@@ -265,7 +266,7 @@ public abstract class AbstractVTPLFilter extends
     /*
      * Update covariances, or not.
      */
-    final AbstractRoadTrackingFilter<?> updatedFilter =
+    final AbstractRoadTrackingFilter updatedFilter =
         sampledFilter.clone();
 
     /*

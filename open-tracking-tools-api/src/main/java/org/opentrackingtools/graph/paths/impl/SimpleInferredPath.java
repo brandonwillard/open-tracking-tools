@@ -25,6 +25,7 @@ import org.opentrackingtools.graph.paths.util.PathUtils;
 import org.opentrackingtools.graph.paths.util.PathUtils.PathEdgeProjection;
 import org.opentrackingtools.impl.VehicleState;
 import org.opentrackingtools.impl.WrappedWeightedValue;
+import org.opentrackingtools.statistics.distributions.impl.AdjMultivariateGaussian;
 import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
@@ -302,7 +303,7 @@ public class SimpleInferredPath implements InferredPath {
       return null;
 
 
-    final AbstractRoadTrackingFilter<?> filter =
+    final AbstractRoadTrackingFilter filter =
         state.getMovementFilter();
     
     final PathStateBelief beliefPrediction =
@@ -318,8 +319,8 @@ public class SimpleInferredPath implements InferredPath {
        */
       final double direction = this.isBackward ? -1d : 1d;
       final boolean isCorrectDirection =  
-          AbstractRoadTrackingFilter.getVr().dotProduct(
-              beliefPrediction.getRawState()) * direction >= 0d;
+          AbstractRoadTrackingFilter.getVr().times(
+              beliefPrediction.getRawState()).getElement(0) * direction >= 0d;
               
       if (!isCorrectDirection)
         return null;
@@ -430,7 +431,7 @@ public class SimpleInferredPath implements InferredPath {
       }
     }
     return SimplePathStateBelief.getPathStateBelief(this,
-        new MultivariateGaussian(onThisPath.getGlobalState(), 
+        new AdjMultivariateGaussian(onThisPath.getGlobalState(), 
           covar));
   }
 

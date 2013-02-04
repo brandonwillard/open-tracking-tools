@@ -4,19 +4,20 @@ import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.statistics.DistributionWithMean;
 import java.util.Collection;
 import java.util.List;
+
+import org.opentrackingtools.GpsObservation;
 import org.opentrackingtools.graph.edges.InferredEdge;
 import org.opentrackingtools.graph.paths.InferredPath;
 import org.opentrackingtools.graph.paths.edges.PathEdge;
 import org.opentrackingtools.impl.VehicleState;
 import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
-import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Envelope;
 import com.vividsolutions.jts.geom.Geometry;
 
 public interface InferenceGraph {
 
   public abstract Collection<InferredPath> getPaths(VehicleState fromState,
-    Coordinate toCoord);
+    GpsObservation toCoord);
 
   public abstract Collection<InferredEdge> getTopoEquivEdges(
     InferredEdge edge);
@@ -25,7 +26,7 @@ public interface InferenceGraph {
 
   public abstract Collection<InferredEdge> getNearbyEdges(
     DistributionWithMean<Vector> tmpInitialBelief,
-    AbstractRoadTrackingFilter<?> tmpTrackingFilter);
+    AbstractRoadTrackingFilter tmpTrackingFilter);
 
   public abstract Collection<InferredEdge> getNearbyEdges(Vector projLocation,
     double radius);

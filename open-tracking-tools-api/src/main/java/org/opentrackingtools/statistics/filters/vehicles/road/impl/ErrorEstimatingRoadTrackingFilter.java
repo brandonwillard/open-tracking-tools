@@ -19,16 +19,24 @@ import org.opentrackingtools.graph.paths.states.PathState;
 import org.opentrackingtools.graph.paths.states.PathStateBelief;
 import org.opentrackingtools.graph.paths.util.PathUtils;
 import org.opentrackingtools.impl.VehicleState;
+import org.opentrackingtools.impl.VehicleStateInitialParameters;
+import org.opentrackingtools.statistics.distributions.impl.AdjMultivariateGaussian;
 import org.opentrackingtools.statistics.filters.impl.AdjKalmanFilter;
+import org.opentrackingtools.statistics.filters.vehicles.road.impl.RoadTrackingFilterGraphTest.TrueObservation;
 import org.opentrackingtools.statistics.impl.StatisticsUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Iterables;
 
 public class ErrorEstimatingRoadTrackingFilter
     extends
-    AbstractRoadTrackingFilter<ErrorEstimatingRoadTrackingFilter> {
+    AbstractRoadTrackingFilter {
 
+  private static final Logger log = LoggerFactory
+      .getLogger(ErrorEstimatingRoadTrackingFilter.class);
+  
   public static class StateSample extends
       AbstractCloneableSerializable {
 
@@ -148,40 +156,38 @@ public class ErrorEstimatingRoadTrackingFilter
   private PathState prevStateSample;
 
   public ErrorEstimatingRoadTrackingFilter(
-    InferenceGraph graph,
-    Vector obsVarPrior, final int obsVarDof,
-    Vector offRoadStateVarPrior, final int offRoadVarDof,
-    Vector onRoadStateVarPrior, final int onRoadVarDof,
-    int initialObsFreq, Random rng) {
+    GpsObservation obs, InferenceGraph graph, 
+    VehicleStateInitialParameters params, Random rng) {
+    super(obs, graph, params, rng);
 
     this.graph = graph;
-    this.currentTimeDiff = initialObsFreq;
+    this.currentTimeDiff = params.getInitialObsFreq();
     /*
      * Initialize the priors with an expectation of the given "prior"
      * values.
      */
     final int obsInitialDof =
-        obsVarDof - obsVarPrior.getDimensionality() - 1;
+        params.getObsCovDof() - params.getObsCov().getDimensionality() - 1;
     this.obsVariancePrior =
         new InverseWishartDistribution(MatrixFactory
-            .getDefault().createDiagonal(obsVarPrior)
-            .scale(obsInitialDof), obsVarDof);
+            .getDefault().createDiagonal(params.getObsCov())
+            .scale(obsInitialDof), params.getObsCovDof());
     final int offInitialDof =
-        offRoadVarDof
-            - offRoadStateVarPrior.getDimensionality() - 1;
+        params.getOffRoadCovDof()
+            - params.getOffRoadStateCov().getDimensionality() - 1;
     this.offRoadStateVariancePrior =
         new InverseWishartDistribution(MatrixFactory
             .getDefault()
-            .createDiagonal(offRoadStateVarPrior)
-            .scale(offInitialDof), offRoadVarDof);
+            .createDiagonal(params.getOffRoadStateCov())
+            .scale(offInitialDof), params.getOffRoadCovDof());
     final int onInitialDof =
-        onRoadVarDof
-            - onRoadStateVarPrior.getDimensionality() - 1;
+        params.getOnRoadCovDof()
+            - params.getOnRoadStateCov().getDimensionality() - 1;
     this.onRoadStateVariancePrior =
         new InverseWishartDistribution(MatrixFactory
             .getDefault()
-            .createDiagonal(onRoadStateVarPrior)
-            .scale(onInitialDof), onRoadVarDof);
+            .createDiagonal(params.getOnRoadStateCov())
+            .scale(onInitialDof), params.getOnRoadCovDof());
 
     if (rng != null) {
       this.obsCovar =
@@ -266,32 +272,38 @@ public class ErrorEstimatingRoadTrackingFilter
   }
 
   @Override
-  public int compareTo(ErrorEstimatingRoadTrackingFilter o) {
-    final CompareToBuilder comparator =
-        new CompareToBuilder();
+  public int compareTo(AbstractRoadTrackingFilter o) {
     
-    comparator.append(((DenseVector) this.obsVariancePrior
-        .convertToVector()).getArray(), ((DenseVector) o
-        .getObsVariancePrior().convertToVector())
-        .getArray());
+    if (o instanceof ErrorEstimatingRoadTrackingFilter) {
+      
+      final ErrorEstimatingRoadTrackingFilter other =
+          (ErrorEstimatingRoadTrackingFilter) o;
+      final CompareToBuilder comparator =
+          new CompareToBuilder();
+      comparator.append(((DenseVector) this.obsVariancePrior
+          .convertToVector()).getArray(), ((DenseVector) other
+          .getObsVariancePrior().convertToVector())
+          .getArray());
+      
+      comparator.append(
+          ((DenseVector) this.onRoadStateVariancePrior
+              .convertToVector()).getArray(),
+          ((DenseVector) other.getOnRoadStateVariancePrior()
+              .convertToVector()).getArray());
+      comparator.append(
+          ((DenseVector) this.offRoadStateVariancePrior
+              .convertToVector()).getArray(),
+          ((DenseVector) other.getOffRoadStateVariancePrior()
+              .convertToVector()).getArray());
+      
+      comparator.append(this.currentStateSample,
+          other.getCurrentStateSample());
+      comparator.append(this.prevStateSample,
+          other.getPrevStateSample());
+      return comparator.toComparison();
+    }
     
-    comparator.append(
-        ((DenseVector) this.onRoadStateVariancePrior
-            .convertToVector()).getArray(),
-        ((DenseVector) o.getOnRoadStateVariancePrior()
-            .convertToVector()).getArray());
-    comparator.append(
-        ((DenseVector) this.offRoadStateVariancePrior
-            .convertToVector()).getArray(),
-        ((DenseVector) o.getOffRoadStateVariancePrior()
-            .convertToVector()).getArray());
-    
-    comparator.append(this.currentStateSample,
-        o.getCurrentStateSample());
-    comparator.append(this.prevStateSample,
-        o.getPrevStateSample());
-    
-    return comparator.toComparison();
+    return 0;
   }
 
   @Override
@@ -432,7 +444,7 @@ public class ErrorEstimatingRoadTrackingFilter
     final InferredPath path = prevStateSample1.getPath();
     final PathStateBelief prior =
         path.getStateBeliefOnPath(
-            new MultivariateGaussian(prevStateSample1
+            new AdjMultivariateGaussian(prevStateSample1
                 .getGlobalState(), MatrixFactory
                 .getDenseDefault().createIdentity(
                     prevStateSample1.getRawState()
@@ -452,7 +464,7 @@ public class ErrorEstimatingRoadTrackingFilter
     final PathStateBelief prediction =
         this.predict(prior, path);
     final MultivariateGaussian updatedStateSmplDist =
-        new MultivariateGaussian(
+        new AdjMultivariateGaussian(
             prediction.getGlobalState(),
             prevStateSample1.isOnRoad() ? this
                 .getOnRoadStateTransCovar() : this
@@ -465,13 +477,19 @@ public class ErrorEstimatingRoadTrackingFilter
         this.measure(predictState, obs,
             predictState.getEdge());
 
-    final Matrix Hsqrt =
-        StatisticsUtil.rootOfSemiDefinite(postState
-            .getCovariance());
+//    final Matrix Hsqrt =
+//        StatisticsUtil.rootOfSemiDefinite(postState
+//            .getCovariance());
 
-    final Vector result =
-        MultivariateGaussian.sample(
-            postState.getGlobalState(), Hsqrt, rng);
+    final MultivariateGaussian sampler = 
+        postState.isOnRoad() ? this.roadFilter.createInitialLearnedObject()
+            : this.groundFilter.createInitialLearnedObject();
+    sampler.setMean(postState.getGlobalState());
+    sampler.setCovariance(postState.getCovariance());
+    
+    final Vector result = sampler.sample(rng);
+//        MultivariateGaussian.sample(
+//            postState.getGlobalState(), Hsqrt, rng);
 
     return path.getStateOnPath(result);
 //    return PathState.getPathState(path, result, this.graph);
@@ -548,15 +566,19 @@ public class ErrorEstimatingRoadTrackingFilter
     final Matrix CSmooth =
         C.minus(Wtil.times(A).times(Wtil.transpose()));
 
-    final Matrix Csqrt =
-        StatisticsUtil.rootOfSemiDefinite(CSmooth);
+//    final Matrix Csqrt =
+//        StatisticsUtil.rootOfSemiDefinite(CSmooth);
+    
+    final MultivariateGaussian sampler = 
+        posterior.isOnRoad() ? this.roadFilter.createInitialLearnedObject()
+            : this.groundFilter.createInitialLearnedObject();
+    sampler.setMean(mSmooth);
+    sampler.setCovariance(CSmooth);
 
-    final Vector result =
-        MultivariateGaussian.sample(mSmooth, Csqrt, rng);
+    final Vector result = sampler.sample(rng);
+//        MultivariateGaussian.sample(mSmooth, Csqrt, rng);
 
     return posterior.getPath().getStateOnPath(result);
-//    return PathState.getPathState(posterior.getPath(),
-//        result);
   }
 
   public void setCurrentStateSample(PathState pathState) {
@@ -628,6 +650,19 @@ public class ErrorEstimatingRoadTrackingFilter
     final Matrix smplCov =
         stateError.outerProduct(stateError);
 
+    if (obs instanceof TrueObservation) {
+      final VehicleState trueState = ((TrueObservation)obs).getTrueState();
+      InverseWishartDistribution tmpPrior = covarPrior.clone();
+      updateInvWishart(tmpPrior, smplCov);
+      Matrix trueQ = newPrevStateSample.isOnRoad()
+          ? trueState.getMovementFilter().getQr() : 
+             trueState.getMovementFilter().getQg();
+      final Matrix updateError = tmpPrior.getMean().minus(trueQ);
+      if (updateError.normFrobenius()
+            > 0.4 * trueQ.normFrobenius()) {
+        log.warn("Large update error: " + updateError);
+      }
+    }
     updateInvWishart(covarPrior, smplCov);
 
     final Matrix qSmpl =

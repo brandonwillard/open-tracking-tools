@@ -10,6 +10,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
@@ -102,10 +103,11 @@ public class TrackingResource {
 		_graph = new OtpGraph(config.getOtpGraphLocation(), null);
 
 		try {
-			Class<?> filterType = Class.forName(_ip.getFilterTypeName());
+			Class<?> filterType = Class.forName(_ip.getParticleFilterTypeName());
 			_filterConstructor = filterType.getConstructor(
 					GpsObservation.class, InferenceGraph.class,
-					VehicleStateInitialParameters.class, Boolean.class);
+					VehicleStateInitialParameters.class, Boolean.class,
+					Random.class);
 		} catch (Exception e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -139,7 +141,8 @@ public class TrackingResource {
 		
 		if (inferenceInstance.filter == null) {
 			try {
-				inferenceInstance.filter = (VehicleTrackingFilter) _filterConstructor.newInstance(obs, _graph, _ip, true);
+				inferenceInstance.filter = (VehicleTrackingFilter) _filterConstructor.newInstance(
+				    obs, _graph, _ip, true, new Random());
 				inferenceInstance.filter.getRandom().setSeed(_ip.getSeed());
 				inferenceInstance.priorBelief = inferenceInstance.filter.createInitialLearnedObject();
 			} catch (Exception e) {

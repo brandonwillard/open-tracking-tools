@@ -14,6 +14,7 @@ import org.opentrackingtools.graph.paths.states.AbstractPathState;
 import org.opentrackingtools.graph.paths.states.PathState;
 import org.opentrackingtools.graph.paths.states.PathStateBelief;
 import org.opentrackingtools.graph.paths.util.PathUtils;
+import org.opentrackingtools.statistics.distributions.impl.AdjMultivariateGaussian;
 import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
 import org.opentrackingtools.statistics.impl.StatisticsUtil;
 
@@ -174,7 +175,7 @@ public class SimplePathStateBelief extends AbstractPathState implements PathStat
                           .getEdgeLengthErrorTolerance(),
                       true));
       this.localStateBelief =
-          new MultivariateGaussian(mean,
+          new AdjMultivariateGaussian(mean,
               this.globalStateBelief.getCovariance());
     }
     return this.localStateBelief;
@@ -288,11 +289,11 @@ public class SimplePathStateBelief extends AbstractPathState implements PathStat
     final SimplePathStateBelief result =
         new SimplePathStateBelief(
             oldPathState.getPath(),
-            new MultivariateGaussian(oldPathState
+            new AdjMultivariateGaussian(oldPathState
                 .getRawState(), covariance));
     
     result.localStateBelief =
-        new MultivariateGaussian(
+        new AdjMultivariateGaussian(
             oldPathState.getLocalState(), covariance);
     
     return result;

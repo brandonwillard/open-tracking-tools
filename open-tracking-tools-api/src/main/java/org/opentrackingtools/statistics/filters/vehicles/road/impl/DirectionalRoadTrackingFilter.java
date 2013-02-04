@@ -2,7 +2,6 @@ package org.opentrackingtools.statistics.filters.vehicles.road.impl;
 
 import gov.sandia.cognition.math.matrix.Matrix;
 import gov.sandia.cognition.math.matrix.MatrixFactory;
-import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.math.signals.LinearDynamicalSystem;
 
 import java.util.Random;
@@ -12,13 +11,12 @@ import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.graph.paths.states.PathStateBelief;
 import org.opentrackingtools.impl.VehicleState;
 import org.opentrackingtools.impl.VehicleStateInitialParameters;
-import org.opentrackingtools.statistics.filters.impl.AdjKalmanFilter;
+import org.opentrackingtools.statistics.filters.impl.FoldedKalmanFilter;
 
-public class StandardRoadTrackingFilter extends
+public class DirectionalRoadTrackingFilter extends
     AbstractRoadTrackingFilter {
 
-  private static final long serialVersionUID =
-      -7872007182966059657L;
+  private static final long serialVersionUID = 74683278667973136L;
 
   /**
    * Standard 2D tracking model with the following state equation: {@latex[ D_
@@ -32,7 +30,7 @@ public class StandardRoadTrackingFilter extends
    * @param a0Variance
    * @param angle
    */
-  public StandardRoadTrackingFilter(
+  public DirectionalRoadTrackingFilter(
     GpsObservation obs,
     InferenceGraph graph, 
     VehicleStateInitialParameters params,
@@ -63,7 +61,7 @@ public class StandardRoadTrackingFilter extends
         createStateCovarianceMatrix(this.currentTimeDiff,
             this.getQr(), true);
     this.roadFilter =
-        new AdjKalmanFilter(roadModel, roadStateCov,
+        new FoldedKalmanFilter(roadModel, roadStateCov,
             this.obsCovar);
     this.setOnRoadStateTransCovar(roadStateCov);
 
@@ -89,7 +87,7 @@ public class StandardRoadTrackingFilter extends
         createStateCovarianceMatrix(this.currentTimeDiff,
             this.getQg(), false);
     this.groundFilter =
-        new AdjKalmanFilter(groundModel, groundStateCov,
+        new FoldedKalmanFilter(groundModel, groundStateCov,
             this.obsCovar);
     this.setOffRoadStateTransCovar(groundStateCov);
 

@@ -11,6 +11,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.lang.reflect.InvocationTargetException;
 import java.net.URL;
 import java.util.Date;
 import java.util.Enumeration;
@@ -29,9 +30,10 @@ import org.opentrackingtools.impl.VehicleStatePerformanceResult.SufficientStatis
 import org.opentrackingtools.statistics.filters.vehicles.AbstractVehicleTrackingFilter;
 import org.opentrackingtools.statistics.filters.vehicles.VehicleTrackingFilter;
 import org.opentrackingtools.statistics.filters.vehicles.impl.VehicleTrackingBootstrapFilter;
-import org.opentrackingtools.statistics.filters.vehicles.particle_learning.impl.VTErrorEstimatingPLFilter;
 import org.opentrackingtools.statistics.filters.vehicles.particle_learning.impl.VehicleTrackingPLFilter;
+import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
 import org.opentrackingtools.statistics.filters.vehicles.road.impl.ErrorEstimatingRoadTrackingFilter;
+import org.opentrackingtools.statistics.filters.vehicles.road.impl.StandardRoadTrackingFilter;
 
 import play.Logger;
 import play.mvc.Controller;
@@ -60,18 +62,23 @@ public class Application extends Controller {
     render(instances);
   }
 
-  private static Map<String, Class<? extends VehicleTrackingFilter>> filtersMap = Maps.newHashMap();
+  private static Map<String, Class<? extends VehicleTrackingFilter>> particleFiltersMap = Maps.newHashMap();
   static {
-    filtersMap.put(VTErrorEstimatingPLFilter.class.getName(), VTErrorEstimatingPLFilter.class);
-    filtersMap.put(VehicleTrackingPLFilter.class.getName(), VehicleTrackingPLFilter.class);
-    filtersMap.put(VehicleTrackingBootstrapFilter.class.getName(), VehicleTrackingBootstrapFilter.class);
+    particleFiltersMap.put(VehicleTrackingPLFilter.class.getName(), VehicleTrackingPLFilter.class);
+    particleFiltersMap.put(VehicleTrackingBootstrapFilter.class.getName(), VehicleTrackingBootstrapFilter.class);
+  }
+  
+  private static Map<String, Class<? extends AbstractRoadTrackingFilter>> roadFiltersMap = Maps.newHashMap();
+  static {
+    roadFiltersMap.put(ErrorEstimatingRoadTrackingFilter.class.getName(), ErrorEstimatingRoadTrackingFilter.class);
+    roadFiltersMap.put(StandardRoadTrackingFilter.class.getName(), StandardRoadTrackingFilter.class);
   }
   
   public static void instances() {
     final List<InferenceInstance> instances =
         InferenceService.getInferenceInstances();
       
-    final Set<String> filters = filtersMap.keySet();
+    final Set<String> filters = particleFiltersMap.keySet();
     final VehicleStateInitialParameters initialParams = InferenceService.getDefaultVehicleStateInitialParams();
     render(instances, filters, initialParams);
   }
@@ -106,7 +113,9 @@ public class Application extends Controller {
     String road_state_variance, String roadCovDof_str,
     String ground_state_variance_pair, String groundCovDof_str, 
     String off_prob_pair,
-    String on_prob_pair, String numParticles_str, String filterTypeName,
+    String on_prob_pair, String numParticles_str, 
+    String particleFilterTypeName,
+    String roadFilterTypeName,
     String initialObsFreq_str) {
 
     final int obsCovDof = Integer.parseInt(obsCovDof_str);
@@ -148,7 +157,9 @@ public class Application extends Controller {
             obsVariance, obsCovDof,
             roadStateVariance, roadCovDof,
             groundStateVariance, groundCovDof, 
-            offProbs, onProbs, filterTypeName, numParticles, 
+            offProbs, onProbs, particleFilterTypeName, 
+            roadFilterTypeName,
+            numParticles, 
             initialObsFreq, 0);
 
     InferenceService.setDefaultVehicleStateInitialParams(parameters);
@@ -164,7 +175,8 @@ public class Application extends Controller {
     String start_coordinate_pair, String start_unix_time,
     String duration_str, String frequency_str,
     String numParticles_str, String initialObsFreq_str,
-    String filterTypeName, String seed_str) {
+    String particleFilterTypeName, String roadFilterTypeName, 
+    String seed_str) throws SecurityException, IllegalArgumentException, ClassNotFoundException, NoSuchMethodException, InstantiationException, IllegalAccessException, InvocationTargetException {
     
     final Coordinate startCoord;
     if (!start_coordinate_pair.isEmpty()) {
@@ -223,12 +235,13 @@ public class Application extends Controller {
             obsVariance, obsCovDof,
             roadStateVariance, roadCovDof,
             groundStateVariance, groundCovDof, 
-            offProbs, onProbs, filterTypeName, numParticles, 
-            initialObsFreq, seed);
+            offProbs, onProbs, particleFilterTypeName, 
+            roadFilterTypeName,
+            numParticles, initialObsFreq, seed);
 
     final SimulationParameters simParams =
         new SimulationParameters(startCoord, startTime, duration,
-            frequency, inference, parameters);
+            frequency, inference, false, parameters);
 
     final String simulationName = "sim" + simParams.hashCode();
     if (InferenceService.getInferenceInstance(simulationName) != null) {
@@ -252,7 +265,7 @@ public class Application extends Controller {
     String road_state_variance, String roadCovDof_str,
     String ground_state_variance_pair, String groundCovDof_str, 
     String off_prob_pair, String on_prob_pair, String numParticles_str, String seed_str,
-    String filterTypeName, String debugEnabled,
+    String particleFilterTypeName, String roadFilterTypeName, String debugEnabled,
     String initialObsFreq_str) {
 
     if (csv != null) {
@@ -299,8 +312,9 @@ public class Application extends Controller {
               obsVariance, obsCovDof,
               roadStateVariance, roadCovDof,
               groundStateVariance, groundCovDof, 
-              offProbs, onProbs, filterTypeName, numParticles, 
-              initialObsFreq, seed);
+              offProbs, onProbs, particleFilterTypeName, 
+              roadFilterTypeName,
+              numParticles, initialObsFreq, seed);
 
       final boolean debug_enabled =
           Boolean.parseBoolean(debugEnabled);
@@ -318,12 +332,12 @@ public class Application extends Controller {
 
   public static Map<String, Class<? extends VehicleTrackingFilter>>
       getFilters() {
-    return filtersMap;
+    return particleFiltersMap;
   }
 
   public static void setFilters(
     Map<String, Class<? extends VehicleTrackingFilter>> filters) {
-    Application.filtersMap = filters;
+    Application.particleFiltersMap = filters;
   }
 
 }

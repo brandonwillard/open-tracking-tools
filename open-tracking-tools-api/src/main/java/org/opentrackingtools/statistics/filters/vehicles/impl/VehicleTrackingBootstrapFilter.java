@@ -2,7 +2,9 @@ package org.opentrackingtools.statistics.filters.vehicles.impl;
 
 import gov.sandia.cognition.statistics.DataDistribution;
 
+import java.lang.reflect.InvocationTargetException;
 import java.util.List;
+import java.util.Random;
 import java.util.Set;
 
 import javax.annotation.Nonnull;
@@ -30,10 +32,10 @@ public class VehicleTrackingBootstrapFilter extends
   public VehicleTrackingBootstrapFilter(GpsObservation obs,
     InferenceGraph inferredGraph,
     VehicleStateInitialParameters parameters,
-    @Nonnull Boolean isDebug) {
+    @Nonnull Boolean isDebug, Random rng) throws SecurityException, IllegalArgumentException, ClassNotFoundException, NoSuchMethodException, InstantiationException, IllegalAccessException, InvocationTargetException {
     super(obs, inferredGraph, parameters,
         new VehicleTrackingPathSamplerFilterUpdater(obs,
-            inferredGraph, parameters), isDebug);
+            inferredGraph, parameters, rng), isDebug, rng);
   }
 
   @Override

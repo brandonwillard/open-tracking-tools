@@ -524,7 +524,7 @@ public class Api extends Controller {
           filter.getOffRoadStateVariancePrior().getMean().convertToVector()).getArray());
       if (filter.getCurrentStateSample() != null) {
         final Matrix projMatrix = filter.getPrevStateSample().isOnRoad() ?
-           filter.getRoadFilter().getModel().getA() : filter.getGroundFilter().getModel().getA();
+           filter.getRoadModel().getA() : filter.getGroundModel().getA();
         mapResult.put("stateSampleDiff", ((DenseVector) 
             filter.getCurrentStateSample().getGlobalState().minus(
                 projMatrix.times(

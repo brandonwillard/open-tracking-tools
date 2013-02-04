@@ -1,5 +1,11 @@
 package org.opentrackingtools.statistics.filters.vehicles.particle_learning.impl;
 
+import gov.sandia.cognition.math.matrix.Vector;
+
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
+import java.util.Random;
+
 import javax.annotation.Nonnull;
 
 import org.opentrackingtools.GpsObservation;
@@ -20,35 +26,24 @@ public class VehicleTrackingPLFilter extends
     private static final long serialVersionUID =
         5271480648697065434L;
 
-    public VehicleTrackingPLFilterUpdater(GpsObservation obs,
+    public VehicleTrackingPLFilterUpdater(
+      GpsObservation obs,
       InferenceGraph inferredGraph,
-      VehicleStateInitialParameters parameters) {
-      super(obs, inferredGraph, parameters);
+      VehicleStateInitialParameters parameters, 
+      Random rng) throws ClassNotFoundException, SecurityException, NoSuchMethodException, IllegalArgumentException, InstantiationException, IllegalAccessException, InvocationTargetException {
+      super(obs, inferredGraph, parameters, rng);
     }
 
     @Override
     public double computeLogLikelihood(
-      VehicleState particle, GpsObservation observationFactory) {
-      // TODO Auto-generated method stub
-      return 0;
-    }
-
-    @Override
-    @Nonnull
-    protected AbstractRoadTrackingFilter
-        createRoadTrackingFilter() {
-      return new StandardRoadTrackingFilter(
-          parameters.getObsCov(),
-          parameters.getOffRoadStateCov(),
-          parameters.getOnRoadStateCov(),
-          parameters.getInitialObsFreq());
+      VehicleState particle, GpsObservation observation) {
+      return particle.getProbabilityFunction().logEvaluate(observation);
     }
 
     @Override
     public VehicleState update(
       VehicleState previousParameter) {
-      // TODO Auto-generated method stub
-      return null;
+      throw new RuntimeException("Not implemented");
     }
 
   }
@@ -59,9 +54,9 @@ public class VehicleTrackingPLFilter extends
   public VehicleTrackingPLFilter(GpsObservation obs,
     InferenceGraph inferredGraph,
     VehicleStateInitialParameters parameters,
-    @Nonnull Boolean isDebug) {
+    @Nonnull Boolean isDebug, Random rng) throws SecurityException, IllegalArgumentException, ClassNotFoundException, NoSuchMethodException, InstantiationException, IllegalAccessException, InvocationTargetException {
     super(obs, inferredGraph, parameters,
         new VehicleTrackingPLFilterUpdater(obs,
-            inferredGraph, parameters), isDebug);
+            inferredGraph, parameters, rng), isDebug, rng);
   }
 }

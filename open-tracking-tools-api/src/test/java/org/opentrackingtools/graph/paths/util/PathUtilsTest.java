@@ -11,10 +11,11 @@ import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.math.matrix.VectorFactory;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 
-import org.opentrackingtools.graph.otp.impl.OtpGraph;
+import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.graph.paths.InferredPath;
 import org.opentrackingtools.graph.paths.edges.PathEdge;
 import org.opentrackingtools.graph.paths.impl.TrackingTestUtils;
+import org.opentrackingtools.statistics.distributions.impl.AdjMultivariateGaussian;
 
 import com.google.common.collect.Iterables;
 import com.vividsolutions.jts.geom.Coordinate;
@@ -43,14 +44,14 @@ public class PathUtilsTest {
   @Test(dataProvider="stateData")
   public void testProjection(Vector from, double length, Vector roadTo, Vector groundTo) {
     
-    OtpGraph graph = mock(OtpGraph.class);
+    InferenceGraph graph = mock(InferenceGraph.class);
     final InferredPath path =
         TrackingTestUtils.makeTmpPath(graph, true,
             new Coordinate(-length, 0d),
             new Coordinate(0d, 0d),
             new Coordinate(length, 0d));
     
-    MultivariateGaussian belief = new MultivariateGaussian(
+    MultivariateGaussian belief = new AdjMultivariateGaussian(
         from, MatrixFactory.getDefault().copyArray(
                 new double[][] {
                     {91.64766085510277, 0.0, -10.790534809853966, 0.0},

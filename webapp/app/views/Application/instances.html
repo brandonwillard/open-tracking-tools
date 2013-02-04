@@ -38,7 +38,8 @@
               <li> onTransitionProbs: ${instance.initialParameters.onTransitionProbs} </li>
               <li> numParticles: ${instance.initialParameters.numParticles} </li>
               <li> initialObsFreq: ${instance.initialParameters.initialObsFreq} </li>
-              <li> filterTypeName: ${instance.initialParameters.filterTypeName} </li>
+              <li> particleFilterTypeName: ${instance.initialParameters.particleFilterTypeName} </li>
+              <li> roadFilterTypeName: ${instance.initialParameters.roadFilterTypeName} </li>
               <li> seed: ${instance.simSeed} </li>
             </ul>
             <span>
@@ -59,8 +60,13 @@
 If inference is performed on the simulation data, then the default initial parameters are used to initialize states
 (not the values below), unless the "use initial sim parameters as state parameters" option is set.
 	#{form @Application.simulation(), method:'GET'}
-    <select name="filterTypeName">
-     	#{list items:filters, as:'filter'}
+    <select name="particleFilterTypeName">
+     	#{list items:particleFilters, as:'filter'}
+      <option value="${filter}">${filter}</option>
+      #{/list}
+    </select><br>
+    <select name="roadFilterTypeName">
+     	#{list items:roadFilters, as:'filter'}
       <option value="${filter}">${filter}</option>
       #{/list}
     </select><br>
@@ -106,8 +112,13 @@ If inference is performed on the simulation data, then the default initial param
 <h3>Load Trace Data</h3> The values below determine the initial states for the loaded trace.  
 	 #{form @Application.uploadHandler(), enctype:'multipart/form-data'}
    
-    <select name="filterTypeName">
-     	#{list items:filters, as:'filter'}
+    <select name="particleFilterTypeName">
+     	#{list items:particleFilters, as:'filter'}
+      <option value="${filter}">${filter}</option>
+      #{/list}
+    </select><br>
+    <select name="roadFilterTypeName">
+     	#{list items:roadFilters, as:'filter'}
       <option value="${filter}">${filter}</option>
       #{/list}
     </select><br>
@@ -144,8 +155,13 @@ If inference is performed on the simulation data, then the default initial param
 <h3>Default Initial State Parameters</h3>  
 These values are used to initialize states when new instances are created from streaming data.
 	#{form @Application.setDefaultVehicleStateParams(), method:'GET'}
-    <select name="filterTypeName">
-     	#{list items:filters, as:'filter'}
+    <select name="particleFilterTypeName">
+     	#{list items:particleFilters, as:'filter'}
+      <option value="${filter}">${filter}</option>
+      #{/list}
+    </select><br>
+    <select name="roadFilterTypeName">
+     	#{list items:roadFilters, as:'filter'}
       <option value="${filter}">${filter}</option>
       #{/list}
     </select><br>

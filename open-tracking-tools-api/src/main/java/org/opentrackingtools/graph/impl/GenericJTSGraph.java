@@ -25,6 +25,7 @@ import org.geotools.graph.traverse.standard.AStarIterator.AStarFunctions;
 import org.geotools.graph.traverse.standard.AStarIterator.AStarNode;
 import org.opengis.referencing.operation.MathTransform;
 import org.opengis.referencing.operation.TransformException;
+import org.opentrackingtools.GpsObservation;
 import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.graph.edges.InferredEdge;
 import org.opentrackingtools.graph.edges.impl.SimpleInferredEdge;
@@ -34,6 +35,7 @@ import org.opentrackingtools.graph.paths.edges.impl.SimplePathEdge;
 import org.opentrackingtools.graph.paths.impl.SimpleInferredPath;
 import org.opentrackingtools.impl.VehicleState;
 import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
+import org.opentrackingtools.statistics.filters.vehicles.road.impl.RoadTrackingFilterGraphTest.TrueObservation;
 import org.opentrackingtools.statistics.impl.StatisticsUtil;
 import org.opentrackingtools.util.GeoUtils;
 import org.slf4j.Logger;
@@ -41,6 +43,7 @@ import org.slf4j.LoggerFactory;
 
 import com.beust.jcommander.internal.Lists;
 import com.beust.jcommander.internal.Maps;
+import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Predicate;
 import com.google.common.collect.Iterables;
@@ -129,13 +132,10 @@ public class GenericJTSGraph implements InferenceGraph {
     
     final Coordinate toCoord;
     final double obsStdDevDistance;
-//    final private Edge startEdge;
     
     public VehicleStateAStarFunction(Node destination, 
       Coordinate toCoord, double obsStdDevDistance) {
-//      Edge startEdge, Coordinate toCoord, double obsStdDevDistance) {
       super(destination);
-//      this.startEdge = startEdge;
       this.toCoord = toCoord;
       this.obsStdDevDistance = obsStdDevDistance;
     }
@@ -180,14 +180,15 @@ public class GenericJTSGraph implements InferenceGraph {
        * Compute distance past projected value
        */
       
-      
       return 0d;
     }
   }
   
   @Override
   public Set<InferredPath> getPaths(final VehicleState fromState,
-    final Coordinate toCoord) {
+    final GpsObservation obs) {
+    
+    final Coordinate toCoord = obs.getObsProjected();
     
     InferredEdge currentEdge = fromState.getBelief().getEdge().getInferredEdge();
     
@@ -289,6 +290,29 @@ public class GenericJTSGraph implements InferenceGraph {
         }
       }
     }
+    
+    // TODO debug; remove.
+    if (obs instanceof TrueObservation) {
+      final VehicleState trueState = ((TrueObservation)obs).getTrueState();
+      if (fromState.getBelief().getEdge().getInferredEdge()
+            .equals(
+                Iterables.getFirst(trueState.getBelief().getPath().getPathEdges(), null).
+                getInferredEdge())
+            && Iterables.find(paths, 
+                new Predicate<InferredPath>() {
+
+                  @Override
+                  public boolean apply(InferredPath input) {
+                    return input.getGeometry() != null &&
+                        input.getGeometry().covers(
+                          trueState.getBelief().getPath().getGeometry());
+                  }
+                }
+                , null) == null) {
+        log.warn("True path not found in search results: true=" 
+                + trueState.getBelief().getPath() + ", found=" + paths);
+      }
+    }
 
     return paths;
   }
@@ -336,7 +360,7 @@ public class GenericJTSGraph implements InferenceGraph {
   @Override
   public Collection<InferredEdge> getNearbyEdges(
     DistributionWithMean<Vector> initialBelief,
-    AbstractRoadTrackingFilter<?> trackingFilter) {
+    AbstractRoadTrackingFilter trackingFilter) {
     
     Preconditions.checkArgument(initialBelief.getMean()
         .getDimensionality() == 4);

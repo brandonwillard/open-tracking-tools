@@ -8,6 +8,8 @@ import gov.sandia.cognition.math.matrix.mtj.DenseMatrix;
 import gov.sandia.cognition.statistics.DataDistribution;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.util.Collection;
 import java.util.List;
 import java.util.Random;
@@ -58,9 +60,12 @@ public class VehicleTrackingPathSamplerFilterUpdater extends
       .getLogger(VehicleTrackingPathSamplerFilterUpdater.class);
   
   public VehicleTrackingPathSamplerFilterUpdater(
-    GpsObservation obs, InferenceGraph inferenceGraph,
-    VehicleStateInitialParameters parameters) {
-    super(obs, inferenceGraph, parameters);
+      GpsObservation obs,
+      InferenceGraph inferredGraph,
+      VehicleStateInitialParameters parameters,
+      Random rng) throws ClassNotFoundException, SecurityException, NoSuchMethodException, IllegalArgumentException, InstantiationException, IllegalAccessException, InvocationTargetException {
+    super(obs, inferredGraph, parameters, rng);
+    
   }
 
   @Override
@@ -105,17 +110,6 @@ public class VehicleTrackingPathSamplerFilterUpdater extends
     }
 
     return initialDist;
-  }
-
-  @Override
-  @Nonnull
-  protected AbstractRoadTrackingFilter
-      createRoadTrackingFilter() {
-    return new StandardRoadTrackingFilter(
-        parameters.getObsCov(),
-        parameters.getOffRoadStateCov(),
-        parameters.getOnRoadStateCov(),
-        parameters.getInitialObsFreq());
   }
 
   private Collection<? extends InferredEdge>
@@ -482,42 +476,42 @@ public class VehicleTrackingPathSamplerFilterUpdater extends
    * @param rng
    * @return
    */
-  private Vector sampleStateTransInsideGraph(Vector state,
-    AbstractRoadTrackingFilter filter, Random rng) {
-    final int dim = state.getDimensionality();
-    final Matrix sampleCovChol =
-        StatisticsUtil.rootOfSemiDefinite(dim == 4 ? 
-            filter.getQg() : filter.getQr());
-    final Matrix covFactor = filter.getCovarianceFactor(dim == 2);
-    Envelope graphExtent = this.inferenceGraph.getProjGraphExtent();
-    Vector stateSmpl;
-    Coordinate newLoc;
-    int tries = 0;
-    do {
-      final Vector qSmpl =
-          MultivariateGaussian.sample(VectorFactory
-              .getDenseDefault().createVector(dim / 2),
-              sampleCovChol, rng);
-      
-      final Vector error = covFactor.times(qSmpl);
-      
-      stateSmpl = state.plus(error);
-      
-      newLoc =
-         GeoUtils.getCoordinates(AbstractRoadTrackingFilter.getOg().
-             times(stateSmpl));
-      
-      tries++;
-      if (tries >= maxGraphBoundsResampleTries)
-        throw new RuntimeException("Could not sample a state within the graph bounds");
-    
-    } while (!graphExtent.isNull() && !graphExtent.contains(newLoc));
-    
-    if (tries > 1)
-      _log.info("Inside graph bounds resample tries = " + tries);
-    
-    return stateSmpl;
-  }
+//  private Vector sampleStateTransInsideGraph(Vector state,
+//    AbstractRoadTrackingFilter filter, Random rng) {
+//    final int dim = state.getDimensionality();
+//    final Matrix sampleCovChol =
+//        StatisticsUtil.rootOfSemiDefinite(dim == 4 ? 
+//            filter.getQg() : filter.getQr());
+//    final Matrix covFactor = filter.getCovarianceFactor(dim == 2);
+//    Envelope graphExtent = this.inferenceGraph.getProjGraphExtent();
+//    Vector stateSmpl;
+//    Coordinate newLoc;
+//    int tries = 0;
+//    do {
+//      final Vector qSmpl =
+//          MultivariateGaussian.sample(VectorFactory
+//              .getDenseDefault().createVector(dim / 2),
+//              sampleCovChol, rng);
+//      
+//      final Vector error = covFactor.times(qSmpl);
+//      
+//      stateSmpl = state.plus(error);
+//      
+//      newLoc =
+//         GeoUtils.getCoordinates(AbstractRoadTrackingFilter.getOg().
+//             times(stateSmpl));
+//      
+//      tries++;
+//      if (tries >= maxGraphBoundsResampleTries)
+//        throw new RuntimeException("Could not sample a state within the graph bounds");
+//    
+//    } while (!graphExtent.isNull() && !graphExtent.contains(newLoc));
+//    
+//    if (tries > 1)
+//      _log.info("Inside graph bounds resample tries = " + tries);
+//    
+//    return stateSmpl;
+//  }
 
   @Override
   public VehicleState
@@ -545,7 +539,7 @@ public class VehicleTrackingPathSamplerFilterUpdater extends
      */
     final OnOffEdgeTransDirMulti newTransDist =
         previousState.getEdgeTransitionDist().clone();
-    final AbstractRoadTrackingFilter<?> predictedFilter =
+    final AbstractRoadTrackingFilter predictedFilter =
         previousState.getMovementFilter().clone();
 
     final PathStateBelief currentBelief =

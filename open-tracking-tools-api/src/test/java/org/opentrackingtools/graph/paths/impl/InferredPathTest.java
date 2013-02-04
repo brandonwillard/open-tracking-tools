@@ -13,7 +13,7 @@ import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 import java.util.Date;
 
 import org.opentrackingtools.GpsObservation;
-import org.opentrackingtools.graph.otp.impl.OtpGraph;
+import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.graph.paths.InferredPath;
 import org.opentrackingtools.graph.paths.edges.PathEdge;
 import org.opentrackingtools.graph.paths.impl.SimpleInferredPath;
@@ -23,6 +23,7 @@ import org.opentrackingtools.graph.paths.states.impl.SimplePathStateBelief;
 import org.opentrackingtools.impl.SimpleObservation;
 import org.opentrackingtools.impl.TimeOrderException;
 import org.opentrackingtools.impl.VehicleStateInitialParameters;
+import org.opentrackingtools.statistics.distributions.impl.AdjMultivariateGaussian;
 import org.opentrackingtools.statistics.filters.vehicles.particle_learning.impl.VehicleTrackingPLFilter;
 import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
 import org.opentrackingtools.statistics.filters.vehicles.road.impl.StandardRoadTrackingFilter;
@@ -34,8 +35,8 @@ import com.vividsolutions.jts.geom.Coordinate;
 public class InferredPathTest {
 
   private VehicleStateInitialParameters vehicleStateInitialParams;
-  private AbstractRoadTrackingFilter<?> filter;
-  private OtpGraph graph;
+  private AbstractRoadTrackingFilter filter;
+  private InferenceGraph graph;
 
   @BeforeMethod
   public void setUp() throws Exception {
@@ -49,17 +50,15 @@ public class InferredPathTest {
             VectorFactory.getDefault().createVector2D(5d,
                 95d), VectorFactory.getDefault()
                 .createVector2D(95d, 5d),
-            VehicleTrackingPLFilter.class.getName(), 25,
-            30, 0l);
+            VehicleTrackingPLFilter.class.getName(), 
+            StandardRoadTrackingFilter.class.getName(), 
+            25, 30, 0l);
 
     filter =
         new StandardRoadTrackingFilter(
-            vehicleStateInitialParams.getObsCov(),
-            vehicleStateInitialParams.getOffRoadStateCov(),
-            vehicleStateInitialParams.getOnRoadStateCov(),
-            vehicleStateInitialParams.getInitialObsFreq());
+            null, graph, vehicleStateInitialParams, null);
 
-    graph = mock(OtpGraph.class);
+    graph = mock(InferenceGraph.class);
   }
 
   @Test(enabled=false, expectedExceptions = IllegalStateException.class)
@@ -74,7 +73,7 @@ public class InferredPathTest {
             new double[][] { new double[] { 126.56, 8.44 },
                 new double[] { 8.44, 0.56 } });
     final MultivariateGaussian startBelief =
-        new MultivariateGaussian(VectorFactory.getDefault()
+        new AdjMultivariateGaussian(VectorFactory.getDefault()
             .createVector2D(-0d, -5d / 30d), covar);
     final SimplePathStateBelief currentBelief =
         SimplePathStateBelief.getPathStateBelief(startPath,
@@ -206,7 +205,7 @@ public class InferredPathTest {
             new double[][] { new double[] { 126.56, 8.44 },
                 new double[] { 8.44, 0.56 } });
     final MultivariateGaussian startBelief =
-        new MultivariateGaussian(VectorFactory.getDefault()
+        new AdjMultivariateGaussian(VectorFactory.getDefault()
             .createVector2D(-0d, -5d / 30d), covar);
     final SimplePathStateBelief currentBelief =
         SimplePathStateBelief.getPathStateBelief(startPath,
@@ -247,7 +246,7 @@ public class InferredPathTest {
             new double[][] { new double[] { 126.56, 8.44 },
                 new double[] { 8.44, 0.56 } });
     final MultivariateGaussian startBelief =
-        new MultivariateGaussian(VectorFactory.getDefault()
+        new AdjMultivariateGaussian(VectorFactory.getDefault()
             .createVector2D(0d, 1d), covar);
     final SimplePathStateBelief currentBelief =
         SimplePathStateBelief.getPathStateBelief(startPath,
@@ -288,7 +287,7 @@ public class InferredPathTest {
             new double[][] { new double[] { 126.56, 8.44 },
                 new double[] { 8.44, 0.56 } });
     final MultivariateGaussian startBelief =
-        new MultivariateGaussian(VectorFactory.getDefault()
+        new AdjMultivariateGaussian(VectorFactory.getDefault()
             .createVector2D(2.5d, 1d), covar);
     final SimplePathStateBelief currentBelief =
         SimplePathStateBelief.getPathStateBelief(startPath,
@@ -329,7 +328,7 @@ public class InferredPathTest {
             new double[][] { new double[] { 126.56, 8.44 },
                 new double[] { 8.44, 0.56 } });
     final MultivariateGaussian startBelief =
-        new MultivariateGaussian(VectorFactory.getDefault()
+        new AdjMultivariateGaussian(VectorFactory.getDefault()
             .createVector2D(-2.5d, 1d), covar);
     final SimplePathStateBelief currentBelief =
         SimplePathStateBelief.getPathStateBelief(startPath,
@@ -367,7 +366,7 @@ public class InferredPathTest {
             new double[][] { new double[] { 126.56, 8.44 },
                 new double[] { 8.44, 0.56 } });
     final MultivariateGaussian startBelief =
-        new MultivariateGaussian(VectorFactory.getDefault()
+        new AdjMultivariateGaussian(VectorFactory.getDefault()
             .createVector2D(2.5d, 1d), covar);
     final SimplePathStateBelief currentBelief =
         SimplePathStateBelief.getPathStateBelief(startPath,
@@ -403,7 +402,7 @@ public class InferredPathTest {
             new double[][] { new double[] { 126.56, 8.44 },
                 new double[] { 8.44, 0.56 } });
     final MultivariateGaussian startBelief =
-        new MultivariateGaussian(VectorFactory.getDefault()
+        new AdjMultivariateGaussian(VectorFactory.getDefault()
             .createVector2D(2.5d, 1d), covar);
     final SimplePathStateBelief currentBelief =
         SimplePathStateBelief.getPathStateBelief(startPath,
@@ -439,7 +438,7 @@ public class InferredPathTest {
             new double[][] { new double[] { 126.56, 8.44 },
                 new double[] { 8.44, 0.56 } });
     final MultivariateGaussian startBelief =
-        new MultivariateGaussian(VectorFactory.getDefault()
+        new AdjMultivariateGaussian(VectorFactory.getDefault()
             .createVector2D(-2.5d, 1d), covar);
     final SimplePathStateBelief currentBelief =
         SimplePathStateBelief.getPathStateBelief(startPath,
@@ -467,7 +466,7 @@ public class InferredPathTest {
             new double[][] { new double[] { 126.56, 8.44 },
                 new double[] { 8.44, 0.56 } });
     final MultivariateGaussian startBelief =
-        new MultivariateGaussian(VectorFactory.getDefault()
+        new AdjMultivariateGaussian(VectorFactory.getDefault()
             .createVector2D(-10d, -5d / 30d), covar);
 
     final SimpleInferredPath newPath =

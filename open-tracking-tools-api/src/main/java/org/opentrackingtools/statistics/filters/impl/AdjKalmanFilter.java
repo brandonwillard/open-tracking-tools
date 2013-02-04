@@ -9,6 +9,7 @@ import gov.sandia.cognition.statistics.bayesian.AbstractKalmanFilter;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 import gov.sandia.cognition.util.ObjectUtil;
 
+import org.opentrackingtools.statistics.distributions.impl.AdjMultivariateGaussian;
 import org.opentrackingtools.statistics.impl.StatisticsUtil;
 
 /**
@@ -91,7 +92,7 @@ public class AdjKalmanFilter extends AbstractKalmanFilter {
 
   @Override
   public MultivariateGaussian createInitialLearnedObject() {
-    return new MultivariateGaussian(this.model.getState(),
+    return new AdjMultivariateGaussian(this.model.getState(),
         this.getModelCovariance());
   }
 

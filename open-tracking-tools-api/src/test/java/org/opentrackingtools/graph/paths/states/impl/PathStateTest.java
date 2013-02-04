@@ -4,27 +4,22 @@ import org.testng.annotations.Test;
 import org.testng.AssertJUnit;
 import org.testng.annotations.BeforeMethod;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.stub;
 import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.math.matrix.VectorFactory;
 
 import java.util.List;
 
 import org.geotools.geometry.jts.JTSFactoryFinder;
+import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.graph.edges.InferredEdge;
 import org.opentrackingtools.graph.edges.impl.SimpleInferredEdge;
-import org.opentrackingtools.graph.otp.impl.OtpGraph;
 import org.opentrackingtools.graph.paths.InferredPath;
 import org.opentrackingtools.graph.paths.edges.impl.SimplePathEdge;
 import org.opentrackingtools.graph.paths.impl.SimpleInferredPath;
 import org.opentrackingtools.graph.paths.impl.TrackingTestUtils;
 import org.opentrackingtools.graph.paths.states.impl.SimplePathState;
 import org.opentrackingtools.graph.paths.util.PathUtils;
-import org.opentripplanner.routing.edgetype.PlainStreetEdge;
-import org.opentripplanner.routing.edgetype.StreetTraversalPermission;
-import org.opentripplanner.routing.graph.Edge;
-import org.opentripplanner.routing.graph.Graph;
-import org.opentripplanner.routing.vertextype.IntersectionVertex;
-import org.opentripplanner.routing.vertextype.StreetVertex;
 
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
@@ -33,24 +28,26 @@ import com.vividsolutions.jts.geom.Geometry;
 
 public class PathStateTest {
 
-  private SimpleInferredPath p1;
-  private SimpleInferredPath p1_neg;
-  private SimpleInferredPath p2;
+  private InferredPath p1;
+  private InferredPath p1_neg;
+  private InferredPath p2;
   private InferredPath p2_neg;
   private InferredPath p2_rev;
-  private SimpleInferredEdge ie2_rev;
-  private SimpleInferredEdge ie3_rev;
-  private final double _numericError = 1e-4;
-  private SimpleInferredEdge ie3;
-  private SimpleInferredEdge ie2;
-  private SimpleInferredEdge ie1;
-  private Graph graph;
-  private OtpGraph otpGraph;
+  
+  private InferredEdge ie2_rev;
+  private InferredEdge ie3_rev;
+  private InferredEdge ie3;
+  private InferredEdge ie2;
+  private InferredEdge ie1;
   private InferredEdge ie1_rev;
+  
+  private final double _numericError = 1e-4;
+  
+  private InferenceGraph graph;
 
   private SimpleInferredPath makeTmpPath(boolean isBackward,
     Coordinate... coords) {
-    return TrackingTestUtils.makeTmpPath(this.otpGraph,
+    return TrackingTestUtils.makeTmpPath(this.graph,
         isBackward, coords);
   }
 
@@ -534,7 +531,7 @@ public class PathStateTest {
             .getDenseDefault().createVector2D(12.5d, 1d));
     final SimplePathState y =
         SimplePathState.getPathState(TrackingTestUtils
-            .makeTmpPath(this.otpGraph, true,
+            .makeTmpPath(this.graph, true,
                 new Coordinate(0, 40),
                 new Coordinate(0, 30),
                 new Coordinate(0, 20)), VectorFactory
@@ -550,7 +547,7 @@ public class PathStateTest {
   public void testDistanceBetween4_2() {
     final SimplePathState x2 =
         SimplePathState.getPathState(TrackingTestUtils
-            .makeTmpPath(this.otpGraph, false,
+            .makeTmpPath(this.graph, false,
                 new Coordinate(0, 30),
                 new Coordinate(0, 20),
                 new Coordinate(0, 10)), VectorFactory
@@ -569,14 +566,14 @@ public class PathStateTest {
   public void testDistanceBetween4_3() {
     final SimplePathState x2 =
         SimplePathState.getPathState(TrackingTestUtils
-            .makeTmpPath(this.otpGraph, false,
+            .makeTmpPath(this.graph, false,
                 new Coordinate(0, 30),
                 new Coordinate(0, 20),
                 new Coordinate(0, 10)), VectorFactory
             .getDenseDefault().createVector2D(12.5d, 1d));
     final SimplePathState y2 =
         SimplePathState.getPathState(TrackingTestUtils
-            .makeTmpPath(this.otpGraph, true,
+            .makeTmpPath(this.graph, true,
                 new Coordinate(0, 40),
                 new Coordinate(0, 30),
                 new Coordinate(0, 20)), VectorFactory
@@ -892,86 +889,43 @@ public class PathStateTest {
 
   @BeforeMethod
   public void testSetup() {
-    graph = new Graph();
     /*
      * Create three stacked edges facing up the y-axis, spaced
      * by 10 meters.
      */
-    final StreetVertex v0 =
-        new IntersectionVertex(graph, "v0", 0, 10);
-    final StreetVertex v1 =
-        new IntersectionVertex(graph, "v1", 0, 20);
-    final StreetVertex v2 =
-        new IntersectionVertex(graph, "v2", 0, 30);
-    final StreetVertex v3 =
-        new IntersectionVertex(graph, "v3", 0, 40);
-
-    final Edge e1 =
-        new PlainStreetEdge(v0, v1,
-            TrackingTestUtils.makeGeometry(v0, v1), "e1",
-            10d, StreetTraversalPermission.ALL, false);
-    final Edge e2 =
-        new PlainStreetEdge(v1, v2,
-            TrackingTestUtils.makeGeometry(v1, v2), "e2",
-            10d, StreetTraversalPermission.ALL, false);
-    final Edge e3 =
-        new PlainStreetEdge(v2, v3,
-            TrackingTestUtils.makeGeometry(v2, v3), "e3",
-            10d, StreetTraversalPermission.ALL, false);
-
-    final Edge e1_rev =
-        new PlainStreetEdge(v1, v0,
-            TrackingTestUtils.makeGeometry(v1, v0), "-e1",
-            10d, StreetTraversalPermission.ALL, false);
-    final Edge e2_rev =
-        new PlainStreetEdge(v2, v1,
-            TrackingTestUtils.makeGeometry(v2, v1), "-e2",
-            10d, StreetTraversalPermission.ALL, false);
-    final Edge e3_rev =
-        new PlainStreetEdge(v3, v2,
-            TrackingTestUtils.makeGeometry(v3, v2), "-e3",
-            10d, StreetTraversalPermission.ALL, false);
-
-    otpGraph = mock(OtpGraph.class);
-
-    ie1 = SimpleInferredEdge.getInferredEdge(e1.getGeometry(), e1, 1, otpGraph);
-    ie2 = SimpleInferredEdge.getInferredEdge(e2.getGeometry(), e2, 2, otpGraph);
-    ie3 = SimpleInferredEdge.getInferredEdge(e3.getGeometry(), e3, 3, otpGraph);
-    ie1_rev = SimpleInferredEdge.getInferredEdge(e1_rev.getGeometry(), e1_rev, -1, otpGraph);
-    ie2_rev = SimpleInferredEdge.getInferredEdge(e2_rev.getGeometry(), e2_rev, -2, otpGraph);
-    ie3_rev = SimpleInferredEdge.getInferredEdge(e3_rev.getGeometry(), e3_rev, -3, otpGraph);
-
-    final List<SimplePathEdge> edges1 =
-        Lists.newArrayList(SimplePathEdge.getEdge(ie1, 0, false),
-            SimplePathEdge.getEdge(ie2, ie1.getLength(), false));
-
-    p1 = SimpleInferredPath.getInferredPath(edges1, false);
-
-    final List<SimplePathEdge> edges2 =
-        Lists.newArrayList(SimplePathEdge.getEdge(ie2, 0, false),
-            SimplePathEdge.getEdge(ie3, ie2.getLength(), false));
-
-    p2 = SimpleInferredPath.getInferredPath(edges2, false);
-
-    final List<SimplePathEdge> edges1_neg =
-        Lists.newArrayList(SimplePathEdge.getEdge(ie2, 0, true),
-            SimplePathEdge.getEdge(ie1, -ie1.getLength(), true));
-
-    p1_neg = SimpleInferredPath.getInferredPath(edges1_neg, true);
-
-    final List<SimplePathEdge> edges2_neg =
-        Lists.newArrayList(SimplePathEdge.getEdge(ie3, 0, true),
-            SimplePathEdge.getEdge(ie2, -ie2.getLength(), true));
-
-    p2_neg = SimpleInferredPath.getInferredPath(edges2_neg, true);
-
-    final List<SimplePathEdge> edges2_rev =
-        Lists.newArrayList(SimplePathEdge.getEdge(ie3_rev, 0,
-            false), SimplePathEdge.getEdge(ie2_rev,
-            ie2_rev.getLength(), false));
-
-    p2_rev =
-        SimpleInferredPath.getInferredPath(edges2_rev, false);
+    graph = mock(InferenceGraph.class);
+    
+    Geometry e1 = JTSFactoryFinder.getGeometryFactory().createLineString(
+        new Coordinate[] { new Coordinate(0, 10), new Coordinate(0, 20) });
+    stub(graph.edgeHasReverse(e1)).toReturn(false);
+    Geometry e2 = JTSFactoryFinder.getGeometryFactory().createLineString(
+        new Coordinate[] { new Coordinate(0, 20), new Coordinate(0, 30) });
+    stub(graph.edgeHasReverse(e2)).toReturn(false);
+    Geometry e3 = JTSFactoryFinder.getGeometryFactory().createLineString(
+        new Coordinate[] { new Coordinate(0, 30), new Coordinate(0, 40) });
+    stub(graph.edgeHasReverse(e3)).toReturn(false);
+    ie1 = SimpleInferredEdge.getInferredEdge(e1, null, 1, graph);
+    ie2 = SimpleInferredEdge.getInferredEdge(e2, null, 2, graph);
+    ie3 = SimpleInferredEdge.getInferredEdge(e3, null, 3, graph);
+    ie1_rev = SimpleInferredEdge.getInferredEdge(e1.reverse(), null, -1, graph);
+    ie2_rev = SimpleInferredEdge.getInferredEdge(e2.reverse(), null, -2, graph);
+    ie3_rev = SimpleInferredEdge.getInferredEdge(e3.reverse(), null, -3, graph);
+    
+    
+      p1 = makeTmpPath(false, new Coordinate(0, 10),
+            new Coordinate(0, 20), new Coordinate(0, 30));
+      
+      p2 = makeTmpPath(false, new Coordinate(0, 20),
+            new Coordinate(0, 30), new Coordinate(0, 40));
+      
+      p1_neg = makeTmpPath(true, new Coordinate(0, 10),
+            new Coordinate(0, 20), new Coordinate(0, 30));
+      
+      p2_neg = makeTmpPath(true, new Coordinate(0, 20),
+            new Coordinate(0, 30), new Coordinate(0, 40));
+      
+      p2_rev = makeTmpPath(false, new Coordinate(0, 40),
+            new Coordinate(0, 30), new Coordinate(0, 20));
 
   }
 }

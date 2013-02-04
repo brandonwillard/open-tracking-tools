@@ -213,7 +213,8 @@ public class JsonUtils {
         offRoadStateCov, root.findValue("offRoadCovDof").asInt(),
         offProbs,
         onProbs,
-        root.findValue("filterTypeName").getTextValue(),
+        root.findValue("particleFilterTypeName").getTextValue(),
+        root.findValue("roadFilterTypeName").getTextValue(),
         root.findValue("numParticles").getIntValue(),
         root.findValue("initialObsFreq").getIntValue(),
         root.findValue("seed").getLongValue()

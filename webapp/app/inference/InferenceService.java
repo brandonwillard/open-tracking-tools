@@ -15,6 +15,7 @@ import models.InferenceInstance;
 import org.opentrackingtools.GpsObservation;
 import org.opentrackingtools.impl.VehicleStateInitialParameters;
 import org.opentrackingtools.statistics.filters.vehicles.particle_learning.impl.VehicleTrackingPLFilter;
+import org.opentrackingtools.statistics.filters.vehicles.road.impl.StandardRoadTrackingFilter;
 
 import play.Logger;
 import play.mvc.Util;
@@ -70,6 +71,7 @@ public class InferenceService extends UntypedActor {
           VectorFactory.getDefault().createVector2D(5d, 95d),
           VectorFactory.getDefault().createVector2D(95d, 5d), 
           VehicleTrackingPLFilter.class.getName(),
+          StandardRoadTrackingFilter.class.getName(),
           25, 30, 0l);
 
   static public final int THREAD_COUNT;

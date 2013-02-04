@@ -7,7 +7,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
-import org.geotools.data.shapefile.shp.JTSUtilities;
+import static org.mockito.Mockito.stub;
+
 import org.geotools.data.simple.SimpleFeatureSource;
 import org.geotools.factory.FactoryRegistryException;
 import org.geotools.feature.FeatureIterator;
@@ -21,15 +22,10 @@ import org.opengis.feature.Feature;
 import org.opengis.referencing.FactoryException;
 import org.opengis.referencing.NoSuchAuthorityCodeException;
 import org.opengis.referencing.crs.CoordinateReferenceSystem;
+import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.graph.edges.impl.SimpleInferredEdge;
-import org.opentrackingtools.graph.otp.impl.OtpGraph;
 import org.opentrackingtools.graph.paths.edges.impl.SimplePathEdge;
 import org.opentrackingtools.util.GeoUtils;
-import org.opentripplanner.routing.edgetype.PlainStreetEdge;
-import org.opentripplanner.routing.edgetype.StreetTraversalPermission;
-import org.opentripplanner.routing.graph.Edge;
-import org.opentripplanner.routing.vertextype.IntersectionVertex;
-import org.opentripplanner.routing.vertextype.StreetVertex;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Iterators;
@@ -48,47 +44,42 @@ import com.vividsolutions.jts.operation.overlay.EdgeSetNoder;
 
 public class TrackingTestUtils {
 
-  public static LineString makeGeometry(StreetVertex v0,
-    StreetVertex v1) {
+  public static LineString makeGeometry(Coordinate v0,
+    Coordinate v1) {
     final GeometryFactory gf = new GeometryFactory();
     final Coordinate[] coordinates =
-        new Coordinate[] { v0.getCoordinate(),
-            v1.getCoordinate() };
+        new Coordinate[] { v0, v1 };
     return gf.createLineString(coordinates);
   }
 
-  public static SimpleInferredPath makeTmpPath(OtpGraph graph,
+  public static SimpleInferredPath makeTmpPath(InferenceGraph graph,
     boolean isBackward, Coordinate... coords) {
     Preconditions.checkArgument(coords.length > 1);
 
+    
     final List<SimpleInferredEdge> edges = Lists.newArrayList();
-    StreetVertex vtLast = null;
+    Coordinate lastCoord = null;
     for (int i = 0; i < coords.length; i++) {
       final Coordinate coord = coords[i];
-      final StreetVertex vt =
-          new IntersectionVertex(graph.getBaseGraph(),
-              "tmpVertex" + i, coord, "none");
-      if (vtLast != null) {
+//      final StreetVertex vt =
+//          new IntersectionVertex(graph.getBaseGraph(),
+//              "tmpVertex" + i, coord, "none");
+      if (lastCoord != null) {
         final double distance =
-            vt.getCoordinate().distance(
-                vtLast.getCoordinate());
+            coord.distance(lastCoord);
         final LineString geom =
-            TrackingTestUtils.makeGeometry(vtLast, vt);
-        final Edge edge =
-            new PlainStreetEdge(vtLast,
-                vt,
-                geom,
-                //            isBackward ? vt : vtLast, 
-                //            isBackward ? vtLast : vt, 
-                //            isBackward ? (LineString) geom.reverse() : geom,
-                "tmpEdge" + i, distance,
-                StreetTraversalPermission.ALL, false);
+            JTSFactoryFinder.getGeometryFactory().createLineString(
+                new Coordinate[] {lastCoord, coord});
+        
+        stub(graph.edgeHasReverse(geom)).toReturn(false);
+        
         final SimpleInferredEdge ie =
-            SimpleInferredEdge.getInferredEdge(edge.getGeometry(), edge, 1000 + i, graph);
+            SimpleInferredEdge.getInferredEdge(geom, null, 1000 + i, graph);
+        
+        
         edges.add(ie);
       }
-      vtLast = vt;
-
+      lastCoord = coord;
     }
 
     if (isBackward) {

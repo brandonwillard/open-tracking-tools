@@ -7,6 +7,8 @@ import gov.sandia.cognition.statistics.bayesian.ParticleFilter;
 import gov.sandia.cognition.statistics.distribution.DefaultDataDistribution;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.util.Collection;
 import java.util.Random;
 import java.util.Set;
@@ -45,14 +47,34 @@ public abstract class AbstractVTParticleFilterUpdater
   protected Random random;
 
   public long seed;
+  
+  protected final AbstractRoadTrackingFilter roadFilterGenerator; 
 
   public AbstractVTParticleFilterUpdater(
-    @Nonnull GpsObservation obs,
-    @Nonnull InferenceGraph graph,
-    @Nonnull VehicleStateInitialParameters parameters) {
-    this.initialObservation = Preconditions.checkNotNull(obs);
-    this.inferenceGraph = Preconditions.checkNotNull(graph);
-    this.parameters = Preconditions.checkNotNull(parameters);
+      GpsObservation obs,
+      InferenceGraph inferencedGraph,
+      VehicleStateInitialParameters parameters,
+      Random rng) throws ClassNotFoundException, SecurityException, NoSuchMethodException, IllegalArgumentException, InstantiationException, IllegalAccessException, InvocationTargetException {
+      
+      Class<?> filterType = 
+          Class.forName(parameters.getRoadFilterTypeName());
+        
+      Constructor<?> ctor = filterType.getConstructor(
+          GpsObservation.class, InferenceGraph.class, 
+          VehicleStateInitialParameters.class, Random.class);
+        
+      roadFilterGenerator = 
+          (AbstractRoadTrackingFilter) ctor.newInstance(
+          obs, inferencedGraph, parameters, rng);
+      
+      this.initialObservation = obs;
+      this.inferenceGraph = inferencedGraph;
+      if (rng == null)
+        this.random = new Random();
+      else
+        this.random = rng;
+      this.parameters = parameters;
+      
   }
 
   @Override
@@ -81,7 +103,7 @@ public abstract class AbstractVTParticleFilterUpdater
         new DefaultCountedDataDistribution<VehicleState>();
 
     for (int i = 0; i < numParticles; i++) {
-      final AbstractRoadTrackingFilter<?> tmpTrackingFilter =
+      final AbstractRoadTrackingFilter tmpTrackingFilter =
           this.createRoadTrackingFilter();
       final MultivariateGaussian tmpInitialBelief =
           tmpTrackingFilter.getGroundFilter().createInitialLearnedObject();
@@ -110,7 +132,7 @@ public abstract class AbstractVTParticleFilterUpdater
           evaluatedPaths.add(new InferredPathPrediction(path,
               null, null, null, Double.NEGATIVE_INFINITY));
 
-          final AbstractRoadTrackingFilter<?> trackingFilter =
+          final AbstractRoadTrackingFilter trackingFilter =
               this.createRoadTrackingFilter();
 
           final OnOffEdgeTransDirMulti edgeTransDist =
@@ -171,7 +193,7 @@ public abstract class AbstractVTParticleFilterUpdater
       /*
        * Free-motion
        */
-      final AbstractRoadTrackingFilter<?> trackingFilter =
+      final AbstractRoadTrackingFilter trackingFilter =
           this.createRoadTrackingFilter();
 
       final OnOffEdgeTransDirMulti edgeTransDist =
@@ -233,8 +255,10 @@ public abstract class AbstractVTParticleFilterUpdater
   }
 
   @Nonnull
-  abstract protected AbstractRoadTrackingFilter<?>
-      createRoadTrackingFilter();
+  protected AbstractRoadTrackingFilter
+      createRoadTrackingFilter() {
+      return roadFilterGenerator.clone();
+  }
 
   @Nonnull
   public InferenceGraph getInferredGraph() {

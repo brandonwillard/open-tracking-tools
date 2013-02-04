@@ -1,5 +1,7 @@
 package org.opentrackingtools.statistics.filters.vehicles.road.impl;
 
+import org.opentrackingtools.statistics.distributions.impl.AdjMultivariateGaussian;
+
 import gov.sandia.cognition.math.matrix.Matrix;
 import gov.sandia.cognition.math.matrix.MatrixFactory;
 import gov.sandia.cognition.math.matrix.Vector;
@@ -66,7 +68,7 @@ public class LinearTurnTrackingFilter extends
 
   @Override
   public MultivariateGaussian createInitialLearnedObject() {
-    return new MultivariateGaussian(this.model.getState(),
+    return new AdjMultivariateGaussian(this.model.getState(),
         this.getModelCovariance());
   }
 

@@ -22,6 +22,7 @@ import org.opentrackingtools.graph.paths.edges.impl.SimplePathEdge;
 import org.opentrackingtools.graph.paths.impl.SimpleInferredPath;
 import org.opentrackingtools.graph.paths.states.PathState;
 import org.opentrackingtools.impl.VehicleState;
+import org.opentrackingtools.statistics.distributions.impl.AdjMultivariateGaussian;
 import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
 import org.opentrackingtools.statistics.impl.StatisticsUtil;
 import org.opentrackingtools.util.GeoUtils;
@@ -252,7 +253,7 @@ public class PathUtils {
   
     if (useAbsVelocity) {
       final double absVelocity =
-          Math.abs(AbstractRoadTrackingFilter.getVr().dotProduct(belief.getMean()));
+          Math.abs(AbstractRoadTrackingFilter.getVr().times(belief.getMean()).getElement(0));
       if (absVelocity > 0d) {
         final Vector velocities =
             VectorFactory.getDenseDefault().copyVector(
@@ -445,7 +446,7 @@ public class PathUtils {
     assert LengthLocationMap.getLocation(
         pathGeometry, projMean.getElement(0)) != null;
 
-    MultivariateGaussian result = new MultivariateGaussian(
+    MultivariateGaussian result = new AdjMultivariateGaussian(
         projMean, projCov);
 
     return result;
@@ -743,7 +744,7 @@ public class PathUtils {
             .times(obsCov)
             .times(AbstractRoadTrackingFilter.getOg());
     final MultivariateGaussian obsProjBelief =
-        new MultivariateGaussian(AbstractRoadTrackingFilter
+        new AdjMultivariateGaussian(AbstractRoadTrackingFilter
             .getOg().transpose().times(obs), obsCovExp);
     convertToRoadBelief(
         obsProjBelief, path, edge, true);
@@ -758,7 +759,7 @@ public class PathUtils {
             .times(
                 AbstractRoadTrackingFilter.getOr()
                     .transpose());
-    return new MultivariateGaussian(y, Sigma);
+    return new AdjMultivariateGaussian(y, Sigma);
   }
 
   public static MultivariateGaussian getGroundBeliefFromRoad(
@@ -788,7 +789,7 @@ public class PathUtils {
   
     if (useAbsVelocity) {
       final double absVelocity =
-          Math.abs(AbstractRoadTrackingFilter.getVr().dotProduct(locVelocity));
+          Math.abs(AbstractRoadTrackingFilter.getVr().times(locVelocity).getElement(0));
       if (absVelocity > 0d) {
         final Vector velocities =
             VectorFactory.getDenseDefault().copyVector(

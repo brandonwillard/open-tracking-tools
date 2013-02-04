@@ -18,6 +18,7 @@ import org.geotools.referencing.CRS;
 import org.geotools.referencing.operation.projection.ProjectionException;
 
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
@@ -39,11 +40,13 @@ import org.opengis.referencing.operation.NoninvertibleTransformException;
 import org.opengis.referencing.operation.TransformException;
 import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.graph.impl.GenericJTSGraph;
+import org.opentrackingtools.graph.paths.impl.TrackingTestUtils;
 import org.opentrackingtools.graph.paths.states.PathStateBelief;
 import org.opentrackingtools.impl.Simulation.SimulationParameters;
 import org.opentrackingtools.statistics.distributions.impl.OnOffEdgeTransDirMulti;
 import org.opentrackingtools.statistics.filters.vehicles.impl.VehicleTrackingBootstrapFilter;
 import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
+import org.opentrackingtools.statistics.filters.vehicles.road.impl.StandardRoadTrackingFilter;
 import org.opentrackingtools.util.GeoUtils;
 
 import com.google.common.collect.Lists;
@@ -62,51 +65,10 @@ public class SimulationTest {
 
   @BeforeTest
   public void setUp() throws NoSuchAuthorityCodeException, FactoryRegistryException, FactoryException, IOException {
-    List<LineString> edges = Lists.newArrayList();
-    
-    /*
-     * Create a grid
-     */
-    CoordinateReferenceSystem crs = 
-        CRS.getAuthorityFactory(false).createGeographicCRS("EPSG:4326");
     
     startCoord = new Coordinate(40.7549, -73.97749);
     
-    Envelope tmpEnv = new Envelope(startCoord);
-    
-    final double appMeter = GeoUtils.getMetersInAngleDegrees(1d);
-    tmpEnv.expandBy(appMeter * 10e3);
-    
-    ReferencedEnvelope gridBounds = new ReferencedEnvelope(
-       tmpEnv.getMinX() ,tmpEnv.getMaxX() , 
-       tmpEnv.getMinY() , tmpEnv.getMaxY(), crs);
-//        40.7012, 40.8086, -74.020, -73.935, crs);
-    
-    List<OrthoLineDef> lineDefs = Arrays.asList(
-        // vertical (longitude) lines
-//        new OrthoLineDef(LineOrientation.VERTICAL, 2, appMeter * 100d),
-        new OrthoLineDef(LineOrientation.VERTICAL, 1, appMeter * 100d),
-
-        // horizontal (latitude) lines
-//        new OrthoLineDef(LineOrientation.HORIZONTAL, 2, appMeter * 100d),
-        new OrthoLineDef(LineOrientation.HORIZONTAL, 1, appMeter * 100d)
-        );
-
-    SimpleFeatureSource grid = Lines.createOrthoLines(gridBounds, lineDefs);
-    FeatureIterator iter = grid.getFeatures().features();
-    
-    while (iter.hasNext()) {
-      Feature feature = iter.next();
-      LineString geom = (LineString)feature.getDefaultGeometryProperty().getValue();
-      edges.add(geom);
-      /*
-       * Add the reverse so that there are no dead-ends to mess with 
-       * the test results
-       */
-      edges.add((LineString) geom.reverse());
-    }
-    
-    graph = new GenericJTSGraph(edges);
+    graph = new GenericJTSGraph(TrackingTestUtils.createGridGraph(startCoord));
     
     avgTransform = MatrixFactory.getDefault().copyArray(
         new double[][] {
@@ -131,10 +93,11 @@ public class SimulationTest {
             VectorFactory.getDefault().createVector2D(1d,
                 Double.MAX_VALUE), VectorFactory.getDefault()
                 .createVector2D(Double.MAX_VALUE, 1d),
-            VehicleTrackingBootstrapFilter.class.getName(), 25,
-            15, 2159585l),
+            VehicleTrackingBootstrapFilter.class.getName(), 
+            StandardRoadTrackingFilter.class.getName(), 
+            25, 15, 2159585l),
         Boolean.FALSE,
-            66000
+            126000
         },
         {
           /*
@@ -149,10 +112,11 @@ public class SimulationTest {
                 Double.MAX_VALUE, 1d), 
             VectorFactory.getDefault().createVector2D(
                 1d, Double.MAX_VALUE),
-            VehicleTrackingBootstrapFilter.class.getName(), 25,
-            10, 215955l),
+            VehicleTrackingBootstrapFilter.class.getName(), 
+            StandardRoadTrackingFilter.class.getName(), 
+            25, 10, 215955l),
         Boolean.FALSE,
-            66000
+            126000
         }, 
         {
           /*
@@ -167,8 +131,9 @@ public class SimulationTest {
                 1d, 1d), 
             VectorFactory.getDefault().createVector2D(
                 1d, 1d),
-            VehicleTrackingBootstrapFilter.class.getName(), 25,
-            15, 21595857l), 
+            VehicleTrackingBootstrapFilter.class.getName(), 
+            StandardRoadTrackingFilter.class.getName(), 
+            25, 15, 21595857l), 
             Boolean.TRUE,
             46000
         }
@@ -177,10 +142,10 @@ public class SimulationTest {
   
   @Test(dataProvider="initialStateData")
   public void runSimulation(VehicleStateInitialParameters vehicleStateInitialParams,
-    boolean generalizeMoveDiff, long duration) throws NoninvertibleTransformException, TransformException {
+    boolean generalizeMoveDiff, long duration) throws NoninvertibleTransformException, TransformException, SecurityException, IllegalArgumentException, ClassNotFoundException, NoSuchMethodException, InstantiationException, IllegalAccessException, InvocationTargetException {
     
     SimulationParameters simParams = new SimulationParameters(
-        startCoord, new Date(0l), duration, 15, false, vehicleStateInitialParams);
+        startCoord, new Date(0l), duration, 15, false, true, vehicleStateInitialParams);
     
     sim = new Simulation("test-sim", graph, simParams, 
         vehicleStateInitialParams);
@@ -272,14 +237,15 @@ public class SimulationTest {
     
     final long approxRuns = sim.getSimParameters().getDuration()/
         sim.getSimParameters().getFrequency();
-    if (movementSS.getCount() > Math.min(approxRuns/16, 25)) {
+    if (movementSS.getCount() > 0) {//Math.min(approxRuns/16, 25)) {
       if (obsErrorZeroArray == null)
         obsErrorZeroArray = VectorFactory.getDefault()
           .createVector(obsErrorSS.getMean().getDimensionality())
           .toArray();
       
       AssertJUnit.assertArrayEquals(obsErrorZeroArray,
-        obsErrorSS.getMean().toArray(), 5);
+        obsErrorSS.getMean().toArray(), 5 * Math.sqrt(
+            vehicleState.getMovementFilter().getObsCovar().normFrobenius()));
     
       if (movementZeroArray == null)
         movementZeroArray = VectorFactory.getDefault()
@@ -287,7 +253,17 @@ public class SimulationTest {
           .toArray();
       
       AssertJUnit.assertArrayEquals(movementZeroArray,
-      movementSS.getMean().toArray(), 1);
+        movementSS.getMean().toArray(), 
+        10 * Math.sqrt(vehicleState.getMovementFilter()
+            .getOnRoadStateTransCovar().normFrobenius()));
+      
+//      final Vector moveVelError = movementSS.getMean().getDimensionality() == 4 ?
+//          AbstractRoadTrackingFilter.getVg().times(movementSS.getMean())
+//          : VectorFactory.getDefault().copyValues(
+//              AbstractRoadTrackingFilter.getVr().times(movementSS.getMean()).getElement(0));
+//      AssertJUnit.assertArrayEquals(VectorFactory.getDefault().createVector(
+//          moveVelError.getDimensionality()).toArray(),
+//        moveVelError.toArray(), 5e-1);
     }
 
   }

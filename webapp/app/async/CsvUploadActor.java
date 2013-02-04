@@ -36,7 +36,7 @@ public class CsvUploadActor extends UntypedActor {
     public TraceParameters(File dest,
       VehicleStateInitialParameters vehicleStateParams, boolean debugEnabled) {
       this.vehicleStateParams = vehicleStateParams;
-      this.filterTypeName = vehicleStateParams.getFilterTypeName();
+      this.filterTypeName = vehicleStateParams.getParticleFilterTypeName();
       this.dest = dest;
       this.debugEnabled = debugEnabled;
     }

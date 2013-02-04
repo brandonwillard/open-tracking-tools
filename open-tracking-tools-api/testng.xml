@@ -3,14 +3,14 @@
 <suite name="Suite" parallel="none">
   <test name="Test">
     <classes>
-      <class name="org.opentrackingtools.graph.paths.states.impl.UniquePathTest"/>
+      <class name="org.opentrackingtools.graph.paths.otp.UniquePathTest"/>
       <class name="org.opentrackingtools.graph.paths.impl.InferredPathTest"/>
       <class name="org.opentrackingtools.graph.paths.states.impl.PathStateTest"/>
       <class name="org.opentrackingtools.impl.SimulationTest"/>
       <class name="org.opentrackingtools.statistics.filters.vehicles.particle_learning.impl.VehicleTrackingPLFilterTest"/>
       <class name="org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilterTest"/>
       <class name="org.opentrackingtools.statistics.filters.vehicles.road.impl.ErrorEstimatingRoadTrackingFilterTest"/>
-<!--       <class name="org.opentrackingtools.statistics.filters.vehicles.road.impl.ErrorEstimatingRoadTrackingFilterGraphTest"/> -->
+<!--       <class name="org.opentrackingtools.statistics.filters.vehicles.road.impl.RoadTrackingFilterGraphTest"/> -->
       <class name="org.opentrackingtools.graph.paths.util.PathUtilsTest"/>
       <class name="org.opentrackingtools.util.GeoUtilsTest"/>
       <class name="org.opentrackingtools.statistics.StatisticsUtilTest"/>

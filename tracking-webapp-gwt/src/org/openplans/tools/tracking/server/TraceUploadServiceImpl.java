@@ -49,12 +49,14 @@ public class TraceUploadServiceImpl extends RemoteServiceServlet implements Trac
     private final File dest;
     private final boolean debugEnabled;
     private final VehicleStateInitialParameters vehicleStateParams;
-    private final String filterTypeName;
+    private final String particleFilterTypeName;
+    private final String roadFilterTypeName;
 
     public TraceParameters(File dest,
       VehicleStateInitialParameters vehicleStateParams, boolean debugEnabled) {
       this.vehicleStateParams = vehicleStateParams;
-      this.filterTypeName = vehicleStateParams.getFilterTypeName();
+      this.particleFilterTypeName = vehicleStateParams.getParticleFilterTypeName();
+      this.roadFilterTypeName = vehicleStateParams.getRoadFilterTypeName();
       this.dest = dest;
       this.debugEnabled = debugEnabled;
     }
@@ -72,8 +74,12 @@ public class TraceUploadServiceImpl extends RemoteServiceServlet implements Trac
       return debugEnabled;
     }
 
-    public String getFilterTypeName() {
-      return filterTypeName;
+    public String getParticleFilterTypeName() {
+      return particleFilterTypeName;
+    }
+    
+    public String getRoadFilterTypeName() {
+      return roadFilterTypeName;
     }
 
     @Override
@@ -86,7 +92,12 @@ public class TraceUploadServiceImpl extends RemoteServiceServlet implements Trac
       result =
           prime
               * result
-              + ((filterTypeName == null) ? 0 : filterTypeName
+              + ((particleFilterTypeName == null) ? 0 : particleFilterTypeName
+                  .hashCode());
+      result =
+          prime
+              * result
+              + ((roadFilterTypeName == null) ? 0 : roadFilterTypeName
                   .hashCode());
       result =
           prime
@@ -118,11 +129,18 @@ public class TraceUploadServiceImpl extends RemoteServiceServlet implements Trac
       } else if (!dest.equals(other.dest)) {
         return false;
       }
-      if (filterTypeName == null) {
-        if (other.filterTypeName != null) {
+      if (particleFilterTypeName == null) {
+        if (other.particleFilterTypeName != null) {
           return false;
         }
-      } else if (!filterTypeName.equals(other.filterTypeName)) {
+      } else if (!particleFilterTypeName.equals(other.particleFilterTypeName)) {
+        return false;
+      }
+      if (roadFilterTypeName == null) {
+        if (other.roadFilterTypeName != null) {
+          return false;
+        }
+      } else if (!roadFilterTypeName.equals(other.roadFilterTypeName)) {
         return false;
       }
       if (vehicleStateParams == null) {
@@ -164,7 +182,8 @@ public class TraceUploadServiceImpl extends RemoteServiceServlet implements Trac
 	      int offRoadCovDof = 0;
 	      Vector offProbs = null;
 	      Vector onProbs = null;
-	      String filterTypeName = null;
+	      String particleFilterTypeName = null;
+	      String roadFilterTypeName = null;
 	      int numParticles = 0;
 	      int initialObsFreq = 0;
 	      long seed = 0l;
@@ -194,8 +213,10 @@ public class TraceUploadServiceImpl extends RemoteServiceServlet implements Trac
   	          offProbs= parseVector(uploadedFileItem.getString());
   	        } else if (uploadedFileItem.getFieldName().equalsIgnoreCase("onProbs")) {
   	          onProbs= parseVector(uploadedFileItem.getString());
-  	        } else if (uploadedFileItem.getFieldName().equalsIgnoreCase("filterTypeName")) {
-  	          filterTypeName = uploadedFileItem.getString();
+  	        } else if (uploadedFileItem.getFieldName().equalsIgnoreCase("particleFilterTypeName")) {
+  	          particleFilterTypeName = uploadedFileItem.getString();
+  	        } else if (uploadedFileItem.getFieldName().equalsIgnoreCase("roadFilterTypeName")) {
+  	          roadFilterTypeName = uploadedFileItem.getString();
   	        } else if (uploadedFileItem.getFieldName().equalsIgnoreCase("numParticles")) {
               numParticles = Integer.parseInt(uploadedFileItem.getString());
   	        } else if (uploadedFileItem.getFieldName().equalsIgnoreCase("initialObsFreq")) {
@@ -212,8 +233,8 @@ public class TraceUploadServiceImpl extends RemoteServiceServlet implements Trac
 	 
         VehicleStateInitialParameters vehicleStateParams = new VehicleStateInitialParameters(
             obsCov, obsCovDof, onRoadStateCov, onRoadCovDof, offRoadStateCov, 
-            offRoadCovDof, offProbs, onProbs, filterTypeName, numParticles, 
-            initialObsFreq, seed);
+            offRoadCovDof, offProbs, onProbs, particleFilterTypeName, 
+            roadFilterTypeName, numParticles, initialObsFreq, seed);
 	      TraceParameters parameters = new TraceParameters(file, vehicleStateParams, debugEnabled);
 	      
 	      readCsv(parameters);
@@ -301,7 +322,7 @@ public class TraceUploadServiceImpl extends RemoteServiceServlet implements Trac
             : InferenceServiceImpl.defaultInfoLevel;
 
     InferenceServiceImpl.processRecords(observationFactories,
-        traceParams.getVehicleStateInitialParams(), traceParams.getFilterTypeName(), level);
+        traceParams.getVehicleStateInitialParams(), level);
     InferenceServiceImpl.getExecutor().awaitTermination(5,
         TimeUnit.SECONDS);
 

@@ -11,7 +11,6 @@ import javax.annotation.Nonnull;
 
 import org.opentrackingtools.GpsObservation;
 import org.opentrackingtools.graph.InferenceGraph;
-import org.opentrackingtools.graph.otp.impl.OtpGraph;
 import org.opentrackingtools.graph.paths.InferredPath;
 import org.opentrackingtools.impl.VehicleState;
 import org.opentrackingtools.impl.VehicleStateInitialParameters;
@@ -49,22 +48,7 @@ public abstract class AbstractVehicleTrackingFilter extends
   protected final VehicleStateInitialParameters parameters;
 
   public AbstractVehicleTrackingFilter(GpsObservation obs,
-    InferenceGraph graph,
-    VehicleStateInitialParameters parameters,
-    AbstractVTParticleFilterUpdater updater,
-    @Nonnull Boolean isDebug) {
-    this.parameters = parameters;
-    this.isDebug = isDebug;
-    this.setNumParticles(parameters.getNumParticles());
-    this.inferredGraph = graph;
-    this.setUpdater(updater);
-    this.initialObservation = obs;
-    this.random = new Random(parameters.getSeed());
-    updater.setRandom(random);
-  }
-
-  public AbstractVehicleTrackingFilter(GpsObservation obs,
-    OtpGraph inferredGraph,
+    InferenceGraph inferredGraph,
     VehicleStateInitialParameters parameters,
     AbstractVTParticleFilterUpdater updater,
     @Nonnull Boolean isDebug, Random rng) {
