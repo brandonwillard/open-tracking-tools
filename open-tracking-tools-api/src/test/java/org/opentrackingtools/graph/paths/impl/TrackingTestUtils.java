@@ -3,10 +3,7 @@ package org.opentrackingtools.graph.paths.impl;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Iterator;
 import java.util.List;
-import java.util.Set;
-
 import static org.mockito.Mockito.stub;
 
 import org.geotools.data.simple.SimpleFeatureSource;
@@ -28,19 +25,13 @@ import org.opentrackingtools.graph.paths.edges.impl.SimplePathEdge;
 import org.opentrackingtools.util.GeoUtils;
 
 import com.google.common.base.Preconditions;
-import com.google.common.collect.Iterators;
 import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
-import com.vividsolutions.jts.algorithm.RobustLineIntersector;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Envelope;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryFactory;
 import com.vividsolutions.jts.geom.LineString;
 import com.vividsolutions.jts.geom.MultiLineString;
-import com.vividsolutions.jts.geomgraph.GeometryGraph;
-import com.vividsolutions.jts.geomgraph.index.SimpleMCSweepLineIntersector;
-import com.vividsolutions.jts.operation.overlay.EdgeSetNoder;
 
 public class TrackingTestUtils {
 
@@ -136,7 +127,7 @@ public class TrackingTestUtils {
        * XXX
        * Using Object so that the correct equals (equalsExact) will be called?
        */
-      geoms.add((Object)geom);
+      geoms.add(geom);
     }
     
     Geometry superGeom  = JTSFactoryFinder.getGeometryFactory().buildGeometry(geoms).union();

@@ -2,7 +2,6 @@ package org.opentrackingtools.statistics.filters.vehicles.road.impl;
 
 import gov.sandia.cognition.math.matrix.Matrix;
 import gov.sandia.cognition.math.matrix.MatrixFactory;
-import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.math.signals.LinearDynamicalSystem;
 
 import java.util.Random;

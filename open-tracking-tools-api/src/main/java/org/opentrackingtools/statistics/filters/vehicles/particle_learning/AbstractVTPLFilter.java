@@ -27,6 +27,7 @@ import org.opentrackingtools.statistics.filters.vehicles.impl.FilterInformation;
 import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
 import org.opentrackingtools.statistics.impl.StatisticsUtil;
 
+import com.google.common.base.Preconditions;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -124,8 +125,9 @@ public abstract class AbstractVTPLFilter extends
     final Random rng = getRandom();
 
     final DataDistribution<VehicleState> resampleDist =
+        Preconditions.checkNotNull(
         StatisticsUtil
-            .getLogNormalizedDistribution(resampler);
+            .getLogNormalizedDistribution(resampler));
 
     // TODO low-variance sampling?
     final ArrayList<? extends VehicleState> smoothedStates =

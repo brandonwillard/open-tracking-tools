@@ -11,6 +11,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Random;
 
+import org.codehaus.jackson.JsonParser.Feature;
 import org.codehaus.jackson.Version;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.map.SerializationConfig;
@@ -93,6 +94,7 @@ public class TraceRunner {
     ObjectMapper objectMapper = new ObjectMapper();
     objectMapper.registerModule(module);
     objectMapper.configure(SerializationConfig.Feature.INDENT_OUTPUT, true);
+    objectMapper.configure(Feature.ALLOW_NON_NUMERIC_NUMBERS, true);
     
     TraceRunnerConfig config = objectMapper.readValue(configFile, 
         TraceRunnerConfig.class); 

@@ -296,8 +296,9 @@ public class StatisticsUtil {
             false);
     spd.transSolve(d, b);
     final double zsquared = b.dot(d);
-
-    return logLeadingCoefficient - 0.5 * zsquared;
+    final double result = logLeadingCoefficient - 0.5 * zsquared;
+    
+    return result;
   }
 
   /**

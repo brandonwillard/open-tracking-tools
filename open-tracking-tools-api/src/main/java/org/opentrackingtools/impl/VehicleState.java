@@ -7,8 +7,6 @@ import gov.sandia.cognition.statistics.ProbabilityFunction;
 import java.util.ArrayList;
 import java.util.Random;
 
-import jj2000.j2k.NotImplementedError;
-
 import org.apache.commons.lang.builder.CompareToBuilder;
 import org.opentrackingtools.GpsObservation;
 import org.opentrackingtools.graph.InferenceGraph;
@@ -75,13 +73,13 @@ public class VehicleState implements
 
     @Override
     public GpsObservation sample(Random random) {
-      throw new NotImplementedError();
+      throw new RuntimeException("Not implemented");
     }
 
     @Override
     public ArrayList<GpsObservation> sample(Random random,
       int numSamples) {
-      throw new NotImplementedError();
+      throw new RuntimeException("Not implemented");
     }
 
   }
@@ -285,13 +283,13 @@ public class VehicleState implements
 
   @Override
   public GpsObservation sample(Random random) {
-    throw new NotImplementedError();
+    throw new RuntimeException("Not implemented");
   }
 
   @Override
   public ArrayList<GpsObservation> sample(Random random,
     int numSamples) {
-    throw new NotImplementedError();
+    throw new RuntimeException("Not implemented");
   }
 
   public void setParentState(VehicleState parentState) {

@@ -8,7 +8,6 @@ import org.opentrackingtools.graph.edges.InferredEdge;
 import org.opentrackingtools.graph.paths.InferredPath;
 import org.opentrackingtools.graph.paths.edges.impl.EdgePredictiveResults;
 import org.opentrackingtools.graph.paths.states.PathStateBelief;
-import org.opentrackingtools.graph.paths.util.PathUtils.PathEdgeProjection;
 import org.opentrackingtools.impl.VehicleState;
 import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
 

@@ -129,7 +129,7 @@ public class SimplePathState extends AbstractPathState {
     Preconditions.checkArgument(!path.isNullPath()
         || state.getDimensionality() == 4);
     
-    final Vector adjState = PathUtils.checkAndConvertState(state, path);
+    final Vector adjState = PathUtils.checkAndGetConvertedState(state, path);
     
     return new SimplePathState(path, adjState);
   }

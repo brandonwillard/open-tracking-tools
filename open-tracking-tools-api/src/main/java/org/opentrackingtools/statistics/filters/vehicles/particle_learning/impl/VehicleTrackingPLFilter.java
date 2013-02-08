@@ -1,8 +1,5 @@
 package org.opentrackingtools.statistics.filters.vehicles.particle_learning.impl;
 
-import gov.sandia.cognition.math.matrix.Vector;
-
-import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Random;
 
@@ -14,8 +11,6 @@ import org.opentrackingtools.impl.VehicleState;
 import org.opentrackingtools.impl.VehicleStateInitialParameters;
 import org.opentrackingtools.statistics.filters.vehicles.particle_learning.AbstractVTPLFilter;
 import org.opentrackingtools.statistics.filters.vehicles.particle_learning.AbstractVTParticleFilterUpdater;
-import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
-import org.opentrackingtools.statistics.filters.vehicles.road.impl.StandardRoadTrackingFilter;
 
 public class VehicleTrackingPLFilter extends
     AbstractVTPLFilter {

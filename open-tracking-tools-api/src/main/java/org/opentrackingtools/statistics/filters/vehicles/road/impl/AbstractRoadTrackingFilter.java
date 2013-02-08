@@ -8,7 +8,6 @@ import gov.sandia.cognition.math.matrix.VectorFactory;
 import gov.sandia.cognition.math.matrix.mtj.DenseMatrix;
 import gov.sandia.cognition.math.signals.LinearDynamicalSystem;
 import gov.sandia.cognition.statistics.bayesian.AbstractKalmanFilter;
-import gov.sandia.cognition.statistics.bayesian.KalmanFilter;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 import gov.sandia.cognition.util.AbstractCloneableSerializable;
 
@@ -25,7 +24,6 @@ import org.opentrackingtools.graph.paths.util.PathUtils;
 import org.opentrackingtools.impl.VehicleState;
 import org.opentrackingtools.impl.VehicleStateInitialParameters;
 import org.opentrackingtools.statistics.distributions.impl.AdjMultivariateGaussian;
-import org.opentrackingtools.statistics.filters.impl.AdjKalmanFilter;
 import org.opentrackingtools.statistics.impl.StatisticsUtil;
 
 import com.google.common.base.Preconditions;
@@ -360,19 +358,6 @@ public abstract class AbstractRoadTrackingFilter
          */
         newBelief = currentBelief.getGroundBelief().clone();
 
-        /*-
-         * After this conversion, our covariance matrix will
-         * have a shape that reflects the direction of the 
-         * edge it was on, so we need to compensate for that,
-         * since we don't believe that going off-road is more 
-         * likely to put us in the area of the road (perhaps
-         * the opposite).
-         * For now we will simply reset the covariance.
-         * (sample from a prior, if one exists?)
-         */
-        //        currentBelief.setCovariance(
-        //            createStateCovarianceMatrix(this.currentTimeDiff, this.Qg, false));
-
         groundFilter.predict(newBelief);
       }
     } else {
@@ -443,9 +428,6 @@ public abstract class AbstractRoadTrackingFilter
     Random rng) {
     final int dim = state.getDimensionality();
     final Matrix cov = dim == 4 ? this.getQg() : this.getQr();
-//    final Matrix sampleCovChol =
-//        StatisticsUtil.rootOfSemiDefinite(dim == 4 ? this
-//            .getQg() : this.getQr());
     
     /*
      * Do this so that we are somewhat distribution
@@ -459,9 +441,6 @@ public abstract class AbstractRoadTrackingFilter
     sampler.setCovariance(cov);
         
     final Vector qSmpl = sampler.sample(rng);
-//        MultivariateGaussian.sample(VectorFactory
-//            .getDenseDefault().createVector(dim / 2),
-//            sampleCovChol, rng);
     
     final Matrix covFactor = this.getCovarianceFactor(dim == 2);
     final Vector error = covFactor.times(qSmpl);

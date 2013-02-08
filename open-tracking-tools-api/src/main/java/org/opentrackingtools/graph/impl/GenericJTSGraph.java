@@ -20,7 +20,6 @@ import org.geotools.graph.structure.Edge;
 import org.geotools.graph.structure.Node;
 import org.geotools.graph.structure.basic.BasicDirectedEdge;
 import org.geotools.graph.structure.basic.BasicDirectedNode;
-import org.geotools.graph.structure.line.XYNode;
 import org.geotools.graph.traverse.standard.AStarIterator.AStarFunctions;
 import org.geotools.graph.traverse.standard.AStarIterator.AStarNode;
 import org.opengis.referencing.operation.MathTransform;
@@ -43,7 +42,6 @@ import org.slf4j.LoggerFactory;
 
 import com.beust.jcommander.internal.Lists;
 import com.beust.jcommander.internal.Maps;
-import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Predicate;
 import com.google.common.collect.Iterables;
@@ -57,29 +55,33 @@ import com.vividsolutions.jts.index.strtree.STRtree;
 
 public class GenericJTSGraph implements InferenceGraph {
 
-  private final DirectedLineStringGraphGenerator graphGenerator;
+  protected DirectedLineStringGraphGenerator graphGenerator;
   
-  private final STRtree edgeIndex = new STRtree();
+  protected STRtree edgeIndex = new STRtree();
   
-  private static final double MAX_DISTANCE_SPEED = 53.6448; // ~120 mph
+  protected static final double MAX_DISTANCE_SPEED = 53.6448; // ~120 mph
   
-  private static final Logger log = LoggerFactory
+  protected static final Logger log = LoggerFactory
       .getLogger(GenericJTSGraph.class);
 
   /*
    * Maximum radius we're willing to search around a given
    * observation when snapping (for path search destination edges)
    */
-  private static final double MAX_OBS_SNAP_RADIUS = 200d;
+  protected static final double MAX_OBS_SNAP_RADIUS = 200d;
 
   /*
    * Maximum radius we're willing to search around a given
    * state when snapping (for path search off -> on-road edges)
    */
-  private static final double MAX_STATE_SNAP_RADIUS = 350d;
+  protected static final double MAX_STATE_SNAP_RADIUS = 350d;
 
-  final private Envelope gpsEnv = new Envelope();
-  final private Envelope projEnv = new Envelope();
+  final protected Envelope gpsEnv = new Envelope();
+  final protected Envelope projEnv = new Envelope();
+  
+  protected GenericJTSGraph() {
+    graphGenerator = new DirectedLineStringGraphGenerator();
+  }
   
   /**
    * The given collection of lines should be in GPS coordinates,
@@ -87,6 +89,10 @@ public class GenericJTSGraph implements InferenceGraph {
    * @param lines
    */
   public GenericJTSGraph(Collection<LineString> lines) {
+    createGraphFromLineStrings(lines);
+  }
+  
+  protected void createGraphFromLineStrings(Collection<LineString> lines) {
     graphGenerator = new DirectedLineStringGraphGenerator();
     for (LineString edge : lines) {
       
@@ -114,15 +120,6 @@ public class GenericJTSGraph implements InferenceGraph {
      */
     for (Object obj : graphGenerator.getGraph().getEdges()) {
       final BasicDirectedEdge edge = (BasicDirectedEdge) obj;
-//      @SuppressWarnings("unchecked")
-//      Edge oppositeEdge = Iterables.find(graphGenerator.getGraph().getEdges(), 
-//        new Predicate<Object>() {
-//          @Override
-//          public boolean apply(Object input) {
-//            return ((LineString)((BasicDirectedEdge)input).getObject())
-//                .equalsExact(((LineString)edge.getObject()).reverse());
-//          }
-//      }, null);
       getInferredEdge(edge);
     }
     edgeIndex.build();

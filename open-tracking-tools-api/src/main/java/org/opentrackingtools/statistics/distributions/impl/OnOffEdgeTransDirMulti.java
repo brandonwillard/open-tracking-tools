@@ -399,7 +399,8 @@ public class OnOffEdgeTransDirMulti extends
       
     } else if (dist instanceof DirichletDistribution) {
       for (int i = 0; i < dist.getMean().getDimensionality(); i++) {
-        if (Math.abs(1 - dist.getMean().getElement(i))
+        final double prob = dist.getMean().getElement(i);
+        if (Double.isNaN(prob) || Math.abs(1 - prob)
                   <= zeroTolerance) {
           Vector result = VectorFactory.getDefault().createVector(
               dist.getMean().getDimensionality());

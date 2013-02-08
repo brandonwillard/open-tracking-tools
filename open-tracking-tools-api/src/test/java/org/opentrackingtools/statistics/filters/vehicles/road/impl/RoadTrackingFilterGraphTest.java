@@ -4,22 +4,13 @@ import org.testng.annotations.BeforeTest;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 import org.testng.AssertJUnit;
-import org.testng.asserts.Assertion;
-import org.geotools.data.simple.SimpleFeatureSource;
+import org.testng.internal.junit.ArrayAsserts;
 import org.geotools.factory.FactoryRegistryException;
-import org.geotools.feature.FeatureIterator;
-import org.geotools.geometry.jts.ReferencedEnvelope;
-import org.geotools.grid.Lines;
-import org.geotools.grid.ortholine.LineOrientation;
-import org.geotools.grid.ortholine.OrthoLineDef;
-import org.geotools.referencing.CRS;
 import org.geotools.referencing.operation.projection.ProjectionException;
 
 import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Random;
@@ -29,15 +20,14 @@ import java.util.Random;
 import gov.sandia.cognition.math.matrix.Matrix;
 import gov.sandia.cognition.math.matrix.MatrixFactory;
 import gov.sandia.cognition.math.matrix.Vector;
+import gov.sandia.cognition.math.matrix.VectorEntry;
 import gov.sandia.cognition.math.matrix.VectorFactory;
 import gov.sandia.cognition.statistics.DataDistribution;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian.SufficientStatistic;
 
-import org.opengis.feature.Feature;
 import org.opengis.referencing.FactoryException;
 import org.opengis.referencing.NoSuchAuthorityCodeException;
-import org.opengis.referencing.crs.CoordinateReferenceSystem;
 import org.opengis.referencing.operation.NoninvertibleTransformException;
 import org.opengis.referencing.operation.TransformException;
 import org.opentrackingtools.graph.InferenceGraph;
@@ -50,20 +40,12 @@ import org.opentrackingtools.impl.VehicleState;
 import org.opentrackingtools.impl.VehicleStateInitialParameters;
 import org.opentrackingtools.statistics.distributions.impl.OnOffEdgeTransDirMulti;
 import org.opentrackingtools.statistics.filters.vehicles.VehicleTrackingFilter;
-import org.opentrackingtools.statistics.filters.vehicles.impl.VehicleTrackingBootstrapFilter;
 import org.opentrackingtools.statistics.filters.vehicles.particle_learning.impl.VehicleTrackingPLFilter;
 import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
-import org.opentrackingtools.util.GeoUtils;
-import org.opentrackingtools.util.geom.ProjectedCoordinate;
 import org.opentrackingtools.GpsObservation;
 
-import com.google.common.base.Objects;
-import com.google.common.collect.Lists;
 import com.vividsolutions.jts.geom.Coordinate;
-import com.vividsolutions.jts.geom.Envelope;
-import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.LineString;
-import com.vividsolutions.jts.geom.MultiLineString;
 
 public class RoadTrackingFilterGraphTest {
   
@@ -108,10 +90,21 @@ public class RoadTrackingFilterGraphTest {
                 Double.MAX_VALUE), VectorFactory.getDefault()
                 .createVector2D(Double.MAX_VALUE, 1d),
             VehicleTrackingPLFilter.class.getName(), 
-            StandardRoadTrackingFilter.class.getName(), 
+            ForwardMovingRoadTrackingFilter.class.getName(), 
+            25, 15, 2159585l),
+        new VehicleStateInitialParameters(VectorFactory
+            .getDefault().createVector2D(70d, 70d), 20,
+            VectorFactory.getDefault().createVector1D(
+                6.25e-4), 30, VectorFactory.getDefault()
+                .createVector2D(6.25e-4, 6.25e-4), 20,
+            VectorFactory.getDefault().createVector2D(1d,
+                Double.MAX_VALUE), VectorFactory.getDefault()
+                .createVector2D(Double.MAX_VALUE, 1d),
+            VehicleTrackingPLFilter.class.getName(), 
+            ErrorEstimatingRoadTrackingFilter.class.getName(), 
             25, 15, 2159585l),
         Boolean.FALSE,
-            66000
+        66000
         }
 //        , {
 //          /*
@@ -126,10 +119,12 @@ public class RoadTrackingFilterGraphTest {
 //                Double.MAX_VALUE, 1d), 
 //            VectorFactory.getDefault().createVector2D(
 //                1d, Double.MAX_VALUE),
-//            null, 25,
+//            VehicleTrackingPLFilter.class.getName(), 
+//            ForwardMovingRoadTrackingFilter.class.getName(), 
+//            25,
 //            10, 215955l),
 //        Boolean.FALSE,
-//            66000
+//        66000
 //        }, 
 //        {
 //          /*
@@ -144,10 +139,12 @@ public class RoadTrackingFilterGraphTest {
 //                1d, 1d), 
 //            VectorFactory.getDefault().createVector2D(
 //                1d, 1d),
-//            null, 25,
+//            VehicleTrackingPLFilter.class.getName(), 
+//            ForwardMovingRoadTrackingFilter.class.getName(), 
+//            25,
 //            15, 21595857l), 
-//            Boolean.TRUE,
-//            46000
+//        Boolean.TRUE,
+//        46000
 //        }
     };
   }
@@ -171,22 +168,23 @@ public class RoadTrackingFilterGraphTest {
   }
   
   @Test(dataProvider="initialStateData")
-  public void runSimulation(VehicleStateInitialParameters vehicleStateInitialParams,
+  public void runSimulation(VehicleStateInitialParameters simInitialParams,
+    VehicleStateInitialParameters filterInitialParams,
     boolean generalizeMoveDiff, long duration) throws NoninvertibleTransformException, TransformException, ClassNotFoundException, SecurityException, NoSuchMethodException, IllegalArgumentException, InstantiationException, IllegalAccessException, InvocationTargetException {
     
     SimulationParameters simParams = new SimulationParameters(
-        startCoord, new Date(0l), duration, 15, false, false, 
-        vehicleStateInitialParams);
+        startCoord, new Date(0l), duration, 
+        simInitialParams.getInitialObsFreq(), false, false, 
+        simInitialParams);
     
     sim = new Simulation("test-sim", graph, simParams, 
-        vehicleStateInitialParams);
+        simInitialParams);
     
     long time = sim.getSimParameters().getStartTime().getTime();
     
     VehicleState trueVehicleState = sim.computeInitialState();
     
-    Class<?> filterType = 
-        Class.forName(vehicleStateInitialParams.getParticleFilterTypeName());
+    Class<?> filterType = Class.forName(filterInitialParams.getParticleFilterTypeName());
       
     Constructor<?> ctor = filterType.getConstructor(GpsObservation.class, 
           InferenceGraph.class,
@@ -194,26 +192,16 @@ public class RoadTrackingFilterGraphTest {
           Boolean.class, Random.class);
       
     Random rng;
-    if (vehicleStateInitialParams.getSeed() != 0)
-      rng = new Random(vehicleStateInitialParams.getSeed());
+    if (filterInitialParams.getSeed() != 0)
+      rng = new Random(filterInitialParams.getSeed());
     else
       rng = new Random();
     
+    @SuppressWarnings("unchecked")
     VehicleTrackingFilter<GpsObservation, VehicleState> filter = 
         (VehicleTrackingFilter) ctor.newInstance(
           new TrueObservation(trueVehicleState.getObservation(), 
-              trueVehicleState), graph, vehicleStateInitialParams, true, rng);
-    
-//    VTErrorEstimatingPLFilter filter = 
-//      new VTErrorEstimatingPLFilter(
-//          new TrueObservation(trueVehicleState.getObservation(), 
-//              trueVehicleState),
-//          graph, vehicleStateInitialParams, true);
-//    VehicleTrackingPLFilter filter = 
-//      new VehicleTrackingPLFilter(
-//          new TrueObservation(trueVehicleState.getObservation(), 
-//              trueVehicleState),
-//          graph, vehicleStateInitialParams, true);
+              trueVehicleState), graph, filterInitialParams, true, rng);
     
     DataDistribution<VehicleState> vehicleStateDist = 
         filter.createInitialLearnedObject();
@@ -234,7 +222,7 @@ public class RoadTrackingFilterGraphTest {
     final long approxRuns = sim.getSimParameters().getDuration()/
         sim.getSimParameters().getFrequency();
     
-    updateStats(vehicleStateDist, trueVehicleState, obsErrorSS, stateErrorSS, 
+    updateAndCheckStats(vehicleStateDist, trueVehicleState, obsErrorSS, stateErrorSS, 
         obsCovErrorSS, onRoadCovErrorSS, offRoadCovErrorSS, transitionsSS, 
         generalizeMoveDiff);
     
@@ -242,11 +230,19 @@ public class RoadTrackingFilterGraphTest {
       try {
         trueVehicleState = sim.stepSimulation(trueVehicleState);
         
+        if (trueVehicleState.getMovementFilter() instanceof ForwardMovingRoadTrackingFilter) {
+          if (trueVehicleState.getBelief().isOnRoad()) {
+            for (VectorEntry entry : trueVehicleState.getBelief().getGlobalState()) {
+              AssertJUnit.assertTrue(entry.getValue() >= 0d);
+            }
+          }
+        }
+    
         filter.update(vehicleStateDist, 
             new TrueObservation(trueVehicleState.getObservation(), 
                 trueVehicleState));
         
-        updateStats(vehicleStateDist, trueVehicleState, obsErrorSS, stateErrorSS, 
+        updateAndCheckStats(vehicleStateDist, trueVehicleState, obsErrorSS, stateErrorSS, 
             obsCovErrorSS, onRoadCovErrorSS, offRoadCovErrorSS, transitionsSS, 
             generalizeMoveDiff);
         
@@ -264,7 +260,7 @@ public class RoadTrackingFilterGraphTest {
   }
 
 
-  private void updateStats(DataDistribution<VehicleState> vehicleStateDist, 
+  private void updateAndCheckStats(DataDistribution<VehicleState> vehicleStateDist, 
     VehicleState trueVehicleState,
     SufficientStatistic obsErrorSS, 
     SufficientStatistic stateErrorSS, 
@@ -272,7 +268,6 @@ public class RoadTrackingFilterGraphTest {
     SufficientStatistic onRoadCovErrorSS,
     SufficientStatistic offRoadCovErrorSS,
     SufficientStatistic transitionsSS, boolean generalizeMoveDiff) {
-    
     
     SufficientStatistic stateMeanStat = 
         new MultivariateGaussian.SufficientStatistic();
@@ -295,7 +290,7 @@ public class RoadTrackingFilterGraphTest {
           new TrueObservation(trueVehicleState.getObservation(), null),
           state.getObservation());
       
-      if (state.getBelief().getPath().getGeometry() != null
+      if (state.getBelief().isOnRoad() && trueVehicleState.getBelief().isOnRoad()
           && state.getBelief().getPath().getGeometry().covers(
             trueVehicleState.getBelief().getPath().getGeometry()))
         truePathsFound++;
@@ -406,18 +401,18 @@ public class RoadTrackingFilterGraphTest {
         sim.getSimParameters().getFrequency();
     if (obsErrorSS.getCount() > Math.min(approxRuns/16, 155)) {
       
-      AssertJUnit.assertArrayEquals(
+      ArrayAsserts.assertArrayEquals(
           obsErrorSS.getMean().getDimensionality() == 4 ?
               fourZeros : twoZeros,
         obsErrorSS.getMean().toArray(), 3d * Math.sqrt(
             trueVehicleState.getMovementFilter().getObsCovar().normFrobenius()));
       
-      AssertJUnit.assertArrayEquals(
+      ArrayAsserts.assertArrayEquals(
           stateErrorSS.getMean().getDimensionality() == 4 ?
               fourZeros : twoZeros,
         stateErrorSS.getMean().toArray(), 
-        3d * Math.sqrt(
-            trueVehicleState.getMovementFilter().getOnRoadStateTransCovar().normFrobenius()));
+        5d * Math.sqrt(trueVehicleState.getMovementFilter()
+            .getOnRoadStateTransCovar().normFrobenius()));
       
       final Vector stateVelError = stateErrorSS.getMean().getDimensionality() == 4 ?
           AbstractRoadTrackingFilter.getVg().times(stateErrorSS.getMean())
@@ -430,16 +425,16 @@ public class RoadTrackingFilterGraphTest {
             trueVehicleState.getMovementFilter().getOnRoadStateTransCovar()).times(
                 trueV.transpose()).normFrobenius());
       
-      AssertJUnit.assertArrayEquals(VectorFactory.getDefault().createVector(
+      ArrayAsserts.assertArrayEquals(VectorFactory.getDefault().createVector(
           stateVelError.getDimensionality()).toArray(),
-        stateVelError.toArray(),   2d * trueVelCovTol);
+        stateVelError.toArray(),   4d * trueVelCovTol);
       
-      AssertJUnit.assertArrayEquals(hasPriorOnVariances ? oneZero : fourZeros,
+      ArrayAsserts.assertArrayEquals(hasPriorOnVariances ? oneZero : fourZeros,
         onRoadCovErrorSS.getMean().toArray(), 
         0.7d *
             trueVehicleState.getMovementFilter().getQr().normFrobenius());
       
-      AssertJUnit.assertArrayEquals(hasPriorOnVariances ? fourZeros : 
+      ArrayAsserts.assertArrayEquals(hasPriorOnVariances ? fourZeros : 
         sixteenZeros,
         offRoadCovErrorSS.getMean().toArray(), 
         0.7d *

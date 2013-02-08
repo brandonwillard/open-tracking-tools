@@ -3,6 +3,8 @@ package org.opentrackingtools.statistics.filters.vehicles.road.impl;
 import org.testng.annotations.Test;
 import org.testng.annotations.BeforeMethod;
 import org.testng.AssertJUnit;
+
+import static org.mockito.Mockito.stub;
 import static org.mockito.Mockito.mock;
 import gov.sandia.cognition.math.matrix.Matrix;
 import gov.sandia.cognition.math.matrix.MatrixFactory;
@@ -12,6 +14,7 @@ import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 
 import java.util.Random;
 
+import org.geotools.geometry.jts.JTSFactoryFinder;
 import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.graph.edges.impl.SimpleInferredEdge;
 import org.opentrackingtools.graph.paths.edges.PathEdge;
@@ -26,9 +29,6 @@ import org.opentrackingtools.statistics.distributions.impl.AdjMultivariateGaussi
 import org.opentrackingtools.statistics.filters.vehicles.particle_learning.impl.VehicleTrackingPLFilter;
 import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
 import org.opentrackingtools.statistics.filters.vehicles.road.impl.StandardRoadTrackingFilter;
-import org.opentripplanner.common.geometry.GeometryUtils;
-import org.opentripplanner.routing.edgetype.PlainStreetEdge;
-import org.opentripplanner.routing.vertextype.StreetVertex;
 
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.LineString;
@@ -83,18 +83,16 @@ public class AbstractRoadTrackingFilterTest {
                 -17.961092165568616, 4306914.231357716,
                 -48.208597619441846 });
     final LineString edgeGeom =
-        GeometryUtils.makeLineString(324470.0865109131,
-            4306887.558335339, 324480.0240871321,
-            4306914.231357716, 324487.9070333349,
-            4306923.394792204, 324497.3591208192,
-            4306927.015912709, 324514.4626894819,
-            4306930.933664588);
-    final StreetVertex v1 = mock(StreetVertex.class);
-    final PlainStreetEdge edge =
-        new PlainStreetEdge(v1, v1, edgeGeom, "test", 0d,
-            null, false);
+        JTSFactoryFinder.getGeometryFactory().createLineString(
+            new Coordinate[] { new Coordinate(324470.0865109131,
+            4306887.558335339),  new Coordinate(324480.0240871321,
+            4306914.231357716), new Coordinate(324487.9070333349,
+            4306923.394792204), new Coordinate(324497.3591208192,
+            4306927.015912709), new Coordinate(324514.4626894819,
+            4306930.933664588)});
     final SimpleInferredEdge infEdge =
-        SimpleInferredEdge.getInferredEdge(edge.getGeometry(), edge, 680402, graph);
+        SimpleInferredEdge.getInferredEdge(edgeGeom, null, 680402, graph);
+    stub(graph.edgeHasReverse(edgeGeom)).toReturn(false);
     final PathEdge pathEdge =
         SimplePathEdge.getEdge(infEdge, -46d, true);
 

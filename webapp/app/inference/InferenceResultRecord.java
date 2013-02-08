@@ -23,6 +23,7 @@ import org.codehaus.jackson.map.annotate.JsonSerialize;
 import org.opentrackingtools.GpsObservation;
 import org.opentrackingtools.graph.edges.InferredEdge;
 import org.opentrackingtools.graph.edges.impl.SimpleInferredEdge;
+import org.opentrackingtools.graph.otp.impl.OtpInferredEdge;
 import org.opentrackingtools.graph.paths.InferredPath;
 import org.opentrackingtools.graph.paths.edges.PathEdge;
 import org.opentrackingtools.impl.VehicleState;
@@ -345,9 +346,9 @@ public class InferenceResultRecord {
         continue;
       
       final double edgeMean; 
-      if (edge.getInferredEdge() instanceof SimpleInferredEdge)
+      if (edge.getInferredEdge() instanceof OtpInferredEdge)
         edgeMean =
-        ((SimpleInferredEdge)
+        ((OtpInferredEdge)
             edge.getInferredEdge()).getVelocityPrecisionDist()
                 .getLocation();
       else

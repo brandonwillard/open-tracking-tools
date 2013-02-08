@@ -1,26 +1,20 @@
 package org.opentrackingtools.statistics.filters.vehicles.impl;
 
-import gov.sandia.cognition.math.matrix.Matrix;
 import gov.sandia.cognition.math.matrix.MatrixFactory;
 import gov.sandia.cognition.math.matrix.Vector;
-import gov.sandia.cognition.math.matrix.VectorFactory;
 import gov.sandia.cognition.math.matrix.mtj.DenseMatrix;
 import gov.sandia.cognition.statistics.DataDistribution;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 
-import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Collection;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
 
-import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
 import org.apache.commons.lang.NotImplementedException;
-import org.geotools.geometry.jts.JTS;
-import org.geotools.geometry.jts.JTSFactoryFinder;
 import org.opentrackingtools.GpsObservation;
 import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.graph.edges.InferredEdge;
@@ -33,7 +27,6 @@ import org.opentrackingtools.impl.VehicleStateInitialParameters;
 import org.opentrackingtools.statistics.distributions.impl.OnOffEdgeTransDirMulti;
 import org.opentrackingtools.statistics.filters.vehicles.particle_learning.AbstractVTParticleFilterUpdater;
 import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
-import org.opentrackingtools.statistics.filters.vehicles.road.impl.StandardRoadTrackingFilter;
 import org.opentrackingtools.statistics.impl.StatisticsUtil;
 import org.opentrackingtools.util.GeoUtils;
 import org.slf4j.Logger;
@@ -44,10 +37,7 @@ import com.google.common.base.Predicate;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
-import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Envelope;
-import com.vividsolutions.jts.geom.Geometry;
-import com.vividsolutions.jts.geom.Polygon;
 
 public class VehicleTrackingPathSamplerFilterUpdater extends
     AbstractVTParticleFilterUpdater {
@@ -124,16 +114,16 @@ public class VehicleTrackingPathSamplerFilterUpdater extends
         Sets.newHashSet();
 
     if (newState.getElement(0) < 0d) {
-      transferEdges.addAll(
-          this.inferenceGraph.getIncomingTransferableEdges(inferredEdge));
+//      transferEdges.addAll(
+//          this.inferenceGraph.getIncomingTransferableEdges(inferredEdge));
     } else if (newState.getElement(0) > 0d) {
       transferEdges.addAll(this.inferenceGraph
           .getOutgoingTransferableEdges(inferredEdge));
     } else {
-      transferEdges.addAll(this.inferenceGraph
-          .getIncomingTransferableEdges(inferredEdge));
-      transferEdges.addAll(this.inferenceGraph
-          .getOutgoingTransferableEdges(inferredEdge));
+//      transferEdges.addAll(this.inferenceGraph
+//          .getIncomingTransferableEdges(inferredEdge));
+//      transferEdges.addAll(this.inferenceGraph
+//          .getOutgoingTransferableEdges(inferredEdge));
     }
     return transferEdges;
   }
@@ -283,9 +273,8 @@ public class VehicleTrackingPathSamplerFilterUpdater extends
          * convert the covariance as well.
          */
         if (!newEdge.isNullEdge()) {
-          PathUtils.convertToGroundBelief(
-              newStateDist, newEdge, false, true);
-          
+          newStateDist = PathUtils.getGroundBeliefFromRoad(
+              newStateDist, newEdge, true);
         }
         
         final Vector projectedMean =
@@ -541,9 +530,6 @@ public class VehicleTrackingPathSamplerFilterUpdater extends
         previousState.getEdgeTransitionDist().clone();
     final AbstractRoadTrackingFilter predictedFilter =
         previousState.getMovementFilter().clone();
-
-    final PathStateBelief currentBelief =
-        previousState.getBelief().clone();
 
     final Random rng = this.random;
     this.seed = rng.nextLong();

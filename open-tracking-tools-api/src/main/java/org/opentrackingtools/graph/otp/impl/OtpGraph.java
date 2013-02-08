@@ -17,7 +17,6 @@ import org.netlib.blas.BLAS;
 import org.opentrackingtools.GpsObservation;
 import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.graph.edges.InferredEdge;
-import org.opentrackingtools.graph.edges.impl.SimpleInferredEdge;
 import org.opentrackingtools.graph.paths.InferredPath;
 import org.opentrackingtools.graph.paths.algorithms.otp.impl.MultiDestinationAStar;
 import org.opentrackingtools.graph.paths.edges.PathEdge;
@@ -478,7 +477,7 @@ public class OtpGraph implements InferenceGraph {
 //                    true);
 //            if (backwardResult != null) {
 //            final double distToObs = 
-//                Iterables.getLast(backwardResult.getEdges()).getGeometry().distance(
+//                Iterables.getLast(backwardResult.getPathEdges()).getGeometry().distance(
 //                    JTSFactoryFinder.getGeometryFactory().createPoint(
 //                        toCoord));
 //              if (distToObs - obsStdDevDistance > 0) {
@@ -585,7 +584,7 @@ public class OtpGraph implements InferenceGraph {
     InferredEdge edgeInfo = edgeToInfo.get(key);
 
     if (edgeInfo == null) {
-      edgeInfo = SimpleInferredEdge.getInferredEdge(edge.getGeometry(), edge, id, this);
+      edgeInfo = OtpInferredEdge.getInferredEdge(edge.getGeometry(), edge, id, this);
       edgeToInfo.put(key, edgeInfo);
     }
 
@@ -653,7 +652,7 @@ public class OtpGraph implements InferenceGraph {
 
     if (edgeInfo == null) {
       final Integer edgeId = baseGraph.getIdForEdge(edge);
-      edgeInfo = SimpleInferredEdge.getInferredEdge(edge.getGeometry(), edge, edgeId, this);
+      edgeInfo = OtpInferredEdge.getInferredEdge(edge.getGeometry(), edge, edgeId, this);
       edgeToInfo.put(key, edgeInfo);
     }
 
@@ -935,7 +934,7 @@ public class OtpGraph implements InferenceGraph {
 
   @Override
   public InferredEdge getNullInferredEdge() {
-    return SimpleInferredEdge.getNullEdge();
+    return OtpInferredEdge.getNullEdge();
   }
 
   @Override

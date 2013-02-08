@@ -28,8 +28,8 @@ import org.opentrackingtools.statistics.distributions.impl.DefaultCountedDataDis
 import org.opentrackingtools.statistics.distributions.impl.OnOffEdgeTransDirMulti;
 import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
 
-import com.google.common.base.Preconditions;
 import com.google.common.collect.Sets;
+import com.vividsolutions.jts.linearref.LengthIndexedLine;
 
 public abstract class AbstractVTParticleFilterUpdater
     implements
@@ -145,8 +145,8 @@ public abstract class AbstractVTParticleFilterUpdater
                   .createInitialLearnedObject();
 
           final double lengthLocation =
-              edge.getLengthIndexedLine().project(
-                  initialObservation.getObsProjected());
+              new LengthIndexedLine(edge.getGeometry())
+              .project(initialObservation.getObsProjected());
 
           final Vector stateSmpl =
               trackingFilter.sampleStateTransDist(

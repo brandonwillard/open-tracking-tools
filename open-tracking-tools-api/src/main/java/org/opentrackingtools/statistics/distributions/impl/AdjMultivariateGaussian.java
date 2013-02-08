@@ -2,12 +2,10 @@ package org.opentrackingtools.statistics.distributions.impl;
 
 import java.util.Random;
 
-import org.apache.http.client.utils.CloneUtils;
 import org.opentrackingtools.statistics.impl.StatisticsUtil;
 
 import gov.sandia.cognition.math.matrix.Matrix;
 import gov.sandia.cognition.math.matrix.Vector;
-import gov.sandia.cognition.math.matrix.VectorEntry;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 import gov.sandia.cognition.util.ObjectUtil;
 
@@ -36,6 +34,16 @@ public class AdjMultivariateGaussian extends MultivariateGaussian {
 
   public AdjMultivariateGaussian(Vector mean, Matrix covariance) {
     super(mean, covariance);
+  }
+
+  @Override
+  public double computeZSquared(Vector input) {
+    return super.computeZSquared(input);
+  }
+
+  @Override
+  public double getLogCovarianceDeterminant() {
+    return super.getLogCovarianceDeterminant();
   }
 
   public Matrix getCovSqrt() {

@@ -6,6 +6,7 @@ import org.opengis.referencing.operation.TransformException;
 import org.testng.AssertJUnit;
 import org.testng.annotations.Test;
 import org.testng.annotations.DataProvider;
+import org.testng.internal.junit.ArrayAsserts;
 
 import com.vividsolutions.jts.geom.Coordinate;
 
@@ -30,7 +31,7 @@ public class GeoUtilsTest {
     
     Coordinate latLngAgain = GeoUtils.convertToLatLon(transform, xy);
     
-    AssertJUnit.assertArrayEquals(new double[] {latLng.x, latLng.y}, 
+    ArrayAsserts.assertArrayEquals(new double[] {latLng.x, latLng.y}, 
         new double[] {latLngAgain.x, latLngAgain.y}, 1e-4);
   }
 

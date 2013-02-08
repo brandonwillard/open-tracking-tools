@@ -1027,7 +1027,7 @@ function createParticleEntry(particleTypeId, epsgCode,
       {popupMessage: null, pan: false, justMarker: true, color: '#0c0', 
         opacity: 0.5 + particleWeight * particleData.infResults.particleCount}));
   
-  resultArray['mean'] = locLink.prop('outerHTML');
+  resultArray['state'] = locLink.prop('outerHTML');
 
   var edgeDesc = "free";
   var edgeId = particleData.infResults.inferredEdge.id;

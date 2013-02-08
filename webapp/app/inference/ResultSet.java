@@ -13,6 +13,7 @@ import org.codehaus.jackson.map.annotate.JsonSerialize;
 import org.opentrackingtools.GpsObservation;
 import org.opentrackingtools.graph.edges.InferredEdge;
 import org.opentrackingtools.graph.edges.impl.SimpleInferredEdge;
+import org.opentrackingtools.graph.otp.impl.OtpInferredEdge;
 import org.opentrackingtools.graph.paths.InferredPath;
 import org.opentrackingtools.graph.paths.edges.PathEdge;
 import org.opentrackingtools.graph.paths.edges.impl.EdgePredictiveResults;
@@ -361,8 +362,8 @@ public class ResultSet {
         state.getBelief().getEdge().getInferredEdge();
     if (!edge.isNullEdge()) {
       final double velocity;
-      if (edge instanceof SimpleInferredEdge)
-        velocity = ((SimpleInferredEdge)edge).getVelocityPrecisionDist().getLocation();
+      if (edge instanceof OtpInferredEdge)
+        velocity = ((OtpInferredEdge)edge).getVelocityPrecisionDist().getLocation();
       else
         velocity = Double.NaN;
       osmSegment = new OsmSegmentWithVelocity(edge, velocity);
@@ -379,11 +380,14 @@ public class ResultSet {
   public Map<String, Object> getPriorPredictiveResults() {
     final Map<String, Object> jsonData = Maps.newHashMap();
     
-    EdgePredictiveResults result = this.filter.getFilterInformation(state.getObservation()).
-        getEdgePredictiveResult(state.getParentState(), state.getBelief().getEdge());
-    
-    if (result == null)
+    EdgePredictiveResults result;
+    if (state.getParentState() != null) {
+      result = this.filter.getFilterInformation(state.getObservation()).
+          getEdgePredictiveResult(state.getParentState(), state.getBelief().getEdge());
+    } else {
       return null;
+    }
+    
     
     jsonData.put("edgeMarginalLogLik", result.getEdgePredMarginalLogLik());
     jsonData.put("edgeTransLogLik", result.getEdgePredTransLogLik());

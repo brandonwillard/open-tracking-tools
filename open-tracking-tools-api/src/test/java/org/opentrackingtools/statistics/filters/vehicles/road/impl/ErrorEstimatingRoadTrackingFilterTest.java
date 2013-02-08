@@ -60,6 +60,7 @@ public class ErrorEstimatingRoadTrackingFilterTest {
     final Vector stateSmpl =
         state.plus(filter.getCovarianceFactor(dim == 2)
             .times(qSmpl));
+    
     return stateSmpl;
   }
 

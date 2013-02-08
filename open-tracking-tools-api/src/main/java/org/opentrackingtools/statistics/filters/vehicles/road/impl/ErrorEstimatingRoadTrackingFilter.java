@@ -438,48 +438,36 @@ public class ErrorEstimatingRoadTrackingFilter
    * @param rng
    * @return
    */
-  private PathState sampleFilteredTransition(
-    PathState prevStateSample1, Vector obs, Random rng) {
+  private PathStateBelief sampleFilteredTransition(
+    PathStateBelief prevStateSample1, Vector obs, Random rng) {
 
     final InferredPath path = prevStateSample1.getPath();
     final PathStateBelief prior =
         path.getStateBeliefOnPath(
-            new AdjMultivariateGaussian(prevStateSample1
-                .getGlobalState(), MatrixFactory
-                .getDenseDefault().createIdentity(
-                    prevStateSample1.getRawState()
-                        .getDimensionality(),
-                    prevStateSample1.getRawState()
-                        .getDimensionality())));
-//        SimplePathStateBelief.getPathStateBelief(
-//            path,
-//            new MultivariateGaussian(prevStateSample1
+            prevStateSample1.getGlobalStateBelief().clone()
+//            new AdjMultivariateGaussian(prevStateSample1
 //                .getGlobalState(), MatrixFactory
 //                .getDenseDefault().createIdentity(
 //                    prevStateSample1.getRawState()
 //                        .getDimensionality(),
 //                    prevStateSample1.getRawState()
-//                        .getDimensionality())),
-//                        this.graph);
+//                        .getDimensionality()))
+            );
     final PathStateBelief prediction =
         this.predict(prior, path);
-    final MultivariateGaussian updatedStateSmplDist =
-        new AdjMultivariateGaussian(
-            prediction.getGlobalState(),
-            prevStateSample1.isOnRoad() ? this
+    final MultivariateGaussian updatedStateSmplDist = prediction.getGlobalStateBelief().clone();
+    
+    updatedStateSmplDist.setCovariance(
+        prevStateSample1.isOnRoad() ? this
                 .getOnRoadStateTransCovar() : this
                 .getOffRoadStateTransCovar());
+    
     final PathStateBelief predictState =
         prediction.getPath().getStateBeliefOnPath(updatedStateSmplDist);
-//        PathStateBelief.getPathStateBelief(
-//            prediction.getPath(), updatedStateSmplDist, this.graph);
+    
     final PathStateBelief postState =
         this.measure(predictState, obs,
             predictState.getEdge());
-
-//    final Matrix Hsqrt =
-//        StatisticsUtil.rootOfSemiDefinite(postState
-//            .getCovariance());
 
     final MultivariateGaussian sampler = 
         postState.isOnRoad() ? this.roadFilter.createInitialLearnedObject()
@@ -488,14 +476,18 @@ public class ErrorEstimatingRoadTrackingFilter
     sampler.setCovariance(postState.getCovariance());
     
     final Vector result = sampler.sample(rng);
-//        MultivariateGaussian.sample(
-//            postState.getGlobalState(), Hsqrt, rng);
+    sampler.setMean(result);
+    
+    if (!path.isNullPath()) {
+      final double clamped = 
+        path.clampToPath(sampler.getMean().getElement(0));
+      sampler.getMean().setElement(0, clamped);
+    }
 
-    return path.getStateOnPath(result);
-//    return PathState.getPathState(path, result, this.graph);
+    return path.getStateBeliefOnPath(sampler);
   }
 
-  private PathState sampleSmoothedPrevState(
+  private PathStateBelief sampleSmoothedPrevState(
     PathStateBelief prior, PathStateBelief priorPred,
     PathStateBelief posterior, Vector obs, Random rng) {
 
@@ -577,8 +569,13 @@ public class ErrorEstimatingRoadTrackingFilter
 
     final Vector result = sampler.sample(rng);
 //        MultivariateGaussian.sample(mSmooth, Csqrt, rng);
-
-    return posterior.getPath().getStateOnPath(result);
+    sampler.setMean(result);
+    if (posterior.isOnRoad()) {
+      final double clamped = 
+        posterior.getPath().clampToPath(sampler.getMean().getElement(0));
+      sampler.getMean().setElement(0, clamped);
+    }
+    return posterior.getPath().getStateBeliefOnPath(sampler);
   }
 
   public void setCurrentStateSample(PathState pathState) {
@@ -615,11 +612,11 @@ public class ErrorEstimatingRoadTrackingFilter
             priorPredictiveState.getPath().getStateBeliefOnPath(
                 state.getBelief());
     
-    final PathState newPrevStateSample =
+    final PathStateBelief newPrevStateSample =
         sampleSmoothedPrevState(priorState,
             priorPredictiveState, posteriorState,
             obs.getProjectedPoint(), rng);
-    final PathState newStateSample =
+    final PathStateBelief newStateSample =
         sampleFilteredTransition(newPrevStateSample,
             obs.getProjectedPoint(), rng);
 

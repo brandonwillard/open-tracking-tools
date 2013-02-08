@@ -13,28 +13,11 @@ public interface InferredEdge extends Comparable<InferredEdge> {
 
   public abstract Coordinate getCenterPointCoord();
 
-  public abstract Coordinate getCoordOnEdge(Vector obsPoint);
-
   public abstract Vector getEndPoint();
 
   public abstract Geometry getGeometry();
 
   public abstract Double getLength();
-
-  public abstract LengthIndexedLine getLengthIndexedLine();
-
-  public abstract LengthLocationMap getLengthLocationMap();
-
-  public abstract LocationIndexedLine getLocationIndexedLine();
-
-  /**
-   * Get the snapped location in projected/euclidean coordinates for the given
-   * obsPoint (in lat/lon).
-   * 
-   * @param obsPoint
-   * @return
-   */
-  public abstract Vector getPointOnEdge(Coordinate obsPoint);
 
   public abstract Vector getStartPoint();
 

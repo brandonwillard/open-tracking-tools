@@ -25,7 +25,6 @@ import org.opentrackingtools.graph.paths.util.PathUtils;
 import org.opentrackingtools.graph.paths.util.PathUtils.PathEdgeProjection;
 import org.opentrackingtools.impl.VehicleState;
 import org.opentrackingtools.impl.WrappedWeightedValue;
-import org.opentrackingtools.statistics.distributions.impl.AdjMultivariateGaussian;
 import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
@@ -33,7 +32,6 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
-import com.vividsolutions.jts.geom.LineString;
 import com.vividsolutions.jts.linearref.LengthIndexedLine;
 
 /**
@@ -430,9 +428,12 @@ public class SimpleInferredPath implements InferredPath {
         covar = stateBelief.getGlobalStateBelief().getCovariance();
       }
     }
+    final MultivariateGaussian newBelief = 
+        stateBelief.getGlobalStateBelief().clone();
+    newBelief.setMean(onThisPath.getGlobalState());
+    newBelief.setCovariance(covar);
     return SimplePathStateBelief.getPathStateBelief(this,
-        new AdjMultivariateGaussian(onThisPath.getGlobalState(), 
-          covar));
+        newBelief);
   }
 
   /* (non-Javadoc)

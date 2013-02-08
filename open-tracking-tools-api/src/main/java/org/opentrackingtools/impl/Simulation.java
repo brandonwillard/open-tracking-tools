@@ -14,6 +14,7 @@ import org.opengis.referencing.operation.TransformException;
 import org.opentrackingtools.GpsObservation;
 import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.graph.paths.states.PathState;
+import org.opentrackingtools.graph.paths.states.PathStateBelief;
 import org.opentrackingtools.graph.paths.states.impl.SimplePathStateBelief;
 import org.opentrackingtools.statistics.distributions.impl.AdjMultivariateGaussian;
 import org.opentrackingtools.statistics.distributions.impl.OnOffEdgeTransDirMulti;
@@ -325,13 +326,13 @@ public class Simulation {
     /*
      * Run through the edges, predict movement and reset the belief.
      */
-    final PathState newPathState =
+    final PathStateBelief newPathStateBelief =
         this.updater.sampleNextState(vehicleState);
 
     final Matrix gCov =
         vehicleState.getMovementFilter().getObsCovar();
     final Vector thisLoc =
-        sampleObservation(newPathState, gCov);
+        sampleObservation(newPathStateBelief, gCov);
 
     final Coordinate obsCoord =
         GeoUtils.convertToLatLon(thisLoc, vehicleState
@@ -345,20 +346,9 @@ public class Simulation {
               new ProjectedCoordinate(GeoUtils.getTransform(obsCoord), 
                   GeoUtils.makeCoordinate(thisLoc), obsCoord));
 
-    final SimplePathStateBelief newStateBelief =
-        SimplePathStateBelief.getPathStateBelief(
-            newPathState.getPath(),
-            new AdjMultivariateGaussian(newPathState
-                .getGlobalState(), MatrixFactory
-                .getDiagonalDefault().createMatrix(
-                    newPathState.getGlobalState()
-                        .getDimensionality(),
-                    newPathState.getGlobalState()
-                        .getDimensionality())));
-
     final VehicleState newState =
         new VehicleState(this.inferredGraph, thisObs,
-            vehicleState.getMovementFilter(), newStateBelief,
+            vehicleState.getMovementFilter(), newPathStateBelief,
             currentEdgeTrans, vehicleState);
 
     return newState;

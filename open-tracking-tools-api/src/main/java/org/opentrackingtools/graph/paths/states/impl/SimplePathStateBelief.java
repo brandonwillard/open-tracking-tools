@@ -14,7 +14,6 @@ import org.opentrackingtools.graph.paths.states.AbstractPathState;
 import org.opentrackingtools.graph.paths.states.PathState;
 import org.opentrackingtools.graph.paths.states.PathStateBelief;
 import org.opentrackingtools.graph.paths.util.PathUtils;
-import org.opentrackingtools.statistics.distributions.impl.AdjMultivariateGaussian;
 import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
 import org.opentrackingtools.statistics.impl.StatisticsUtil;
 
@@ -174,9 +173,8 @@ public class SimplePathStateBelief extends AbstractPathState implements PathStat
                       AbstractRoadTrackingFilter
                           .getEdgeLengthErrorTolerance(),
                       true));
-      this.localStateBelief =
-          new AdjMultivariateGaussian(mean,
-              this.globalStateBelief.getCovariance());
+      this.localStateBelief = this.globalStateBelief.clone();
+      this.localStateBelief.setMean(mean);
     }
     return this.localStateBelief;
   }
@@ -268,35 +266,9 @@ public class SimplePathStateBelief extends AbstractPathState implements PathStat
     Preconditions.checkArgument(!path.isNullPath()
         || state.getInputDimensionality() == 4);
     
-    final MultivariateGaussian adjState = PathUtils.checkAndConvertBelief(state, path);
+    final MultivariateGaussian adjState = PathUtils.checkAndGetConvertedBelief(state, path);
     
     return new SimplePathStateBelief(path, adjState);
-  }
-
-  /**
-   * Simply adds a covariance to a PathState to produce a PathStateBelief.
-   * 
-   * @param oldPathState
-   * @param covariance
-   * @return
-   */
-  public static PathStateBelief getPathStateBelief(
-    SimplePathState oldPathState, Matrix covariance) {
-    
-    Preconditions.checkState(oldPathState.getRawState()
-        .getDimensionality() == covariance.getNumColumns());
-    
-    final SimplePathStateBelief result =
-        new SimplePathStateBelief(
-            oldPathState.getPath(),
-            new AdjMultivariateGaussian(oldPathState
-                .getRawState(), covariance));
-    
-    result.localStateBelief =
-        new AdjMultivariateGaussian(
-            oldPathState.getLocalState(), covariance);
-    
-    return result;
   }
 
   public static double logLikelihood(Vector obs,

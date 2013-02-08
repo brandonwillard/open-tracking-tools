@@ -101,7 +101,7 @@ public class PathUtils {
    * @param path
    * @return
    */
-  public static Vector checkAndConvertState(Vector state,
+  public static Vector checkAndGetConvertedState(Vector state,
     InferredPath path) {
     
     final Vector adjState;
@@ -124,12 +124,12 @@ public class PathUtils {
   }
 
   /**
-   * See {@link #checkAndConvertState(Vector, InferredPath)}
+   * See {@link #checkAndGetConvertedState(Vector, InferredPath)}
    * @param belief
    * @param path
    * @return
    */
-  public static MultivariateGaussian checkAndConvertBelief(MultivariateGaussian belief,
+  public static MultivariateGaussian checkAndGetConvertedBelief(MultivariateGaussian belief,
     InferredPath path) {
     
     final MultivariateGaussian adjBelief;
@@ -446,8 +446,10 @@ public class PathUtils {
     assert LengthLocationMap.getLocation(
         pathGeometry, projMean.getElement(0)) != null;
 
-    MultivariateGaussian result = new AdjMultivariateGaussian(
-        projMean, projCov);
+    
+    MultivariateGaussian result = belief.clone();
+    result.setMean(projMean);
+    result.setCovariance(projCov);
 
     return result;
   }

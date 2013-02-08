@@ -35,7 +35,7 @@ public class OtpInferredPath extends SimpleInferredPath {
     if (newEdges.size() == 1) {
       final PathEdge edge = Iterables.getOnlyElement(newEdges);
       if (edge.isNullEdge())
-        return (OtpInferredPath)nullPath;
+        return nullPath;
     }
     return new OtpInferredPath(ImmutableList.copyOf(newEdges),
         isBackward);
@@ -53,7 +53,7 @@ public class OtpInferredPath extends SimpleInferredPath {
   public static OtpInferredPath getInferredPath(
     PathEdge pathEdge) {
     if (pathEdge.isNullEdge())
-      return (OtpInferredPath)nullPath;
+      return nullPath;
     else
       return new OtpInferredPath(pathEdge);
   }

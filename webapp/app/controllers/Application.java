@@ -33,6 +33,7 @@ import org.opentrackingtools.statistics.filters.vehicles.impl.VehicleTrackingBoo
 import org.opentrackingtools.statistics.filters.vehicles.particle_learning.impl.VehicleTrackingPLFilter;
 import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
 import org.opentrackingtools.statistics.filters.vehicles.road.impl.ErrorEstimatingRoadTrackingFilter;
+import org.opentrackingtools.statistics.filters.vehicles.road.impl.ForwardMovingRoadTrackingFilter;
 import org.opentrackingtools.statistics.filters.vehicles.road.impl.StandardRoadTrackingFilter;
 
 import play.Logger;
@@ -70,6 +71,7 @@ public class Application extends Controller {
   
   private static Map<String, Class<? extends AbstractRoadTrackingFilter>> roadFiltersMap = Maps.newHashMap();
   static {
+    roadFiltersMap.put(ForwardMovingRoadTrackingFilter.class.getName(), ForwardMovingRoadTrackingFilter.class);
     roadFiltersMap.put(ErrorEstimatingRoadTrackingFilter.class.getName(), ErrorEstimatingRoadTrackingFilter.class);
     roadFiltersMap.put(StandardRoadTrackingFilter.class.getName(), StandardRoadTrackingFilter.class);
   }
@@ -78,9 +80,10 @@ public class Application extends Controller {
     final List<InferenceInstance> instances =
         InferenceService.getInferenceInstances();
       
-    final Set<String> filters = particleFiltersMap.keySet();
+    final Set<String> particleFilters = particleFiltersMap.keySet();
+    final Set<String> roadFilters = roadFiltersMap.keySet();
     final VehicleStateInitialParameters initialParams = InferenceService.getDefaultVehicleStateInitialParams();
-    render(instances, filters, initialParams);
+    render(instances, particleFilters, roadFilters, initialParams);
   }
 
   public static void map(String vehicleId) {

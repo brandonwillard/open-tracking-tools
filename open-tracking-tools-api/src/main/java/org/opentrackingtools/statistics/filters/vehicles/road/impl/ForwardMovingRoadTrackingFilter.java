@@ -11,9 +11,10 @@ import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.graph.paths.states.PathStateBelief;
 import org.opentrackingtools.impl.VehicleState;
 import org.opentrackingtools.impl.VehicleStateInitialParameters;
-import org.opentrackingtools.statistics.filters.impl.FoldedKalmanFilter;
+import org.opentrackingtools.statistics.filters.impl.AdjKalmanFilter;
+import org.opentrackingtools.statistics.filters.impl.ForwardOnlyKalmanFilter;
 
-public class DirectionalRoadTrackingFilter extends
+public class ForwardMovingRoadTrackingFilter extends
     AbstractRoadTrackingFilter {
 
   private static final long serialVersionUID = 74683278667973136L;
@@ -30,7 +31,7 @@ public class DirectionalRoadTrackingFilter extends
    * @param a0Variance
    * @param angle
    */
-  public DirectionalRoadTrackingFilter(
+  public ForwardMovingRoadTrackingFilter(
     GpsObservation obs,
     InferenceGraph graph, 
     VehicleStateInitialParameters params,
@@ -61,7 +62,7 @@ public class DirectionalRoadTrackingFilter extends
         createStateCovarianceMatrix(this.currentTimeDiff,
             this.getQr(), true);
     this.roadFilter =
-        new FoldedKalmanFilter(roadModel, roadStateCov,
+        new ForwardOnlyKalmanFilter(roadModel, roadStateCov,
             this.obsCovar);
     this.setOnRoadStateTransCovar(roadStateCov);
 
@@ -87,7 +88,7 @@ public class DirectionalRoadTrackingFilter extends
         createStateCovarianceMatrix(this.currentTimeDiff,
             this.getQg(), false);
     this.groundFilter =
-        new FoldedKalmanFilter(groundModel, groundStateCov,
+        new ForwardOnlyKalmanFilter(groundModel, groundStateCov,
             this.obsCovar);
     this.setOffRoadStateTransCovar(groundStateCov);
 
