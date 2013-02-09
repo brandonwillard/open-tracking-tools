@@ -3,6 +3,7 @@ package org.opentrackingtools.statistics.filters.vehicles.road.impl;
 import org.testng.annotations.Test;
 import org.testng.annotations.BeforeMethod;
 import org.testng.AssertJUnit;
+
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.stub;
 import gov.sandia.cognition.math.matrix.Matrix;
@@ -36,7 +37,7 @@ import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadT
 import org.opentrackingtools.statistics.filters.vehicles.road.impl.ErrorEstimatingRoadTrackingFilter;
 import org.opentrackingtools.statistics.impl.StatisticsUtil;
 
-import com.beust.jcommander.internal.Lists;
+import com.google.common.collect.Lists;
 import com.vividsolutions.jts.geom.Coordinate;
 
 @Test(threadPoolSize=3, invocationCount=1)
