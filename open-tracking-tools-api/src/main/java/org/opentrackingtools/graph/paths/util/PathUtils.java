@@ -690,6 +690,8 @@ public class PathUtils {
   public static PathEdgeProjection
       posVelProjectionPair(LineSegment lineSegment,
         double distToStartOfLine) {
+    
+    Preconditions.checkState(lineSegment.getLength() > 0d);
   
     final Vector start = GeoUtils.getVector(lineSegment.p0);
     final Vector end = GeoUtils.getVector(lineSegment.p1);

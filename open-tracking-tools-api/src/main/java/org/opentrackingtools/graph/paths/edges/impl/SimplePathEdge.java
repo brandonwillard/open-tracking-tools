@@ -23,24 +23,22 @@ import com.vividsolutions.jts.geom.Geometry;
 
 public class SimplePathEdge implements PathEdge {
 
-  private final InferredEdge edge;
-  private final Double distToStartOfEdge;
-  private final Boolean isBackward;
+  protected final InferredEdge edge;
+  protected final Double distToStartOfEdge;
+  protected final Boolean isBackward;
 
-  private final static SimplePathEdge emptyPathEdge = new SimplePathEdge(
-    // XXX TODO FIXME this should be here!
-      SimpleInferredEdge.getNullEdge());
-
-  private SimplePathEdge(InferredEdge edge) {
+  protected final static SimplePathEdge nullPathEdge = new SimplePathEdge(
+      SimpleInferredEdge.getNullEdge()); 
+  
+  protected SimplePathEdge(InferredEdge edge) {
     this.edge = edge;
     this.distToStartOfEdge = null;
     this.isBackward = null;
   }
 
-  private SimplePathEdge(InferredEdge edge,
-    double distToStartOfEdge, Boolean isBackward) {
-    Preconditions.checkArgument(!edge.isNullEdge());
-    Preconditions.checkState(!isBackward
+  protected SimplePathEdge(InferredEdge edge,
+    Double distToStartOfEdge, Boolean isBackward) {
+    Preconditions.checkState((isBackward != Boolean.TRUE)
         || distToStartOfEdge <= 0d);
     this.edge = edge;
     this.distToStartOfEdge = distToStartOfEdge;
@@ -136,7 +134,7 @@ public class SimplePathEdge implements PathEdge {
    * @param beliefPrediction
    * @return
    */
-  private double marginalPredictiveLogLikInternal(
+  protected double marginalPredictiveLogLikInternal(
     InferredPath path, MultivariateGaussian beliefPrediction) {
     
     final double direction = this.isBackward() ? -1d : 1d;
@@ -455,7 +453,7 @@ public class SimplePathEdge implements PathEdge {
    */
   @Override
   public boolean isNullEdge() {
-    return this == emptyPathEdge;
+    return this == nullPathEdge;
   }
 
   /* (non-Javadoc)
@@ -507,7 +505,7 @@ public class SimplePathEdge implements PathEdge {
   }
 
   public static SimplePathEdge getNullPathEdge() {
-    return emptyPathEdge;
+    return nullPathEdge;
   }
 
 }

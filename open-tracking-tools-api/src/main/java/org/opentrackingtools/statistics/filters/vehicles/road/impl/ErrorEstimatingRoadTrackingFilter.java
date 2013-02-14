@@ -22,8 +22,8 @@ import org.opentrackingtools.impl.VehicleState;
 import org.opentrackingtools.impl.VehicleStateInitialParameters;
 import org.opentrackingtools.statistics.distributions.impl.AdjMultivariateGaussian;
 import org.opentrackingtools.statistics.filters.impl.AdjKalmanFilter;
-import org.opentrackingtools.statistics.filters.vehicles.road.impl.RoadTrackingFilterGraphTest.TrueObservation;
 import org.opentrackingtools.statistics.impl.StatisticsUtil;
+import org.opentrackingtools.util.TrueObservation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -660,6 +660,7 @@ public class ErrorEstimatingRoadTrackingFilter
         log.warn("Large update error: " + updateError);
       }
     }
+    
     updateInvWishart(covarPrior, smplCov);
 
     final Matrix qSmpl =

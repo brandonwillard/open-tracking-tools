@@ -272,7 +272,7 @@ public class SimplePathStateBelief extends AbstractPathState implements PathStat
   }
 
   public static double logLikelihood(Vector obs,
-    org.opentrackingtools.graph.paths.states.PathState state,
+    PathState state,
     AbstractRoadTrackingFilter filter) {
     return SimplePathStateBelief.logLikelihood(obs,
         filter.getObsCovar(), state);
@@ -292,8 +292,7 @@ public class SimplePathStateBelief extends AbstractPathState implements PathStat
    * @param edge
    * @return
    */
-  public static double logLikelihood(Vector obs,
-    Matrix obsCov, org.opentrackingtools.graph.paths.states.PathState state) {
+  public static double logLikelihood(Vector obs, Matrix obsCov, PathState state) {
     final double result;
     //    if (state.isOnRoad()) {
     //      final PathEdge lastEdge = Iterables.getLast(

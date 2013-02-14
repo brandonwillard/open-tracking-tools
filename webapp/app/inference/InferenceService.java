@@ -66,7 +66,7 @@ public class InferenceService extends UntypedActor {
   private static VehicleStateInitialParameters defaultVehicleStateInitialParams =
       new VehicleStateInitialParameters(
           VectorFactory.getDefault().createVector2D(100d, 100d), 20,
-          VectorFactory.getDefault().createVector2D(0.000625, 0.000625), 20,
+          VectorFactory.getDefault().createVector1D(0.000625), 20,
           VectorFactory.getDefault().createVector2D(0.000625, 0.000625), 20,
           VectorFactory.getDefault().createVector2D(5d, 95d),
           VectorFactory.getDefault().createVector2D(95d, 5d), 

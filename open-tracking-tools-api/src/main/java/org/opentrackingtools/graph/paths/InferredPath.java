@@ -61,6 +61,7 @@ public interface InferredPath extends Comparable<InferredPath> {
   public abstract
       InferredPathPrediction
       getPriorPredictionResults(
+        InferenceGraph graph,
         GpsObservation obs,
         VehicleState state,
         Map<PathEdge, EdgePredictiveResults> edgeToPreBeliefAndLogLik);

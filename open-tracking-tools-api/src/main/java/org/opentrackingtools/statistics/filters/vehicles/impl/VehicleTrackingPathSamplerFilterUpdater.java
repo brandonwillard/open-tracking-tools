@@ -538,7 +538,7 @@ public class VehicleTrackingPathSamplerFilterUpdater extends
         sampleNextState(previousState);
 
     final VehicleState newState =
-        new VehicleState(this.inferenceGraph, obs,
+        this.inferenceGraph.createVehicleState(obs,
             predictedFilter, newPathState, newTransDist,
             previousState);
 

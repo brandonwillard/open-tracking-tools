@@ -17,6 +17,8 @@ import java.util.Random;
 
 
 
+
+
 import gov.sandia.cognition.math.matrix.Matrix;
 import gov.sandia.cognition.math.matrix.MatrixFactory;
 import gov.sandia.cognition.math.matrix.Vector;
@@ -33,7 +35,6 @@ import org.opengis.referencing.operation.TransformException;
 import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.graph.impl.GenericJTSGraph;
 import org.opentrackingtools.graph.paths.impl.TrackingTestUtils;
-import org.opentrackingtools.impl.SimpleObservation;
 import org.opentrackingtools.impl.Simulation;
 import org.opentrackingtools.impl.Simulation.SimulationParameters;
 import org.opentrackingtools.impl.VehicleState;
@@ -42,6 +43,7 @@ import org.opentrackingtools.statistics.distributions.impl.OnOffEdgeTransDirMult
 import org.opentrackingtools.statistics.filters.vehicles.VehicleTrackingFilter;
 import org.opentrackingtools.statistics.filters.vehicles.particle_learning.impl.VehicleTrackingPLFilter;
 import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
+import org.opentrackingtools.util.TrueObservation;
 import org.opentrackingtools.GpsObservation;
 
 import com.vividsolutions.jts.geom.Coordinate;
@@ -147,24 +149,6 @@ public class RoadTrackingFilterGraphTest {
 //        46000
 //        }
     };
-  }
-  
-  public static class TrueObservation extends SimpleObservation {
-
-    final private VehicleState trueState;
-
-    public TrueObservation(GpsObservation obs, VehicleState trueState) {
-      super(obs.getSourceId(), obs.getTimestamp(), 
-          obs.getObsCoordsLatLon(), obs.getVelocity(), obs.getHeading(), 
-          obs.getAccuracy(), obs.getRecordNumber(), obs.getPreviousObservation(), 
-          obs.getObsProjected());
-      this.trueState = trueState;
-    }
-
-    public VehicleState getTrueState() {
-      return trueState;
-    }
-
   }
   
   @Test(dataProvider="initialStateData")

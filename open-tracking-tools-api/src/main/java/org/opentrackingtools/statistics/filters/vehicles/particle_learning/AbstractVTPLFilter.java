@@ -29,6 +29,7 @@ import org.opentrackingtools.statistics.impl.StatisticsUtil;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.HashMultimap;
+import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Multimap;
@@ -100,7 +101,7 @@ public abstract class AbstractVTPLFilter extends
 //        }
 
         final InferredPathPrediction infPath =
-            path.getPriorPredictionResults(obs, state,
+            path.getPriorPredictionResults(this.inferredGraph, obs, state,
                 edgeToPreBeliefAndLogLik);
         
         if (infPath != null) {
@@ -168,9 +169,7 @@ public abstract class AbstractVTPLFilter extends
 
   }
 
-  private
-      VehicleState
-      propagateStates(
+  private VehicleState propagateStates(
         VehicleState state,
         GpsObservation obs,
         Collection<WrappedWeightedValue<InferredPathPrediction>> weighedPaths) {
@@ -191,7 +190,7 @@ public abstract class AbstractVTPLFilter extends
 
     sampledPathEntry = instStateDist.sample(rng);
 
-    if (sampledPathEntry.getPath().getPathEdges().size() > 1) {
+    if (sampledPathEntry.getWeightedPathEdges().size() > 1) {
       /*
        * TODO FIXME: cache the creation of these distributions
        */
@@ -203,11 +202,11 @@ public abstract class AbstractVTPLFilter extends
 
     } else {
       posteriorEdge =
-          sampledPathEntry.getPath().getPathEdges().get(0);
+         Iterables.getOnlyElement(sampledPathEntry.getWeightedPathEdges()).getValue();
     }
-    predictionResults =
+    predictionResults = Preconditions.checkNotNull(
         sampledPathEntry.getEdgeToPredictiveBelief().get(
-            posteriorEdge);
+            posteriorEdge));
     sampledFilter = sampledPathEntry.getFilter();
 
     /*
@@ -288,10 +287,11 @@ public abstract class AbstractVTPLFilter extends
         pathAdjustedPriorBelief, rng);
 
     final VehicleState newTransState =
-        new VehicleState(this.inferredGraph, obs,
+        this.inferredGraph.createVehicleState(obs,
             updatedFilter, updatedBelief.clone(),
             updatedEdgeTransDist.clone(), state);
 
     return newTransState;
   }
+  
 }

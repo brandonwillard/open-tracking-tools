@@ -56,7 +56,7 @@ public class SimpleInferredPath implements InferredPath {
   protected final Geometry geometry;
   protected List<InferredEdge> normalEdges;
 
-  protected static InferredPath nullPath =
+  private static InferredPath nullPath =
       new SimpleInferredPath();
 
   protected SimpleInferredPath() {
@@ -146,21 +146,22 @@ public class SimpleInferredPath implements InferredPath {
    * @param edge
    */
   protected SimpleInferredPath(PathEdge edge) {
-    Preconditions.checkArgument(!edge.isNullEdge());
-    
     // TODO FIXME remove specific PathEdge type.
-    this.edges = ImmutableList.<PathEdge>of(
-        SimplePathEdge.getEdge(edge.getInferredEdge(), 
-            0, edge.isBackward()));
+    this.edges = ImmutableList.<PathEdge>of(edge);
+    Preconditions.checkArgument(edge.getDistToStartOfEdge() == null
+        || edge.getDistToStartOfEdge() == 0d);
     
     this.normalEdges = ImmutableList.of(edge.getInferredEdge());
     this.isBackward = edge.isBackward();
-    this.totalPathDistance =
-        (this.isBackward ? -1d : 1d)
-            * edge.getInferredEdge().getLength();
+    if (edge.getInferredEdge().isNullEdge())
+      this.totalPathDistance = null;
+    else
+      this.totalPathDistance =
+          (this.isBackward == Boolean.TRUE ? -1d : 1d)
+              * edge.getInferredEdge().getLength();
     this.edgeIds.add(edge.getInferredEdge().getEdgeId());
     this.geometry =
-        this.isBackward ? edge.getGeometry().reverse()
+        (this.isBackward == Boolean.TRUE)? edge.getGeometry().reverse()
             : edge.getGeometry();
   }
 
@@ -281,6 +282,7 @@ public class SimpleInferredPath implements InferredPath {
   public
       InferredPathPrediction
       getPriorPredictionResults(
+        InferenceGraph graph,
         GpsObservation obs,
         VehicleState state,
         Map<PathEdge, EdgePredictiveResults> edgeToPreBeliefAndLogLik) {
@@ -310,19 +312,19 @@ public class SimpleInferredPath implements InferredPath {
     /*
      * XXX: testing movement restrictions
      */
-    if (!state.getBelief().isOnRoad()
-        && !this.isNullPath()) {
-      /*
-       * We just got on a road
-       */
-      final double direction = this.isBackward ? -1d : 1d;
-      final boolean isCorrectDirection =  
-          AbstractRoadTrackingFilter.getVr().times(
-              beliefPrediction.getRawState()).getElement(0) * direction >= 0d;
-              
-      if (!isCorrectDirection)
-        return null;
-    }
+//    if (!state.getBelief().isOnRoad()
+//        && !this.isNullPath()) {
+//      /*
+//       * We just got on a road
+//       */
+//      final double direction = this.isBackward ? -1d : 1d;
+//      final boolean isCorrectDirection =  
+//          AbstractRoadTrackingFilter.getVr().times(
+//              beliefPrediction.getRawState()).getElement(0) * direction >= 0d;
+//              
+//      if (!isCorrectDirection)
+//        return null;
+//    }
 
     double pathLogLik = Double.NEGATIVE_INFINITY;
 
@@ -334,7 +336,8 @@ public class SimpleInferredPath implements InferredPath {
 
       final EdgePredictiveResults edgeResults;
 
-      if (edgeToPreBeliefAndLogLik.containsKey(edge)) {
+      if (edgeToPreBeliefAndLogLik != null &&
+          edgeToPreBeliefAndLogLik.containsKey(edge)) {
         final EdgePredictiveResults otherEdgeResults =
             edgeToPreBeliefAndLogLik.get(edge);
 
@@ -372,7 +375,8 @@ public class SimpleInferredPath implements InferredPath {
             edge.getPredictiveLikelihoodResults(this,
                 state, beliefPrediction, obs);
 
-        edgeToPreBeliefAndLogLik.put(edge, edgeResults);
+        if (edgeToPreBeliefAndLogLik != null)
+          edgeToPreBeliefAndLogLik.put(edge, edgeResults);
         
       }
 
@@ -567,17 +571,6 @@ public class SimpleInferredPath implements InferredPath {
     MultivariateGaussian stateBelief, InferenceGraph graph) {
 
   }
-
-  /*
-   * Again, dangerous because it loses path info.
-   */
-  //  public static InferredPath
-  //      getInferredPath(InferredEdge inferredEdge) {
-  //    if (inferredEdge.isEmptyEdge())
-  //      return emptyPath;
-  //    else
-  //      return new InferredPath(inferredEdge);
-  //  }
 
   public static InferredPath getNullPath() {
     return nullPath;

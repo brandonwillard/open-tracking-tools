@@ -21,7 +21,7 @@ import org.opentrackingtools.graph.edges.InferredEdge;
 import org.opentrackingtools.graph.paths.InferredPath;
 import org.opentrackingtools.graph.paths.edges.PathEdge;
 import org.opentrackingtools.graph.paths.impl.InferredPathPrediction;
-import org.opentrackingtools.graph.paths.states.impl.SimplePathStateBelief;
+import org.opentrackingtools.graph.paths.states.PathStateBelief;
 import org.opentrackingtools.impl.VehicleState;
 import org.opentrackingtools.impl.VehicleStateInitialParameters;
 import org.opentrackingtools.statistics.distributions.impl.DefaultCountedDataDistribution;
@@ -105,16 +105,16 @@ public abstract class AbstractVTParticleFilterUpdater
     for (int i = 0; i < numParticles; i++) {
       final AbstractRoadTrackingFilter tmpTrackingFilter =
           this.createRoadTrackingFilter();
-      final MultivariateGaussian tmpInitialBelief =
+      final MultivariateGaussian groundInitialBelief =
           tmpTrackingFilter.getGroundFilter().createInitialLearnedObject();
       final Vector xyPoint =
           initialObservation.getProjectedPoint();
-      tmpInitialBelief.setMean(VectorFactory.getDefault()
+      groundInitialBelief.setMean(VectorFactory.getDefault()
           .copyArray(
               new double[] { xyPoint.getElement(0), 0d,
                   xyPoint.getElement(1), 0d }));
       final Collection<InferredEdge> initialEdges =
-          inferenceGraph.getNearbyEdges(tmpInitialBelief,
+          inferenceGraph.getNearbyEdges(groundInitialBelief,
               tmpTrackingFilter);
 
       final DataDistribution<VehicleState> initialDist =
@@ -155,33 +155,32 @@ public abstract class AbstractVTParticleFilterUpdater
           initialBelief.getMean().setElement(0,
               lengthLocation);
 
-          final SimplePathStateBelief simplePathStateBelief =
-              SimplePathStateBelief.getPathStateBelief(path,
-                  initialBelief);
-
-          final VehicleState state =
-              new VehicleState(this.inferenceGraph,
-                  initialObservation, trackingFilter,
-                  simplePathStateBelief, edgeTransDist, null);
+          final PathStateBelief pathStateBelief =
+              path.getStateBeliefOnPath(initialBelief);
 
           /*
            * Sample an initial prior for the transition probabilities
            */
           final Vector edgePriorParams =
               OnOffEdgeTransDirMulti.checkedSample(
-                state.getEdgeTransitionDist()
+              edgeTransDist
                   .getEdgeMotionTransProbPrior(), this.random);
           final Vector freeDriorParams =
               OnOffEdgeTransDirMulti.checkedSample(
-              state.getEdgeTransitionDist()
+              edgeTransDist
                   .getFreeMotionTransProbPrior(), this.random);
-          state.getEdgeTransitionDist()
+          edgeTransDist
               .getEdgeMotionTransPrior()
               .setParameters(edgePriorParams);
-          state.getEdgeTransitionDist()
+          edgeTransDist
               .getFreeMotionTransPrior()
               .setParameters(freeDriorParams);
 
+          final VehicleState state =
+            this.inferenceGraph.createVehicleState(
+                initialObservation, trackingFilter,
+                pathStateBelief, edgeTransDist, null);
+      
           final double lik =
               state.getProbabilityFunction().evaluate(
                   initialObservation);
@@ -202,46 +201,42 @@ public abstract class AbstractVTParticleFilterUpdater
               parameters.getOffTransitionProbs());
 
       final MultivariateGaussian initialBelief =
-          trackingFilter.getGroundFilter()
-              .createInitialLearnedObject();
+          groundInitialBelief.clone();
 
       final Vector stateSmpl =
           trackingFilter.sampleStateTransDist(
               initialBelief.getMean(), this.random);
 
       initialBelief.setMean(stateSmpl);
-      initialBelief.getMean().setElement(0,
-          xyPoint.getElement(0));
-      initialBelief.getMean().setElement(2,
-          xyPoint.getElement(1));
 
-      final SimplePathStateBelief simplePathStateBelief =
-          SimplePathStateBelief.getPathStateBelief(
-              this.inferenceGraph.getNullPath(), initialBelief);
+      final PathStateBelief pathStateBelief =
+            this.inferenceGraph.getNullPath()
+              .getStateBeliefOnPath(initialBelief);
 
-      final VehicleState state =
-          new VehicleState(this.inferenceGraph,
-              initialObservation, trackingFilter,
-              simplePathStateBelief, edgeTransDist, null);
       /*
        * Sample an initial prior for the transition probabilities
        */
       final Vector edgeDriorParams =
           OnOffEdgeTransDirMulti.checkedSample(
-            state.getEdgeTransitionDist()
+            edgeTransDist
                 .getEdgeMotionTransProbPrior(), this.random);
       final Vector freeDriorParams =
           OnOffEdgeTransDirMulti.checkedSample(
-            state.getEdgeTransitionDist()
+            edgeTransDist
                 .getFreeMotionTransProbPrior(), this.random);
       
-      state.getEdgeTransitionDist()
+      edgeTransDist
           .getEdgeMotionTransPrior()
           .setParameters(edgeDriorParams);
-      state.getEdgeTransitionDist()
+      edgeTransDist
           .getFreeMotionTransPrior()
           .setParameters(freeDriorParams);
 
+      final VehicleState state =
+          this.inferenceGraph.createVehicleState(
+              initialObservation, trackingFilter,
+              pathStateBelief, edgeTransDist, null);
+      
       final double lik =
           state.getProbabilityFunction().evaluate(
               initialObservation);

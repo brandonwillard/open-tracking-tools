@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.Set;
 
 import org.geotools.geometry.jts.JTS;
+import org.geotools.geometry.jts.JTSFactoryFinder;
 import org.geotools.graph.build.line.DirectedLineStringGraphGenerator;
 import org.geotools.graph.path.AStarShortestPathFinder;
 import org.geotools.graph.path.Path;
@@ -32,11 +33,13 @@ import org.opentrackingtools.graph.paths.InferredPath;
 import org.opentrackingtools.graph.paths.edges.PathEdge;
 import org.opentrackingtools.graph.paths.edges.impl.SimplePathEdge;
 import org.opentrackingtools.graph.paths.impl.SimpleInferredPath;
+import org.opentrackingtools.graph.paths.states.PathStateBelief;
 import org.opentrackingtools.impl.VehicleState;
+import org.opentrackingtools.statistics.distributions.impl.OnOffEdgeTransDirMulti;
 import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
-import org.opentrackingtools.statistics.filters.vehicles.road.impl.RoadTrackingFilterGraphTest.TrueObservation;
 import org.opentrackingtools.statistics.impl.StatisticsUtil;
 import org.opentrackingtools.util.GeoUtils;
+import org.opentrackingtools.util.TrueObservation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -55,9 +58,18 @@ import com.vividsolutions.jts.index.strtree.STRtree;
 
 public class GenericJTSGraph implements InferenceGraph {
 
-  protected DirectedLineStringGraphGenerator graphGenerator;
+  public class StrictLineStringGraphGenerator extends
+      DirectedLineStringGraphGenerator {
+
+    public StrictLineStringGraphGenerator() {
+      super();
+      setGraphBuilder(new StrictDirectedGraphBuilder());
+    }
+  }
+
+  protected DirectedLineStringGraphGenerator graphGenerator = null;
   
-  protected STRtree edgeIndex = new STRtree();
+  protected STRtree edgeIndex = null;
   
   protected static final double MAX_DISTANCE_SPEED = 53.6448; // ~120 mph
   
@@ -76,11 +88,10 @@ public class GenericJTSGraph implements InferenceGraph {
    */
   protected static final double MAX_STATE_SNAP_RADIUS = 350d;
 
-  final protected Envelope gpsEnv = new Envelope();
-  final protected Envelope projEnv = new Envelope();
+  protected Envelope gpsEnv = null;
+  protected Envelope projEnv = null;
   
   protected GenericJTSGraph() {
-    graphGenerator = new DirectedLineStringGraphGenerator();
   }
   
   /**
@@ -93,18 +104,19 @@ public class GenericJTSGraph implements InferenceGraph {
   }
   
   protected void createGraphFromLineStrings(Collection<LineString> lines) {
-    graphGenerator = new DirectedLineStringGraphGenerator();
+    graphGenerator = new StrictLineStringGraphGenerator(); 
+    edgeIndex = new STRtree();
+    gpsEnv = new Envelope();
+    projEnv = new Envelope();
     for (LineString edge : lines) {
-      
       gpsEnv.expandToInclude(edge.getEnvelopeInternal());
       final MathTransform transform = GeoUtils.getTransform(edge.getCoordinate());
       Geometry projectedEdge; 
       try {
         projectedEdge = JTS.transform(edge, transform);
-        projectedEdge.setUserData(edge.getCoordinate());
+        projectedEdge.setUserData(edge);
         projEnv.expandToInclude(projectedEdge.getEnvelopeInternal());
         graphGenerator.add(projectedEdge);
-        edgeIndex.insert(projectedEdge.getEnvelopeInternal(), projectedEdge);
       } catch (final TransformException e) {
         e.printStackTrace();
       }
@@ -120,7 +132,8 @@ public class GenericJTSGraph implements InferenceGraph {
      */
     for (Object obj : graphGenerator.getGraph().getEdges()) {
       final BasicDirectedEdge edge = (BasicDirectedEdge) obj;
-      getInferredEdge(edge);
+      InferredEdge infEdge = getInferredEdge(edge);
+      edgeIndex.insert(((Geometry)edge.getObject()).getEnvelopeInternal(), infEdge);
     }
     edgeIndex.build();
   }
@@ -160,8 +173,9 @@ public class GenericJTSGraph implements InferenceGraph {
       /*
        * Make sure this direction is traversable
        */
-      if (edgeBetween == null)
+      if (edgeBetween == null) {
         return Double.POSITIVE_INFINITY;
+      }
       
       /*
        * If these are the first nodes, then make sure
@@ -255,16 +269,16 @@ public class GenericJTSGraph implements InferenceGraph {
         AStarFunctions afuncs = new VehicleStateAStarFunction(target, 
             toCoord, obsStdDevDistance);
         
-        AStarShortestPathFinder aStarIter = new AStarShortestPathFinder(
+        CustomAStarShortestPathFinder aStarIter = new CustomAStarShortestPathFinder(
             this.graphGenerator.getGraph(), source, target, afuncs);
         aStarIter.calculate();
         
-        try {
-          Path path = aStarIter.getPath();
-          
+        Path path = aStarIter.getPath();
+        
+        if (path != null) {
           List<PathEdge> pathEdges = Lists.newArrayList();
           double distToStart = 0d;
-          Iterator iter = path.riterator();
+          Iterator<?> iter = path.riterator();
           BasicDirectedNode prevNode = (BasicDirectedNode) bStartEdge.getInNode();
           while (iter.hasNext()) {
             BasicDirectedNode node = (BasicDirectedNode)iter.next();
@@ -279,12 +293,10 @@ public class GenericJTSGraph implements InferenceGraph {
           }
           if (!pathEdges.isEmpty())
             paths.add(getInferredPath(pathEdges, false));
-          
-          // TODO if we want backward paths, then simply reverse this one 
-          
-        } catch (Exception e) {
-          log.warn("Exception during A* search:" + e);
         }
+        
+        // TODO backward paths? 
+          
       }
     }
     
@@ -337,7 +349,7 @@ public class GenericJTSGraph implements InferenceGraph {
     InferredEdge infEdge = edgeToInfEdge.get(edge);
 
     if (infEdge == null) {
-      final Geometry edgeGeom = (Geometry)edge.getObject();
+      final Geometry edgeGeom = Preconditions.checkNotNull((Geometry)edge.getObject());
       final int id = edge.getID();
       infEdge = SimpleInferredEdge.getInferredEdge(edgeGeom, edge, 
           id, this);
@@ -384,11 +396,13 @@ public class GenericJTSGraph implements InferenceGraph {
     double radius) {
     final Envelope toEnv = new Envelope(toCoord);
     toEnv.expandBy(radius);
+    final Point toEnvPoint = JTSFactoryFinder.getGeometryFactory()
+        .createPoint(toCoord);
     final Set<InferredEdge> streetEdges = Sets.newHashSet();
     for (final Object obj : edgeIndex.query(toEnv)) {
-      final Edge edge = (Edge) this.graphGenerator.get(obj);
-      final InferredEdge infEdge = getInferredEdge(edge);
-      streetEdges.add(infEdge);
+      final InferredEdge infEdge = (InferredEdge)obj;
+      if (infEdge.getGeometry().distance(toEnvPoint) < radius)
+        streetEdges.add(infEdge);
     }
     return streetEdges;
   }
@@ -467,6 +481,15 @@ public class GenericJTSGraph implements InferenceGraph {
   @Override
   public InferredEdge getInferredEdge(String id) {
     return idToInfEdge.get(id);
+  }
+
+  @Override
+  public VehicleState createVehicleState(GpsObservation obs,
+      AbstractRoadTrackingFilter trackingFilter,
+      PathStateBelief pathStateBelief, OnOffEdgeTransDirMulti edgeTransDist,
+      VehicleState parent) {
+    return new VehicleState(this, obs, trackingFilter, 
+        pathStateBelief, edgeTransDist, parent);
   }
 
 }

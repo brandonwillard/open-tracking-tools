@@ -1,14 +1,17 @@
 package org.opentrackingtools.graph.paths.edges.impl;
 
+import gov.sandia.cognition.util.AbstractCloneableSerializable;
+import gov.sandia.cognition.util.CloneableSerializable;
+
 import org.opentrackingtools.graph.paths.states.PathStateBelief;
 
-public class EdgePredictiveResults {
+public class EdgePredictiveResults extends AbstractCloneableSerializable {
 
-  final PathStateBelief beliefPrediction;
-  final PathStateBelief locationPrediction;
-  final double edgePredMarginalLogLik;
-  final double edgePredTransLogLik;
-  final double measurementPredLogLik;
+  protected PathStateBelief beliefPrediction;
+  protected PathStateBelief locationPrediction;
+  protected double edgePredMarginalLogLik;
+  protected double edgePredTransLogLik;
+  protected double measurementPredLogLik;
 
   public EdgePredictiveResults(
     PathStateBelief beliefPrediction,
@@ -60,6 +63,18 @@ public class EdgePredictiveResults {
         .append(", measurementPredLik=")
         .append(measurementPredLogLik).append("]");
     return builder.toString();
+  }
+
+  @Override
+  public EdgePredictiveResults clone() {
+    EdgePredictiveResults clone = (EdgePredictiveResults) super.clone();
+    clone.beliefPrediction = beliefPrediction.clone();
+    clone.edgePredMarginalLogLik = edgePredMarginalLogLik;
+    clone.edgePredTransLogLik = edgePredTransLogLik;
+    clone.locationPrediction = locationPrediction.clone();
+    clone.measurementPredLogLik = measurementPredLogLik;
+    
+    return clone;
   }
 
 }
