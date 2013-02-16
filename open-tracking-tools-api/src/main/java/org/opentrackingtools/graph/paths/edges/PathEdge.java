@@ -2,6 +2,7 @@ package org.opentrackingtools.graph.paths.edges;
 
 import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
+import gov.sandia.cognition.util.CloneableSerializable;
 
 import org.opentrackingtools.GpsObservation;
 import org.opentrackingtools.graph.edges.InferredEdge;
@@ -13,7 +14,7 @@ import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadT
 
 import com.vividsolutions.jts.geom.Geometry;
 
-public interface PathEdge extends Comparable<PathEdge> {
+public interface PathEdge extends Comparable<PathEdge>, CloneableSerializable {
 
   public abstract EdgePredictiveResults
       getPredictiveLikelihoodResults(InferredPath path,

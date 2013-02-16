@@ -5,6 +5,8 @@ import gov.sandia.cognition.math.matrix.Matrix;
 import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 import gov.sandia.cognition.statistics.distribution.UnivariateGaussian;
+import gov.sandia.cognition.util.AbstractCloneableSerializable;
+import gov.sandia.cognition.util.CloneableSerializable;
 
 import org.opentrackingtools.GpsObservation;
 import org.opentrackingtools.graph.edges.InferredEdge;
@@ -21,11 +23,13 @@ import com.google.common.collect.ComparisonChain;
 import com.google.common.collect.Ordering;
 import com.vividsolutions.jts.geom.Geometry;
 
-public class SimplePathEdge implements PathEdge {
+public class SimplePathEdge extends AbstractCloneableSerializable implements PathEdge {
 
-  protected final InferredEdge edge;
-  protected final Double distToStartOfEdge;
-  protected final Boolean isBackward;
+  private static final long serialVersionUID = 2615199504616160384L;
+  
+  protected InferredEdge edge;
+  protected Double distToStartOfEdge;
+  protected Boolean isBackward;
 
   protected final static SimplePathEdge nullPathEdge = new SimplePathEdge(
       SimpleInferredEdge.getNullEdge()); 
@@ -50,6 +54,9 @@ public class SimplePathEdge implements PathEdge {
     return ComparisonChain
         .start()
         .compare(this.edge, o.getInferredEdge())
+        .compare(this.isBackward(),
+            o.isBackward(),
+            Ordering.natural().nullsLast())
         .compare(this.distToStartOfEdge,
             o.getDistToStartOfEdge(),
             Ordering.natural().nullsLast()).result();
@@ -506,6 +513,15 @@ public class SimplePathEdge implements PathEdge {
 
   public static SimplePathEdge getNullPathEdge() {
     return nullPathEdge;
+  }
+
+  @Override
+  public SimplePathEdge clone() {
+    SimplePathEdge clone = (SimplePathEdge) super.clone();
+    clone.distToStartOfEdge = distToStartOfEdge;
+    clone.edge = edge;
+    clone.isBackward = isBackward;
+    return clone;
   }
 
 }

@@ -132,13 +132,12 @@ public abstract class AbstractVTParticleFilterUpdater
           evaluatedPaths.add(new InferredPathPrediction(path,
               null, null, null, Double.NEGATIVE_INFINITY));
 
+          /*
+           * TODO this code should be contained in the filter,
+           * or somewhere other than here, no?
+           */
           final AbstractRoadTrackingFilter trackingFilter =
               this.createRoadTrackingFilter();
-
-          final OnOffEdgeTransDirMulti edgeTransDist =
-              new OnOffEdgeTransDirMulti(inferenceGraph,
-                  parameters.getOnTransitionProbs(),
-                  parameters.getOffTransitionProbs());
 
           final MultivariateGaussian initialBelief =
               trackingFilter.getRoadFilter()
@@ -158,23 +157,10 @@ public abstract class AbstractVTParticleFilterUpdater
           final PathStateBelief pathStateBelief =
               path.getStateBeliefOnPath(initialBelief);
 
-          /*
-           * Sample an initial prior for the transition probabilities
-           */
-          final Vector edgePriorParams =
-              OnOffEdgeTransDirMulti.checkedSample(
-              edgeTransDist
-                  .getEdgeMotionTransProbPrior(), this.random);
-          final Vector freeDriorParams =
-              OnOffEdgeTransDirMulti.checkedSample(
-              edgeTransDist
-                  .getFreeMotionTransProbPrior(), this.random);
-          edgeTransDist
-              .getEdgeMotionTransPrior()
-              .setParameters(edgePriorParams);
-          edgeTransDist
-              .getFreeMotionTransPrior()
-              .setParameters(freeDriorParams);
+          final OnOffEdgeTransDirMulti edgeTransDist =
+              new OnOffEdgeTransDirMulti(inferenceGraph,
+                  parameters.getOnTransitionProbs(),
+                  parameters.getOffTransitionProbs(), this.random);
 
           final VehicleState state =
             this.inferenceGraph.createVehicleState(

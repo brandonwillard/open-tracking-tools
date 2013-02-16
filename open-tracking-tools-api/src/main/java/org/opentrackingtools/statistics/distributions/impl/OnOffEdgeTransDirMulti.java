@@ -1,5 +1,6 @@
 package org.opentrackingtools.statistics.distributions.impl;
 
+import gov.sandia.cognition.math.LogMath;
 import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.math.matrix.VectorFactory;
 import gov.sandia.cognition.math.matrix.mtj.DenseVector;
@@ -12,6 +13,9 @@ import gov.sandia.cognition.util.AbstractCloneableSerializable;
 
 import java.util.List;
 import java.util.Random;
+
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 
 import org.apache.commons.lang.builder.CompareToBuilder;
 import org.opentrackingtools.graph.InferenceGraph;
@@ -100,6 +104,27 @@ public class OnOffEdgeTransDirMulti extends
         getFreeMotionTransProbPrior().getMean());
     getEdgeMotionTransPrior().setParameters(
         getEdgeMotionTransProbPrior().getMean());
+  }
+
+  public OnOffEdgeTransDirMulti(InferenceGraph inferenceGraph,
+      Vector onTransitionProbs, Vector offTransitionProbs, Random random) {
+    this(inferenceGraph, onTransitionProbs, offTransitionProbs);
+          
+    /*
+     * Sample an initial prior for the transition probabilities
+     */
+    final Vector edgePriorParams =
+        OnOffEdgeTransDirMulti.checkedSample(
+        this 
+            .getEdgeMotionTransProbPrior(), random);
+    final Vector freeDriorParams =
+        OnOffEdgeTransDirMulti.checkedSample(
+         this 
+            .getFreeMotionTransProbPrior(), random);
+    this.getEdgeMotionTransPrior()
+        .setParameters(edgePriorParams);
+    this.getFreeMotionTransPrior()
+        .setParameters(freeDriorParams);
   }
 
   @Override
@@ -277,17 +302,28 @@ public class OnOffEdgeTransDirMulti extends
     return result;
   }
 
-  public double logEvaluate(InferredEdge from,
-    InferredEdge to) {
+  public double logEvaluate(@Nullable InferredEdge from,
+    @Nonnull InferredEdge to) {
 
     if (from == null) {
-
-      /*
-       * This model assumes uniform priors over edges
-       * TODO FIXME: as an interface/design force specifying the priors
-       */
-      return 0d;
-
+      
+      final double totalProb = Math.log(getFreeMotionTransPrior().getParameters().sum()
+          + getEdgeMotionTransPrior().getParameters().sum());
+      if (to.isNullEdge()) {
+        return 
+           LogMath.add(getFreeMotionTransPrior().getProbabilityFunction()
+               .logEvaluate(OnOffEdgeTransDirMulti.stateOffToOff)
+               , getEdgeMotionTransPrior().getProbabilityFunction()
+               .logEvaluate(OnOffEdgeTransDirMulti.stateOnToOff)) 
+               - totalProb;
+      } else {
+        return 
+           LogMath.add(getFreeMotionTransPrior().getProbabilityFunction()
+               .logEvaluate(OnOffEdgeTransDirMulti.stateOffToOn)
+               , getEdgeMotionTransPrior().getProbabilityFunction()
+               .logEvaluate(OnOffEdgeTransDirMulti.stateOnToOn)) 
+               - totalProb;
+      } 
     } else {
       if (from.isNullEdge()) {
         return getFreeMotionTransPrior()

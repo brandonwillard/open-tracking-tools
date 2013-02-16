@@ -3,6 +3,7 @@ package org.opentrackingtools.graph.paths.states;
 import gov.sandia.cognition.math.matrix.AbstractVector;
 import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.util.AbstractCloneableSerializable;
+import gov.sandia.cognition.util.ObjectUtil;
 
 import org.opentrackingtools.graph.paths.InferredPath;
 import org.opentrackingtools.graph.paths.edges.PathEdge;
@@ -75,8 +76,13 @@ public abstract class AbstractPathState extends
   public AbstractPathState clone() {
     final AbstractPathState clone =
         (AbstractPathState) super.clone();
-    clone.edge = this.edge;
-    clone.path = this.path;
+    clone.path = ObjectUtil.cloneSmart(this.path);
+    /*
+     * The edge should always refer to the edge in this path,
+     * so if the path gets cloned and that clone makes a clone
+     * of the path edges, then we need to find the new edge.
+     */
+    clone.edge = null;
     return clone;
   }
 
@@ -87,6 +93,12 @@ public abstract class AbstractPathState extends
     result =
         prime * result
             + ((path == null) ? 0 : path.hashCode());
+    result =
+        prime
+            * result
+            + ((getGlobalState() == null) ? 0
+                : ((AbstractVector) getGlobalState())
+                    .hashCode());
     result =
         prime
             * result
@@ -116,6 +128,15 @@ public abstract class AbstractPathState extends
       return false;
     }
 
+    if (getGlobalState() == null) {
+      if (other.getGlobalState() != null) {
+        return false;
+      }
+    } else if (!((AbstractVector) getGlobalState())
+        .equals((other.getGlobalState()))) {
+      return false;
+    }
+    
     if (getRawState() == null) {
       if (other.getRawState() != null) {
         return false;

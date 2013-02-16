@@ -43,8 +43,8 @@ import com.vividsolutions.jts.linearref.LengthIndexedLine;
  */
 public class SimpleInferredPath implements InferredPath {
 
-  protected final ImmutableList<PathEdge> edges;
-  protected final Double totalPathDistance;
+  protected ImmutableList<PathEdge> edges;
+  protected Double totalPathDistance;
 
   public List<String> edgeIds = Lists.newArrayList();
 
@@ -53,7 +53,7 @@ public class SimpleInferredPath implements InferredPath {
    */
   protected Boolean isBackward = null;
 
-  protected final Geometry geometry;
+  protected Geometry geometry;
   protected List<InferredEdge> normalEdges;
 
   private static InferredPath nullPath =

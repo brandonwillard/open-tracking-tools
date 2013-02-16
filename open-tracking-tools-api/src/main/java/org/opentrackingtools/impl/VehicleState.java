@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.Random;
 
 import org.apache.commons.lang.builder.CompareToBuilder;
+import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.opentrackingtools.GpsObservation;
 import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.graph.paths.states.PathStateBelief;
@@ -298,10 +299,9 @@ public class VehicleState implements
 
   @Override
   public String toString() {
-    final StringBuilder builder = new StringBuilder();
-    builder.append("VehicleState [belief=").append(belief)
-        .append(", observation=")
-        .append(observation.getTimestamp()).append("]");
+    ToStringBuilder builder = new ToStringBuilder(this);
+    builder.append("belief", belief);
+    builder.append("observation", observation);
     return builder.toString();
   }
 
