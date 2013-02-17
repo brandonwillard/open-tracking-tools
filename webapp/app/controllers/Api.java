@@ -113,14 +113,18 @@ public class Api extends Controller {
   public static void getPathBetween(String lat1, String lon1, String lat2, String lon2)
       throws JsonGenerationException, JsonMappingException,
       IOException {
-    final Coordinate coord1 =
-        new Coordinate(Double.parseDouble(lat1), Double.parseDouble(lon1));
-    final Coordinate coord2 =
-        new Coordinate(Double.parseDouble(lat2), Double.parseDouble(lon2));
-    
-    List<Integer> edgeIds = graph.getPathBetweenPoints(coord1, coord2);
-    
-    renderJSON(jsonMapper.writeValueAsString(edgeIds));
+    if (graph instanceof OtpGraph) {
+      final Coordinate coord1 =
+          new Coordinate(Double.parseDouble(lat1), Double.parseDouble(lon1));
+      final Coordinate coord2 =
+          new Coordinate(Double.parseDouble(lat2), Double.parseDouble(lon2));
+      
+      List<Integer> edgeIds = ((OtpGraph)graph).getPathBetweenPoints(coord1, coord2);
+      
+      renderJSON(jsonMapper.writeValueAsString(edgeIds));
+    } else {
+      badRequest();
+    }
   }
   
   public static ObjectMapper jsonMapper = new ObjectMapper();

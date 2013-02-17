@@ -29,6 +29,7 @@ import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadT
 import org.opentrackingtools.statistics.impl.DataCube;
 import org.opentrackingtools.statistics.impl.StatisticsUtil;
 import org.opentrackingtools.util.GeoUtils;
+import org.opentripplanner.routing.algorithm.GenericAStar;
 import org.opentripplanner.routing.core.RoutingRequest;
 import org.opentripplanner.routing.core.TraverseMode;
 import org.opentripplanner.routing.core.TraverseModeSet;
@@ -309,8 +310,8 @@ public class OtpGraph implements InferenceGraph {
     // getVertices freak out with ConcurrentModificationExceptions
     this.turnGraphExtent = this.turnGraph.getExtent();
     
-    baseIndexService =
-        new StreetVertexIndexServiceImpl(baseGraph);
+    turnIndexService =
+        new StreetVertexIndexServiceImpl(turnGraph);
     createIndices(baseGraph, baseEdgeIndex, null,
         geomBaseEdgeMap);
     createIndices(turnGraph, turnEdgeIndex,
@@ -597,7 +598,7 @@ public class OtpGraph implements InferenceGraph {
     return gs;
   }
 
-  public StreetVertexIndexServiceImpl getIndexService() {
+  public StreetVertexIndexServiceImpl getTurnIndexService() {
     return turnIndexService;
   }
 
@@ -830,8 +831,10 @@ public class OtpGraph implements InferenceGraph {
       Coordinate toCoord) {
 
     final RoutingRequest options = OtpGraph.defaultOptions;
-    CandidateEdgeBundle fromEdges = turnIndexService.getClosestEdges(GeoUtils.reverseCoordinates(fromCoord), options, null, null);
-    CandidateEdgeBundle toEdges = turnIndexService.getClosestEdges(GeoUtils.reverseCoordinates(toCoord), options, null, null);
+    CandidateEdgeBundle fromEdges = turnIndexService.getClosestEdges(
+        new Coordinate(fromCoord.y, fromCoord.x), options, null, null);
+    CandidateEdgeBundle toEdges = turnIndexService.getClosestEdges(
+        new Coordinate(toCoord.y, fromCoord.x), options, null, null);
     
     GenericAStar astar = new GenericAStar();
     final RoutingRequest req = new RoutingRequest(options.getModes());
