@@ -35,6 +35,7 @@ import org.opentrackingtools.util.geom.ProjectedCoordinate;
 import au.com.bytecode.opencsv.CSVReader;
 
 import com.google.common.collect.Iterables;
+import com.google.common.collect.Lists;
 import com.vividsolutions.jts.geom.Coordinate;
 
 public class TraceRunner {

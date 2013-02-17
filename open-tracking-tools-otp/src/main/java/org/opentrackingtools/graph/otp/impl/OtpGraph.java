@@ -22,7 +22,9 @@ import org.opentrackingtools.graph.paths.algorithms.otp.impl.MultiDestinationASt
 import org.opentrackingtools.graph.paths.edges.PathEdge;
 import org.opentrackingtools.graph.paths.edges.impl.SimplePathEdge;
 import org.opentrackingtools.graph.paths.impl.SimpleInferredPath;
+import org.opentrackingtools.graph.paths.states.PathStateBelief;
 import org.opentrackingtools.impl.VehicleState;
+import org.opentrackingtools.statistics.distributions.impl.OnOffEdgeTransDirMulti;
 import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
 import org.opentrackingtools.statistics.impl.DataCube;
 import org.opentrackingtools.statistics.impl.StatisticsUtil;
@@ -978,6 +980,15 @@ public class OtpGraph implements InferenceGraph {
         hasReverseTmp = true;
     }
     return hasReverseTmp;
+  }
+
+  @Override
+  public VehicleState createVehicleState(GpsObservation obs,
+    AbstractRoadTrackingFilter trackingFilter,
+    PathStateBelief pathStateBelief,
+    OnOffEdgeTransDirMulti edgeTransDist, VehicleState parent) {
+    return new VehicleState(this, obs, trackingFilter, pathStateBelief,
+        edgeTransDist, parent);
   }
 
 }

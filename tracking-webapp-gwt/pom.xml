@@ -54,14 +54,17 @@
       <version>0.0.1-SNAPSHOT</version>
     </dependency>
     <dependency>
+      <groupId>org.opentrackingtools</groupId>
+      <artifactId>open-tracking-tools-otp</artifactId>
+      <version>0.0.1-SNAPSHOT</version>
+    </dependency>
+    <dependency>
       <groupId>gov.sandia.foundry</groupId>
       <artifactId>gov-sandia-cognition-common-core</artifactId>
-      <version>3.3.2</version>
     </dependency>
     <dependency>
       <groupId>gov.sandia.foundry</groupId>
       <artifactId>gov-sandia-cognition-learning-core</artifactId>
-      <version>3.3.2</version>
     </dependency>
     <dependency>
       <groupId>org.fusesource.restygwt</groupId>

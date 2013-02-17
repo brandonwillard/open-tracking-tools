@@ -7,6 +7,7 @@ require:
     - org.opentripplanner -> opentripplanner-routing 0.7.10 
     - org.opentripplanner -> opentripplanner-utils 0.7.10 
     - org.opentrackingtools -> open-tracking-tools-api 0.0.1-SNAPSHOT 
+    - org.opentrackingtools -> open-tracking-tools-otp 0.0.1-SNAPSHOT 
     - gov.sandia.foundry -> gov-sandia-cognition-common-core 3.3.2
     - gov.sandia.foundry -> gov-sandia-cognition-learning-core 3.3.2
     - net.sf.opencsv -> opencsv 2.0

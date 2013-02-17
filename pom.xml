@@ -16,7 +16,7 @@
 
   <modules>
     <module>open-tracking-tools-api</module>
-    <module>tracking-webapp-gwt</module>
+    <module>open-tracking-tools-otp</module>
   </modules>
 
   <build>
@@ -172,21 +172,6 @@
 
   <dependencyManagement>
     <dependencies>
-      <dependency>
-        <groupId>org.opentripplanner</groupId>
-        <artifactId>opentripplanner-routing</artifactId>
-        <version>${otp.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>org.opentripplanner</groupId>
-        <artifactId>opentripplanner-graph-builder</artifactId>
-        <version>${otp.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>org.opentripplanner</groupId>
-        <artifactId>opentripplanner-utils</artifactId>
-        <version>${otp.version}</version>
-      </dependency>
       <!-- Geotools -->
       <dependency>
         <groupId>org.geotools</groupId>
@@ -233,7 +218,7 @@
       <dependency>
         <groupId>com.vividsolutions</groupId>
         <artifactId>jts</artifactId>
-        <version>1.12</version>
+        <version>${jts.version}</version>
       </dependency>    
       <!-- Other -->
       <dependency>
@@ -252,12 +237,48 @@
         <artifactId>slf4j-log4j12</artifactId>
         <version>1.5.8</version>
       </dependency>
+<!--       <dependency> -->
+<!--         <groupId>org.opentrackingtools</groupId> -->
+<!--         <artifactId>open-tracking-tools-api</artifactId> -->
+<!--         <version>0.0.1-SNAPSHOT</version> -->
+<!--       </dependency> -->
+<!--       <dependency> -->
+<!--         <groupId>org.opentrackingtools</groupId> -->
+<!--         <artifactId>open-tracking-tools-otp</artifactId> -->
+<!--         <version>0.0.1-SNAPSHOT</version> -->
+<!--       </dependency> -->
+      <dependency>
+        <groupId>gov.sandia.foundry</groupId>
+        <artifactId>gov-sandia-cognition-learning-core</artifactId>
+        <version>${foundry.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>gov.sandia.foundry</groupId>
+        <artifactId>gov-sandia-cognition-common-core</artifactId>
+        <version>${foundry.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.geotools</groupId>
+        <artifactId>gt-main</artifactId>
+        <version>${geotools.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.geotools</groupId>
+        <artifactId>gt-graph</artifactId>
+        <version>${geotools.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.geotools</groupId>
+        <artifactId>gt-grid</artifactId>
+        <version>${geotools.version}</version>
+      </dependency>
     </dependencies>
   </dependencyManagement>
 
   <properties>
-    <otp.version>0.7.10</otp.version>
-    <geotools.version>8.0-M4</geotools.version>
+    <jts.version>1.12</jts.version>
+    <foundry.version>3.3.2</foundry.version>
+    <geotools.version>9.0-M0</geotools.version>
     <jersey.version>1.11</jersey.version>
     <spring.version>3.0.5.RELEASE</spring.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>

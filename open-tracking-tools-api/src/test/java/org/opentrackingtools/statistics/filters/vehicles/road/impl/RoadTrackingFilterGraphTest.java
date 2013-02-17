@@ -60,6 +60,7 @@ public class RoadTrackingFilterGraphTest {
   private static final double[] fourZeros = new double[] {0, 0, 0, 0};
   private static final double[] twoZeros = new double[] {0, 0};
   private static final double[] oneZero = new double[] {0};
+  
   @BeforeTest
   public void setUp() throws NoSuchAuthorityCodeException, FactoryRegistryException, FactoryException, IOException {
     
