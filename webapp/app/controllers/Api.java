@@ -3,6 +3,9 @@ package controllers;
 import gov.sandia.cognition.collection.ScalarMap.Entry;
 import gov.sandia.cognition.learning.data.DefaultTargetEstimatePair;
 import gov.sandia.cognition.learning.data.TargetEstimatePair;
+import gov.sandia.cognition.math.matrix.AbstractVector;
+import gov.sandia.cognition.math.matrix.Matrix;
+import gov.sandia.cognition.math.matrix.mtj.DenseVector;
 import gov.sandia.cognition.statistics.DataDistribution;
 import gov.sandia.cognition.statistics.bayesian.BayesianCredibleInterval;
 import gov.sandia.cognition.statistics.distribution.BernoulliDistribution;
@@ -15,26 +18,51 @@ import inference.OsmSegmentWithVelocity;
 import java.awt.geom.Point2D;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 
+import javax.annotation.Nullable;
+
 import models.InferenceInstance;
 
 import org.codehaus.jackson.JsonGenerationException;
 import org.codehaus.jackson.map.JsonMappingException;
 import org.codehaus.jackson.map.ObjectMapper;
+import org.geotools.data.simple.SimpleFeatureSource;
+import org.geotools.factory.FactoryRegistryException;
+import org.geotools.feature.FeatureIterator;
+import org.geotools.geometry.jts.JTSFactoryFinder;
+import org.geotools.geometry.jts.ReferencedEnvelope;
+import org.geotools.graph.util.geom.GeometryUtil;
+import org.geotools.grid.Lines;
+import org.geotools.grid.ortholine.LineOrientation;
+import org.geotools.grid.ortholine.OrthoLineDef;
+import org.geotools.referencing.CRS;
+import org.opengis.feature.Feature;
+import org.opengis.referencing.FactoryException;
+import org.opengis.referencing.NoSuchAuthorityCodeException;
+import org.opengis.referencing.crs.CoordinateReferenceSystem;
 import org.opengis.referencing.operation.MathTransform;
-import org.openplans.tools.tracking.impl.Observation;
-import org.openplans.tools.tracking.impl.VehicleState;
-import org.openplans.tools.tracking.impl.VehicleStatePerformanceResult;
-import org.openplans.tools.tracking.impl.VehicleTrackingPerformanceEvaluator;
-import org.openplans.tools.tracking.impl.graph.InferredEdge;
-import org.openplans.tools.tracking.impl.util.GeoUtils;
-import org.openplans.tools.tracking.impl.util.OtpGraph;
-import org.openplans.tools.tracking.impl.util.ProjectedCoordinate;
+import org.opengis.referencing.operation.NoninvertibleTransformException;
+import org.opengis.referencing.operation.TransformException;
+import org.opentrackingtools.GpsObservation;
+import org.opentrackingtools.graph.InferenceGraph;
+import org.opentrackingtools.graph.edges.InferredEdge;
+import org.opentrackingtools.graph.impl.GenericJTSGraph;
+import org.opentrackingtools.graph.otp.impl.OtpGraph;
+import org.opentrackingtools.graph.paths.impl.TrackingTestUtils;
+import org.opentrackingtools.impl.VehicleState;
+import org.opentrackingtools.impl.VehicleStatePerformanceResult;
+import org.opentrackingtools.impl.VehicleTrackingPerformanceEvaluator;
+import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
+import org.opentrackingtools.statistics.filters.vehicles.road.impl.ErrorEstimatingRoadTrackingFilter;
+import org.opentrackingtools.statistics.impl.StatisticsUtil;
+import org.opentrackingtools.util.GeoUtils;
+import org.opentrackingtools.util.geom.ProjectedCoordinate;
 import org.opentripplanner.common.geometry.GeometryUtils;
 import org.opentripplanner.routing.graph.Edge;
 import org.opentripplanner.routing.spt.GraphPath;
@@ -42,23 +70,46 @@ import org.opentripplanner.routing.spt.GraphPath;
 import play.Logger;
 import play.Play;
 import play.mvc.Controller;
+import utils.ObservationFactory;
 import api.OsmSegment;
 
+import com.google.common.base.Predicate;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.vividsolutions.jts.geom.Coordinate;
+import com.vividsolutions.jts.geom.Envelope;
+import com.vividsolutions.jts.geom.Geometry;
+import com.vividsolutions.jts.geom.LineString;
+import com.vividsolutions.jts.geom.MultiLineString;
+import com.vividsolutions.jts.index.strtree.STRtree;
+import com.vividsolutions.jts.operation.linemerge.LineMerger;
 
 public class Api extends Controller {
 
   public static final SimpleDateFormat sdf = new SimpleDateFormat(
       "yyyy-MM-dd hh:mm:ss");
 
-  public static OtpGraph graph = new OtpGraph(
-      Play.configuration.getProperty("application.otpGraphPath"), null);
-
-  public static ObjectMapper jsonMapper = new ObjectMapper();
+  public static InferenceGraph graph
+    = new OtpGraph(
+        Play.configuration.getProperty("application.graphPath"), null);
   
+//  static {
+//      
+//    try {
+//      graph = new GenericJTSGraph(TrackingTestUtils.createGridGraph(
+//          new Coordinate(40.7549, -73.97749)));
+//    } catch (NoSuchAuthorityCodeException e) {
+//      e.printStackTrace();
+//    } catch (FactoryRegistryException e) {
+//      e.printStackTrace();
+//    } catch (IOException e) {
+//      e.printStackTrace();
+//    } catch (FactoryException e) {
+//      e.printStackTrace();
+//    }
+//  }
+
   public static void getPathBetween(String lat1, String lon1, String lat2, String lon2)
       throws JsonGenerationException, JsonMappingException,
       IOException {
@@ -71,42 +122,34 @@ public class Api extends Controller {
     
     renderJSON(jsonMapper.writeValueAsString(edgeIds));
   }
-
-//  public static void convertToLatLon(String x, String y, String lat, String lon)
-//      throws JsonGenerationException, JsonMappingException,
-//      IOException {
-//
-//    final Coordinate rawCoords =
-//        new Coordinate(Double.parseDouble(x), Double.parseDouble(y));
-//    
-//    final Coordinate refLatLon =
-//        new Coordinate(Double.parseDouble(lat), Double.parseDouble(lon));
-//    
-//    final MathTransform transform = GeoUtils.getTransform(refLatLon);
-//    final String epsgCode = "EPSG:" + GeoUtils.getEPSGCodefromUTS(refLatLon);
-//    Coordinate coords = GeoUtils.convertToLatLon(transform, rawCoords);
-//    Map<String, Object> jsonResults = Maps.newHashMap();
-//    jsonResults.put("x", coords.x);
-//    jsonResults.put("y", coords.y);
-//    jsonResults.put("epsgCode", epsgCode);
-//
-//    renderJSON(jsonMapper.writeValueAsString(jsonResults));
-//  }
+  
+  public static ObjectMapper jsonMapper = new ObjectMapper();
+  
+  public static void getGraphCenter()
+      throws JsonGenerationException, JsonMappingException,
+      IOException {
+    Coordinate center = graph.getGPSGraphExtent().centre();
+    Map<String, Object> result = Maps.newHashMap();
+    result.put("lat", center.x);
+    result.put("lng", center.y);
+    result.put("epsgCode", GeoUtils.getEPSGCodefromUTS(center));
+    renderJSON(jsonMapper.writeValueAsString(result));
+  }
   
   public static void convertToLatLon(String x, String y)
       throws JsonGenerationException, JsonMappingException,
-      IOException {
+      IOException, NoninvertibleTransformException, TransformException {
 
     final Coordinate rawCoords =
         new Coordinate(Double.parseDouble(x), Double.parseDouble(y));
     
-    final Coordinate refLatLon = GeoUtils.reverseCoordinates(graph.getTurnGraph().getExtent().centre());
+    final Coordinate refLatLon = graph.getGPSGraphExtent().centre();
     final MathTransform transform = GeoUtils.getTransform(refLatLon);
     final String epsgCode = "EPSG:" + GeoUtils.getEPSGCodefromUTS(refLatLon);
     Coordinate coords = GeoUtils.convertToLatLon(transform, rawCoords);
     Map<String, Object> jsonResults = Maps.newHashMap();
-    jsonResults.put("x", coords.x);
-    jsonResults.put("y", coords.y);
+    jsonResults.put("lat", coords.x);
+    jsonResults.put("lng", coords.y);
     jsonResults.put("epsgCode", epsgCode);
 
     renderJSON(jsonMapper.writeValueAsString(jsonResults));
@@ -187,7 +230,7 @@ public class Api extends Controller {
   }
 
 
-  public static OtpGraph getGraph() {
+  public static InferenceGraph getGraph() {
     return graph;
   }
 
@@ -230,8 +273,8 @@ public class Api extends Controller {
         continue;
       for (final VehicleState state : record.getPostDistribution()
           .getDomain()) {
-        if (state.getInferredEdge().getEdgeId().equals(edgeId))
-          observations.add(state.getObservation().getObsPoint());
+        if (state.getBelief().getEdge().getInferredEdge().getEdgeId().equals(edgeId))
+          observations.add(state.getObservation().getObsProjected());
       }
     }
 
@@ -356,8 +399,8 @@ public class Api extends Controller {
 
     try {
 
-      final Observation location =
-          Observation.createObservation(vehicleId, timestamp, latStr,
+      final GpsObservation location =
+          ObservationFactory.createObservation(vehicleId, timestamp, latStr,
               lonStr, velocity, heading, accuracy);
 
       if (location != null) {
@@ -398,7 +441,7 @@ public class Api extends Controller {
         .getPostDistribution().entrySet()) {
       final Map<String, Object> thisMap = Maps.newHashMap();
       thisMap.put("weight", stateEntry.getValue());
-      thisMap.put("edgeId", stateEntry.getKey().getInferredEdge()
+      thisMap.put("edgeId", stateEntry.getKey().getBelief().getEdge().getInferredEdge()
           .getEdgeId());
       thisMap.put("meanLoc", GeoUtils.getCoordinates(stateEntry
           .getKey().getMeanLocation()));
@@ -408,14 +451,17 @@ public class Api extends Controller {
     renderJSON(jsonMapper.writeValueAsString(jsonResults));
   }
 
-  public static void segment(Integer segmentId)
+  public static void segment(String segmentId)
       throws JsonGenerationException, JsonMappingException,
       IOException {
 
     if (segmentId == null)
       badRequest();
 
-    final Edge e = graph.getBaseGraph().getEdgeById(segmentId);
+//    final Edge e = graph.getBaseGraph().getEdgeById(
+//        Integer.parseInt(segmentId));
+    
+    final InferredEdge e = graph.getInferredEdge(segmentId);
 
     if (e != null) {
 
@@ -425,6 +471,91 @@ public class Api extends Controller {
       renderJSON(jsonMapper.writeValueAsString(osmSegment));
     } else
       badRequest();
+  }
+  
+  public static void particleHistoryDebug(String vehicleId,
+    int recordNumber, Integer particleNumber) throws JsonGenerationException,
+      JsonMappingException, IOException {
+    
+    final InferenceInstance instance =
+        InferenceService.getInferenceInstance(vehicleId);
+    if (instance == null)
+      renderJSON(jsonMapper.writeValueAsString(null));
+
+    final Collection<InferenceResultRecord> resultRecords =
+        instance.getResultRecords();
+    if (resultRecords.isEmpty())
+      renderJSON(jsonMapper.writeValueAsString(null));
+
+    
+    final InferenceResultRecord record =
+        Iterables.get(resultRecords, recordNumber, null);
+
+    if (record == null)
+      error(vehicleId + " result record " + recordNumber
+          + " is out-of-bounds");
+
+    DataDistribution<VehicleState> belief = record.getPostDistribution();
+    
+    VehicleState state =
+        Iterables.get(belief.getDomain(), particleNumber, null);
+
+    if (state == null)
+      renderJSON(jsonMapper.writeValueAsString(null));
+
+    final List<Map<String, Object>> mapResults = Lists.newArrayList();
+    int currentRecordNumber = recordNumber;
+    while (state != null) {
+      final Map<String, Object> mapResult = Maps.newHashMap();
+      mapResult.put("time", state.getObservation().getTimestamp().getTime());
+      mapResult.put("recordNumber", currentRecordNumber);
+      
+      final int thisParticleNum;
+      if (currentRecordNumber != recordNumber) {
+        final InferenceResultRecord thisRecord =
+            Iterables.get(resultRecords, currentRecordNumber, null);
+        final VehicleState thisState = state;
+        thisParticleNum = Iterables.indexOf(thisRecord.getPostDistribution().getDomain(), 
+            new Predicate<VehicleState>() { 
+            @Override
+            public boolean
+                apply(@Nullable VehicleState input) {
+              return input.equals(thisState);
+            }
+        });
+      } else {
+        thisParticleNum = particleNumber;
+      }
+      mapResult.put("particleNumber", thisParticleNum);
+      
+      ErrorEstimatingRoadTrackingFilter filter = (ErrorEstimatingRoadTrackingFilter) state.getMovementFilter();  
+      
+      mapResult.put("obsCovMean",((DenseVector) 
+          filter.getObsVariancePrior().getMean().convertToVector()).getArray());
+      mapResult.put("onRoadCovMean", ((DenseVector) 
+          filter.getOnRoadStateVariancePrior().getMean().convertToVector()).getArray());
+      mapResult.put("offRoadCovMean", ((DenseVector) 
+          filter.getOffRoadStateVariancePrior().getMean().convertToVector()).getArray());
+      if (filter.getCurrentStateSample() != null) {
+        final Matrix projMatrix = filter.getPrevStateSample().isOnRoad() ?
+           filter.getRoadModel().getA() : filter.getGroundModel().getA();
+        mapResult.put("stateSampleDiff", ((DenseVector) 
+            filter.getCurrentStateSample().getGlobalState().minus(
+                projMatrix.times(
+                    filter.getPrevStateSample().getGlobalState()))).getArray());
+        mapResult.put("stateSampleObsDiff", ((DenseVector) 
+            state.getObservation().getProjectedPoint().minus(
+                AbstractRoadTrackingFilter.getOg().times(
+                    filter.getCurrentStateSample().getGroundState()))).getArray());
+      }
+      mapResults.add(mapResult);
+      
+      currentRecordNumber--;
+      state = state.getParentState();
+    }
+    
+    renderJSON(jsonMapper.writeValueAsString(mapResults));
+    
   }
 
   public static void traceParticleRecord(String vehicleId,
@@ -508,6 +639,9 @@ public class Api extends Controller {
       }
     }
 
+    /*
+     * Get best particles for every observation
+     */
     final List<Map<String, Object>> mapResults = Lists.newArrayList();
     for (final InferenceResultRecord result : results) {
       final VehicleState state = result.getInfResults().getState();
@@ -528,6 +662,9 @@ public class Api extends Controller {
 
       final Map<String, Object> mapResult = Maps.newHashMap();
       mapResult.put("particle", result);
+      
+      final int thisParticleNumber = Lists.newArrayList(belief.getDomain()).indexOf(state);
+      mapResult.put("particleNumber", thisParticleNumber);
 
       mapResult.put("isBest", state.equals(belief.getMaxValueKey()));
       if (belief != null) {
@@ -572,14 +709,6 @@ public class Api extends Controller {
       renderJSON(jsonMapper.writeValueAsString(null));
 
     renderJSON(jsonMapper.writeValueAsString(resultRecords));
-  }
-
-  public static void vertex() {
-    Logger.info("vertices: " + graph.getVertexCount());
-
-    // TODO noop
-
-    ok();
   }
 
 }

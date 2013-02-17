@@ -22,7 +22,7 @@
               <li> offTransitionProbs: ${instance.simParameters.offTransitionProbs} </li>
               <li> onTransitionProbs: ${instance.simParameters.onTransitionProbs} </li>
               <li> initialObsFreq: ${instance.simParameters.initialObsFreq} </li>
-<!--               <li> filterTypeName: ${instance.simParameters.filterTypeName} </li> -->
+              <li> roadFilterTypeName: ${instance.simParameters.roadFilterTypeName} </li>
               <li> seed: ${instance.simSeed} </li>
             </ul>
             #{/if}
@@ -38,7 +38,8 @@
               <li> onTransitionProbs: ${instance.initialParameters.onTransitionProbs} </li>
               <li> numParticles: ${instance.initialParameters.numParticles} </li>
               <li> initialObsFreq: ${instance.initialParameters.initialObsFreq} </li>
-              <li> filterTypeName: ${instance.initialParameters.filterTypeName} </li>
+              <li> particleFilterTypeName: ${instance.initialParameters.particleFilterTypeName} </li>
+              <li> roadFilterTypeName: ${instance.initialParameters.roadFilterTypeName} </li>
               <li> seed: ${instance.simSeed} </li>
             </ul>
             <span>
@@ -59,9 +60,14 @@
 If inference is performed on the simulation data, then the default initial parameters are used to initialize states
 (not the values below), unless the "use initial sim parameters as state parameters" option is set.
 	#{form @Application.simulation(), method:'GET'}
-    <select name="filterTypeName">
-     	#{list items:filters, as:'filter'}
-      <option value="${filter}">${filter}</option>
+    <select name="particleFilterTypeName">
+     	#{list items:particleFilters, as:'particleFilter'}
+      <option value="${particleFilter}">${particleFilter}</option>
+      #{/list}
+    </select><br>
+    <select name="roadFilterTypeName">
+     	#{list items:roadFilters, as:'roadFilter'}
+      <option value="${roadFilter}">${roadFilter}</option>
       #{/list}
     </select><br>
 	 	<input name="seed_str" type="text" value="1234567890"/>
@@ -86,11 +92,11 @@ If inference is performed on the simulation data, then the default initial param
 	    <label for="ground_state_variance_pair">Off-road State Variance (errors due to acceleration, (x,y))</label><br>
 	 	<input name="groundCovDof_str" type="text" value="20"/> 
 	   <label for="groundCovDof_str">Off-road State Variance Prior Degrees of Freedom</label><br>
-	 	<input name="off_prob_pair" type="text" value="5e-2, 1"/>
+	 	<input name="off_prob_pair" type="text" value="5, 95"/>
 	    <label for="off_prob_pair">Off- to off-road, off- to on-road weights (unnormalized)</label><br>
-	 	<input name="on_prob_pair" type="text" value="1, 5e-2"/>
+	 	<input name="on_prob_pair" type="text" value="95, 5"/>
 	    <label for="on_prob_pair">On- to on-road, on- to off-road weights (unnormalized)</label><br>
-	 	<input name="numParticles_str" type="text" value="50"/>
+	 	<input name="numParticles_str" type="text" value="25"/>
 	    <label for="numParticles_str">Number of particles</label><br>
 	 	<input name="initialObsFreq_str" type="text" value="30"/>
 	    <label for="initialObsFreq_str">Initial Observation Frequency (seconds)</label><br>
@@ -106,12 +112,16 @@ If inference is performed on the simulation data, then the default initial param
 <h3>Load Trace Data</h3> The values below determine the initial states for the loaded trace.  
 	 #{form @Application.uploadHandler(), enctype:'multipart/form-data'}
    
-    <select name="filterTypeName">
-     	#{list items:filters, as:'filter'}
-      <option value="${filter}">${filter}</option>
+    <select name="particleFilterTypeName">
+     	#{list items:particleFilters, as:'particleFilter'}
+      <option value="${particleFilter}">${particleFilter}</option>
       #{/list}
     </select><br>
-    
+    <select name="roadFilterTypeName">
+     	#{list items:roadFilters, as:'roadFilter'}
+      <option value="${roadFilter}">${roadFilter}</option>
+      #{/list}
+    </select><br>
 	 	<input name="seed_str" type="text" value="0"/>
 	   <label for="seed_str">Random seed (enter 0 for none)</label><br>
 	 	<input name="obs_variance_pair" type="text" value="100, 100"/> 
@@ -126,11 +136,11 @@ If inference is performed on the simulation data, then the default initial param
 	    <label for="ground_state_variance_pair">Off-road State Variance (errors due to acceleration, (x,y))</label><br>
 	 	<input name="groundCovDof_str" type="text" value="20"/> 
 	   <label for="groundCovDof_str">Off-road State Variance Prior Degrees of Freedom</label><br>
-	 	<input name="off_prob_pair" type="text" value="5e-2, 1"/>
+	 	<input name="off_prob_pair" type="text" value="5, 95"/>
 	    <label for="off_prob_pair">Off- to off-road, off- to on-road weights (unnormalized)</label><br>
-	 	<input name="on_prob_pair" type="text" value="1, 5e-2"/>
+	 	<input name="on_prob_pair" type="text" value="95, 5"/>
 	    <label for="on_prob_pair">On- to on-road, on- to off-road weights (unnormalized)</label><br>
-	 	<input name="numParticles_str" type="text" value="50"/>
+	 	<input name="numParticles_str" type="text" value="25"/>
 	    <label for="numParticles_str">Number of particles</label><br>
 	 	<input name="initialObsFreq_str" type="text" value="30"/>
 	    <label for="initialObsFreq_str">Initial Observation Frequency (seconds)</label><br>
@@ -144,9 +154,14 @@ If inference is performed on the simulation data, then the default initial param
 <h3>Default Initial State Parameters</h3>  
 These values are used to initialize states when new instances are created from streaming data.
 	#{form @Application.setDefaultVehicleStateParams(), method:'GET'}
-    <select name="filterTypeName">
-     	#{list items:filters, as:'filter'}
-      <option value="${filter}">${filter}</option>
+    <select name="particleFilterTypeName">
+     	#{list items:particleFilters, as:'particleFilter'}
+      <option value="${particleFilter}">${particleFilter}</option>
+      #{/list}
+    </select><br>
+    <select name="roadFilterTypeName">
+     	#{list items:roadFilters, as:'roadFilter'}
+      <option value="${roadFilter}">${roadFilter}</option>
       #{/list}
     </select><br>
 	 	<input name="obs_variance_pair" type="text" 

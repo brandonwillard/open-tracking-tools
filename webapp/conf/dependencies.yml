@@ -3,13 +3,17 @@
 require:
     - play
     - play -> ivy 1.0.1
-    - org.openplans -> openplans-tracking-tools 0.0.1-SNAPSHOT 
+    - org.opentripplanner -> opentripplanner-graph-builder 0.7.10 
+    - org.opentripplanner -> opentripplanner-routing 0.7.10 
+    - org.opentripplanner -> opentripplanner-utils 0.7.10 
+    - org.opentrackingtools -> open-tracking-tools-api 0.0.1-SNAPSHOT 
+    - org.opentrackingtools -> open-tracking-tools-otp 0.0.1-SNAPSHOT 
     - gov.sandia.foundry -> gov-sandia-cognition-common-core 3.3.2
     - gov.sandia.foundry -> gov-sandia-cognition-learning-core 3.3.2
     - net.sf.opencsv -> opencsv 2.0
     - com.google.guava -> guava 11.0.1
-    - org.codehaus.jackson -> jackson-core-asl 1.9.5
-    - org.codehaus.jackson -> jackson-mapper-asl 1.9.5
+    - org.codehaus.jackson -> jackson-core-asl 1.9.7
+    - org.codehaus.jackson -> jackson-mapper-asl 1.9.7
     - com.typesafe.akka -> akka-actor 2.0.1
     - com.vividsolutions -> jts 1.12
     - org.geotools -> gt-main 8.0-M4
@@ -19,7 +23,7 @@ require:
 repositories:
     - typesafe:
         type: iBiblio
-        root: "http://repo.typesafe.com/typesafe/releases/"
+        root: "http://repo.akka.io/releases/"
         contains:
             - com.typesafe.akka -> *
     - osgeo:
@@ -30,9 +34,17 @@ repositories:
     - opengeo:
         type: iBiblio
         root: "http://repo.opengeo.org/"
-    - java.net:
+    - codehaus:
         type: iBiblio
-        root: "http://download.java.net/"
+        root: "http://repository.codehaus.org/"
+    - local:
+        type: iBiblio
+        root: "file:${user.home}/.m2/repository/"
         contains:
-            - javax.media -> *
-            - java3d -> *
+            - "*"
+    - scala:
+        type: iBiblio
+        root: "https://oss.sonatype.org/service/local/staging/deploy/maven2"
+        contains:
+            - org.scala-lang -> *
+

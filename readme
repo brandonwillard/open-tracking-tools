@@ -1,7 +1,12 @@
-To build the graph, you need OpenTripPlanner's graph builder and the following command:
- java -Xmx2048m -cp path/to/openplans-tracking-tools.jar:opentripplanner-graph-builder/target/graph-builder.jar org.opentripplanner.graph_builder.GraphBuilderMain cebu-osm.xml
+This library contains a set of tools for tracking objects through GPS data real-time.  
+It contains implementations of Bayesian particle filters for on-road and off-road 2D motion and state-parameter estimation.
 
-JProfiler settings:
+See https://github.com/openplans/openplans-tracking-tools/wiki for a better description of this library.
+
+To build the graph, you need OpenTripPlanner's graph builder and to run a command like:
+ java -Xmx2048m -cp path/to/openplans-tracking-tools.jar:opentripplanner-graph-builder/target/graph-builder.jar org.opentripplanner.graph_builder.GraphBuilderMain osm_data_file.xml
+
+Some useful JProfiler settings are:
  Start Profiling From Classes:
   akka.**
  Profile Only Classes:

@@ -24,23 +24,23 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Queue;
+import java.util.Random;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 import org.apache.log4j.Logger;
-import org.openplans.tools.tracking.impl.Observation;
-import org.openplans.tools.tracking.impl.VehicleState;
-import org.openplans.tools.tracking.impl.VehicleState.VehicleStateInitialParameters;
-import org.openplans.tools.tracking.impl.VehicleStatePerformanceResult;
-import org.openplans.tools.tracking.impl.graph.InferredEdge;
-import org.openplans.tools.tracking.impl.graph.paths.PathEdge;
-import org.openplans.tools.tracking.impl.statistics.filters.AbstractVehicleTrackingFilter;
-import org.openplans.tools.tracking.impl.statistics.filters.FilterInformation;
-import org.openplans.tools.tracking.impl.statistics.filters.VehicleTrackingBootstrapFilter;
-import org.openplans.tools.tracking.impl.statistics.filters.VehicleTrackingFilter;
-import org.openplans.tools.tracking.impl.statistics.filters.VehicleTrackingPLFilter;
-import org.openplans.tools.tracking.impl.util.OtpGraph;
+import org.opentrackingtools.GpsObservation;
+import org.opentrackingtools.graph.InferenceGraph;
+import org.opentrackingtools.graph.edges.InferredEdge;
+import org.opentrackingtools.graph.otp.impl.OtpGraph;
+import org.opentrackingtools.graph.paths.edges.PathEdge;
+import org.opentrackingtools.impl.VehicleState;
+import org.opentrackingtools.impl.VehicleStateInitialParameters;
+import org.opentrackingtools.impl.VehicleStatePerformanceResult;
+import org.opentrackingtools.statistics.filters.vehicles.VehicleTrackingFilter;
+import org.opentrackingtools.statistics.filters.vehicles.impl.FilterInformation;
 
 import com.google.common.base.Stopwatch;
+import com.google.common.collect.ComparisonChain;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableMultimap;
 import com.google.common.collect.Iterables;
@@ -56,7 +56,7 @@ import controllers.Application;
  * @author bwillard
  * 
  */
-public class InferenceInstance {
+public class InferenceInstance implements Comparable<InferenceInstance> {
 
   final Logger log = Logger.getLogger(InferenceInstance.class);
   final public String vehicleId;
@@ -67,7 +67,7 @@ public class InferenceInstance {
 
   public boolean isEnabled = true;
 
-  private VehicleTrackingFilter<Observation, VehicleState> filter;
+  private VehicleTrackingFilter<GpsObservation, VehicleState> filter;
 
   private final Queue<InferenceResultRecord> resultRecords =
       new ConcurrentLinkedQueue<InferenceResultRecord>();
@@ -87,7 +87,7 @@ public class InferenceInstance {
   private static int _collectedPathLength = Integer.MAX_VALUE;
   private static final double _maxUpdateIntervalCutoff = 5d * 60d;
 
-  private static OtpGraph inferredGraph = Api.getGraph();
+  private static InferenceGraph inferredGraph = Api.getGraph();
 
   private final RingAccumulator<MutableDouble> averager =
       new RingAccumulator<MutableDouble>();
@@ -95,14 +95,13 @@ public class InferenceInstance {
   private final Class<? extends VehicleTrackingFilter> filterType;
   
   public InferenceInstance(String vehicleId, VehicleStateInitialParameters simParameters,
-    INFO_LEVEL infoLevel, VehicleStateInitialParameters parameters, 
-    String filterTypeName) {
+    INFO_LEVEL infoLevel, VehicleStateInitialParameters parameters) {
     this.initialParameters = parameters;
     this.simulationParameters = simParameters;
     this.vehicleId = vehicleId;
     this.simSeed = parameters.getSeed();
     this.infoLevel = infoLevel;
-    this.filterType = Application.getFilters().get(filterTypeName);
+    this.filterType = Application.getFilters().get(parameters.getParticleFilterTypeName());
     
     // TODO FIXME: set collect_paths based on infoLevel?
     if (_collectedPathLength > 0) {
@@ -164,7 +163,7 @@ public class InferenceInstance {
     return simulationParameters != null;
   }
 
-  synchronized public void update(Observation obs) {
+  synchronized public void update(GpsObservation obs) {
 
     if (!shouldProcessUpdate(obs))
       return;
@@ -181,7 +180,7 @@ public class InferenceInstance {
     this.resultRecords.add(infResult);
   }
 
-  synchronized public void update(VehicleState actualState, Observation obs,
+  synchronized public void update(VehicleState actualState, GpsObservation obs,
     boolean performInference, boolean updateOffRoad) {
 
     if (!shouldProcessUpdate(obs))
@@ -211,10 +210,10 @@ public class InferenceInstance {
    * also consider resetting the filter.
    * 
    */
-  private boolean shouldProcessUpdate(Observation obs) {
+  private boolean shouldProcessUpdate(GpsObservation obs) {
     if (filter != null) {
       final double timeDiff =
-          filter.getLastProcessedTime() == 0 ? 1d
+          filter.getLastProcessedTime() == null ? 1d
               : (obs.getTimestamp().getTime() - filter.getLastProcessedTime()) / 1000;
   
       if (timeDiff <= 0) {
@@ -237,7 +236,7 @@ public class InferenceInstance {
     return true;
   }
 
-  synchronized private void updateFilter(Observation obs) {
+  synchronized private void updateFilter(GpsObservation obs) {
 
     final Stopwatch watch = new Stopwatch();
     watch.start();
@@ -246,10 +245,16 @@ public class InferenceInstance {
 
       Constructor<? extends VehicleTrackingFilter> ctor;
       try {
-        ctor = filterType.getConstructor(Observation.class, OtpGraph.class,
-            VehicleStateInitialParameters.class, Boolean.class);
+        ctor = filterType.getConstructor(GpsObservation.class, InferenceGraph.class,
+            VehicleStateInitialParameters.class, Boolean.class, Random.class);
+        Random rng;
+        if (initialParameters.getSeed() != 0)
+          rng = new Random(initialParameters.getSeed());
+        else
+          rng = new Random();
+          
         filter = ctor.newInstance(obs, inferredGraph, initialParameters,
-          infoLevel.compareTo(INFO_LEVEL.DEBUG) >= 0);
+          new Boolean(infoLevel.compareTo(INFO_LEVEL.DEBUG) >= 0), rng);
         filter.getRandom().setSeed(simSeed);
         postBelief = filter.createInitialLearnedObject();
       } catch (SecurityException e) {
@@ -277,7 +282,7 @@ public class InferenceInstance {
       }
     }
     
-    if (statePaths != null) {
+    if (statePaths != null && !statePaths.isEmpty()) {
       Map<VehicleState, List<Entry<Long, InferredEdge>>> newPaths = Maps.newHashMap();
       for (VehicleState state : postBelief.getDomain()) {
         List<Entry<Long, InferredEdge>> path = Lists.newArrayList();
@@ -290,15 +295,15 @@ public class InferenceInstance {
          * since we already have that as the old 
          * destination edge.
          */
-        final List<PathEdge> newPath = state.getPath().getEdges();
+        final List<? extends PathEdge> newPath = state.getBelief().getPath().getPathEdges();
         for (PathEdge edge : 
           (path.isEmpty() || (newPath.size() == 1 
-            && Iterables.getOnlyElement(newPath).isEmptyEdge())
-            || Iterables.getLast(path).getValue().isEmptyEdge()) 
+            && Iterables.getOnlyElement(newPath).isNullEdge())
+            || Iterables.getLast(path).getValue().isNullEdge()) 
             ? newPath : Iterables.skip(newPath, 1)) {
           path.add(Maps.immutableEntry(
               new Long(state.getObservation().getTimestamp().getTime()), 
-              edge.getEdge()));
+              edge.getInferredEdge()));
         }
         
         if (_collectedPathLength < path.size())
@@ -321,7 +326,7 @@ public class InferenceInstance {
     
   }
 
-  public static OtpGraph getInferredGraph() {
+  public static InferenceGraph getInferredGraph() {
     return inferredGraph;
   }
 
@@ -363,6 +368,75 @@ public class InferenceInstance {
 
   public static void setCollectedPathLength(int collectedPathLength) {
     InferenceInstance._collectedPathLength = collectedPathLength;
+  }
+
+  @Override
+  public int compareTo(InferenceInstance o) {
+    return ComparisonChain.start()
+        .compare(this.vehicleId, o.vehicleId)
+        .compare(this.initialParameters, o.initialParameters)
+        .compare(this.simulationParameters, o.simulationParameters)
+        .result();
+  }
+
+  @Override
+  public int hashCode() {
+    final int prime = 31;
+    int result = 1;
+    result =
+        prime
+            * result
+            + ((initialParameters == null) ? 0
+                : initialParameters.hashCode());
+    result =
+        prime
+            * result
+            + ((simulationParameters == null) ? 0
+                : simulationParameters.hashCode());
+    result =
+        prime
+            * result
+            + ((vehicleId == null) ? 0 : vehicleId
+                .hashCode());
+    return result;
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj) {
+      return true;
+    }
+    if (obj == null) {
+      return false;
+    }
+    if (getClass() != obj.getClass()) {
+      return false;
+    }
+    InferenceInstance other = (InferenceInstance) obj;
+    if (initialParameters == null) {
+      if (other.initialParameters != null) {
+        return false;
+      }
+    } else if (!initialParameters
+        .equals(other.initialParameters)) {
+      return false;
+    }
+    if (simulationParameters == null) {
+      if (other.simulationParameters != null) {
+        return false;
+      }
+    } else if (!simulationParameters
+        .equals(other.simulationParameters)) {
+      return false;
+    }
+    if (vehicleId == null) {
+      if (other.vehicleId != null) {
+        return false;
+      }
+    } else if (!vehicleId.equals(other.vehicleId)) {
+      return false;
+    }
+    return true;
   }
 
 }

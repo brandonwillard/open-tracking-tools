@@ -1,7 +1,8 @@
 package inference;
 
 import org.codehaus.jackson.map.annotate.JsonSerialize;
-import org.openplans.tools.tracking.impl.graph.InferredEdge;
+import org.opentrackingtools.graph.edges.InferredEdge;
+import org.opentrackingtools.graph.edges.impl.SimpleInferredEdge;
 
 import api.OsmSegment;
 
@@ -11,12 +12,12 @@ public class OsmSegmentWithVelocity extends OsmSegment {
 
   private final Double velocity;
 
-  public OsmSegmentWithVelocity(InferredEdge edge, Double mean) {
-    super(edge);
+  public OsmSegmentWithVelocity(InferredEdge inferredEdge, Double mean) {
+    super(inferredEdge);
     this.velocity = mean;
   }
 
-  public OsmSegmentWithVelocity(Integer i, Geometry g, String name,
+  public OsmSegmentWithVelocity(String i, Geometry g, String name,
     Double mean) {
     super(i, g, name);
     this.velocity = mean;

@@ -1,7 +1,9 @@
 package api;
 
 import org.codehaus.jackson.map.annotate.JsonSerialize;
-import org.openplans.tools.tracking.impl.graph.InferredEdge;
+import org.opentrackingtools.graph.edges.InferredEdge;
+import org.opentrackingtools.graph.edges.impl.SimpleInferredEdge;
+import org.opentripplanner.routing.graph.Edge;
 
 import utils.GeoJSONSerializer;
 
@@ -14,19 +16,21 @@ public class OsmSegment {
   private final static double OFFSET = 2;
   private static GeometryFactory gf = new GeometryFactory();
     
-  private final int id;
+  private final String id;
   private final Geometry geom;
   private final Double angle;
   private final String name;
   private final Double length;
   
   public OsmSegment(InferredEdge edge) {
-    this(edge.getEdgeId() != null ? edge.getEdgeId() : -1, 
-        edge.isEmptyEdge() ? null : edge.getGeometry(), 
-        edge.isEmptyEdge() ? "empty" : edge.getEdge().getName());
+    this(edge.getEdgeId() != null ? edge.getEdgeId() : "none", 
+        edge.isNullEdge() ? null : edge.getGeometry(), 
+        (!(edge.getBackingEdge() instanceof Edge) ||
+          edge.isNullEdge()) ? "no name" : 
+            ((Edge)edge.getBackingEdge()).getName());
   }
 
-  public OsmSegment(Integer i, Geometry g, String name) {
+  public OsmSegment(String string, Geometry g, String name) {
     if (g != null) {
       final int points = g.getCoordinates().length;
       this.angle =
@@ -39,7 +43,7 @@ public class OsmSegment {
       this.angle = null;
       this.length = null;
     }
-    this.id = i;
+    this.id = string;
 //    this.geom = offset(g);
     this.geom = g;
     this.name = name;
@@ -71,7 +75,7 @@ public class OsmSegment {
       return newGeom;
   }
 
-@JsonSerialize
+  @JsonSerialize
   public Double getAngle() {
     return angle;
   }
@@ -82,7 +86,7 @@ public class OsmSegment {
   }
 
   @JsonSerialize
-  public int getId() {
+  public String getId() {
     return id;
   }
 

@@ -20,15 +20,17 @@ import models.InferenceInstance;
 
 import org.codehaus.jackson.annotate.JsonIgnore;
 import org.codehaus.jackson.map.annotate.JsonSerialize;
-import org.openplans.tools.tracking.impl.Observation;
-import org.openplans.tools.tracking.impl.VehicleState;
-import org.openplans.tools.tracking.impl.graph.InferredEdge;
-import org.openplans.tools.tracking.impl.graph.paths.InferredPath;
-import org.openplans.tools.tracking.impl.graph.paths.PathEdge;
-import org.openplans.tools.tracking.impl.statistics.DefaultCountedDataDistribution;
-import org.openplans.tools.tracking.impl.statistics.filters.AbstractRoadTrackingFilter;
-import org.openplans.tools.tracking.impl.util.GeoUtils;
-import org.openplans.tools.tracking.impl.util.ProjectedCoordinate;
+import org.opentrackingtools.GpsObservation;
+import org.opentrackingtools.graph.edges.InferredEdge;
+import org.opentrackingtools.graph.edges.impl.SimpleInferredEdge;
+import org.opentrackingtools.graph.otp.impl.OtpInferredEdge;
+import org.opentrackingtools.graph.paths.InferredPath;
+import org.opentrackingtools.graph.paths.edges.PathEdge;
+import org.opentrackingtools.impl.VehicleState;
+import org.opentrackingtools.statistics.distributions.impl.DefaultCountedDataDistribution;
+import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
+import org.opentrackingtools.util.GeoUtils;
+import org.opentrackingtools.util.geom.ProjectedCoordinate;
 import org.opentripplanner.routing.graph.Edge;
 
 import api.OsmSegment;
@@ -48,9 +50,9 @@ public class InferenceResultRecord {
 
   private final ProjectedCoordinate observedPoint;
 
-  private final InferenceResultSet actualResults;
+  private final ResultSet actualResults;
 
-  private final InferenceResultSet infResults;
+  private final ResultSet infResults;
 
   private final DataDistribution<VehicleState> postDistribution;
 
@@ -110,8 +112,8 @@ public class InferenceResultRecord {
   }
 
   public static InferenceResultRecord createInferenceResultRecord(
-    Observation observation, InferenceInstance inferenceInstance) {
-    return createInferenceResultRecord(observation,
+    GpsObservation obs, InferenceInstance inferenceInstance) {
+    return createInferenceResultRecord(obs,
         inferenceInstance,
         null,
         inferenceInstance.getBestState(),
@@ -121,21 +123,21 @@ public class InferenceResultRecord {
   }
 
   public static InferenceResultRecord createInferenceResultRecord(
-    Observation observation, InferenceInstance instance,
+    GpsObservation observationFactory, InferenceInstance instance,
     VehicleState actualState, VehicleState inferredState,
     DataDistribution<VehicleState> postDist,
     DataDistribution<VehicleState> priorDist) {
-    return createInferenceResultRecord(observation, instance, actualState, 
+    return createInferenceResultRecord(observationFactory, instance, actualState, 
         inferredState, postDist, priorDist, true);
   }
   
   public static InferenceResultRecord createInferenceResultRecord(
-    Observation observation, InferenceInstance instance,
+    GpsObservation observationFactory, InferenceInstance instance,
     VehicleState actualState, VehicleState inferredState,
     DataDistribution<VehicleState> postDist,
     DataDistribution<VehicleState> priorDist, boolean updateOffRoad) {
 
-    Preconditions.checkNotNull(observation);
+    Preconditions.checkNotNull(observationFactory);
 
     ResultSet actualResults = null;
     if (actualState != null) {
@@ -155,8 +157,8 @@ public class InferenceResultRecord {
     /*
      * XXX distributions are cloned, if given.
      */
-    return new InferenceResultRecord(instance, observation.getTimestamp()
-        .getTime(), observation.getObsPoint(), actualResults,
+    return new InferenceResultRecord(instance, observationFactory.getTimestamp()
+        .getTime(), observationFactory.getObsProjected(), actualResults,
         infResults, postDist != null ? postDist.clone() : null,
         priorDist != null ? priorDist.clone() : null);
 
@@ -196,8 +198,8 @@ public class InferenceResultRecord {
         }
         
         VehicleState parentState = state.getParentState();
-        if (state.getPath().isEmptyPath()) {
-          if (parentState != null && parentState.getPath().isEmptyPath()
+        if (state.getBelief().getPath().isNullPath()) {
+          if (parentState != null && parentState.getBelief().getPath().isNullPath()
               // FIXME below shouldn't be true!
               && !previousOffRoadPaths.isEmpty()) {
             /*
@@ -223,14 +225,14 @@ public class InferenceResultRecord {
             OffRoadPath newPath = new OffRoadPath();
             newPath.setStartObs(state.getObservation());
             
-            InferredEdge parentStateEdge = parentState != null ? parentState.getEdge() : null;
+            InferredEdge parentStateEdge = parentState != null ? parentState.getBelief().getEdge().getInferredEdge() : null;
             newPath.setStartEdge(parentStateEdge != null ? new OsmSegment(parentStateEdge) : null);
             newPath.setPointsBetween(coordList);
             previousOffRoadPaths.add(newPath);
             
           }
           
-        } else if (parentState != null && parentState.getPath().isEmptyPath()){
+        } else if (parentState != null && parentState.getBelief().getPath().isNullPath()){
           /*
            * We just finished our off-road path.
            * There should be a previousPath...
@@ -238,9 +240,15 @@ public class InferenceResultRecord {
           OffRoadPath previousPath = new OffRoadPath(Iterables.getLast(previousOffRoadPaths)); 
           previousPath.getPointsBetween().add(GeoUtils.makeCoordinate(
               state.getMeanLocation()));
-          previousPath.setEndEdge(new OsmSegment(state.getEdge().getEdgeId(), 
-                  state.getEdge().getGeometry(), 
-                  state.getEdge().getEdge().getName()));
+          PathEdge edge = state.getBelief().getEdge();
+          String edgeName = null;
+          if (edge.getInferredEdge().getBackingEdge() instanceof Edge) {
+            edgeName = ((Edge) edge.getInferredEdge().getBackingEdge()).getName();
+          }
+          previousPath.setEndEdge(
+              new OsmSegment(edge.getInferredEdge().getEdgeId(), 
+                  edge.getGeometry(), 
+                  edgeName));
           previousPath.setEndObs(state.getObservation());
           /*
            * Replace the last entry
@@ -278,28 +286,18 @@ public class InferenceResultRecord {
      * (or edge?  seems unlikely).
      */
     final VehicleState cloneState = state.clone();
-    final Boolean isBackward = cloneState.getPath().getIsBackward();
-    final PathEdge currentEdge =
-        PathEdge.getEdge(cloneState.getInferredEdge(), 0d, isBackward);
-    final MultivariateGaussian gbelief =
-        cloneState.getBelief().clone();
+    final Boolean isBackward = cloneState.getBelief().getPath().isBackward();
+    final PathEdge currentEdge = cloneState.getBelief().getEdge();
+    final MultivariateGaussian gbelief = cloneState.getBelief().getGroundBelief();
     final Matrix O =
         AbstractRoadTrackingFilter.getGroundObservationMatrix();
     final Vector mean;
     final Vector minorAxis;
     final Vector majorAxis;
 
-    if (!gbelief.getCovariance().isZero()) {
-      AbstractRoadTrackingFilter.convertToGroundBelief(gbelief,
-          currentEdge, true);
-    } else {
-      gbelief.setMean(AbstractRoadTrackingFilter.convertToGroundState(gbelief.getMean(),
-          currentEdge, true));
-    }
-      
     mean = O.times(gbelief.getMean().clone());
 
-    if (currentEdge.isEmptyEdge()
+    if (currentEdge.isNullEdge()
         && !gbelief.getCovariance().isZero()) {
       /*-
        * TODO only implemented for off-road
@@ -340,15 +338,21 @@ public class InferenceResultRecord {
     final List<OsmSegmentWithVelocity> pathSegmentIds =
         Lists.newArrayList();
     Double pathDirection = null;
-    final InferredPath path = cloneState.getPath();
+    final InferredPath path = cloneState.getBelief().getPath();
     if (path.getTotalPathDistance() != null)
       pathDirection = path.getTotalPathDistance() > 0d ? 1d : -1d;
-    for (final PathEdge edge : path.getEdges()) {
-      if (edge.isEmptyEdge())
+    for (final PathEdge edge : path.getPathEdges()) {
+      if (edge.isNullEdge())
         continue;
-      final double edgeMean =
-          edge.getInferredEdge().getVelocityPrecisionDist()
-              .getLocation();
+      
+      final double edgeMean; 
+      if (edge.getInferredEdge() instanceof OtpInferredEdge)
+        edgeMean =
+        ((OtpInferredEdge)
+            edge.getInferredEdge()).getVelocityPrecisionDist()
+                .getLocation();
+      else
+        edgeMean = Double.NaN;
 
       final OsmSegmentWithVelocity osmSegment =
           new OsmSegmentWithVelocity(edge.getInferredEdge(), edgeMean);

@@ -1,11 +1,12 @@
 package inference;
 
 import inference.InferenceService.INFO_LEVEL;
-import models.InferenceInstance;
 
-import org.openplans.tools.tracking.impl.Simulation;
-import org.openplans.tools.tracking.impl.VehicleState;
-import org.openplans.tools.tracking.impl.statistics.filters.VehicleTrackingBootstrapFilter;
+import org.opentrackingtools.impl.Simulation;
+import org.opentrackingtools.impl.VehicleState;
+import org.opentrackingtools.statistics.filters.vehicles.impl.VehicleTrackingBootstrapFilter;
+
+import models.InferenceInstance;
 
 import play.Logger;
 import akka.actor.UntypedActor;
@@ -28,7 +29,7 @@ public class SimulationActor extends UntypedActor {
     // TODO info level should be a parameter
     this.instance =
         InferenceService.getOrCreateInferenceInstance(
-            sim.getSimulationName(), sim.getInfParameters(), sim.getFilterTypeName(), 
+            sim.getSimulationName(), sim.getInfParameters(), 
             sim.getSimParameters().getStateParams(),
             INFO_LEVEL.DEBUG);
 
