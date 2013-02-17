@@ -303,7 +303,8 @@ public class GenericJTSGraph implements InferenceGraph {
     // TODO debug; remove.
     if (obs instanceof TrueObservation) {
       final VehicleState trueState = ((TrueObservation)obs).getTrueState();
-      if (fromState.getBelief().getEdge().getInferredEdge()
+      if (!trueState.getBelief().getPath().isNullPath() && 
+          fromState.getBelief().getEdge().getInferredEdge()
             .equals(
                 Iterables.getFirst(trueState.getBelief().getPath().getPathEdges(), null).
                 getInferredEdge())

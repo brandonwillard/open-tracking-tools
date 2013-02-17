@@ -50,7 +50,7 @@ public class GeoJSONSerializer extends JsonSerializer<Geometry> {
     }
 
     final GeometryJSON json = new GeometryJSON();
-    final Coordinate refLatLon = (Coordinate)value.getUserData();
+    final Coordinate refLatLon = ((Geometry)value.getUserData()).getCoordinate();
     MathTransform transform = GeoUtils.getTransform(refLatLon);
     final Geometry transformed = GeoUtils.invertGeom(value, transform);
     jgen.writeRawValue(json.toString(transformed));

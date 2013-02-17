@@ -15,7 +15,7 @@ import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 
 /**
  * 
- * Truncated when on-road, not when off.
+ * Truncated velocities when on-road, not when off.
  * 
  * @author bwillard
  *
@@ -24,8 +24,8 @@ public class TruncatedRoadGaussian extends AdjMultivariateGaussian {
 
   private static final long serialVersionUID = -7465667744835664792L;
 
-  protected double upper = Double.POSITIVE_INFINITY;
-  protected double lower = Double.NEGATIVE_INFINITY;
+  protected double velocityUpper = Double.POSITIVE_INFINITY;
+  protected double velocityLower = Double.NEGATIVE_INFINITY;
   protected TruncatedDist truncDist;
   
   public TruncatedRoadGaussian() {
@@ -36,20 +36,21 @@ public class TruncatedRoadGaussian extends AdjMultivariateGaussian {
     Preconditions.checkArgument(other.getInputDimensionality() == 2
         || other.getInputDimensionality() == 4);
     Preconditions.checkArgument(upper > lower);
-    this.upper = upper;
-    this.lower = lower;
+    this.velocityUpper = upper;
+    this.velocityLower = lower;
     this.setMean(truncateVector(this.getMean()));
   }
 
-  public TruncatedRoadGaussian(Vector mean, Matrix covariance, double upper, double lower) {
+  public TruncatedRoadGaussian(Vector mean, Matrix covariance, 
+    double velocityUpper, double velocityLower) {
     super(mean, covariance);
-    Preconditions.checkArgument(upper > lower);
+    Preconditions.checkArgument(velocityUpper > velocityLower);
     Preconditions.checkArgument(mean.getDimensionality() == 2 ||
         mean.getDimensionality() == 4);
     Preconditions.checkArgument(covariance.getNumColumns() == 2 ||
         covariance.getNumColumns() == 4);
-    this.upper = upper;
-    this.lower = lower;
+    this.velocityUpper = velocityUpper;
+    this.velocityLower = velocityLower;
     this.setMean(truncateVector(this.getMean()));
   }
 
@@ -61,14 +62,9 @@ public class TruncatedRoadGaussian extends AdjMultivariateGaussian {
   protected Vector truncateVector(Vector mean) {
     if (mean.getDimensionality() == 2) {
       final Vector adjMean = mean.clone();
-      for (VectorEntry entry : adjMean) {
-        final double lowerVal = lower;
-        if (entry.getValue() < lowerVal)
-          entry.setValue(lowerVal);
-        final double upperVal = upper;
-        if (entry.getValue() > upperVal)
-          entry.setValue(upperVal);
-      }
+      adjMean.setElement(1, 
+          Math.min(velocityUpper, 
+              Math.max(velocityLower, adjMean.getElement(1))));
       return adjMean;
     } 
     return mean;
@@ -120,7 +116,7 @@ public class TruncatedRoadGaussian extends AdjMultivariateGaussian {
       int dim = this.getMean().getDimensionality();
       if (this.truncDist == null) {
         this.truncDist = new TruncatedDist(new NormalDist(this.getMean().getElement(dim - 1), 
-           Math.sqrt(this.getCovariance().getElement(dim - 1, dim - 1))), lower, upper);
+           Math.sqrt(this.getCovariance().getElement(dim - 1, dim - 1))), velocityLower, velocityUpper);
       }
       final double truncSmpl = this.truncDist.inverseF(random.nextDouble());
       sample.setElement(dim - 1, truncSmpl);

@@ -16,8 +16,10 @@ require:
     - org.codehaus.jackson -> jackson-mapper-asl 1.9.7
     - com.typesafe.akka -> akka-actor 2.0.1
     - com.vividsolutions -> jts 1.12
-    - org.geotools -> gt-main 8.0-M4
-    - org.geotools -> gt-geojson 8.0-M4
+    - org.geotools -> gt-main 9.0-M0
+    - org.geotools -> gt-graph 9.0-M0
+    - org.geotools -> gt-grid 9.0-M0
+    - org.geotools -> gt-geojson 9.0-M0
     - com.jhlabs -> javaproj 1.0
 
 repositories:

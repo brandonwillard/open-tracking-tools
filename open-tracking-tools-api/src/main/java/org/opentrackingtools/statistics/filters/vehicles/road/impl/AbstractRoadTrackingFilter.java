@@ -429,18 +429,8 @@ public abstract class AbstractRoadTrackingFilter
     final int dim = state.getDimensionality();
     final Matrix cov = dim == 4 ? this.getQg() : this.getQr();
     
-    /*
-     * Do this so that we are somewhat distribution
-     * agnostic.
-     */
-    final MultivariateGaussian sampler = 
-        dim == 4 ? this.groundFilter.createInitialLearnedObject()
-            : this.roadFilter.createInitialLearnedObject();
-    sampler.setMean(VectorFactory.getDefault().createVector(
-       cov.getNumColumns()));
-    sampler.setCovariance(cov);
-        
-    final Vector qSmpl = sampler.sample(rng);
+    final Vector qSmpl = MultivariateGaussian.sample(VectorFactory.getDefault().createVector(
+       cov.getNumColumns()), cov, rng);
     
     final Matrix covFactor = this.getCovarianceFactor(dim == 2);
     final Vector error = covFactor.times(qSmpl);

@@ -5,6 +5,8 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 import org.testng.AssertJUnit;
 import org.testng.internal.junit.ArrayAsserts;
+import org.apache.log4j.Level;
+import org.apache.log4j.Logger;
 import org.geotools.factory.FactoryRegistryException;
 import org.geotools.referencing.operation.projection.ProjectionException;
 
@@ -15,10 +17,8 @@ import java.util.Date;
 import java.util.List;
 import java.util.Random;
 
-
-
-
-
+import gov.sandia.cognition.math.MutableDouble;
+import gov.sandia.cognition.math.RingAccumulator;
 import gov.sandia.cognition.math.matrix.Matrix;
 import gov.sandia.cognition.math.matrix.MatrixFactory;
 import gov.sandia.cognition.math.matrix.Vector;
@@ -46,10 +46,13 @@ import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadT
 import org.opentrackingtools.util.TrueObservation;
 import org.opentrackingtools.GpsObservation;
 
+import com.google.common.base.Stopwatch;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.LineString;
 
 public class RoadTrackingFilterGraphTest {
+  
+  final Logger log = Logger.getLogger(RoadTrackingFilterGraphTest.class);
   
   private InferenceGraph graph;
   private Coordinate startCoord;
@@ -63,6 +66,8 @@ public class RoadTrackingFilterGraphTest {
   
   @BeforeTest
   public void setUp() throws NoSuchAuthorityCodeException, FactoryRegistryException, FactoryException, IOException {
+    
+    log.setLevel(Level.DEBUG);
     
     startCoord = new Coordinate(40.7549, -73.97749);
     
@@ -87,68 +92,57 @@ public class RoadTrackingFilterGraphTest {
         new VehicleStateInitialParameters(VectorFactory
             .getDefault().createVector2D(70d, 70d), 20,
             VectorFactory.getDefault().createVector1D(
-                6.25e-4), 30, VectorFactory.getDefault()
-                .createVector2D(6.25e-4, 6.25e-4), 20,
-            VectorFactory.getDefault().createVector2D(1d,
-                Double.MAX_VALUE), VectorFactory.getDefault()
-                .createVector2D(Double.MAX_VALUE, 1d),
-            VehicleTrackingPLFilter.class.getName(), 
-            ForwardMovingRoadTrackingFilter.class.getName(), 
-            25, 15, 2159585l),
-        new VehicleStateInitialParameters(VectorFactory
-            .getDefault().createVector2D(70d, 70d), 20,
-            VectorFactory.getDefault().createVector1D(
-                6.25e-4), 30, VectorFactory.getDefault()
+                6.25e-4), 20, VectorFactory.getDefault()
                 .createVector2D(6.25e-4, 6.25e-4), 20,
             VectorFactory.getDefault().createVector2D(1d,
                 Double.MAX_VALUE), VectorFactory.getDefault()
                 .createVector2D(Double.MAX_VALUE, 1d),
             VehicleTrackingPLFilter.class.getName(), 
             ErrorEstimatingRoadTrackingFilter.class.getName(), 
-            25, 15, 2159585l),
+            25, 30, 2159585l),
+        new VehicleStateInitialParameters(VectorFactory
+            .getDefault().createVector2D(70d, 70d), 20,
+            VectorFactory.getDefault().createVector1D(
+                6.25e-4), 20, VectorFactory.getDefault()
+                .createVector2D(6.25e-4, 6.25e-4), 20,
+            VectorFactory.getDefault().createVector2D(1d,
+                Double.MAX_VALUE), VectorFactory.getDefault()
+                .createVector2D(Double.MAX_VALUE, 1d),
+            VehicleTrackingPLFilter.class.getName(), 
+            ErrorEstimatingRoadTrackingFilter.class.getName(), 
+            25, 30, 2159585l),
         Boolean.FALSE,
-        66000
+        36000
         }
-//        , {
-//          /*
-//           * Ground only
-//           */
-//        new VehicleStateInitialParameters(VectorFactory
-//            .getDefault().createVector2D(100d, 100d), 20,
-//            VectorFactory.getDefault().createVector1D(
-//                6.25e-4), 30, VectorFactory.getDefault()
-//                .createVector2D(6.25e-5, 6.25e-5), 20,
-//            VectorFactory.getDefault().createVector2D(
-//                Double.MAX_VALUE, 1d), 
-//            VectorFactory.getDefault().createVector2D(
-//                1d, Double.MAX_VALUE),
-//            VehicleTrackingPLFilter.class.getName(), 
-//            ForwardMovingRoadTrackingFilter.class.getName(), 
-//            25,
-//            10, 215955l),
-//        Boolean.FALSE,
-//        66000
-//        }, 
-//        {
-//          /*
-//           * Mixed 
-//           */
-//        new VehicleStateInitialParameters(VectorFactory
-//            .getDefault().createVector2D(100d, 100d), 20,
-//            VectorFactory.getDefault().createVector1D(
-//                6.25e-4), 30, VectorFactory.getDefault()
-//                .createVector2D(6.25e-4, 6.25e-4), 20,
-//            VectorFactory.getDefault().createVector2D(
-//                1d, 1d), 
-//            VectorFactory.getDefault().createVector2D(
-//                1d, 1d),
-//            VehicleTrackingPLFilter.class.getName(), 
-//            ForwardMovingRoadTrackingFilter.class.getName(), 
-//            25,
-//            15, 21595857l), 
-//        Boolean.TRUE,
-//        46000
-//        }
+        ,{
+          /*
+           * Mixed 
+           */
+        new VehicleStateInitialParameters(VectorFactory
+            .getDefault().createVector2D(70d, 70d), 20,
+            VectorFactory.getDefault().createVector1D(
+                6.25e-4), 20, VectorFactory.getDefault()
+                .createVector2D(6.25e-4, 6.25e-4), 20,
+            VectorFactory.getDefault().createVector2D(0.5d,
+                0.5d), VectorFactory.getDefault()
+                .createVector2D(0.5d, 0.5d),
+            VehicleTrackingPLFilter.class.getName(), 
+            ErrorEstimatingRoadTrackingFilter.class.getName(), 
+            25, 30, 2159585l),
+        new VehicleStateInitialParameters(VectorFactory
+            .getDefault().createVector2D(70d, 70d), 20,
+            VectorFactory.getDefault().createVector1D(
+                6.25e-4), 20, VectorFactory.getDefault()
+                .createVector2D(6.25e-4, 6.25e-4), 20,
+            VectorFactory.getDefault().createVector2D(70d,
+                30d), VectorFactory.getDefault()
+                .createVector2D(30d, 70d),
+            VehicleTrackingPLFilter.class.getName(), 
+            ErrorEstimatingRoadTrackingFilter.class.getName(), 
+            25, 30, 2159585l),
+        Boolean.FALSE,
+        36000
+        }
     };
   }
   
@@ -204,6 +198,10 @@ public class RoadTrackingFilterGraphTest {
     final MultivariateGaussian.SufficientStatistic transitionsSS =
         new MultivariateGaussian.SufficientStatistic();
     
+    final RingAccumulator<MutableDouble> averager =
+        new RingAccumulator<MutableDouble>();
+    final Stopwatch watch = new Stopwatch();
+    
     final long approxRuns = sim.getSimParameters().getDuration()/
         sim.getSimParameters().getFrequency();
     
@@ -223,9 +221,20 @@ public class RoadTrackingFilterGraphTest {
           }
         }
     
+        watch.reset();
+        watch.start();
+        
         filter.update(vehicleStateDist, 
             new TrueObservation(trueVehicleState.getObservation(), 
                 trueVehicleState));
+        
+        watch.stop();
+        averager.accumulate(new MutableDouble(watch.elapsedMillis()));
+        
+        if (averager.getCount() > 1 && averager.getCount() % 20 == 0)
+          log.info("avg. records per sec = " + 1000d
+              / averager.getMean().value);
+
         
         updateAndCheckStats(vehicleStateDist, trueVehicleState, obsErrorSS, stateErrorSS, 
             obsCovErrorSS, onRoadCovErrorSS, offRoadCovErrorSS, transitionsSS, 
@@ -236,7 +245,7 @@ public class RoadTrackingFilterGraphTest {
         trueVehicleState = resetState(trueVehicleState);
 //        if (vehicleState.getParentState() != null)
 //          vehicleState.setParentState(resetState(vehicleState.getParentState()));
-        System.out.println("Outside of projection!  Flipped state velocities");
+        log.warn("Outside of projection!  Flipped state velocities");
       }
       
     } while (time < sim.getSimParameters().getEndTime().getTime());
@@ -322,8 +331,8 @@ public class RoadTrackingFilterGraphTest {
       
     }
       
-    System.out.println("truePathsFound=" + truePathsFound);
-    System.out.println("numOnTrueEdges=" + numOnTrueEdge);
+    log.debug("truePathsFound=" + truePathsFound);
+    log.debug("numOnTrueEdges=" + numOnTrueEdge);
       
     final Vector obsError = trueVehicleState.getObservation().getProjectedPoint().
         minus(AbstractRoadTrackingFilter.getOg().times(stateMeanStat.getMean()));
@@ -349,12 +358,12 @@ public class RoadTrackingFilterGraphTest {
           trueVehicleState.getMovementFilter().getOffRoadStateTransCovar().convertToVector());
     }
     
-    System.out.println("obsError=" + obsError);
-    System.out.println("stateError=" + stateError);
+    log.debug("obsError=" + obsError);
+    log.debug("stateError=" + stateError);
     if (hasPriorOnVariances) {
-      System.out.println("obsCovMean=" + obsCovMeanStat.getMean());
-      System.out.println("onRoadCovMean=" + onRoadCovStat.getMean());
-  //    System.out.println("offRoadCovMean=" + offRoadCovStat.getMean());
+      log.debug("obsCovMean=" + obsCovMeanStat.getMean());
+      log.debug("onRoadCovMean=" + onRoadCovStat.getMean());
+  //    log.debug("offRoadCovMean=" + offRoadCovStat.getMean());
     }
     
     if (transitionStat.getMean() != null) {
@@ -364,7 +373,7 @@ public class RoadTrackingFilterGraphTest {
               getFreeMotionTransPrior().getMean());
       
       transitionsSS.update(transitionStat.getMean().minus(trueTransProbs));
-//      System.out.println("transitionMean=" + transitionStat.getMean());
+//     log.debug("transitionMean=" + transitionStat.getMean());
     }
     
     obsErrorSS.update(obsError);
@@ -374,12 +383,12 @@ public class RoadTrackingFilterGraphTest {
     offRoadCovErrorSS.update(offRoadCovError);
       
     if (!hasPriorOnVariances) {
-      System.out.println("obsErrorSS=" + obsErrorSS.getMean());
-      System.out.println("stateErrorSS=" + stateErrorSS.getMean());
-//      System.out.println("obsCovErrorSS=" + obsCovErrorSS.getMean());
-//      System.out.println("onRoadCovErrorSS=" + onRoadCovErrorSS.getMean());
-//      System.out.println("offRoadCovErrorSS=" + offRoadCovErrorSS.getMean());
-//      System.out.println("transitionErrorSS=" + transitionsSS.getMean());
+      log.debug("obsErrorSS=" + obsErrorSS.getMean());
+      log.debug("stateErrorSS=" + stateErrorSS.getMean());
+//      log.debug("obsCovErrorSS=" + obsCovErrorSS.getMean());
+//      log.debug("onRoadCovErrorSS=" + onRoadCovErrorSS.getMean());
+//      log.debug("offRoadCovErrorSS=" + offRoadCovErrorSS.getMean());
+//      log.debug("transitionErrorSS=" + transitionsSS.getMean());
     }
     
     final long approxRuns = sim.getSimParameters().getDuration()/
@@ -405,9 +414,11 @@ public class RoadTrackingFilterGraphTest {
               AbstractRoadTrackingFilter.getVr().times(stateErrorSS.getMean()).getElement(0));
       final Matrix trueV = trueVehicleState.getBelief().isOnRoad() ?
           AbstractRoadTrackingFilter.getVr() : AbstractRoadTrackingFilter.getVg();
+      final Matrix trueTransCov = trueVehicleState.getBelief().isOnRoad() ?
+          trueVehicleState.getMovementFilter().getOnRoadStateTransCovar() :
+            trueVehicleState.getMovementFilter().getOffRoadStateTransCovar();
       final double trueVelCovTol = 
-          Math.sqrt(trueV.times(
-            trueVehicleState.getMovementFilter().getOnRoadStateTransCovar()).times(
+          Math.sqrt(trueV.times(trueTransCov).times(
                 trueV.transpose()).normFrobenius());
       
       ArrayAsserts.assertArrayEquals(VectorFactory.getDefault().createVector(

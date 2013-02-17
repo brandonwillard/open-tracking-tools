@@ -90,25 +90,25 @@ public class Api extends Controller {
   public static final SimpleDateFormat sdf = new SimpleDateFormat(
       "yyyy-MM-dd hh:mm:ss");
 
-  public static InferenceGraph graph
-    = new OtpGraph(
-        Play.configuration.getProperty("application.graphPath"), null);
+  public static InferenceGraph graph;
+//    = new OtpGraph(
+//        Play.configuration.getProperty("application.graphPath"), null);
   
-//  static {
-//      
-//    try {
-//      graph = new GenericJTSGraph(TrackingTestUtils.createGridGraph(
-//          new Coordinate(40.7549, -73.97749)));
-//    } catch (NoSuchAuthorityCodeException e) {
-//      e.printStackTrace();
-//    } catch (FactoryRegistryException e) {
-//      e.printStackTrace();
-//    } catch (IOException e) {
-//      e.printStackTrace();
-//    } catch (FactoryException e) {
-//      e.printStackTrace();
-//    }
-//  }
+  static {
+      
+    try {
+      graph = new GenericJTSGraph(TrackingTestUtils.createGridGraph(
+          new Coordinate(40.7549, -73.97749)));
+    } catch (NoSuchAuthorityCodeException e) {
+      e.printStackTrace();
+    } catch (FactoryRegistryException e) {
+      e.printStackTrace();
+    } catch (IOException e) {
+      e.printStackTrace();
+    } catch (FactoryException e) {
+      e.printStackTrace();
+    }
+  }
 
   public static void getPathBetween(String lat1, String lon1, String lat2, String lon2)
       throws JsonGenerationException, JsonMappingException,
