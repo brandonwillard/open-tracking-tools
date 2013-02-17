@@ -1,14 +1,19 @@
 This library contains a set of tools for tracking objects through GPS data real-time.  
-It contains implementations of Bayesian particle filters for on-road and off-road 2D motion and state-parameter estimation.
+Specifically, it contains implementations of Bayesian particle filters for on-road and off-road 2D 
+motion and state-parameter estimation.
 
-See https://github.com/openplans/openplans-tracking-tools/wiki for a better description of this library.
+The generic api uses a graph and some observations to produce sequential filtered results, which infer the
+true location, velocity, their variances, the street it's on/the path it took.  Extensions in this library include
+the ability to estimate parameters, like GPS and acceleration errors.
+See https://github.com/openplans/open-tracking-tools/wiki for a better description.
 
-To build the graph, you need OpenTripPlanner's graph builder and to run a command like:
- java -Xmx2048m -cp path/to/openplans-tracking-tools.jar:opentripplanner-graph-builder/target/graph-builder.jar org.opentripplanner.graph_builder.GraphBuilderMain osm_data_file.xml
+To get started, you can build an OpenTripPlanner graph by specifying coordinate boundaries for OpenStreetMap data, then
+running the TraceRunner in open-tracking-tools-otp over a CSV file.  (See https://github.com/openplans/OpenTripPlanner/wiki/GraphBuilder for more
+information about OTP graph building.)  An example xml build file for an OTP graph can be found in the
+open-tracking-tools-otp project, as well as an example TraceRunner config file.
 
-Some useful JProfiler settings are:
- Start Profiling From Classes:
-  akka.**
- Profile Only Classes:
-  org.openplans.*, models.*, inference.*, com.google.common.cache.*, gov.sandia.cognition.*, 
-  no.uib.cipr.matrix.*, com.vividsolutions.jts.*
+Another example of a graph is GenericJTSGraph.java, which takes simple JTS geometry objects.
+
+There is also a simulator that will produce observations for testing.  See RoadTrackingGraphFilterTest.java for
+a complete example of graph construction, simulation and filtering. 
+
