@@ -18,12 +18,12 @@ import org.opentrackingtools.graph.paths.InferredPath;
 import org.opentrackingtools.graph.paths.edges.PathEdge;
 import org.opentrackingtools.graph.paths.edges.impl.EdgePredictiveResults;
 import org.opentrackingtools.graph.paths.states.PathState;
-import org.opentrackingtools.graph.paths.states.PathStateBelief;
 import org.opentrackingtools.impl.VehicleState;
-import org.opentrackingtools.statistics.filters.vehicles.VehicleTrackingFilter;
+import org.opentrackingtools.statistics.distributions.PathStateDistribution;
+import org.opentrackingtools.statistics.estimators.vehicles.impl.AbstractRoadTrackingEstimator;
+import org.opentrackingtools.statistics.estimators.vehicles.impl.CovarianceRoadTrackingEstimator;
+import org.opentrackingtools.statistics.filters.vehicles.VehicleStateFilter;
 import org.opentrackingtools.statistics.filters.vehicles.impl.FilterInformation;
-import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
-import org.opentrackingtools.statistics.filters.vehicles.road.impl.ErrorEstimatingRoadTrackingFilter;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -86,9 +86,9 @@ public class ResultSet {
 
     @JsonSerialize
     public Map<String, Object> getCurrentStateSample() {
-      if (this.state.getMovementFilter() instanceof ErrorEstimatingRoadTrackingFilter) {
-        final ErrorEstimatingRoadTrackingFilter eeFilter =
-            (ErrorEstimatingRoadTrackingFilter) state
+      if (this.state.getMovementFilter() instanceof CovarianceRoadTrackingEstimator) {
+        final CovarianceRoadTrackingEstimator eeFilter =
+            (CovarianceRoadTrackingEstimator) state
                 .getMovementFilter();
         if (eeFilter.getCurrentStateSample() != null) {
           return getJsonForPathState(eeFilter
@@ -100,9 +100,9 @@ public class ResultSet {
 
     @JsonSerialize
     public Map<String, Object> getObsCovarPrior() {
-      if (state.getMovementFilter() instanceof ErrorEstimatingRoadTrackingFilter) {
-        final ErrorEstimatingRoadTrackingFilter eeFilter =
-            (ErrorEstimatingRoadTrackingFilter) state
+      if (state.getMovementFilter() instanceof CovarianceRoadTrackingEstimator) {
+        final CovarianceRoadTrackingEstimator eeFilter =
+            (CovarianceRoadTrackingEstimator) state
                 .getMovementFilter();
         return getJsonForInvWishart(eeFilter
             .getObsVariancePrior());
@@ -113,9 +113,9 @@ public class ResultSet {
 
     @JsonSerialize
     public Map<String, Object> getOffRoadCovarPrior() {
-      if (this.state.getMovementFilter() instanceof ErrorEstimatingRoadTrackingFilter) {
-        final ErrorEstimatingRoadTrackingFilter eeFilter =
-            (ErrorEstimatingRoadTrackingFilter) state
+      if (this.state.getMovementFilter() instanceof CovarianceRoadTrackingEstimator) {
+        final CovarianceRoadTrackingEstimator eeFilter =
+            (CovarianceRoadTrackingEstimator) state
                 .getMovementFilter();
         return getJsonForInvWishart(eeFilter
             .getOffRoadStateVariancePrior());
@@ -180,9 +180,9 @@ public class ResultSet {
 
     @JsonSerialize
     public Map<String, Object> getOnRoadCovarPrior() {
-      if (state.getMovementFilter() instanceof ErrorEstimatingRoadTrackingFilter) {
-        final ErrorEstimatingRoadTrackingFilter eeFilter =
-            (ErrorEstimatingRoadTrackingFilter) state
+      if (state.getMovementFilter() instanceof CovarianceRoadTrackingEstimator) {
+        final CovarianceRoadTrackingEstimator eeFilter =
+            (CovarianceRoadTrackingEstimator) state
                 .getMovementFilter();
         return getJsonForInvWishart(eeFilter
             .getOnRoadStateVariancePrior());
@@ -214,9 +214,9 @@ public class ResultSet {
 
     @JsonSerialize
     public Map<String, Object> getPrevStateSample() {
-      if (this.state.getMovementFilter() instanceof ErrorEstimatingRoadTrackingFilter) {
-        final ErrorEstimatingRoadTrackingFilter eeFilter =
-            (ErrorEstimatingRoadTrackingFilter) state
+      if (this.state.getMovementFilter() instanceof CovarianceRoadTrackingEstimator) {
+        final CovarianceRoadTrackingEstimator eeFilter =
+            (CovarianceRoadTrackingEstimator) state
                 .getMovementFilter();
         if (eeFilter.getPrevStateSample() != null) {
           return getJsonForPathState(eeFilter
@@ -297,7 +297,7 @@ public class ResultSet {
   private final Coordinate minorAxisCoords;
   private final List<OsmSegmentWithVelocity> pathSegments;
 
-  protected final VehicleTrackingFilter filter;
+  protected final VehicleStateFilter filter;
   protected final VehicleState state;
   private final Double pathDirection;
   private final OsmSegmentWithVelocity inferredEdge;
@@ -305,7 +305,7 @@ public class ResultSet {
   //    private final List<EvaluatedPathInfo> evaluatedPaths;
 
   public ResultSet(VehicleState vehicleState,
-    VehicleTrackingFilter filter, Coordinate meanCoords,
+    VehicleStateFilter filter, Coordinate meanCoords,
     Coordinate majorAxisCoords, Coordinate minorAxisCoords,
     List<OsmSegmentWithVelocity> pathSegments,
     Double pathDirection) {
@@ -404,7 +404,7 @@ public class ResultSet {
   }
 
   @JsonIgnore
-  public VehicleTrackingFilter getFilter() {
+  public VehicleStateFilter getFilter() {
     return filter;
   }
 
@@ -490,15 +490,15 @@ public class ResultSet {
     jsonResult
         .put(
             "stateLoc",
-            ((gov.sandia.cognition.math.matrix.mtj.DenseVector) AbstractRoadTrackingFilter
+            ((gov.sandia.cognition.math.matrix.mtj.DenseVector) AbstractRoadTrackingEstimator
                 .getOg().times(pathState.getGroundState()))
                 .getArray().clone());
     jsonResult.put("edge", new OsmSegment(pathState
         .getEdge().getInferredEdge()));
 
-    if (pathState instanceof PathStateBelief) {
-      final PathStateBelief simplePathStateBelief =
-          (PathStateBelief) pathState;
+    if (pathState instanceof PathStateDistribution) {
+      final PathStateDistribution simplePathStateBelief =
+          (PathStateDistribution) pathState;
       jsonResult.put("covariance",
           ((AbstractMTJMatrix) simplePathStateBelief
               .getCovariance()).convertToVector()

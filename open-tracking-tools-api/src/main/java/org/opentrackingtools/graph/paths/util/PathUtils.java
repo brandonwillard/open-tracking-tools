@@ -23,7 +23,7 @@ import org.opentrackingtools.graph.paths.impl.SimpleInferredPath;
 import org.opentrackingtools.graph.paths.states.PathState;
 import org.opentrackingtools.impl.VehicleState;
 import org.opentrackingtools.statistics.distributions.impl.AdjMultivariateGaussian;
-import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
+import org.opentrackingtools.statistics.estimators.vehicles.impl.AbstractRoadTrackingEstimator;
 import org.opentrackingtools.statistics.impl.StatisticsUtil;
 import org.opentrackingtools.util.GeoUtils;
 
@@ -108,7 +108,7 @@ public class PathUtils {
     if (path.isNullPath() && state.getDimensionality() != 4) {
       
       final double dist = 
-          AbstractRoadTrackingFilter.getOr().times(state).getElement(0);
+          AbstractRoadTrackingEstimator.getOr().times(state).getElement(0);
       final PathEdge edge = path.getEdgeForDistance(dist, false);
       
       adjState = getGroundStateFromRoad(state, edge, true);
@@ -136,7 +136,7 @@ public class PathUtils {
     if (path.isNullPath() && belief.getInputDimensionality() != 4) {
       
       final double dist = 
-          AbstractRoadTrackingFilter.getOr().times(belief.getMean()).getElement(0);
+          AbstractRoadTrackingEstimator.getOr().times(belief.getMean()).getElement(0);
       final PathEdge edge = path.getEdgeForDistance(dist, false);
       
       adjBelief = getGroundBeliefFromRoad(belief, edge, true);
@@ -148,7 +148,7 @@ public class PathUtils {
       if (!path.isNullPath()) {
         Preconditions.checkState(
           path.isOnPath(
-              AbstractRoadTrackingFilter.getOr()
+              AbstractRoadTrackingEstimator.getOr()
               .times(belief.getMean()).getElement(0)));
       }
       adjBelief = belief;
@@ -253,11 +253,11 @@ public class PathUtils {
   
     if (useAbsVelocity) {
       final double absVelocity =
-          Math.abs(AbstractRoadTrackingFilter.getVr().times(belief.getMean()).getElement(0));
+          Math.abs(AbstractRoadTrackingEstimator.getVr().times(belief.getMean()).getElement(0));
       if (absVelocity > 0d) {
         final Vector velocities =
             VectorFactory.getDenseDefault().copyVector(
-                AbstractRoadTrackingFilter.getVg().times(projMean));
+                AbstractRoadTrackingEstimator.getVg().times(projMean));
         velocities.scaleEquals(absVelocity
             / velocities.norm2());
         projMean.setElement(1, velocities.getElement(0));
@@ -282,7 +282,7 @@ public class PathUtils {
     boolean allowExtensions) {
   
     final Geometry geom;
-    double distance = AbstractRoadTrackingFilter.getOr()
+    double distance = AbstractRoadTrackingEstimator.getOr()
         .times(locVelocity).getElement(0);
     if (edge.isBackward()) { 
       geom = edge.getGeometry().reverse();
@@ -374,7 +374,7 @@ public class PathUtils {
     if (useAbsVelocity) {
       final double absVelocity =
           VectorFactory.getDenseDefault()
-              .copyVector(AbstractRoadTrackingFilter.getVg()
+              .copyVector(AbstractRoadTrackingEstimator.getVg()
                   .times(state))
               .norm2();
       final double projVelocity = Math.signum(projMean.getElement(1))
@@ -435,7 +435,7 @@ public class PathUtils {
     if (useAbsVelocity) {
       final double absVelocity =
           VectorFactory.getDenseDefault()
-              .copyVector(AbstractRoadTrackingFilter.getVg()
+              .copyVector(AbstractRoadTrackingEstimator.getVg()
                   .times(belief.getMean()))
               .norm2();
       final double projVelocity = Math.signum(projMean.getElement(1))
@@ -489,7 +489,7 @@ public class PathUtils {
     }
     final boolean result =
         inversion.equals(adjFrom,
-            AbstractRoadTrackingFilter
+            AbstractRoadTrackingEstimator
                 .getEdgeLengthErrorTolerance());
     return result;
   }
@@ -541,7 +541,7 @@ public class PathUtils {
      */
     final LinearLocation lineLocation;
     final Coordinate currentPos =
-        GeoUtils.makeCoordinate(AbstractRoadTrackingFilter.getOg().times(m));
+        GeoUtils.makeCoordinate(AbstractRoadTrackingEstimator.getOg().times(m));
     final double distanceToStartOfSegmentOnGeometry;
     final LineSegment pathLineSegment;
     if (edgeGeometry != null) {
@@ -705,13 +705,13 @@ public class PathUtils {
   
     final Matrix P =
         MatrixFactory.getDefault().createMatrix(4, 2);
-    P.setColumn(0, P1.stack(AbstractRoadTrackingFilter.getZeros2d()));
-    P.setColumn(1, AbstractRoadTrackingFilter.getZeros2d().stack(P1));
+    P.setColumn(0, P1.stack(AbstractRoadTrackingEstimator.getZeros2d()));
+    P.setColumn(1, AbstractRoadTrackingEstimator.getZeros2d().stack(P1));
   
-    final Vector a = s1.stack(AbstractRoadTrackingFilter.getZeros2d());
+    final Vector a = s1.stack(AbstractRoadTrackingEstimator.getZeros2d());
   
-    return new PathEdgeProjection(AbstractRoadTrackingFilter.getU().times(P), 
-        AbstractRoadTrackingFilter.getU().times(a));
+    return new PathEdgeProjection(AbstractRoadTrackingEstimator.getU().times(P), 
+        AbstractRoadTrackingEstimator.getU().times(a));
   }
 
   public static MultivariateGaussian getRoadBeliefFromGround(
@@ -744,24 +744,24 @@ public class PathUtils {
             && obsCov.isSquare());
   
     final Matrix obsCovExp =
-        AbstractRoadTrackingFilter.getOg().transpose()
+        AbstractRoadTrackingEstimator.getOg().transpose()
             .times(obsCov)
-            .times(AbstractRoadTrackingFilter.getOg());
+            .times(AbstractRoadTrackingEstimator.getOg());
     final MultivariateGaussian obsProjBelief =
-        new AdjMultivariateGaussian(AbstractRoadTrackingFilter
+        new AdjMultivariateGaussian(AbstractRoadTrackingEstimator
             .getOg().transpose().times(obs), obsCovExp);
     convertToRoadBelief(
         obsProjBelief, path, edge, true);
   
     final Vector y =
-        AbstractRoadTrackingFilter.getOr().times(
+        AbstractRoadTrackingEstimator.getOr().times(
             obsProjBelief.getMean());
     final Matrix Sigma =
-        AbstractRoadTrackingFilter
+        AbstractRoadTrackingEstimator
             .getOr()
             .times(obsProjBelief.getCovariance())
             .times(
-                AbstractRoadTrackingFilter.getOr()
+                AbstractRoadTrackingEstimator.getOr()
                     .transpose());
     return new AdjMultivariateGaussian(y, Sigma);
   }
@@ -793,11 +793,11 @@ public class PathUtils {
   
     if (useAbsVelocity) {
       final double absVelocity =
-          Math.abs(AbstractRoadTrackingFilter.getVr().times(locVelocity).getElement(0));
+          Math.abs(AbstractRoadTrackingEstimator.getVr().times(locVelocity).getElement(0));
       if (absVelocity > 0d) {
         final Vector velocities =
             VectorFactory.getDenseDefault().copyVector(
-              AbstractRoadTrackingFilter.getVg().times(projMean));
+              AbstractRoadTrackingEstimator.getVg().times(projMean));
         velocities.scaleEquals(absVelocity
             / velocities.norm2());
         projMean.setElement(1, velocities.getElement(0));
@@ -825,14 +825,14 @@ public class PathUtils {
     
     if (overTheEndDist > 0d) {
       if (overTheEndDist 
-          > AbstractRoadTrackingFilter.getEdgeLengthErrorTolerance()) {
+          > AbstractRoadTrackingEstimator.getEdgeLengthErrorTolerance()) {
         return null;
       } else {
         newState.setElement(0, path.getTotalPathDistance());
       }
     } else if (direction * distance < 0d) {
       if (direction * distance 
-          < AbstractRoadTrackingFilter.getEdgeLengthErrorTolerance()) {
+          < AbstractRoadTrackingEstimator.getEdgeLengthErrorTolerance()) {
         return null;
       } else {
         newState.setElement(0, direction * 0d);

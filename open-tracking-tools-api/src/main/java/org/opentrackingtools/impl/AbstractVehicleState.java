@@ -10,9 +10,9 @@ import java.util.Random;
 import org.apache.commons.lang.builder.CompareToBuilder;
 import org.opentrackingtools.GpsObservation;
 import org.opentrackingtools.graph.InferenceGraph;
-import org.opentrackingtools.graph.paths.states.PathStateBelief;
+import org.opentrackingtools.statistics.distributions.PathStateDistribution;
 import org.opentrackingtools.statistics.distributions.impl.OnOffEdgeTransDirMulti;
-import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
+import org.opentrackingtools.statistics.estimators.vehicles.impl.AbstractRoadTrackingEstimator;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Iterables;
@@ -90,14 +90,14 @@ public class AbstractVehicleState implements
   /*
    * These members represent the state/parameter samples/sufficient statistics.
    */
-  protected final AbstractRoadTrackingFilter movementFilter;
+  protected final AbstractRoadTrackingEstimator movementFilter;
 
   /**
    * This could be the 4D ground-coordinates dist. for free motion, or the 2D
    * road-coordinates, either way the tracking filter will check. Also, this
    * could be the prior or prior predictive distribution.
    */
-  protected final PathStateBelief belief;
+  protected final PathStateDistribution belief;
 
   /*-
    * Edge transition priors 
@@ -122,8 +122,8 @@ public class AbstractVehicleState implements
 
   protected AbstractVehicleState(InferenceGraph inferredGraph,
     GpsObservation observation,
-    AbstractRoadTrackingFilter updatedFilter,
-    PathStateBelief belief,
+    AbstractRoadTrackingEstimator updatedFilter,
+    PathStateDistribution belief,
     OnOffEdgeTransDirMulti edgeTransitionDist,
     AbstractVehicleState parentState) {
 
@@ -222,7 +222,7 @@ public class AbstractVehicleState implements
     return true;
   }
 
-  public PathStateBelief getBelief() {
+  public PathStateDistribution getBelief() {
     return belief;
   }
 
@@ -241,10 +241,10 @@ public class AbstractVehicleState implements
    */
   public Vector getMeanLocation() {
     final Vector v = belief.getGroundState();
-    return AbstractRoadTrackingFilter.getOg().times(v);
+    return AbstractRoadTrackingEstimator.getOg().times(v);
   }
 
-  public AbstractRoadTrackingFilter getMovementFilter() {
+  public AbstractRoadTrackingEstimator getMovementFilter() {
     return movementFilter;
   }
 
@@ -309,10 +309,10 @@ public class AbstractVehicleState implements
     final Vector res;
     if (vector.getDimensionality() == 4)
       res =
-          AbstractRoadTrackingFilter.getOg().times(vector);
+          AbstractRoadTrackingEstimator.getOg().times(vector);
     else
       res =
-          AbstractRoadTrackingFilter.getOr().times(vector);
+          AbstractRoadTrackingEstimator.getOr().times(vector);
     return res;
   }
 

@@ -8,9 +8,9 @@ import org.opentrackingtools.GpsObservation;
 import org.opentrackingtools.graph.edges.InferredEdge;
 import org.opentrackingtools.graph.paths.InferredPath;
 import org.opentrackingtools.graph.paths.edges.impl.EdgePredictiveResults;
-import org.opentrackingtools.graph.paths.states.PathStateBelief;
 import org.opentrackingtools.impl.VehicleState;
-import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
+import org.opentrackingtools.statistics.distributions.PathStateDistribution;
+import org.opentrackingtools.statistics.estimators.vehicles.impl.AbstractRoadTrackingEstimator;
 
 import com.vividsolutions.jts.geom.Geometry;
 
@@ -18,7 +18,7 @@ public interface PathEdge extends Comparable<PathEdge>, CloneableSerializable {
 
   public abstract EdgePredictiveResults
       getPredictiveLikelihoodResults(InferredPath path,
-        VehicleState state, PathStateBelief beliefPrediction,
+        VehicleState state, PathStateDistribution beliefPrediction,
         GpsObservation obs);
 
   public abstract double marginalPredictiveLogLikelihood(
@@ -33,7 +33,7 @@ public interface PathEdge extends Comparable<PathEdge>, CloneableSerializable {
    * @param edge2
    */
   public abstract MultivariateGaussian getPriorPredictive(
-    PathStateBelief belief, GpsObservation obs);
+    PathStateDistribution belief, GpsObservation obs);
 
   public abstract Double getDistToStartOfEdge();
 
@@ -51,7 +51,7 @@ public interface PathEdge extends Comparable<PathEdge>, CloneableSerializable {
    * Based on the path that this edge is contained in, determine if the given
    * distance is on this edge. XXX: It is possible that a given distance is on
    * more than one edge (depends on the value of
-   * {@link AbstractRoadTrackingFilter#getEdgeLengthErrorTolerance()}).
+   * {@link AbstractRoadTrackingEstimator#getEdgeLengthErrorTolerance()}).
    * 
    * @param distance
    * @return

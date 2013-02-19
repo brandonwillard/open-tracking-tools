@@ -10,10 +10,10 @@ import org.opentrackingtools.GpsObservation;
 import org.opentrackingtools.graph.edges.InferredEdge;
 import org.opentrackingtools.graph.paths.InferredPath;
 import org.opentrackingtools.graph.paths.edges.PathEdge;
-import org.opentrackingtools.graph.paths.states.PathStateBelief;
 import org.opentrackingtools.impl.VehicleState;
+import org.opentrackingtools.statistics.distributions.PathStateDistribution;
 import org.opentrackingtools.statistics.distributions.impl.OnOffEdgeTransDirMulti;
-import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
+import org.opentrackingtools.statistics.estimators.vehicles.impl.AbstractRoadTrackingEstimator;
 
 import com.vividsolutions.jts.geom.Envelope;
 import com.vividsolutions.jts.geom.Geometry;
@@ -30,7 +30,7 @@ public interface InferenceGraph {
 
   public abstract Collection<InferredEdge> getNearbyEdges(
     DistributionWithMean<Vector> tmpInitialBelief,
-    AbstractRoadTrackingFilter tmpTrackingFilter);
+    AbstractRoadTrackingEstimator tmpTrackingFilter);
 
   public abstract Collection<InferredEdge> getNearbyEdges(Vector projLocation,
     double radius);
@@ -61,8 +61,8 @@ public interface InferenceGraph {
 
   public abstract VehicleState createVehicleState(
       GpsObservation obs,
-      AbstractRoadTrackingFilter trackingFilter,
-      PathStateBelief pathStateBelief, OnOffEdgeTransDirMulti edgeTransDist,
+      AbstractRoadTrackingEstimator trackingFilter,
+      PathStateDistribution pathStateDistribution, OnOffEdgeTransDirMulti edgeTransDist,
       VehicleState parent);
 
 }

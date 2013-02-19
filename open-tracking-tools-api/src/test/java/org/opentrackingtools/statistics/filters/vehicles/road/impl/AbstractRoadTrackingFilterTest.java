@@ -21,14 +21,14 @@ import org.opentrackingtools.graph.paths.edges.PathEdge;
 import org.opentrackingtools.graph.paths.edges.impl.SimplePathEdge;
 import org.opentrackingtools.graph.paths.impl.SimpleInferredPath;
 import org.opentrackingtools.graph.paths.impl.TrackingTestUtils;
-import org.opentrackingtools.graph.paths.states.PathStateBelief;
-import org.opentrackingtools.graph.paths.states.impl.SimplePathStateBelief;
 import org.opentrackingtools.graph.paths.util.PathUtils;
 import org.opentrackingtools.impl.VehicleStateInitialParameters;
+import org.opentrackingtools.statistics.distributions.PathStateDistribution;
 import org.opentrackingtools.statistics.distributions.impl.AdjMultivariateGaussian;
-import org.opentrackingtools.statistics.filters.vehicles.particle_learning.impl.VehicleTrackingPLFilter;
-import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
-import org.opentrackingtools.statistics.filters.vehicles.road.impl.StandardRoadTrackingFilter;
+import org.opentrackingtools.statistics.distributions.impl.SimplePathStateDistribution;
+import org.opentrackingtools.statistics.estimators.vehicles.impl.AbstractRoadTrackingEstimator;
+import org.opentrackingtools.statistics.estimators.vehicles.impl.StandardRoadTrackingEstimator;
+import org.opentrackingtools.statistics.filters.vehicles.particle_learning.impl.VehicleStatePLFilter;
 
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.LineString;
@@ -36,7 +36,7 @@ import com.vividsolutions.jts.geom.LineString;
 public class AbstractRoadTrackingFilterTest {
 
   private VehicleStateInitialParameters vehicleStateInitialParams;
-  private AbstractRoadTrackingFilter filter;
+  private AbstractRoadTrackingEstimator filter;
   private InferenceGraph graph;
 
   @BeforeMethod
@@ -51,8 +51,8 @@ public class AbstractRoadTrackingFilterTest {
             VectorFactory.getDefault().createVector2D(5d,
                 95d), VectorFactory.getDefault()
                 .createVector2D(95d, 5d),
-            VehicleTrackingPLFilter.class.getName(), 
-            StandardRoadTrackingFilter.class.getName(),
+            VehicleStatePLFilter.class.getName(), 
+            StandardRoadTrackingEstimator.class.getName(),
             25, 30, 0l);
 
     graph = mock(InferenceGraph.class);
@@ -63,7 +63,7 @@ public class AbstractRoadTrackingFilterTest {
      * AbstractRoadTrackingFilter
      */
     filter =
-        new StandardRoadTrackingFilter(null,
+        new StandardRoadTrackingEstimator(null,
             graph, vehicleStateInitialParams, null);
   }
 
@@ -117,8 +117,8 @@ public class AbstractRoadTrackingFilterTest {
     final MultivariateGaussian startBelief =
         new AdjMultivariateGaussian(VectorFactory.getDefault()
             .createVector2D(-0d, -5d / 30d), covar);
-    final SimplePathStateBelief currentBelief =
-        SimplePathStateBelief.getPathStateBelief(startPath,
+    final SimplePathStateDistribution currentBelief =
+        SimplePathStateDistribution.getPathStateBelief(startPath,
             startBelief);
 
     final SimpleInferredPath newPath =
@@ -126,7 +126,7 @@ public class AbstractRoadTrackingFilterTest {
             new Coordinate(10, -10), new Coordinate(10, 0),
             new Coordinate(0, 0));
 
-    final PathStateBelief result =
+    final PathStateDistribution result =
         filter.predict(currentBelief, newPath);
 
     AssertJUnit.assertEquals("dist", -5d, result.getGlobalState()
@@ -136,11 +136,11 @@ public class AbstractRoadTrackingFilterTest {
     final MultivariateGaussian startBelief2 =
         new AdjMultivariateGaussian(VectorFactory.getDefault()
             .createVector2D(-0d, 5d / 30d), covar);
-    final SimplePathStateBelief currentBelief2 =
-        SimplePathStateBelief.getPathStateBelief(startPath,
+    final SimplePathStateDistribution currentBelief2 =
+        SimplePathStateDistribution.getPathStateBelief(startPath,
             startBelief2);
 
-    final PathStateBelief result2 =
+    final PathStateDistribution result2 =
         filter.predict(currentBelief2, newPath);
 
     AssertJUnit.assertEquals("dist 2", -15d, result2.getGlobalState()

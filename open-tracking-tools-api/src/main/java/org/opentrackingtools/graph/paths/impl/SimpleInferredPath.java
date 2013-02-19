@@ -5,6 +5,7 @@ import gov.sandia.cognition.math.matrix.Matrix;
 import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.math.matrix.VectorFactory;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
+
 import java.util.List;
 import java.util.Map;
 
@@ -18,14 +19,15 @@ import org.opentrackingtools.graph.paths.edges.PathEdge;
 import org.opentrackingtools.graph.paths.edges.impl.EdgePredictiveResults;
 import org.opentrackingtools.graph.paths.edges.impl.SimplePathEdge;
 import org.opentrackingtools.graph.paths.states.PathState;
-import org.opentrackingtools.graph.paths.states.PathStateBelief;
 import org.opentrackingtools.graph.paths.states.impl.SimplePathState;
-import org.opentrackingtools.graph.paths.states.impl.SimplePathStateBelief;
 import org.opentrackingtools.graph.paths.util.PathUtils;
 import org.opentrackingtools.graph.paths.util.PathUtils.PathEdgeProjection;
 import org.opentrackingtools.impl.VehicleState;
 import org.opentrackingtools.impl.WrappedWeightedValue;
-import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
+import org.opentrackingtools.statistics.distributions.PathStateDistribution;
+import org.opentrackingtools.statistics.distributions.impl.SimplePathStateDistribution;
+import org.opentrackingtools.statistics.estimators.vehicles.impl.AbstractRoadTrackingEstimator;
+
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
@@ -230,7 +232,7 @@ public class SimpleInferredPath implements InferredPath {
   public PathEdge getEdgeForDistance(double distance,
     boolean clamp) {
     final double direction = Math.signum(totalPathDistance);
-    if (direction * distance - Math.abs(totalPathDistance) > AbstractRoadTrackingFilter
+    if (direction * distance - Math.abs(totalPathDistance) > AbstractRoadTrackingEstimator
         .getEdgeLengthErrorTolerance()) {
       return clamp ? Iterables.getLast(edges) : null;
     } else if (direction * distance < 0d) {
@@ -303,10 +305,10 @@ public class SimpleInferredPath implements InferredPath {
       return null;
 
 
-    final AbstractRoadTrackingFilter filter =
+    final AbstractRoadTrackingEstimator filter =
         state.getMovementFilter();
     
-    final PathStateBelief beliefPrediction =
+    final PathStateDistribution beliefPrediction =
               filter.predict(state.getBelief(), this);
     
     /*
@@ -344,7 +346,7 @@ public class SimpleInferredPath implements InferredPath {
         if (otherEdgeResults == null)
           continue;
 
-        final PathStateBelief locationPrediction =
+        final PathStateDistribution locationPrediction =
             otherEdgeResults.getLocationPrediction();
 
         if (locationPrediction == null)
@@ -406,8 +408,8 @@ public class SimpleInferredPath implements InferredPath {
   }
 
   @Override
-  public PathStateBelief getStateBeliefOnPath(
-    PathStateBelief stateBelief) {
+  public PathStateDistribution getStateBeliefOnPath(
+    PathStateDistribution stateBelief) {
     
     final PathState onThisPath = 
         this.getStateOnPath(stateBelief);
@@ -436,7 +438,7 @@ public class SimpleInferredPath implements InferredPath {
         stateBelief.getGlobalStateBelief().clone();
     newBelief.setMean(onThisPath.getGlobalState());
     newBelief.setCovariance(covar);
-    return SimplePathStateBelief.getPathStateBelief(this,
+    return SimplePathStateDistribution.getPathStateBelief(this,
         newBelief);
   }
 
@@ -496,7 +498,7 @@ public class SimpleInferredPath implements InferredPath {
             .getPathState(this, adjState)
             .minus(currentState)
             .isZero(
-                AbstractRoadTrackingFilter
+                AbstractRoadTrackingEstimator
                     .getEdgeLengthErrorTolerance())
           ? Boolean.TRUE : null);
     }
@@ -545,10 +547,10 @@ public class SimpleInferredPath implements InferredPath {
     final double direction = Math.signum(totalPathDistance);
     final double overTheEndDist =
         direction * distance - Math.abs(totalPathDistance);
-    if (overTheEndDist > AbstractRoadTrackingFilter
+    if (overTheEndDist > AbstractRoadTrackingEstimator
         .getEdgeLengthErrorTolerance()) {
       return false;
-    } else if (direction * distance < -AbstractRoadTrackingFilter
+    } else if (direction * distance < -AbstractRoadTrackingEstimator
         .getEdgeLengthErrorTolerance()) {
       return false;
     }
@@ -600,9 +602,9 @@ public class SimpleInferredPath implements InferredPath {
   }
 
   @Override
-  public PathStateBelief getStateBeliefOnPath(
+  public PathStateDistribution getStateBeliefOnPath(
     MultivariateGaussian belief) {
-    return SimplePathStateBelief.getPathStateBelief(this, belief);
+    return SimplePathStateDistribution.getPathStateBelief(this, belief);
   }
 
   @Override

@@ -24,11 +24,12 @@ import org.opengis.referencing.operation.TransformException;
 import org.opentrackingtools.GpsObservation;
 import org.opentrackingtools.graph.paths.InferredPath;
 import org.opentrackingtools.graph.paths.states.PathState;
-import org.opentrackingtools.graph.paths.states.PathStateBelief;
 import org.opentrackingtools.impl.SimpleObservation;
 import org.opentrackingtools.impl.VehicleState;
 import org.opentrackingtools.impl.VehicleStateInitialParameters;
-import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
+import org.opentrackingtools.statistics.distributions.PathStateDistribution;
+import org.opentrackingtools.statistics.estimators.vehicles.impl.AbstractRoadTrackingEstimator;
+
 import com.google.common.base.Function;
 import com.google.common.collect.Iterators;
 import com.google.common.collect.Lists;
@@ -75,7 +76,7 @@ public class JsonUtils {
       jsonResult
           .put(
               "stateLoc", 
-              AbstractRoadTrackingFilter.getOg()
+              AbstractRoadTrackingEstimator.getOg()
               .times(pathState.getGroundState()));
       
       InferredPath path = pathState.getTruncatedPathState().getPath();
@@ -93,9 +94,9 @@ public class JsonUtils {
                 }));
       
   
-      if (pathState instanceof PathStateBelief) {
-        final PathStateBelief simplePathStateBelief =
-            (PathStateBelief) pathState;
+      if (pathState instanceof PathStateDistribution) {
+        final PathStateDistribution simplePathStateBelief =
+            (PathStateDistribution) pathState;
         jsonResult.put("covariance", 
             simplePathStateBelief.getCovariance().toArray());
       }

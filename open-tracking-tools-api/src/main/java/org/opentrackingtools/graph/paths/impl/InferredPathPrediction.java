@@ -7,7 +7,7 @@ import org.opentrackingtools.graph.paths.InferredPath;
 import org.opentrackingtools.graph.paths.edges.PathEdge;
 import org.opentrackingtools.graph.paths.edges.impl.EdgePredictiveResults;
 import org.opentrackingtools.impl.WrappedWeightedValue;
-import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
+import org.opentrackingtools.statistics.estimators.vehicles.impl.AbstractRoadTrackingEstimator;
 
 import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
@@ -16,7 +16,7 @@ import com.google.common.collect.ComparisonChain;
 public class InferredPathPrediction implements
     Comparable<InferredPathPrediction> {
 
-  private final AbstractRoadTrackingFilter filter;
+  private final AbstractRoadTrackingEstimator filter;
 
   /*
    * This maps edge's to their conditional prior predictive location/velocity states.
@@ -32,7 +32,7 @@ public class InferredPathPrediction implements
   public InferredPathPrediction(
     InferredPath path,
     Map<PathEdge, EdgePredictiveResults> edgeToPreBeliefAndLogLik,
-    AbstractRoadTrackingFilter filter,
+    AbstractRoadTrackingEstimator filter,
     List<WrappedWeightedValue<PathEdge>> weightedPathEdges2,
     double totalLogLikelihood) {
     Preconditions.checkArgument(!Double
@@ -67,7 +67,7 @@ public class InferredPathPrediction implements
     return edgeToPredictiveBelief;
   }
 
-  public AbstractRoadTrackingFilter getFilter() {
+  public AbstractRoadTrackingEstimator getFilter() {
     return filter;
   }
 

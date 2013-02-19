@@ -4,20 +4,20 @@ import gov.sandia.cognition.util.AbstractCloneableSerializable;
 import gov.sandia.cognition.util.CloneableSerializable;
 
 import org.apache.commons.lang3.builder.ToStringBuilder;
-import org.opentrackingtools.graph.paths.states.PathStateBelief;
+import org.opentrackingtools.statistics.distributions.PathStateDistribution;
 
 public class EdgePredictiveResults extends AbstractCloneableSerializable {
 
-  protected PathStateBelief beliefPrediction;
-  protected PathStateBelief locationPrediction;
+  protected PathStateDistribution beliefPrediction;
+  protected PathStateDistribution locationPrediction;
   protected double edgePredMarginalLogLik;
   protected double edgePredTransLogLik;
   protected double measurementPredLogLik;
   private Double total;
 
   public EdgePredictiveResults(
-    PathStateBelief beliefPrediction,
-    PathStateBelief locationPrediction,
+    PathStateDistribution beliefPrediction,
+    PathStateDistribution locationPrediction,
     double edgePredMarginalLogLik,
     double edgePredTransLogLik, double measurementPredLik) {
     this.beliefPrediction = locationPrediction;
@@ -27,7 +27,7 @@ public class EdgePredictiveResults extends AbstractCloneableSerializable {
     this.measurementPredLogLik = measurementPredLik;
   }
 
-  public PathStateBelief getBeliefPrediction() {
+  public PathStateDistribution getBeliefPrediction() {
     return beliefPrediction;
   }
 
@@ -39,7 +39,7 @@ public class EdgePredictiveResults extends AbstractCloneableSerializable {
     return edgePredTransLogLik;
   }
 
-  public PathStateBelief getLocationPrediction() {
+  public PathStateDistribution getLocationPrediction() {
     return locationPrediction;
   }
 

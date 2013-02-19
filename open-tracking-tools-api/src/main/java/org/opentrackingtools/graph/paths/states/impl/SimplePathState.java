@@ -11,7 +11,7 @@ import org.opentrackingtools.graph.paths.edges.PathEdge;
 import org.opentrackingtools.graph.paths.states.AbstractPathState;
 import org.opentrackingtools.graph.paths.states.PathState;
 import org.opentrackingtools.graph.paths.util.PathUtils;
-import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
+import org.opentrackingtools.statistics.estimators.vehicles.impl.AbstractRoadTrackingEstimator;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Iterables;
@@ -105,7 +105,7 @@ public class SimplePathState extends AbstractPathState {
       this.localState =
           this.getEdge().getCheckedStateOnEdge(
               this.globalState,
-              AbstractRoadTrackingFilter
+              AbstractRoadTrackingEstimator
                   .getEdgeLengthErrorTolerance(), true);
     }
     return this.localState;

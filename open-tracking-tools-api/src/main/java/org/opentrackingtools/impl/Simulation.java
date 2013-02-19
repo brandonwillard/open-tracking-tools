@@ -14,12 +14,12 @@ import org.opengis.referencing.operation.TransformException;
 import org.opentrackingtools.GpsObservation;
 import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.graph.paths.states.PathState;
-import org.opentrackingtools.graph.paths.states.PathStateBelief;
-import org.opentrackingtools.graph.paths.states.impl.SimplePathStateBelief;
+import org.opentrackingtools.statistics.distributions.PathStateDistribution;
 import org.opentrackingtools.statistics.distributions.impl.AdjMultivariateGaussian;
 import org.opentrackingtools.statistics.distributions.impl.OnOffEdgeTransDirMulti;
-import org.opentrackingtools.statistics.filters.vehicles.impl.VehicleTrackingPathSamplerFilterUpdater;
-import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
+import org.opentrackingtools.statistics.distributions.impl.SimplePathStateDistribution;
+import org.opentrackingtools.statistics.estimators.vehicles.impl.AbstractRoadTrackingEstimator;
+import org.opentrackingtools.statistics.filters.vehicles.impl.VehicleStatePathSamplerUpdater;
 import org.opentrackingtools.statistics.impl.StatisticsUtil;
 import org.opentrackingtools.util.GeoUtils;
 import org.opentrackingtools.util.geom.ProjectedCoordinate;
@@ -190,7 +190,7 @@ public class Simulation {
 
   private final SimulationParameters simParameters;
 
-  private final VehicleTrackingPathSamplerFilterUpdater updater;
+  private final VehicleStatePathSamplerUpdater updater;
 
   public Simulation(String simulationName, InferenceGraph graph,
     SimulationParameters simParameters,
@@ -231,7 +231,7 @@ public class Simulation {
               0, null, obsPoint);
 
     this.updater =
-        new VehicleTrackingPathSamplerFilterUpdater(
+        new VehicleStatePathSamplerUpdater(
             initialObs, graph, this.simParameters.getStateParams(), rng);
     this.updater.setRandom(rng);
   }
@@ -303,7 +303,7 @@ public class Simulation {
 
     final Vector groundState = newPathState.getGroundState();
     final Vector gMean =
-        AbstractRoadTrackingFilter.getOg().times(
+        AbstractRoadTrackingEstimator.getOg().times(
             groundState);
 
     final Matrix covSqrt =
@@ -326,7 +326,7 @@ public class Simulation {
     /*
      * Run through the edges, predict movement and reset the belief.
      */
-    final PathStateBelief newPathStateBelief =
+    final PathStateDistribution newPathStateBelief =
         this.updater.sampleNextState(vehicleState);
 
     final Matrix gCov =

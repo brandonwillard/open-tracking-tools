@@ -11,9 +11,9 @@ import org.opentrackingtools.graph.paths.edges.PathEdge;
 import org.opentrackingtools.graph.paths.edges.impl.EdgePredictiveResults;
 import org.opentrackingtools.graph.paths.impl.InferredPathPrediction;
 import org.opentrackingtools.graph.paths.states.PathState;
-import org.opentrackingtools.graph.paths.states.PathStateBelief;
 import org.opentrackingtools.impl.VehicleState;
-import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
+import org.opentrackingtools.statistics.distributions.PathStateDistribution;
+import org.opentrackingtools.statistics.estimators.vehicles.impl.AbstractRoadTrackingEstimator;
 
 import com.google.common.collect.ImmutableList;
 import com.vividsolutions.jts.geom.Geometry;
@@ -71,8 +71,8 @@ public interface InferredPath extends Comparable<InferredPath> {
    * @param stateBelief
    * @return
    */
-  public abstract PathStateBelief getStateBeliefOnPath(
-    PathStateBelief stateBelief);
+  public abstract PathStateDistribution getStateBeliefOnPath(
+    PathStateDistribution stateBelief);
 
   /**
    * Converts location component of the mean to a location on this path, if any. <br>
@@ -91,7 +91,7 @@ public interface InferredPath extends Comparable<InferredPath> {
 
   /**
    * Checks if the distance is on the path given some allowable error defined by
-   * {@link AbstractRoadTrackingFilter#getEdgeLengthErrorTolerance()}.
+   * {@link AbstractRoadTrackingEstimator#getEdgeLengthErrorTolerance()}.
    * 
    * @param distance
    * @return
@@ -109,7 +109,7 @@ public interface InferredPath extends Comparable<InferredPath> {
     * @param rawStateBelief
     * @return
     */
-  public abstract PathStateBelief getStateBeliefOnPath(
+  public abstract PathStateDistribution getStateBeliefOnPath(
     MultivariateGaussian rawStateBelief);
 
   /**

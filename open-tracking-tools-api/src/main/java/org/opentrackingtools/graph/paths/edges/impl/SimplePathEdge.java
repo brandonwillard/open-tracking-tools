@@ -13,9 +13,9 @@ import org.opentrackingtools.graph.edges.InferredEdge;
 import org.opentrackingtools.graph.edges.impl.SimpleInferredEdge;
 import org.opentrackingtools.graph.paths.InferredPath;
 import org.opentrackingtools.graph.paths.edges.PathEdge;
-import org.opentrackingtools.graph.paths.states.PathStateBelief;
 import org.opentrackingtools.impl.VehicleState;
-import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
+import org.opentrackingtools.statistics.distributions.PathStateDistribution;
+import org.opentrackingtools.statistics.estimators.vehicles.impl.AbstractRoadTrackingEstimator;
 import org.opentrackingtools.statistics.impl.StatisticsUtil;
 
 import com.google.common.base.Preconditions;
@@ -70,9 +70,9 @@ public class SimplePathEdge extends AbstractCloneableSerializable implements Pat
   public EdgePredictiveResults
       getPredictiveLikelihoodResults(InferredPath path,
         VehicleState state,
-        PathStateBelief beliefPrediction, GpsObservation obs) {
+        PathStateDistribution beliefPrediction, GpsObservation obs) {
 
-    final PathStateBelief locationPrediction;
+    final PathStateDistribution locationPrediction;
 
     /*
      * Edge marginal predictive likelihoods.
@@ -150,7 +150,7 @@ public class SimplePathEdge extends AbstractCloneableSerializable implements Pat
     final double thisEndDistance =
         edge.getLength() + thisStartDistance;
     
-    final Matrix Or = AbstractRoadTrackingFilter.getOr();
+    final Matrix Or = AbstractRoadTrackingEstimator.getOr();
     
     final double var = 
         Or.times(beliefPrediction.getCovariance())
@@ -171,7 +171,7 @@ public class SimplePathEdge extends AbstractCloneableSerializable implements Pat
   private double marginalPredictiveLogLikInternalOld1(
     MultivariateGaussian beliefPrediction) {
     
-    final Matrix Or = AbstractRoadTrackingFilter.getOr();
+    final Matrix Or = AbstractRoadTrackingEstimator.getOr();
     final double var =
         Or.times(beliefPrediction.getCovariance())
             .times(Or.transpose()).getElement(0, 0)
@@ -199,7 +199,7 @@ public class SimplePathEdge extends AbstractCloneableSerializable implements Pat
     Preconditions.checkArgument(beliefPrediction
         .getInputDimensionality() == 2);
     
-    final Matrix Or = AbstractRoadTrackingFilter.getOr();
+    final Matrix Or = AbstractRoadTrackingEstimator.getOr();
     final double stdDev =
         Math.sqrt(Or
             .times(beliefPrediction.getCovariance())
@@ -265,7 +265,7 @@ public class SimplePathEdge extends AbstractCloneableSerializable implements Pat
    * @see org.opentrackingtools.graph.paths.edges.impl.PathEdge#getPriorPredictive(org.opentrackingtools.graph.paths.states.impl.PathStateBelief, org.opentrackingtools.impl.Observation)
    */
   @Override
-  public MultivariateGaussian getPriorPredictive(PathStateBelief belief, GpsObservation obs) {
+  public MultivariateGaussian getPriorPredictive(PathStateDistribution belief, GpsObservation obs) {
 
     Preconditions.checkArgument(belief.isOnRoad());
     Preconditions.checkArgument(!this.isNullEdge());
@@ -274,7 +274,7 @@ public class SimplePathEdge extends AbstractCloneableSerializable implements Pat
      * TODO really, this should just be the truncated/conditional
      * mean and covariance for the given interval/edge
      */
-    final Matrix Or = AbstractRoadTrackingFilter.getOr();
+    final Matrix Or = AbstractRoadTrackingEstimator.getOr();
     final double S =
         Or.times(belief.getCovariance())
             .times(Or.transpose()).getElement(0, 0)

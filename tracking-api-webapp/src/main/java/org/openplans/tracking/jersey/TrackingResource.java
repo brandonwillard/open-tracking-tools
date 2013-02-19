@@ -37,7 +37,7 @@ import org.opentrackingtools.graph.paths.states.PathState;
 import org.opentrackingtools.impl.SimpleObservation;
 import org.opentrackingtools.impl.VehicleState;
 import org.opentrackingtools.impl.VehicleStateInitialParameters;
-import org.opentrackingtools.statistics.filters.vehicles.VehicleTrackingFilter;
+import org.opentrackingtools.statistics.filters.vehicles.VehicleStateFilter;
 import org.opentrackingtools.util.GeoUtils;
 import org.opentrackingtools.util.JsonUtils.PathStateSerializer;
 import org.opentrackingtools.util.JsonUtils.VectorDeserializer;
@@ -141,7 +141,7 @@ public class TrackingResource {
 		
 		if (inferenceInstance.filter == null) {
 			try {
-				inferenceInstance.filter = (VehicleTrackingFilter) _filterConstructor.newInstance(
+				inferenceInstance.filter = (VehicleStateFilter) _filterConstructor.newInstance(
 				    obs, _graph, _ip, true, new Random());
 				inferenceInstance.filter.getRandom().setSeed(_ip.getSeed());
 				inferenceInstance.priorBelief = inferenceInstance.filter.createInitialLearnedObject();
@@ -240,7 +240,7 @@ public class TrackingResource {
 	private class InferenceInstance {
 		GpsObservation prevObs = null;
 		DataDistribution<VehicleState> priorBelief = null;
-		VehicleTrackingFilter<GpsObservation, VehicleState> filter = null;
+		VehicleStateFilter<GpsObservation, VehicleState> filter = null;
 		int recordNumber = 0;
 	}
 	

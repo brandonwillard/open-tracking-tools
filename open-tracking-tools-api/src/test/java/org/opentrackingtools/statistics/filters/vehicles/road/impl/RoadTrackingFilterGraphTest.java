@@ -40,9 +40,11 @@ import org.opentrackingtools.impl.Simulation.SimulationParameters;
 import org.opentrackingtools.impl.VehicleState;
 import org.opentrackingtools.impl.VehicleStateInitialParameters;
 import org.opentrackingtools.statistics.distributions.impl.OnOffEdgeTransDirMulti;
-import org.opentrackingtools.statistics.filters.vehicles.VehicleTrackingFilter;
-import org.opentrackingtools.statistics.filters.vehicles.particle_learning.impl.VehicleTrackingPLFilter;
-import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
+import org.opentrackingtools.statistics.estimators.vehicles.impl.AbstractRoadTrackingEstimator;
+import org.opentrackingtools.statistics.estimators.vehicles.impl.CovarianceRoadTrackingEstimator;
+import org.opentrackingtools.statistics.estimators.vehicles.impl.ForwardMovingRoadTrackingEstimator;
+import org.opentrackingtools.statistics.filters.vehicles.VehicleStateFilter;
+import org.opentrackingtools.statistics.filters.vehicles.particle_learning.impl.VehicleStatePLFilter;
 import org.opentrackingtools.util.TrueObservation;
 import org.opentrackingtools.GpsObservation;
 
@@ -97,8 +99,8 @@ public class RoadTrackingFilterGraphTest {
             VectorFactory.getDefault().createVector2D(1d,
                 Double.MAX_VALUE), VectorFactory.getDefault()
                 .createVector2D(Double.MAX_VALUE, 1d),
-            VehicleTrackingPLFilter.class.getName(), 
-            ErrorEstimatingRoadTrackingFilter.class.getName(), 
+            VehicleStatePLFilter.class.getName(), 
+            CovarianceRoadTrackingEstimator.class.getName(), 
             25, 30, 2159585l),
         new VehicleStateInitialParameters(VectorFactory
             .getDefault().createVector2D(70d, 70d), 20,
@@ -108,8 +110,8 @@ public class RoadTrackingFilterGraphTest {
             VectorFactory.getDefault().createVector2D(1d,
                 Double.MAX_VALUE), VectorFactory.getDefault()
                 .createVector2D(Double.MAX_VALUE, 1d),
-            VehicleTrackingPLFilter.class.getName(), 
-            ErrorEstimatingRoadTrackingFilter.class.getName(), 
+            VehicleStatePLFilter.class.getName(), 
+            CovarianceRoadTrackingEstimator.class.getName(), 
             25, 30, 2159585l),
         Boolean.FALSE,
         36000
@@ -126,8 +128,8 @@ public class RoadTrackingFilterGraphTest {
             VectorFactory.getDefault().createVector2D(0.5d,
                 0.5d), VectorFactory.getDefault()
                 .createVector2D(0.5d, 0.5d),
-            VehicleTrackingPLFilter.class.getName(), 
-            ErrorEstimatingRoadTrackingFilter.class.getName(), 
+            VehicleStatePLFilter.class.getName(), 
+            CovarianceRoadTrackingEstimator.class.getName(), 
             25, 30, 2159585l),
         new VehicleStateInitialParameters(VectorFactory
             .getDefault().createVector2D(70d, 70d), 20,
@@ -137,8 +139,8 @@ public class RoadTrackingFilterGraphTest {
             VectorFactory.getDefault().createVector2D(70d,
                 30d), VectorFactory.getDefault()
                 .createVector2D(30d, 70d),
-            VehicleTrackingPLFilter.class.getName(), 
-            ErrorEstimatingRoadTrackingFilter.class.getName(), 
+            VehicleStatePLFilter.class.getName(), 
+            CovarianceRoadTrackingEstimator.class.getName(), 
             25, 30, 2159585l),
         Boolean.FALSE,
         36000
@@ -177,8 +179,8 @@ public class RoadTrackingFilterGraphTest {
       rng = new Random();
     
     @SuppressWarnings("unchecked")
-    VehicleTrackingFilter<GpsObservation, VehicleState> filter = 
-        (VehicleTrackingFilter) ctor.newInstance(
+    VehicleStateFilter<GpsObservation, VehicleState> filter = 
+        (VehicleStateFilter) ctor.newInstance(
           new TrueObservation(trueVehicleState.getObservation(), 
               trueVehicleState), graph, filterInitialParams, true, rng);
     
@@ -213,7 +215,7 @@ public class RoadTrackingFilterGraphTest {
       try {
         trueVehicleState = sim.stepSimulation(trueVehicleState);
         
-        if (trueVehicleState.getMovementFilter() instanceof ForwardMovingRoadTrackingFilter) {
+        if (trueVehicleState.getMovementFilter() instanceof ForwardMovingRoadTrackingEstimator) {
           if (trueVehicleState.getBelief().isOnRoad()) {
             for (VectorEntry entry : trueVehicleState.getBelief().getGlobalState()) {
               AssertJUnit.assertTrue(entry.getValue() >= 0d);
@@ -294,15 +296,15 @@ public class RoadTrackingFilterGraphTest {
         numOnTrueEdge++;
           
       stateMeanStat.update(state.getBelief().getGroundState());
-      if (state.getMovementFilter() instanceof ErrorEstimatingRoadTrackingFilter) {
+      if (state.getMovementFilter() instanceof CovarianceRoadTrackingEstimator) {
         hasPriorOnVariances = true;
-        final Matrix obsCovMean = ((ErrorEstimatingRoadTrackingFilter) state.getMovementFilter())
+        final Matrix obsCovMean = ((CovarianceRoadTrackingEstimator) state.getMovementFilter())
           .getObsVariancePrior().getMean();
         obsCovMeanStat.update(obsCovMean.convertToVector());
-        final Matrix onRoadCovMean = ((ErrorEstimatingRoadTrackingFilter) state.getMovementFilter())
+        final Matrix onRoadCovMean = ((CovarianceRoadTrackingEstimator) state.getMovementFilter())
           .getOnRoadStateVariancePrior().getMean();
         onRoadCovStat.update(onRoadCovMean.convertToVector());
-        final Matrix offRoadCovMean = ((ErrorEstimatingRoadTrackingFilter) state.getMovementFilter())
+        final Matrix offRoadCovMean = ((CovarianceRoadTrackingEstimator) state.getMovementFilter())
           .getOffRoadStateVariancePrior().getMean();
         offRoadCovStat.update(offRoadCovMean.convertToVector());
       } else {
@@ -321,9 +323,9 @@ public class RoadTrackingFilterGraphTest {
             state.getBelief().getEdge().getInferredEdge());
         
         if (parentState.getBelief().isOnRoad()) {
-          transType = transType.stack(AbstractRoadTrackingFilter.zeros2D);
+          transType = transType.stack(AbstractRoadTrackingEstimator.zeros2D);
         } else {
-          transType = AbstractRoadTrackingFilter.zeros2D.stack(transType);
+          transType = AbstractRoadTrackingEstimator.zeros2D.stack(transType);
         }
         
         transitionStat.update(transType);
@@ -335,7 +337,7 @@ public class RoadTrackingFilterGraphTest {
     log.debug("numOnTrueEdges=" + numOnTrueEdge);
       
     final Vector obsError = trueVehicleState.getObservation().getProjectedPoint().
-        minus(AbstractRoadTrackingFilter.getOg().times(stateMeanStat.getMean()));
+        minus(AbstractRoadTrackingEstimator.getOg().times(stateMeanStat.getMean()));
     final Vector stateError = trueVehicleState.getBelief().getGroundState().
         minus(stateMeanStat.getMean());
     
@@ -409,11 +411,11 @@ public class RoadTrackingFilterGraphTest {
             .getOnRoadStateTransCovar().normFrobenius()));
       
       final Vector stateVelError = stateErrorSS.getMean().getDimensionality() == 4 ?
-          AbstractRoadTrackingFilter.getVg().times(stateErrorSS.getMean())
+          AbstractRoadTrackingEstimator.getVg().times(stateErrorSS.getMean())
           : VectorFactory.getDefault().copyValues(
-              AbstractRoadTrackingFilter.getVr().times(stateErrorSS.getMean()).getElement(0));
+              AbstractRoadTrackingEstimator.getVr().times(stateErrorSS.getMean()).getElement(0));
       final Matrix trueV = trueVehicleState.getBelief().isOnRoad() ?
-          AbstractRoadTrackingFilter.getVr() : AbstractRoadTrackingFilter.getVg();
+          AbstractRoadTrackingEstimator.getVr() : AbstractRoadTrackingEstimator.getVg();
       final Matrix trueTransCov = trueVehicleState.getBelief().isOnRoad() ?
           trueVehicleState.getMovementFilter().getOnRoadStateTransCovar() :
             trueVehicleState.getMovementFilter().getOffRoadStateTransCovar();

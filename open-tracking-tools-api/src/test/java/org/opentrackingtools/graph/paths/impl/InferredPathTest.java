@@ -3,6 +3,7 @@ package org.opentrackingtools.graph.paths.impl;
 import org.testng.annotations.Test;
 import org.testng.annotations.BeforeMethod;
 import org.testng.AssertJUnit;
+
 import static org.mockito.Mockito.mock;
 import gov.sandia.cognition.math.matrix.Matrix;
 import gov.sandia.cognition.math.matrix.MatrixFactory;
@@ -17,16 +18,16 @@ import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.graph.paths.InferredPath;
 import org.opentrackingtools.graph.paths.edges.PathEdge;
 import org.opentrackingtools.graph.paths.impl.SimpleInferredPath;
-import org.opentrackingtools.graph.paths.states.PathStateBelief;
 import org.opentrackingtools.graph.paths.states.impl.SimplePathState;
-import org.opentrackingtools.graph.paths.states.impl.SimplePathStateBelief;
 import org.opentrackingtools.impl.SimpleObservation;
 import org.opentrackingtools.impl.TimeOrderException;
 import org.opentrackingtools.impl.VehicleStateInitialParameters;
+import org.opentrackingtools.statistics.distributions.PathStateDistribution;
 import org.opentrackingtools.statistics.distributions.impl.AdjMultivariateGaussian;
-import org.opentrackingtools.statistics.filters.vehicles.particle_learning.impl.VehicleTrackingPLFilter;
-import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
-import org.opentrackingtools.statistics.filters.vehicles.road.impl.StandardRoadTrackingFilter;
+import org.opentrackingtools.statistics.distributions.impl.SimplePathStateDistribution;
+import org.opentrackingtools.statistics.estimators.vehicles.impl.AbstractRoadTrackingEstimator;
+import org.opentrackingtools.statistics.estimators.vehicles.impl.StandardRoadTrackingEstimator;
+import org.opentrackingtools.statistics.filters.vehicles.particle_learning.impl.VehicleStatePLFilter;
 import org.opentrackingtools.util.geom.ProjectedCoordinate;
 
 import com.google.common.collect.Iterables;
@@ -35,7 +36,7 @@ import com.vividsolutions.jts.geom.Coordinate;
 public class InferredPathTest {
 
   private VehicleStateInitialParameters vehicleStateInitialParams;
-  private AbstractRoadTrackingFilter filter;
+  private AbstractRoadTrackingEstimator filter;
   private InferenceGraph graph;
 
   @BeforeMethod
@@ -50,12 +51,12 @@ public class InferredPathTest {
             VectorFactory.getDefault().createVector2D(5d,
                 95d), VectorFactory.getDefault()
                 .createVector2D(95d, 5d),
-            VehicleTrackingPLFilter.class.getName(), 
-            StandardRoadTrackingFilter.class.getName(), 
+            VehicleStatePLFilter.class.getName(), 
+            StandardRoadTrackingEstimator.class.getName(), 
             25, 30, 0l);
 
     filter =
-        new StandardRoadTrackingFilter(
+        new StandardRoadTrackingEstimator(
             null, graph, vehicleStateInitialParams, null);
 
     graph = mock(InferenceGraph.class);
@@ -75,8 +76,8 @@ public class InferredPathTest {
     final MultivariateGaussian startBelief =
         new AdjMultivariateGaussian(VectorFactory.getDefault()
             .createVector2D(-0d, -5d / 30d), covar);
-    final SimplePathStateBelief currentBelief =
-        SimplePathStateBelief.getPathStateBelief(startPath,
+    final SimplePathStateDistribution currentBelief =
+        SimplePathStateDistribution.getPathStateBelief(startPath,
             startBelief);
 
     final InferredPath newPath =
@@ -207,12 +208,12 @@ public class InferredPathTest {
     final MultivariateGaussian startBelief =
         new AdjMultivariateGaussian(VectorFactory.getDefault()
             .createVector2D(-0d, -5d / 30d), covar);
-    final SimplePathStateBelief currentBelief =
-        SimplePathStateBelief.getPathStateBelief(startPath,
+    final SimplePathStateDistribution currentBelief =
+        SimplePathStateDistribution.getPathStateBelief(startPath,
             startBelief);
 
     final Vector groundLoc =
-        AbstractRoadTrackingFilter.getOg().times(
+        AbstractRoadTrackingEstimator.getOg().times(
             currentBelief.getGroundState());
     AssertJUnit.assertEquals("initial state x", 10d,
         groundLoc.getElement(0), 0d);
@@ -225,7 +226,7 @@ public class InferredPathTest {
             new Coordinate(10, -10), new Coordinate(10, 0),
             new Coordinate(0, 0));
 
-    final PathStateBelief result =
+    final PathStateDistribution result =
         newPath.getStateBeliefOnPath(currentBelief);
 
     AssertJUnit.assertEquals("distance", -10d, result
@@ -248,12 +249,12 @@ public class InferredPathTest {
     final MultivariateGaussian startBelief =
         new AdjMultivariateGaussian(VectorFactory.getDefault()
             .createVector2D(0d, 1d), covar);
-    final SimplePathStateBelief currentBelief =
-        SimplePathStateBelief.getPathStateBelief(startPath,
+    final SimplePathStateDistribution currentBelief =
+        SimplePathStateDistribution.getPathStateBelief(startPath,
             startBelief);
 
     final Vector groundLoc =
-        AbstractRoadTrackingFilter.getOg().times(
+        AbstractRoadTrackingEstimator.getOg().times(
             currentBelief.getGroundState());
     AssertJUnit.assertEquals("initial state x", 0d,
         groundLoc.getElement(0), 0d);
@@ -266,7 +267,7 @@ public class InferredPathTest {
             new Coordinate(10, -10), new Coordinate(10, 0),
             new Coordinate(0, 0));
 
-    final PathStateBelief result =
+    final PathStateDistribution result =
         newPath.getStateBeliefOnPath(currentBelief);
 
     AssertJUnit.assertEquals("distance", -0d, result
@@ -289,12 +290,12 @@ public class InferredPathTest {
     final MultivariateGaussian startBelief =
         new AdjMultivariateGaussian(VectorFactory.getDefault()
             .createVector2D(2.5d, 1d), covar);
-    final SimplePathStateBelief currentBelief =
-        SimplePathStateBelief.getPathStateBelief(startPath,
+    final SimplePathStateDistribution currentBelief =
+        SimplePathStateDistribution.getPathStateBelief(startPath,
             startBelief);
 
     final Vector groundLoc =
-        AbstractRoadTrackingFilter.getOg().times(
+        AbstractRoadTrackingEstimator.getOg().times(
             currentBelief.getGroundState());
     AssertJUnit.assertEquals("initial state x", 2.5d,
         groundLoc.getElement(0), 0d);
@@ -307,7 +308,7 @@ public class InferredPathTest {
             new Coordinate(10, -10),
             new Coordinate(20, -10));
 
-    final PathStateBelief result =
+    final PathStateDistribution result =
         newPath.getStateBeliefOnPath(currentBelief);
 
     AssertJUnit.assertEquals("distance", 2.5d, result
@@ -330,8 +331,8 @@ public class InferredPathTest {
     final MultivariateGaussian startBelief =
         new AdjMultivariateGaussian(VectorFactory.getDefault()
             .createVector2D(-2.5d, 1d), covar);
-    final SimplePathStateBelief currentBelief =
-        SimplePathStateBelief.getPathStateBelief(startPath,
+    final SimplePathStateDistribution currentBelief =
+        SimplePathStateDistribution.getPathStateBelief(startPath,
             startBelief);
 
     final InferredPath newPath =
@@ -340,7 +341,7 @@ public class InferredPathTest {
             new Coordinate(10, -10), new Coordinate(10, 0),
             new Coordinate(0, 0));
 
-    final PathStateBelief result =
+    final PathStateDistribution result =
         newPath.getStateBeliefOnPath(currentBelief);
 
     AssertJUnit.assertEquals("distance", -2.5d, result
@@ -368,15 +369,15 @@ public class InferredPathTest {
     final MultivariateGaussian startBelief =
         new AdjMultivariateGaussian(VectorFactory.getDefault()
             .createVector2D(2.5d, 1d), covar);
-    final SimplePathStateBelief currentBelief =
-        SimplePathStateBelief.getPathStateBelief(startPath,
+    final SimplePathStateDistribution currentBelief =
+        SimplePathStateDistribution.getPathStateBelief(startPath,
             startBelief);
 
     final InferredPath newPath =
         TrackingTestUtils.makeTmpPath(graph, false,
             new Coordinate(10, 0), new Coordinate(0, 0));
 
-    final PathStateBelief result =
+    final PathStateDistribution result =
         newPath.getStateBeliefOnPath(currentBelief);
 
     AssertJUnit.assertEquals("distance", 7.5d, result
@@ -404,15 +405,15 @@ public class InferredPathTest {
     final MultivariateGaussian startBelief =
         new AdjMultivariateGaussian(VectorFactory.getDefault()
             .createVector2D(2.5d, 1d), covar);
-    final SimplePathStateBelief currentBelief =
-        SimplePathStateBelief.getPathStateBelief(startPath,
+    final SimplePathStateDistribution currentBelief =
+        SimplePathStateDistribution.getPathStateBelief(startPath,
             startBelief);
 
     final InferredPath newPath =
         TrackingTestUtils.makeTmpPath(graph, true,
             new Coordinate(0, 0), new Coordinate(10, 0));
 
-    final PathStateBelief result =
+    final PathStateDistribution result =
         newPath.getStateBeliefOnPath(currentBelief);
 
     AssertJUnit.assertEquals("distance", -7.5d, result
@@ -440,15 +441,15 @@ public class InferredPathTest {
     final MultivariateGaussian startBelief =
         new AdjMultivariateGaussian(VectorFactory.getDefault()
             .createVector2D(-2.5d, 1d), covar);
-    final SimplePathStateBelief currentBelief =
-        SimplePathStateBelief.getPathStateBelief(startPath,
+    final SimplePathStateDistribution currentBelief =
+        SimplePathStateDistribution.getPathStateBelief(startPath,
             startBelief);
 
     final InferredPath newPath =
         TrackingTestUtils.makeTmpPath(graph, false,
             new Coordinate(10, 0), new Coordinate(0, 0));
 
-    final PathStateBelief result =
+    final PathStateDistribution result =
         newPath.getStateBeliefOnPath(currentBelief);
 
     AssertJUnit.assertEquals("distance", 7.5d, result
@@ -484,8 +485,8 @@ public class InferredPathTest {
             null, null, null,
             0, null, obsPoint);
 
-    final SimplePathStateBelief belief =
-        SimplePathStateBelief.getPathStateBelief(newPath,
+    final SimplePathStateDistribution belief =
+        SimplePathStateDistribution.getPathStateBelief(newPath,
             startBelief);
     final MultivariateGaussian result =
         Iterables.get(newPath.getPathEdges(), 1).getPriorPredictive(belief, obs);

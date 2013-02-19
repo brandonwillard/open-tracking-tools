@@ -28,7 +28,7 @@ import org.opentrackingtools.graph.paths.InferredPath;
 import org.opentrackingtools.graph.paths.edges.PathEdge;
 import org.opentrackingtools.impl.VehicleState;
 import org.opentrackingtools.statistics.distributions.impl.DefaultCountedDataDistribution;
-import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
+import org.opentrackingtools.statistics.estimators.vehicles.impl.AbstractRoadTrackingEstimator;
 import org.opentrackingtools.util.GeoUtils;
 import org.opentrackingtools.util.geom.ProjectedCoordinate;
 import org.opentripplanner.routing.graph.Edge;
@@ -290,7 +290,7 @@ public class InferenceResultRecord {
     final PathEdge currentEdge = cloneState.getBelief().getEdge();
     final MultivariateGaussian gbelief = cloneState.getBelief().getGroundBelief();
     final Matrix O =
-        AbstractRoadTrackingFilter.getGroundObservationMatrix();
+        AbstractRoadTrackingEstimator.getGroundObservationMatrix();
     final Vector mean;
     final Vector minorAxis;
     final Vector majorAxis;

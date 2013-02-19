@@ -23,12 +23,12 @@ import org.opentrackingtools.GpsObservation;
 import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.graph.otp.impl.OtpGraph;
 import org.opentrackingtools.impl.VehicleStateInitialParameters;
-import org.opentrackingtools.statistics.filters.vehicles.VehicleTrackingFilter;
-import org.opentrackingtools.statistics.filters.vehicles.impl.VehicleTrackingBootstrapFilter;
-import org.opentrackingtools.statistics.filters.vehicles.particle_learning.impl.VehicleTrackingPLFilter;
-import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
-import org.opentrackingtools.statistics.filters.vehicles.road.impl.ErrorEstimatingRoadTrackingFilter;
-import org.opentrackingtools.statistics.filters.vehicles.road.impl.StandardRoadTrackingFilter;
+import org.opentrackingtools.statistics.estimators.vehicles.impl.AbstractRoadTrackingEstimator;
+import org.opentrackingtools.statistics.estimators.vehicles.impl.CovarianceRoadTrackingEstimator;
+import org.opentrackingtools.statistics.estimators.vehicles.impl.StandardRoadTrackingEstimator;
+import org.opentrackingtools.statistics.filters.vehicles.VehicleStateFilter;
+import org.opentrackingtools.statistics.filters.vehicles.impl.VehicleStateBootstrapFilter;
+import org.opentrackingtools.statistics.filters.vehicles.particle_learning.impl.VehicleStatePLFilter;
 
 import com.google.common.base.Strings;
 import com.google.common.collect.Iterables;
@@ -71,16 +71,16 @@ public class InferenceServiceImpl extends RemoteServiceServlet
   
   final Logger log = Logger.getLogger(InferenceInstance.class);
   
-  private static Map<String, Class<? extends VehicleTrackingFilter>> particleFiltersMap = Maps.newHashMap();
+  private static Map<String, Class<? extends VehicleStateFilter>> particleFiltersMap = Maps.newHashMap();
   static {
-    particleFiltersMap.put(VehicleTrackingPLFilter.class.getName(), VehicleTrackingPLFilter.class);
-    particleFiltersMap.put(VehicleTrackingBootstrapFilter.class.getName(), VehicleTrackingBootstrapFilter.class);
+    particleFiltersMap.put(VehicleStatePLFilter.class.getName(), VehicleStatePLFilter.class);
+    particleFiltersMap.put(VehicleStateBootstrapFilter.class.getName(), VehicleStateBootstrapFilter.class);
   }
   
-  private static Map<String, Class<? extends AbstractRoadTrackingFilter>> roadFiltersMap = Maps.newHashMap();
+  private static Map<String, Class<? extends AbstractRoadTrackingEstimator>> roadFiltersMap = Maps.newHashMap();
   static {
-    roadFiltersMap.put(ErrorEstimatingRoadTrackingFilter.class.getName(), ErrorEstimatingRoadTrackingFilter.class);
-    roadFiltersMap.put(StandardRoadTrackingFilter.class.getName(), StandardRoadTrackingFilter.class);
+    roadFiltersMap.put(CovarianceRoadTrackingEstimator.class.getName(), CovarianceRoadTrackingEstimator.class);
+    roadFiltersMap.put(StandardRoadTrackingEstimator.class.getName(), StandardRoadTrackingEstimator.class);
   }
   
   @Override
@@ -118,8 +118,8 @@ public class InferenceServiceImpl extends RemoteServiceServlet
           VectorFactory.getDefault().createVector2D(0.000625, 0.000625), 20,
           VectorFactory.getDefault().createVector2D(5d, 95d),
           VectorFactory.getDefault().createVector2D(95d, 5d), 
-          VehicleTrackingPLFilter.class.getName(),
-          StandardRoadTrackingFilter.class.getName(),
+          VehicleStatePLFilter.class.getName(),
+          StandardRoadTrackingEstimator.class.getName(),
           25, 30, 0l);
 
   static public final int THREAD_COUNT;
@@ -263,11 +263,11 @@ public class InferenceServiceImpl extends RemoteServiceServlet
         defaultVehicleStateInitialParams;
   }
 
-  public static Map<String, Class<? extends VehicleTrackingFilter>> getParticleFilters() {
+  public static Map<String, Class<? extends VehicleStateFilter>> getParticleFilters() {
   	return particleFiltersMap;
   }
   
-  public static Map<String, Class<? extends AbstractRoadTrackingFilter>> getRoadFilters() {
+  public static Map<String, Class<? extends AbstractRoadTrackingEstimator>> getRoadFilters() {
   	return roadFiltersMap;
   }
 

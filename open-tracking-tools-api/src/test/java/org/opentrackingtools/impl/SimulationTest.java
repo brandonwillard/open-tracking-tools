@@ -11,6 +11,7 @@ import org.geotools.referencing.operation.projection.ProjectionException;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Date;
+
 import gov.sandia.cognition.math.matrix.Matrix;
 import gov.sandia.cognition.math.matrix.MatrixFactory;
 import gov.sandia.cognition.math.matrix.Vector;
@@ -26,13 +27,14 @@ import org.opengis.referencing.operation.TransformException;
 import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.graph.impl.GenericJTSGraph;
 import org.opentrackingtools.graph.paths.impl.TrackingTestUtils;
-import org.opentrackingtools.graph.paths.states.PathStateBelief;
 import org.opentrackingtools.impl.Simulation.SimulationParameters;
+import org.opentrackingtools.statistics.distributions.PathStateDistribution;
 import org.opentrackingtools.statistics.distributions.impl.OnOffEdgeTransDirMulti;
-import org.opentrackingtools.statistics.filters.vehicles.impl.VehicleTrackingBootstrapFilter;
-import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
-import org.opentrackingtools.statistics.filters.vehicles.road.impl.ForwardMovingRoadTrackingFilter;
-import org.opentrackingtools.statistics.filters.vehicles.road.impl.StandardRoadTrackingFilter;
+import org.opentrackingtools.statistics.estimators.vehicles.impl.AbstractRoadTrackingEstimator;
+import org.opentrackingtools.statistics.estimators.vehicles.impl.ForwardMovingRoadTrackingEstimator;
+import org.opentrackingtools.statistics.estimators.vehicles.impl.StandardRoadTrackingEstimator;
+import org.opentrackingtools.statistics.filters.vehicles.impl.VehicleStateBootstrapFilter;
+
 import com.vividsolutions.jts.geom.Coordinate;
 
 public class SimulationTest {
@@ -74,8 +76,8 @@ public class SimulationTest {
             VectorFactory.getDefault().createVector2D(1d,
                 Double.MAX_VALUE), VectorFactory.getDefault()
                 .createVector2D(Double.MAX_VALUE, 1d),
-            VehicleTrackingBootstrapFilter.class.getName(), 
-            ForwardMovingRoadTrackingFilter.class.getName(), 
+            VehicleStateBootstrapFilter.class.getName(), 
+            ForwardMovingRoadTrackingEstimator.class.getName(), 
             25, 15, 2159585l),
         Boolean.FALSE,
             126000
@@ -92,8 +94,8 @@ public class SimulationTest {
             VectorFactory.getDefault().createVector2D(1d,
                 Double.MAX_VALUE), VectorFactory.getDefault()
                 .createVector2D(Double.MAX_VALUE, 1d),
-            VehicleTrackingBootstrapFilter.class.getName(), 
-            StandardRoadTrackingFilter.class.getName(), 
+            VehicleStateBootstrapFilter.class.getName(), 
+            StandardRoadTrackingEstimator.class.getName(), 
             25, 15, 2159585l),
         Boolean.FALSE,
             126000
@@ -111,8 +113,8 @@ public class SimulationTest {
                 Double.MAX_VALUE, 1d), 
             VectorFactory.getDefault().createVector2D(
                 1d, Double.MAX_VALUE),
-            VehicleTrackingBootstrapFilter.class.getName(), 
-            StandardRoadTrackingFilter.class.getName(), 
+            VehicleStateBootstrapFilter.class.getName(), 
+            StandardRoadTrackingEstimator.class.getName(), 
             25, 10, 215955l),
         Boolean.FALSE,
             126000
@@ -130,8 +132,8 @@ public class SimulationTest {
                 1d, 1d), 
             VectorFactory.getDefault().createVector2D(
                 1d, 1d),
-            VehicleTrackingBootstrapFilter.class.getName(), 
-            StandardRoadTrackingFilter.class.getName(), 
+            VehicleStateBootstrapFilter.class.getName(), 
+            StandardRoadTrackingEstimator.class.getName(), 
             25, 15, 21595857l), 
             Boolean.TRUE,
             46000
@@ -207,7 +209,7 @@ public class SimulationTest {
     
     final VehicleState parentState = vehicleState.getParentState();
     if (parentState != null) {
-      PathStateBelief predictedState = parentState.getMovementFilter()
+      PathStateDistribution predictedState = parentState.getMovementFilter()
           .predict(parentState.getBelief(), vehicleState.getBelief().getPath());
       
       final Vector movementDiff = vehicleState.getBelief().minus(
@@ -226,9 +228,9 @@ public class SimulationTest {
           vehicleState.getBelief().getEdge().getInferredEdge());
       
       if (parentState.getBelief().isOnRoad()) {
-        transType = transType.stack(AbstractRoadTrackingFilter.zeros2D);
+        transType = transType.stack(AbstractRoadTrackingEstimator.zeros2D);
       } else {
-        transType = AbstractRoadTrackingFilter.zeros2D.stack(transType);
+        transType = AbstractRoadTrackingEstimator.zeros2D.stack(transType);
       }
       
       transitionsSS.update(transType);
@@ -257,7 +259,7 @@ public class SimulationTest {
         10 * Math.sqrt(vehicleState.getMovementFilter()
             .getOnRoadStateTransCovar().normFrobenius()));
       
-      if (vehicleState.getMovementFilter() instanceof ForwardMovingRoadTrackingFilter) {
+      if (vehicleState.getMovementFilter() instanceof ForwardMovingRoadTrackingEstimator) {
         for (VectorEntry entry : vehicleState.getBelief().getGlobalState()) {
           AssertJUnit.assertTrue(entry.getValue() > 0);
         }

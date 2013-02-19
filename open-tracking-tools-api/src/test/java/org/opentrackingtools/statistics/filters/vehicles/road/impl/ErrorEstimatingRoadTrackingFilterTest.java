@@ -26,15 +26,16 @@ import org.opentrackingtools.graph.paths.edges.PathEdge;
 import org.opentrackingtools.graph.paths.edges.impl.SimplePathEdge;
 import org.opentrackingtools.graph.paths.impl.SimpleInferredPath;
 import org.opentrackingtools.graph.paths.impl.TrackingTestUtils;
-import org.opentrackingtools.graph.paths.states.PathStateBelief;
-import org.opentrackingtools.graph.paths.states.impl.SimplePathStateBelief;
 import org.opentrackingtools.impl.TimeOrderException;
 import org.opentrackingtools.impl.VehicleState;
 import org.opentrackingtools.impl.VehicleStateInitialParameters;
+import org.opentrackingtools.statistics.distributions.PathStateDistribution;
 import org.opentrackingtools.statistics.distributions.impl.AdjMultivariateGaussian;
-import org.opentrackingtools.statistics.filters.vehicles.particle_learning.impl.VehicleTrackingPLFilter;
-import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
-import org.opentrackingtools.statistics.filters.vehicles.road.impl.ErrorEstimatingRoadTrackingFilter;
+import org.opentrackingtools.statistics.distributions.impl.SimplePathStateDistribution;
+import org.opentrackingtools.statistics.estimators.vehicles.impl.AbstractRoadTrackingEstimator;
+import org.opentrackingtools.statistics.estimators.vehicles.impl.CovarianceRoadTrackingEstimator;
+import org.opentrackingtools.statistics.estimators.vehicles.impl.StandardRoadTrackingEstimator;
+import org.opentrackingtools.statistics.filters.vehicles.particle_learning.impl.VehicleStatePLFilter;
 import org.opentrackingtools.statistics.impl.StatisticsUtil;
 
 import com.google.common.collect.Lists;
@@ -44,12 +45,12 @@ import com.vividsolutions.jts.geom.Coordinate;
 public class ErrorEstimatingRoadTrackingFilterTest {
 
   private VehicleStateInitialParameters vehicleStateInitialParams;
-  private ErrorEstimatingRoadTrackingFilter filter;
+  private CovarianceRoadTrackingEstimator filter;
   private InferenceGraph graph;
 
   private Vector
       sampleTransition(Vector state,
-        AbstractRoadTrackingFilter filter, Matrix Qr,
+        AbstractRoadTrackingEstimator filter, Matrix Qr,
         Random rng) {
     final int dim = state.getDimensionality();
     final Matrix sampleCovChol =
@@ -77,8 +78,8 @@ public class ErrorEstimatingRoadTrackingFilterTest {
             VectorFactory.getDefault().createVector2D(5d,
                 95d), VectorFactory.getDefault()
                 .createVector2D(95d, 5d),
-            VehicleTrackingPLFilter.class.getName(), 
-            StandardRoadTrackingFilter.class.getName(),
+            VehicleStatePLFilter.class.getName(), 
+            StandardRoadTrackingEstimator.class.getName(),
             25, 30, 0l);
 
     graph = mock(InferenceGraph.class);
@@ -89,7 +90,7 @@ public class ErrorEstimatingRoadTrackingFilterTest {
      * AbstractRoadTrackingFilter
      */
     filter =
-        new ErrorEstimatingRoadTrackingFilter(
+        new CovarianceRoadTrackingEstimator(
             null, graph, vehicleStateInitialParams,
             new Random(1234567890));
 
@@ -104,14 +105,14 @@ public class ErrorEstimatingRoadTrackingFilterTest {
     final Matrix trueCovar =
         startState.getCovariance().clone();
 
-    PathStateBelief currentState = 
+    PathStateDistribution currentState = 
         startPath.getStateBeliefOnPath(startState);
-    PathStateBelief trueState = currentState.clone();
+    PathStateDistribution trueState = currentState.clone();
     /*
      * Let's start this from the edge we're on.
      */
     currentState = currentState.getTruncatedPathStateBelief();
-    currentState = SimplePathStateBelief.getPathStateBelief(
+    currentState = SimplePathStateDistribution.getPathStateBelief(
         SimpleInferredPath.getInferredPath(currentState.getEdge()),
             currentState.getLocalStateBelief());
 
@@ -138,7 +139,7 @@ public class ErrorEstimatingRoadTrackingFilterTest {
 
     final GpsObservation obs = mock(GpsObservation.class);
     stub(obs.getProjectedPoint()).toReturn(
-        AbstractRoadTrackingFilter.getOg().times(
+        AbstractRoadTrackingEstimator.getOg().times(
             currentState.getGroundState()));
     final Matrix obsCovarChol =
         StatisticsUtil.rootOfSemiDefinite(trueObsCov);
@@ -215,9 +216,9 @@ public class ErrorEstimatingRoadTrackingFilterTest {
         currentEstPath = startPath;
       }
 
-      final PathStateBelief predictedState =
+      final PathStateDistribution predictedState =
           filter.predict(currentState, currentEstPath);
-      final PathStateBelief updatedState =
+      final PathStateDistribution updatedState =
           filter.measure(predictedState,
               obs.getProjectedPoint(),
               predictedState.getEdge());
@@ -330,7 +331,7 @@ public class ErrorEstimatingRoadTrackingFilterTest {
                     trueCovar)));
       stub(obs.getProjectedPoint()).toReturn(
           MultivariateGaussian.sample(
-              AbstractRoadTrackingFilter.getOg().times(
+              AbstractRoadTrackingEstimator.getOg().times(
                   trueState.getGroundState()),
               obsCovarChol, rng));
       

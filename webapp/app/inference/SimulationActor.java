@@ -4,7 +4,7 @@ import inference.InferenceService.INFO_LEVEL;
 
 import org.opentrackingtools.impl.Simulation;
 import org.opentrackingtools.impl.VehicleState;
-import org.opentrackingtools.statistics.filters.vehicles.impl.VehicleTrackingBootstrapFilter;
+import org.opentrackingtools.statistics.filters.vehicles.impl.VehicleStateBootstrapFilter;
 
 import models.InferenceInstance;
 
@@ -54,7 +54,7 @@ public class SimulationActor extends UntypedActor {
      * the code for off-road tracking
      */
     try {
-      final boolean updateOffRoad = (this.instance.getFilterType().equals(VehicleTrackingBootstrapFilter.class)) ? false : true;
+      final boolean updateOffRoad = (this.instance.getFilterType().equals(VehicleStateBootstrapFilter.class)) ? false : true;
       while (time < this.sim.getSimParameters().getEndTime().getTime()
           && InferenceService.getInferenceInstance(sim
               .getSimulationName()) != null) {

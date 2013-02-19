@@ -58,8 +58,8 @@ import org.opentrackingtools.graph.paths.impl.TrackingTestUtils;
 import org.opentrackingtools.impl.VehicleState;
 import org.opentrackingtools.impl.VehicleStatePerformanceResult;
 import org.opentrackingtools.impl.VehicleTrackingPerformanceEvaluator;
-import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
-import org.opentrackingtools.statistics.filters.vehicles.road.impl.ErrorEstimatingRoadTrackingFilter;
+import org.opentrackingtools.statistics.estimators.vehicles.impl.AbstractRoadTrackingEstimator;
+import org.opentrackingtools.statistics.estimators.vehicles.impl.CovarianceRoadTrackingEstimator;
 import org.opentrackingtools.statistics.impl.StatisticsUtil;
 import org.opentrackingtools.util.GeoUtils;
 import org.opentrackingtools.util.geom.ProjectedCoordinate;
@@ -532,7 +532,7 @@ public class Api extends Controller {
       }
       mapResult.put("particleNumber", thisParticleNum);
       
-      ErrorEstimatingRoadTrackingFilter filter = (ErrorEstimatingRoadTrackingFilter) state.getMovementFilter();  
+      CovarianceRoadTrackingEstimator filter = (CovarianceRoadTrackingEstimator) state.getMovementFilter();  
       
       mapResult.put("obsCovMean",((DenseVector) 
           filter.getObsVariancePrior().getMean().convertToVector()).getArray());
@@ -549,7 +549,7 @@ public class Api extends Controller {
                     filter.getPrevStateSample().getGlobalState()))).getArray());
         mapResult.put("stateSampleObsDiff", ((DenseVector) 
             state.getObservation().getProjectedPoint().minus(
-                AbstractRoadTrackingFilter.getOg().times(
+                AbstractRoadTrackingEstimator.getOg().times(
                     filter.getCurrentStateSample().getGroundState()))).getArray());
       }
       mapResults.add(mapResult);

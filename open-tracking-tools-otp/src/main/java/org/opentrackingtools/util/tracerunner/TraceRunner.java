@@ -23,7 +23,7 @@ import org.opentrackingtools.graph.paths.states.PathState;
 import org.opentrackingtools.impl.SimpleObservation;
 import org.opentrackingtools.impl.VehicleState;
 import org.opentrackingtools.impl.VehicleStateInitialParameters;
-import org.opentrackingtools.statistics.filters.vehicles.VehicleTrackingFilter;
+import org.opentrackingtools.statistics.filters.vehicles.VehicleStateFilter;
 import org.opentrackingtools.util.GeoUtils;
 import org.opentrackingtools.util.JsonUtils.VehicleStateInitialParametersDeserializer;
 import org.opentrackingtools.util.JsonUtils.PathStateSerializer;
@@ -167,8 +167,8 @@ public class TraceRunner {
     else
       rng = new Random();
           
-    VehicleTrackingFilter<GpsObservation, VehicleState> filter = 
-        (VehicleTrackingFilter) ctor.newInstance(initialObs, graph, ip, true, 
+    VehicleStateFilter<GpsObservation, VehicleState> filter = 
+        (VehicleStateFilter) ctor.newInstance(initialObs, graph, ip, true, 
             rng);
     
     filter.getRandom().setSeed(ip.getSeed());

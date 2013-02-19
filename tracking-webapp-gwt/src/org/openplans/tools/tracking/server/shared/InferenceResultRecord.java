@@ -18,7 +18,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-
 import org.codehaus.jackson.annotate.JsonIgnore;
 import org.codehaus.jackson.map.annotate.JsonSerialize;
 import org.opentrackingtools.GpsObservation;
@@ -29,11 +28,10 @@ import org.opentrackingtools.graph.paths.InferredPath;
 import org.opentrackingtools.graph.paths.edges.PathEdge;
 import org.opentrackingtools.impl.VehicleState;
 import org.opentrackingtools.statistics.distributions.impl.DefaultCountedDataDistribution;
-import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
+import org.opentrackingtools.statistics.estimators.vehicles.impl.AbstractRoadTrackingEstimator;
 import org.opentrackingtools.util.GeoUtils;
 import org.opentrackingtools.util.geom.ProjectedCoordinate;
 import org.opentripplanner.routing.graph.Edge;
-
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Iterables;
@@ -287,7 +285,7 @@ public class InferenceResultRecord {
     final PathEdge currentEdge = cloneState.getBelief().getEdge();
     final MultivariateGaussian gbelief = cloneState.getBelief().getGroundBelief();
     final Matrix O =
-        AbstractRoadTrackingFilter.getGroundObservationMatrix();
+        AbstractRoadTrackingEstimator.getGroundObservationMatrix();
     final Vector mean;
     final Vector minorAxis;
     final Vector majorAxis;

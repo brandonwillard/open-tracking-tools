@@ -27,14 +27,14 @@ import org.opentrackingtools.impl.VehicleStateInitialParameters;
 import org.opentrackingtools.impl.VehicleStatePerformanceResult;
 import org.opentrackingtools.impl.Simulation.SimulationParameters;
 import org.opentrackingtools.impl.VehicleStatePerformanceResult.SufficientStatisticRecord;
-import org.opentrackingtools.statistics.filters.vehicles.AbstractVehicleTrackingFilter;
-import org.opentrackingtools.statistics.filters.vehicles.VehicleTrackingFilter;
-import org.opentrackingtools.statistics.filters.vehicles.impl.VehicleTrackingBootstrapFilter;
-import org.opentrackingtools.statistics.filters.vehicles.particle_learning.impl.VehicleTrackingPLFilter;
-import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
-import org.opentrackingtools.statistics.filters.vehicles.road.impl.ErrorEstimatingRoadTrackingFilter;
-import org.opentrackingtools.statistics.filters.vehicles.road.impl.ForwardMovingRoadTrackingFilter;
-import org.opentrackingtools.statistics.filters.vehicles.road.impl.StandardRoadTrackingFilter;
+import org.opentrackingtools.statistics.estimators.vehicles.impl.AbstractRoadTrackingEstimator;
+import org.opentrackingtools.statistics.estimators.vehicles.impl.CovarianceRoadTrackingEstimator;
+import org.opentrackingtools.statistics.estimators.vehicles.impl.ForwardMovingRoadTrackingEstimator;
+import org.opentrackingtools.statistics.estimators.vehicles.impl.StandardRoadTrackingEstimator;
+import org.opentrackingtools.statistics.filters.vehicles.AbstractVehicleStateFilter;
+import org.opentrackingtools.statistics.filters.vehicles.VehicleStateFilter;
+import org.opentrackingtools.statistics.filters.vehicles.impl.VehicleStateBootstrapFilter;
+import org.opentrackingtools.statistics.filters.vehicles.particle_learning.impl.VehicleStatePLFilter;
 
 import play.Logger;
 import play.mvc.Controller;
@@ -63,17 +63,17 @@ public class Application extends Controller {
     render(instances);
   }
 
-  private static Map<String, Class<? extends VehicleTrackingFilter>> particleFiltersMap = Maps.newHashMap();
+  private static Map<String, Class<? extends VehicleStateFilter>> particleFiltersMap = Maps.newHashMap();
   static {
-    particleFiltersMap.put(VehicleTrackingPLFilter.class.getName(), VehicleTrackingPLFilter.class);
-    particleFiltersMap.put(VehicleTrackingBootstrapFilter.class.getName(), VehicleTrackingBootstrapFilter.class);
+    particleFiltersMap.put(VehicleStatePLFilter.class.getName(), VehicleStatePLFilter.class);
+    particleFiltersMap.put(VehicleStateBootstrapFilter.class.getName(), VehicleStateBootstrapFilter.class);
   }
   
-  private static Map<String, Class<? extends AbstractRoadTrackingFilter>> roadFiltersMap = Maps.newHashMap();
+  private static Map<String, Class<? extends AbstractRoadTrackingEstimator>> roadFiltersMap = Maps.newHashMap();
   static {
-    roadFiltersMap.put(ForwardMovingRoadTrackingFilter.class.getName(), ForwardMovingRoadTrackingFilter.class);
-    roadFiltersMap.put(ErrorEstimatingRoadTrackingFilter.class.getName(), ErrorEstimatingRoadTrackingFilter.class);
-    roadFiltersMap.put(StandardRoadTrackingFilter.class.getName(), StandardRoadTrackingFilter.class);
+    roadFiltersMap.put(ForwardMovingRoadTrackingEstimator.class.getName(), ForwardMovingRoadTrackingEstimator.class);
+    roadFiltersMap.put(CovarianceRoadTrackingEstimator.class.getName(), CovarianceRoadTrackingEstimator.class);
+    roadFiltersMap.put(StandardRoadTrackingEstimator.class.getName(), StandardRoadTrackingEstimator.class);
   }
   
   public static void instances() {
@@ -333,13 +333,13 @@ public class Application extends Controller {
     instances();
   }
 
-  public static Map<String, Class<? extends VehicleTrackingFilter>>
+  public static Map<String, Class<? extends VehicleStateFilter>>
       getFilters() {
     return particleFiltersMap;
   }
 
   public static void setFilters(
-    Map<String, Class<? extends VehicleTrackingFilter>> filters) {
+    Map<String, Class<? extends VehicleStateFilter>> filters) {
     Application.particleFiltersMap = filters;
   }
 

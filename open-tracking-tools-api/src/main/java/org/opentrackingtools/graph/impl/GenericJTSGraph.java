@@ -33,10 +33,10 @@ import org.opentrackingtools.graph.paths.InferredPath;
 import org.opentrackingtools.graph.paths.edges.PathEdge;
 import org.opentrackingtools.graph.paths.edges.impl.SimplePathEdge;
 import org.opentrackingtools.graph.paths.impl.SimpleInferredPath;
-import org.opentrackingtools.graph.paths.states.PathStateBelief;
 import org.opentrackingtools.impl.VehicleState;
+import org.opentrackingtools.statistics.distributions.PathStateDistribution;
 import org.opentrackingtools.statistics.distributions.impl.OnOffEdgeTransDirMulti;
-import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
+import org.opentrackingtools.statistics.estimators.vehicles.impl.AbstractRoadTrackingEstimator;
 import org.opentrackingtools.statistics.impl.StatisticsUtil;
 import org.opentrackingtools.util.GeoUtils;
 import org.opentrackingtools.util.TrueObservation;
@@ -370,13 +370,13 @@ public class GenericJTSGraph implements InferenceGraph {
   @Override
   public Collection<InferredEdge> getNearbyEdges(
     DistributionWithMean<Vector> initialBelief,
-    AbstractRoadTrackingFilter trackingFilter) {
+    AbstractRoadTrackingEstimator trackingFilter) {
     
     Preconditions.checkArgument(initialBelief.getMean()
         .getDimensionality() == 4);
 
     final Vector toLoc =
-            AbstractRoadTrackingFilter
+            AbstractRoadTrackingEstimator
                 .getOg().times(initialBelief.getMean());
     final double varDistance =
         StatisticsUtil
@@ -486,11 +486,11 @@ public class GenericJTSGraph implements InferenceGraph {
 
   @Override
   public VehicleState createVehicleState(GpsObservation obs,
-      AbstractRoadTrackingFilter trackingFilter,
-      PathStateBelief pathStateBelief, OnOffEdgeTransDirMulti edgeTransDist,
+      AbstractRoadTrackingEstimator trackingFilter,
+      PathStateDistribution pathStateDistribution, OnOffEdgeTransDirMulti edgeTransDist,
       VehicleState parent) {
     return new VehicleState(this, obs, trackingFilter, 
-        pathStateBelief, edgeTransDist, parent);
+        pathStateDistribution, edgeTransDist, parent);
   }
 
 }

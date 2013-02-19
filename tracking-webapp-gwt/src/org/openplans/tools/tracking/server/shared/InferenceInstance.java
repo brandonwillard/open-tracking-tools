@@ -28,9 +28,9 @@ import org.opentrackingtools.graph.paths.edges.PathEdge;
 import org.opentrackingtools.impl.VehicleState;
 import org.opentrackingtools.impl.VehicleStateInitialParameters;
 import org.opentrackingtools.impl.VehicleStatePerformanceResult;
-import org.opentrackingtools.statistics.filters.vehicles.VehicleTrackingFilter;
+import org.opentrackingtools.statistics.estimators.vehicles.impl.AbstractRoadTrackingEstimator;
+import org.opentrackingtools.statistics.filters.vehicles.VehicleStateFilter;
 import org.opentrackingtools.statistics.filters.vehicles.impl.FilterInformation;
-import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
 import org.opentrackingtools.statistics.filters.vehicles.road.impl.RoadTrackingFilterGraphTest;
 
 import com.google.common.base.Stopwatch;
@@ -57,7 +57,7 @@ public class InferenceInstance implements Comparable<InferenceInstance> {
 
   public boolean isEnabled = true;
 
-  private VehicleTrackingFilter<GpsObservation, VehicleState> filter;
+  private VehicleStateFilter<GpsObservation, VehicleState> filter;
 
   private final Queue<InferenceResultRecord> resultRecords =
       new ConcurrentLinkedQueue<InferenceResultRecord>();
@@ -82,8 +82,8 @@ public class InferenceInstance implements Comparable<InferenceInstance> {
   private final RingAccumulator<MutableDouble> averager =
       new RingAccumulator<MutableDouble>();
   
-  private final Class<? extends VehicleTrackingFilter> particleFilterType;
-  private final Class<? extends AbstractRoadTrackingFilter> roadFilterType;
+  private final Class<? extends VehicleStateFilter> particleFilterType;
+  private final Class<? extends AbstractRoadTrackingEstimator> roadFilterType;
   
   public InferenceInstance(String vehicleId, VehicleStateInitialParameters simParameters,
     INFO_LEVEL infoLevel, VehicleStateInitialParameters parameters) {
@@ -111,7 +111,7 @@ public class InferenceInstance implements Comparable<InferenceInstance> {
     return bestState;
   }
 
-  public VehicleTrackingFilter getFilter() {
+  public VehicleStateFilter getFilter() {
     return filter;
   }
 
@@ -236,7 +236,7 @@ public class InferenceInstance implements Comparable<InferenceInstance> {
 
     if (filter == null || postBelief == null) {
 
-      Constructor<? extends VehicleTrackingFilter> ctor;
+      Constructor<? extends VehicleStateFilter> ctor;
       try {
         ctor = particleFilterType.getConstructor(GpsObservation.class, InferenceGraph.class,
             VehicleStateInitialParameters.class, Boolean.class, Random.class);
@@ -317,7 +317,7 @@ public class InferenceInstance implements Comparable<InferenceInstance> {
     return inferredGraph;
   }
 
-  public Class<? extends VehicleTrackingFilter> getFilterType() {
+  public Class<? extends VehicleStateFilter> getFilterType() {
     return particleFilterType;
   }
 
