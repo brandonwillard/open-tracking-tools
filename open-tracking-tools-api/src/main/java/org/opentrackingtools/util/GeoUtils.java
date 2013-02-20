@@ -4,6 +4,7 @@ import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.math.matrix.VectorFactory;
 
 import org.geotools.geometry.jts.JTS;
+import org.geotools.geometry.jts.JTSFactoryFinder;
 import org.geotools.referencing.CRS;
 import org.opengis.referencing.FactoryException;
 import org.opengis.referencing.NoSuchIdentifierException;
@@ -15,9 +16,16 @@ import org.opengis.referencing.operation.NoninvertibleTransformException;
 import org.opengis.referencing.operation.TransformException;
 import org.opentrackingtools.util.geom.ProjectedCoordinate;
 
+import java.util.List;
+
+import com.google.common.base.Preconditions;
+import com.google.common.collect.Lists;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.CoordinateFilter;
 import com.vividsolutions.jts.geom.Geometry;
+import com.vividsolutions.jts.geom.GeometryFactory;
+import com.vividsolutions.jts.geom.LineSegment;
+import com.vividsolutions.jts.geom.LineString;
 
 public class GeoUtils {
 
@@ -230,6 +238,21 @@ public class GeoUtils {
 
     geom.geometryChanged();
     return geom;
+  }
+
+  public static List<LineSegment> getSubLineSegments(LineString lineString) {
+    Preconditions.checkArgument(lineString.getNumPoints() > 1);
+    final List<LineSegment> results = Lists.newArrayList();
+    
+    Coordinate prevCoord = lineString.getCoordinateN(0);
+    for (int i = 1; i < lineString.getNumPoints(); ++i) {
+      final Coordinate nextCoord = lineString.getCoordinateN(i);
+      if (!nextCoord.equals2D(prevCoord)) {
+        results.add(new LineSegment(prevCoord, nextCoord));
+        prevCoord = nextCoord;
+      }
+    }
+    return results;
   }
 
 //  public static Coordinate reverseCoordinates(

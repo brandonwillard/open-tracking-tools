@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+
 import static org.mockito.Mockito.stub;
 
 import org.geotools.data.simple.SimpleFeatureSource;
@@ -21,6 +22,7 @@ import org.opengis.referencing.NoSuchAuthorityCodeException;
 import org.opengis.referencing.crs.CoordinateReferenceSystem;
 import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.graph.edges.impl.SimpleInferredEdge;
+import org.opentrackingtools.graph.paths.InferredPath;
 import org.opentrackingtools.graph.paths.edges.impl.SimplePathEdge;
 import org.opentrackingtools.util.GeoUtils;
 
@@ -43,7 +45,7 @@ public class TrackingTestUtils {
     return gf.createLineString(coordinates);
   }
 
-  public static SimpleInferredPath makeTmpPath(InferenceGraph graph,
+  public static InferredPath makeTmpPath(InferenceGraph graph,
     boolean isBackward, Coordinate... coords) {
     Preconditions.checkArgument(coords.length > 1);
 

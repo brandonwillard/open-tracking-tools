@@ -4,6 +4,8 @@ import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.math.matrix.mtj.DenseMatrix;
 import gov.sandia.cognition.statistics.DistributionWithMean;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
+import gov.sandia.cognition.util.DefaultPair;
+import gov.sandia.cognition.util.Pair;
 
 import java.util.Collection;
 import java.util.Iterator;
@@ -23,6 +25,7 @@ import org.geotools.graph.structure.basic.BasicDirectedEdge;
 import org.geotools.graph.structure.basic.BasicDirectedNode;
 import org.geotools.graph.traverse.standard.AStarIterator.AStarFunctions;
 import org.geotools.graph.traverse.standard.AStarIterator.AStarNode;
+import org.geotools.graph.util.geom.GeometryUtil;
 import org.opengis.referencing.operation.MathTransform;
 import org.opengis.referencing.operation.TransformException;
 import org.opentrackingtools.GpsObservation;
@@ -50,13 +53,51 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.vividsolutions.jts.geom.Coordinate;
+import com.vividsolutions.jts.geom.CoordinateFilter;
+import com.vividsolutions.jts.geom.CoordinateSequence;
+import com.vividsolutions.jts.geom.CoordinateSequenceFilter;
 import com.vividsolutions.jts.geom.Envelope;
 import com.vividsolutions.jts.geom.Geometry;
+import com.vividsolutions.jts.geom.GeometryComponentFilter;
+import com.vividsolutions.jts.geom.GeometryFilter;
+import com.vividsolutions.jts.geom.LineSegment;
 import com.vividsolutions.jts.geom.LineString;
 import com.vividsolutions.jts.geom.Point;
 import com.vividsolutions.jts.index.strtree.STRtree;
 
 public class GenericJTSGraph implements InferenceGraph {
+
+  /**
+   * Assuming that the LineString is mostly constant allows
+   * us to cache values like getLength, which otherwise, over time,
+   * build up needless calculations.
+   * If the internal values happen to change, then we update
+   * the cached values anyway.
+   * @author bwillard
+   *
+   */
+  public class ConstLineString extends LineString {
+
+    private static final long serialVersionUID = 1114083576711858849L;
+    
+    double length;
+    
+    public ConstLineString(LineString projectedEdge) {
+      super(projectedEdge.getCoordinateSequence(), projectedEdge.getFactory());
+      length = projectedEdge.getLength();
+    }
+
+    @Override
+    public double getLength() {
+      return length;
+    }
+
+    @Override
+    protected void geometryChangedAction() {
+      super.geometryChangedAction();
+      length = super.getLength();
+    }
+  }
 
   public class StrictLineStringGraphGenerator extends
       DirectedLineStringGraphGenerator {
@@ -114,15 +155,21 @@ public class GenericJTSGraph implements InferenceGraph {
       Geometry projectedEdge; 
       try {
         projectedEdge = JTS.transform(edge, transform);
-        projectedEdge.setUserData(edge);
         projEnv.expandToInclude(projectedEdge.getEnvelopeInternal());
-        graphGenerator.add(projectedEdge);
+        final ConstLineString constLine = new ConstLineString((LineString)projectedEdge);
+        constLine.setUserData(edge);
+        graphGenerator.add(constLine);
       } catch (final TransformException e) {
         e.printStackTrace();
       }
     }
     /*
-     * Initialize the id map
+     * Initialize the id map and edge index.
+     * 
+     * The edge index is build from the line segments of
+     * the geoms, so that distance calculations won't 
+     * slow things down when querying for nearby edges.
+     * 
      * TODO is there some way to do this lazily?  the
      * general problem is that we might want to query
      * an edge by it's id, yet it hasn't been initialized,
@@ -133,7 +180,12 @@ public class GenericJTSGraph implements InferenceGraph {
     for (Object obj : graphGenerator.getGraph().getEdges()) {
       final BasicDirectedEdge edge = (BasicDirectedEdge) obj;
       InferredEdge infEdge = getInferredEdge(edge);
-      edgeIndex.insert(((Geometry)edge.getObject()).getEnvelopeInternal(), infEdge);
+      final LineString lineString = (LineString) infEdge.getGeometry();
+      for (LineSegment line : GeoUtils.getSubLineSegments(lineString)) {
+        Pair<LineSegment, InferredEdge> lineEdgePair = DefaultPair.create(line, infEdge);
+        edgeIndex.insert(new Envelope(line.p0, line.p1), lineEdgePair);
+      }
+      
     }
     edgeIndex.build();
   }
@@ -397,13 +449,13 @@ public class GenericJTSGraph implements InferenceGraph {
     double radius) {
     final Envelope toEnv = new Envelope(toCoord);
     toEnv.expandBy(radius);
-    final Point toEnvPoint = JTSFactoryFinder.getGeometryFactory()
-        .createPoint(toCoord);
     final Set<InferredEdge> streetEdges = Sets.newHashSet();
     for (final Object obj : edgeIndex.query(toEnv)) {
-      final InferredEdge infEdge = (InferredEdge)obj;
-      if (infEdge.getGeometry().distance(toEnvPoint) < radius)
-        streetEdges.add(infEdge);
+      final Pair<LineSegment, InferredEdge> lineEdgePair = (Pair<LineSegment, InferredEdge>) obj;
+      if (lineEdgePair.getFirst().distance(toCoord) < radius)
+        streetEdges.add(lineEdgePair.getSecond());
+      else
+        continue;
     }
     return streetEdges;
   }

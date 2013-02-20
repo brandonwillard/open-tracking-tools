@@ -16,9 +16,12 @@ import org.opentrackingtools.impl.VehicleState;
 import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
 
 import com.google.common.collect.ImmutableList;
+import com.vividsolutions.jts.geom.CoordinateArrays;
 import com.vividsolutions.jts.geom.Geometry;
 
 public interface InferredPath extends Comparable<InferredPath> {
+
+  public static final CoordinateArrays.BidirectionalComparator biDirComp = new CoordinateArrays.BidirectionalComparator();
 
   public abstract double clampToPath(double distance);
 

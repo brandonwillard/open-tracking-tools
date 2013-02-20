@@ -17,9 +17,9 @@ import java.util.Random;
 import org.geotools.geometry.jts.JTSFactoryFinder;
 import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.graph.edges.impl.SimpleInferredEdge;
+import org.opentrackingtools.graph.paths.InferredPath;
 import org.opentrackingtools.graph.paths.edges.PathEdge;
 import org.opentrackingtools.graph.paths.edges.impl.SimplePathEdge;
-import org.opentrackingtools.graph.paths.impl.SimpleInferredPath;
 import org.opentrackingtools.graph.paths.impl.TrackingTestUtils;
 import org.opentrackingtools.graph.paths.states.PathStateBelief;
 import org.opentrackingtools.graph.paths.states.impl.SimplePathStateBelief;
@@ -106,7 +106,7 @@ public class AbstractRoadTrackingFilterTest {
   @Test
   public void testPrediction1() {
 
-    final SimpleInferredPath startPath =
+    final InferredPath startPath =
         TrackingTestUtils.makeTmpPath(graph, true,
             new Coordinate(0, 0), new Coordinate(10, 0));
 
@@ -121,7 +121,7 @@ public class AbstractRoadTrackingFilterTest {
         SimplePathStateBelief.getPathStateBelief(startPath,
             startBelief);
 
-    final SimpleInferredPath newPath =
+    final InferredPath newPath =
         TrackingTestUtils.makeTmpPath(graph, true,
             new Coordinate(10, -10), new Coordinate(10, 0),
             new Coordinate(0, 0));

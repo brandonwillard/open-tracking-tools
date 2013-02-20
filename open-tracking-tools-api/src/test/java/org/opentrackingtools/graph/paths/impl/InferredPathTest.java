@@ -3,6 +3,7 @@ package org.opentrackingtools.graph.paths.impl;
 import org.testng.annotations.Test;
 import org.testng.annotations.BeforeMethod;
 import org.testng.AssertJUnit;
+
 import static org.mockito.Mockito.mock;
 import gov.sandia.cognition.math.matrix.Matrix;
 import gov.sandia.cognition.math.matrix.MatrixFactory;
@@ -16,7 +17,6 @@ import org.opentrackingtools.GpsObservation;
 import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.graph.paths.InferredPath;
 import org.opentrackingtools.graph.paths.edges.PathEdge;
-import org.opentrackingtools.graph.paths.impl.SimpleInferredPath;
 import org.opentrackingtools.graph.paths.states.PathStateBelief;
 import org.opentrackingtools.graph.paths.states.impl.SimplePathState;
 import org.opentrackingtools.graph.paths.states.impl.SimplePathStateBelief;
@@ -63,7 +63,7 @@ public class InferredPathTest {
 
   @Test(enabled=false, expectedExceptions = IllegalStateException.class)
   public void testBadConversion() {
-    final SimpleInferredPath startPath =
+    final InferredPath startPath =
         TrackingTestUtils.makeTmpPath(graph, true,
             new Coordinate(20, -10),
             new Coordinate(10, -10));
@@ -96,7 +96,7 @@ public class InferredPathTest {
   @Test
   public void testGetStateOnPath() {
 
-    final SimpleInferredPath startPath =
+    final InferredPath startPath =
         TrackingTestUtils.makeTmpPath(graph, false,
             new Coordinate(0, 0), new Coordinate(0, 60));
 
@@ -196,7 +196,7 @@ public class InferredPathTest {
 
   @Test
   public void testPathStateConvert1() {
-    final SimpleInferredPath startPath =
+    final InferredPath startPath =
         TrackingTestUtils.makeTmpPath(graph, true,
             new Coordinate(0, 0), new Coordinate(10, 0));
 
@@ -237,7 +237,7 @@ public class InferredPathTest {
 
   @Test
   public void testPathStateConvert2() {
-    final SimpleInferredPath startPath =
+    final InferredPath startPath =
         TrackingTestUtils.makeTmpPath(graph, false,
             new Coordinate(0, 0), new Coordinate(10, 0));
 
@@ -278,7 +278,7 @@ public class InferredPathTest {
 
   @Test
   public void testPathStateConvert3() {
-    final SimpleInferredPath startPath =
+    final InferredPath startPath =
         TrackingTestUtils.makeTmpPath(graph, false,
             new Coordinate(0, 0), new Coordinate(10, 0));
 
@@ -319,7 +319,7 @@ public class InferredPathTest {
 
   @Test
   public void testPathStateConvert4() {
-    final SimpleInferredPath startPath =
+    final InferredPath startPath =
         TrackingTestUtils.makeTmpPath(graph, true,
             new Coordinate(10, 0), new Coordinate(0, 0));
 
@@ -356,7 +356,7 @@ public class InferredPathTest {
   @Test
   public void testPathStateConvert5() {
 
-    final SimpleInferredPath startPath =
+    final InferredPath startPath =
         TrackingTestUtils.makeTmpPath(graph, false,
             new Coordinate(0, 0), new Coordinate(10, 0),
             new Coordinate(10, -10),
@@ -392,7 +392,7 @@ public class InferredPathTest {
   @Test
   public void testPathStateConvert6() {
 
-    final SimpleInferredPath startPath =
+    final InferredPath startPath =
         TrackingTestUtils.makeTmpPath(graph, false,
             new Coordinate(0, 0), new Coordinate(10, 0),
             new Coordinate(10, -10),
@@ -428,7 +428,7 @@ public class InferredPathTest {
   @Test
   public void testPathStateConvert7() {
 
-    final SimpleInferredPath startPath =
+    final InferredPath startPath =
         TrackingTestUtils.makeTmpPath(graph, true,
             new Coordinate(20, -10),
             new Coordinate(10, -10), new Coordinate(10, 0),
@@ -469,7 +469,7 @@ public class InferredPathTest {
         new AdjMultivariateGaussian(VectorFactory.getDefault()
             .createVector2D(-10d, -5d / 30d), covar);
 
-    final SimpleInferredPath newPath =
+    final InferredPath newPath =
         TrackingTestUtils.makeTmpPath(graph, true,
             new Coordinate(20, -10),
             new Coordinate(10, -10), new Coordinate(10, 0),

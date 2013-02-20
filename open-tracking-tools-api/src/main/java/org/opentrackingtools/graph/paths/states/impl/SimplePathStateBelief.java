@@ -25,10 +25,10 @@ public class SimplePathStateBelief extends AbstractPathState implements PathStat
   private static final long serialVersionUID =
       -31238492416118648L;
 
-  private MultivariateGaussian localStateBelief;
-  private MultivariateGaussian globalStateBelief;
-  private MultivariateGaussian rawStateBelief;
-  private MultivariateGaussian groundBelief;
+  protected MultivariateGaussian localStateBelief;
+  protected MultivariateGaussian globalStateBelief;
+  protected MultivariateGaussian rawStateBelief;
+  protected MultivariateGaussian groundBelief;
 
   protected SimplePathStateBelief(InferredPath path,
     MultivariateGaussian state) {

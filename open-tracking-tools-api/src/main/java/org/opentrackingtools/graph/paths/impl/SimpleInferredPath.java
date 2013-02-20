@@ -5,6 +5,7 @@ import gov.sandia.cognition.math.matrix.Matrix;
 import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.math.matrix.VectorFactory;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
+
 import java.util.List;
 import java.util.Map;
 
@@ -26,11 +27,14 @@ import org.opentrackingtools.graph.paths.util.PathUtils.PathEdgeProjection;
 import org.opentrackingtools.impl.VehicleState;
 import org.opentrackingtools.impl.WrappedWeightedValue;
 import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
+
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.vividsolutions.jts.geom.Coordinate;
+import com.vividsolutions.jts.geom.CoordinateArrays;
+import com.vividsolutions.jts.geom.CoordinateList;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.linearref.LengthIndexedLine;
 
@@ -293,13 +297,10 @@ public class SimpleInferredPath implements InferredPath {
      * current state.
      */
     if (!(!state.getBelief().isOnRoad()
-        || this.isNullPath() || state
-        .getBelief()
-        .getEdge()
-        .getGeometry()
-        .equalsTopo(
-            Iterables.getFirst(this.getPathEdges(), null)
-                .getGeometry())))
+        || this.isNullPath() 
+        || CoordinateArrays.equals(state.getBelief().getEdge().getGeometry().getCoordinates(),
+            Iterables.getFirst(this.getPathEdges(), null).getGeometry().getCoordinates(), 
+            biDirComp)))
       return null;
 
 
@@ -576,21 +577,21 @@ public class SimpleInferredPath implements InferredPath {
     return nullPath;
   }
 
-  public static SimpleInferredPath getInferredPath(
+  public static InferredPath getInferredPath(
     List<? extends PathEdge> newEdges, Boolean isBackward) {
     if (newEdges.size() == 1) {
       final PathEdge edge = Iterables.getOnlyElement(newEdges);
       if (edge.isNullEdge())
-        return (SimpleInferredPath)nullPath;
+        return (InferredPath)nullPath;
     }
     return new SimpleInferredPath(ImmutableList.copyOf(newEdges),
         isBackward);
   }
 
-  public static SimpleInferredPath getInferredPath(
+  public static InferredPath getInferredPath(
     PathEdge pathEdge) {
     if (pathEdge.isNullEdge())
-      return (SimpleInferredPath)nullPath;
+      return (InferredPath)nullPath;
     else
       return new SimpleInferredPath(pathEdge);
   }

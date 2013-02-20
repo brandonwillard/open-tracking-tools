@@ -45,7 +45,7 @@ public class PathStateTest {
   
   private InferenceGraph graph;
 
-  private SimpleInferredPath makeTmpPath(boolean isBackward,
+  private InferredPath makeTmpPath(boolean isBackward,
     Coordinate... coords) {
     return TrackingTestUtils.makeTmpPath(this.graph,
         isBackward, coords);
@@ -94,12 +94,12 @@ public class PathStateTest {
      * at the end.
      */
 
-    final SimpleInferredPath path1 =
+    final InferredPath path1 =
         makeTmpPath(false, new Coordinate(0, 10),
             new Coordinate(0, 0), new Coordinate(10, 0),
             new Coordinate(10, 10), new Coordinate(20, 10));
 
-    final SimpleInferredPath path2 =
+    final InferredPath path2 =
         makeTmpPath(false, new Coordinate(20, 10),
             new Coordinate(10, 10), new Coordinate(0, 10),
             new Coordinate(0, 0));
@@ -141,11 +141,11 @@ public class PathStateTest {
      * FIXME!
      */
 
-    final SimpleInferredPath path1 =
+    final InferredPath path1 =
         makeTmpPath(false, new Coordinate(0, 0),
             new Coordinate(0, 10));
 
-    final SimpleInferredPath path2 =
+    final InferredPath path2 =
         makeTmpPath(false, new Coordinate(0, 10),
             new Coordinate(0, 0), new Coordinate(-10, 0));
 
@@ -170,7 +170,7 @@ public class PathStateTest {
 
   @Test
   public void testDistanceBetween12() {
-    final SimpleInferredPath startPath =
+    final InferredPath startPath =
         makeTmpPath(false, new Coordinate(0, 0),
             new Coordinate(0, 60));
 
@@ -178,7 +178,7 @@ public class PathStateTest {
         SimplePathState.getPathState(startPath, VectorFactory
             .getDefault().createVector2D(12d, -1));
 
-    final SimpleInferredPath newPath =
+    final InferredPath newPath =
         makeTmpPath(true, new Coordinate(0, 60),
             new Coordinate(0, 0));
 
@@ -195,7 +195,7 @@ public class PathStateTest {
 
   @Test
   public void testDistanceBetween13() {
-    final SimpleInferredPath startPath =
+    final InferredPath startPath =
         makeTmpPath(false, new Coordinate(0, 0),
             new Coordinate(0, 60), new Coordinate(0, 199));
 
@@ -203,7 +203,7 @@ public class PathStateTest {
         SimplePathState.getPathState(startPath, VectorFactory
             .getDefault().createVector2D(104d, -1));
 
-    final SimpleInferredPath newPath =
+    final InferredPath newPath =
         makeTmpPath(false, new Coordinate(0, 199),
             new Coordinate(0, 60));
 
@@ -220,7 +220,7 @@ public class PathStateTest {
 
   @Test
   public void testDistanceBetween14() {
-    final SimpleInferredPath startPath =
+    final InferredPath startPath =
         makeTmpPath(true, new Coordinate(0, 199),
             new Coordinate(0, 60), new Coordinate(0, 0));
 
@@ -228,7 +228,7 @@ public class PathStateTest {
         SimplePathState.getPathState(startPath, VectorFactory
             .getDefault().createVector2D(-104d, -2.79));
 
-    final SimpleInferredPath newPath =
+    final InferredPath newPath =
         makeTmpPath(true, new Coordinate(0, 60),
             new Coordinate(0, 199));
 
@@ -245,7 +245,7 @@ public class PathStateTest {
 
   @Test
   public void testDistanceBetween15() {
-    final SimpleInferredPath startPath =
+    final InferredPath startPath =
         makeTmpPath(true, new Coordinate(0,
             178.89095954422947), new Coordinate(0, 0),
             new Coordinate(0, 139.9919743536118d));
@@ -256,7 +256,7 @@ public class PathStateTest {
             VectorFactory.getDefault().createVector2D(
                 -139.9919743536118d, -3.39));
 
-    final SimpleInferredPath newPath =
+    final InferredPath newPath =
         makeTmpPath(false, new Coordinate(0, 0),
             new Coordinate(0, 178.89095954422947));
 
@@ -273,7 +273,7 @@ public class PathStateTest {
 
   @Test
   public void testDistanceBetween16() {
-    final SimpleInferredPath otherPath =
+    final InferredPath otherPath =
         makeTmpPath(false, new Coordinate(0d, 0d),
             new Coordinate(-85d, 0d), new Coordinate(
                 -150.37d, 0d));
@@ -282,7 +282,7 @@ public class PathStateTest {
         SimplePathState.getPathState(otherPath, VectorFactory
             .getDefault().createVector2D(121.15d, 2.59d));
 
-    final SimpleInferredPath thisPath =
+    final InferredPath thisPath =
         makeTmpPath(true, new Coordinate(0d, 0d),
             new Coordinate(-85d, 0d), new Coordinate(
                 -150.37d, 0d));
@@ -303,7 +303,7 @@ public class PathStateTest {
 
   @Test
   public void testDistanceBetween17() {
-    final SimpleInferredPath startPath =
+    final InferredPath startPath =
         makeTmpPath(true, new Coordinate(0, -262.21d),
             new Coordinate(0, 0),
             new Coordinate(0, 792.85d));
@@ -314,7 +314,7 @@ public class PathStateTest {
             VectorFactory.getDefault().createVector2D(
                 -808.4862233549034, -26.2880263830998));
 
-    final SimpleInferredPath newPath =
+    final InferredPath newPath =
         makeTmpPath(true, new Coordinate(0, 792.85d),
             new Coordinate(0, 0), new Coordinate(0,
                 -262.21d));
@@ -332,7 +332,7 @@ public class PathStateTest {
 
   @Test
   public void testDistanceBetween18() {
-    final SimpleInferredPath otherPath =
+    final InferredPath otherPath =
         makeTmpPath(true, new Coordinate(-90d, 0d),
             new Coordinate(0d, 0d), new Coordinate(0d,
                 -(517d - 90d) / 2d),
@@ -343,7 +343,7 @@ public class PathStateTest {
         SimplePathState.getPathState(otherPath, VectorFactory
             .getDefault().createVector2D(-564d, -8d));
 
-    final SimpleInferredPath thisPath =
+    final InferredPath thisPath =
         makeTmpPath(false, new Coordinate(0d, 0d),
             new Coordinate(-90d, 0d), new Coordinate(-90d,
                 607d - 90d));
@@ -362,7 +362,7 @@ public class PathStateTest {
     /*
      * This path ends at its start (a loop).
      */
-    final SimpleInferredPath otherPath =
+    final InferredPath otherPath =
         makeTmpPath(true, new Coordinate(-90d, 0d),
             new Coordinate(0d, 0d), new Coordinate(0d,
                 -(517d - 90d) / 2d),
@@ -377,7 +377,7 @@ public class PathStateTest {
      * This path starts at the same start as
      * the other. 
      */
-    final SimpleInferredPath thisPath =
+    final InferredPath thisPath =
         makeTmpPath(true, new Coordinate(0d, 607d - 90d),
             new Coordinate(0d, 0d),
             new Coordinate(-90d, 0d));
@@ -411,7 +411,7 @@ public class PathStateTest {
 
   @Test
   public void testDistanceBetween20() {
-    final SimpleInferredPath otherPath =
+    final InferredPath otherPath =
         makeTmpPath(true, new Coordinate(0d, 0d),
             new Coordinate(0d, 179d), new Coordinate(10d,
                 179d), new Coordinate(56d, 179d));
@@ -420,7 +420,7 @@ public class PathStateTest {
         SimplePathState.getPathState(otherPath, VectorFactory
             .getDefault().createVector2D(-41d, 4d));
 
-    final SimpleInferredPath thisPath =
+    final InferredPath thisPath =
         makeTmpPath(false, new Coordinate(0d, 0d),
             new Coordinate(0d, 179d));
     final SimplePathState thisState =
@@ -435,7 +435,7 @@ public class PathStateTest {
 
   @Test
   public void testDistanceBetween21() {
-    final SimpleInferredPath otherPath =
+    final InferredPath otherPath =
         makeTmpPath(false, new Coordinate(0d, 0d),
             new Coordinate(100d, 0d));
 
@@ -443,7 +443,7 @@ public class PathStateTest {
         SimplePathState.getPathState(otherPath, VectorFactory
             .getDefault().createVector2D(49d, 1.6d));
 
-    final SimpleInferredPath thisPath =
+    final InferredPath thisPath =
         makeTmpPath(false, new Coordinate(0d, 0d),
             new Coordinate(100d, 0d), new Coordinate(100d,
                 100d), new Coordinate(100d, 0d),
@@ -466,7 +466,7 @@ public class PathStateTest {
    */
   @Test
   public void testDistanceBetween22() {
-    final SimpleInferredPath otherPath =
+    final InferredPath otherPath =
         makeTmpPath(false, new Coordinate(0d, 0d),
             new Coordinate(100d, 0d), new Coordinate(100d,
                 100d), new Coordinate(100d, 0d),
@@ -476,7 +476,7 @@ public class PathStateTest {
         SimplePathState.getPathState(otherPath, VectorFactory
             .getDefault().createVector2D(49d, 1.6d));
 
-    final SimpleInferredPath thisPath =
+    final InferredPath thisPath =
         makeTmpPath(false, new Coordinate(0d, 0d),
             new Coordinate(100d, 0d));
     final SimplePathState thisState =
@@ -740,7 +740,7 @@ public class PathStateTest {
     final List<Coordinate> p1RevGeomCoords =
         Lists.newArrayList(p1.getGeometry().reverse()
             .getCoordinates());
-    final SimpleInferredPath pOther =
+    final InferredPath pOther =
         makeTmpPath(false,
             Iterables.getFirst(p1RevGeomCoords, null),
             Iterables.getLast(p1RevGeomCoords, null));

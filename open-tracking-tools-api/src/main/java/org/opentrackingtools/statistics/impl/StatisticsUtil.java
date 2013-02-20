@@ -28,6 +28,9 @@ import no.uib.cipr.matrix.SymmDenseEVD;
 import no.uib.cipr.matrix.UpperSPDDenseMatrix;
 import no.uib.cipr.matrix.UpperSymmDenseMatrix;
 
+import org.apache.mahout.math.CholeskyDecomposition;
+import org.netlib.blas.BLAS;
+import org.netlib.lapack.LAPACK;
 import org.opentrackingtools.impl.WrappedWeightedValue;
 import org.opentrackingtools.statistics.distributions.impl.DefaultCountedDataDistribution;
 
