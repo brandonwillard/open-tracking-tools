@@ -298,9 +298,9 @@ public class SimpleInferredPath implements InferredPath {
      */
     if (!(!state.getBelief().isOnRoad()
         || this.isNullPath() 
-        || CoordinateArrays.equals(state.getBelief().getEdge().getGeometry().getCoordinates(),
-            Iterables.getFirst(this.getPathEdges(), null).getGeometry().getCoordinates(), 
-            biDirComp)))
+        || (biDirComp.compare(state.getBelief().getEdge().getGeometry().getCoordinates(),
+            Iterables.getFirst(this.getPathEdges(), null).getGeometry().getCoordinates())
+            == 0)))
       return null;
 
 

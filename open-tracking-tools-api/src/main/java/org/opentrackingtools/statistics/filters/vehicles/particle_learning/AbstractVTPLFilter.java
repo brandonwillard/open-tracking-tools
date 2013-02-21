@@ -62,8 +62,9 @@ public abstract class AbstractVTPLFilter extends
     /*
      * Resample based on predictive likelihood to get a smoothed sample
      */
-    final List<WrappedWeightedValue<VehicleState>> resampler =
-        Lists.newArrayList();
+    final DefaultCountedDataDistribution<VehicleState> resampleDist = 
+        new DefaultCountedDataDistribution<VehicleState>(true);
+    
     for (final VehicleState state : target.getDomain()) {
 
       final int count =
@@ -119,16 +120,10 @@ public abstract class AbstractVTPLFilter extends
 
       stateToPaths.putAll(state, predictiveResults);
 
-      resampler.add(new WrappedWeightedValue<VehicleState>(
-          state, totalLogLik, count));
+      resampleDist.increment(state, totalLogLik, count);
     }
 
     final Random rng = getRandom();
-
-    final DataDistribution<VehicleState> resampleDist =
-        Preconditions.checkNotNull(
-        StatisticsUtil
-            .getLogNormalizedDistribution(resampler));
 
     // TODO low-variance sampling?
     final ArrayList<? extends VehicleState> smoothedStates =
@@ -139,7 +134,7 @@ public abstract class AbstractVTPLFilter extends
           evaluatedPaths, resampleDist, stateToPaths));
 
     final DataDistribution<VehicleState> posteriorDist =
-        new DefaultCountedDataDistribution<VehicleState>();
+        new DefaultCountedDataDistribution<VehicleState>(true);
 
     /*
      * Propagate states
@@ -156,7 +151,7 @@ public abstract class AbstractVTPLFilter extends
               stateToPaths.get(state));
 
       ((DefaultCountedDataDistribution<VehicleState>) posteriorDist)
-          .increment(newTransState, 1d / numParticles);
+          .increment(newTransState, 0d);
 
     }
 

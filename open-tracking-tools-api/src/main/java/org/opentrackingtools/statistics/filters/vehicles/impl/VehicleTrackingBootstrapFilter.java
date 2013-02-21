@@ -104,7 +104,7 @@ public class VehicleTrackingBootstrapFilter extends
       final DataDistribution<VehicleState> resampleDist =
           new DefaultCountedDataDistribution<VehicleState>(
               prePosteriorDist.sample(this.random,
-                  numParticles));
+                  numParticles), false);
       posteriorDist = resampleDist;
     } else {
       /*

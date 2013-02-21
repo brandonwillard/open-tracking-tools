@@ -169,7 +169,7 @@ public class StatisticsUtil {
       return null;
 
     final DefaultCountedDataDistribution<SupportType> result =
-        new DefaultCountedDataDistribution<SupportType>();
+        new DefaultCountedDataDistribution<SupportType>(false);
 
     /*
      * Sort before putting in the data distribution

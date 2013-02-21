@@ -79,4 +79,24 @@ public class EdgePredictiveResults extends AbstractCloneableSerializable {
     return clone;
   }
 
+  public void setBeliefPrediction(PathStateBelief beliefPrediction) {
+    this.beliefPrediction = beliefPrediction;
+  }
+
+  public void setLocationPrediction(PathStateBelief locationPrediction) {
+    this.locationPrediction = locationPrediction;
+  }
+
+  public void setEdgePredMarginalLogLik(double edgePredMarginalLogLik) {
+    this.edgePredMarginalLogLik = edgePredMarginalLogLik;
+  }
+
+  public void setEdgePredTransLogLik(double edgePredTransLogLik) {
+    this.edgePredTransLogLik = edgePredTransLogLik;
+  }
+
+  public void setMeasurementPredLogLik(double measurementPredLogLik) {
+    this.measurementPredLogLik = measurementPredLogLik;
+  }
+
 }

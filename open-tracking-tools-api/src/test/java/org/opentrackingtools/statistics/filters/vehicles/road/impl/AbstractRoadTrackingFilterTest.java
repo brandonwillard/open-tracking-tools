@@ -174,8 +174,8 @@ public class AbstractRoadTrackingFilterTest {
 
     final Matrix factErr = filter.getQg().minus(rfact);
 
-    AssertJUnit.assertTrue(varErr.normFrobenius() < 5e-1d);
-    AssertJUnit.assertTrue(factErr.normFrobenius() < 1e-5d);
+    AssertJUnit.assertEquals(0, varErr.normFrobenius(), 5e-1d);
+    AssertJUnit.assertEquals(0, factErr.normFrobenius(), 1e-5d);
 
   }
 

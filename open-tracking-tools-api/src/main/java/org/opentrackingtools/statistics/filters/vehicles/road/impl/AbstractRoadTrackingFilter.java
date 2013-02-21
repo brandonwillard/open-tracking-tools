@@ -429,8 +429,9 @@ public abstract class AbstractRoadTrackingFilter
     final int dim = state.getDimensionality();
     final Matrix cov = dim == 4 ? this.getQg() : this.getQr();
     
+    final Matrix covSqrt = StatisticsUtil.getCholR(cov);
     final Vector qSmpl = MultivariateGaussian.sample(VectorFactory.getDefault().createVector(
-       cov.getNumColumns()), cov, rng);
+       cov.getNumColumns()), covSqrt, rng);
     
     final Matrix covFactor = this.getCovarianceFactor(dim == 2);
     final Vector error = covFactor.times(qSmpl);

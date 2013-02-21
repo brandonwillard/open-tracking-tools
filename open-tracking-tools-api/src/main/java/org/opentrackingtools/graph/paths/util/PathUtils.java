@@ -1162,8 +1162,8 @@ public class PathUtils {
                 .getTotalPathDistance()), Math
                 .abs(toPath.getTotalPathDistance()));
         
-      } else if (CoordinateArrays.equals(fromLastActualGeom.getCoordinates(), 
-          toFirstActualGeom.getCoordinates(), InferredPath.biDirComp)) {
+      } else if (InferredPath.biDirComp.compare(fromLastActualGeom.getCoordinates(),
+          toFirstActualGeom.getCoordinates()) == 0) {
         /*
          * Head-to-tail, but in opposite path directions.
          */
@@ -1177,8 +1177,8 @@ public class PathUtils {
                 - fromLastActualGeom.getLength();
   
   
-      } else if (CoordinateArrays.equals(fromFirstActualGeom.getCoordinates(), 
-          toFirstActualGeom.getCoordinates(), InferredPath.biDirComp)) {
+      } else if (InferredPath.biDirComp.compare(fromFirstActualGeom.getCoordinates(), 
+          toFirstActualGeom.getCoordinates()) == 0) {
         /*
          * Going in opposite path-directions from the same
          * starting location. 
