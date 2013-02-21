@@ -98,5 +98,9 @@ public class DefaultCountedDataDistributionTest {
         1e-2);
 //         Math.sqrt(testDist.getFraction("item4") * (1d - testDist.getFraction("item4"))));
     
+    testDistClone.clear(); 
+    testDistClone.copyAll(testDist);
+    
+    AssertJUnit.assertEquals(testDist.getTotalCount(), testDistClone.getTotalCount());
   }
 }

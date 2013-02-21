@@ -3,6 +3,7 @@ package org.opentrackingtools.impl;
 import gov.sandia.cognition.math.matrix.Matrix;
 import gov.sandia.cognition.math.matrix.MatrixFactory;
 import gov.sandia.cognition.math.matrix.Vector;
+import gov.sandia.cognition.math.matrix.VectorEntry;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 
 import java.lang.reflect.InvocationTargetException;
@@ -20,12 +21,14 @@ import org.opentrackingtools.statistics.distributions.impl.AdjMultivariateGaussi
 import org.opentrackingtools.statistics.distributions.impl.OnOffEdgeTransDirMulti;
 import org.opentrackingtools.statistics.filters.vehicles.impl.VehicleTrackingPathSamplerFilterUpdater;
 import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
+import org.opentrackingtools.statistics.filters.vehicles.road.impl.ForwardMovingRoadTrackingFilter;
 import org.opentrackingtools.statistics.impl.StatisticsUtil;
 import org.opentrackingtools.util.GeoUtils;
 import org.opentrackingtools.util.geom.ProjectedCoordinate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.base.Preconditions;
 import com.vividsolutions.jts.geom.Coordinate;
 
 public class Simulation {
@@ -328,7 +331,7 @@ public class Simulation {
      */
     final PathStateBelief newPathStateBelief =
         this.updater.sampleNextState(vehicleState);
-
+    
     final Matrix gCov =
         vehicleState.getMovementFilter().getObsCovar();
     final Vector thisLoc =

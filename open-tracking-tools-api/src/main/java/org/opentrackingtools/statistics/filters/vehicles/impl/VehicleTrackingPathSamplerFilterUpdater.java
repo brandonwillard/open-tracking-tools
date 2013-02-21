@@ -2,6 +2,7 @@ package org.opentrackingtools.statistics.filters.vehicles.impl;
 
 import gov.sandia.cognition.math.matrix.MatrixFactory;
 import gov.sandia.cognition.math.matrix.Vector;
+import gov.sandia.cognition.math.matrix.VectorEntry;
 import gov.sandia.cognition.math.matrix.mtj.DenseMatrix;
 import gov.sandia.cognition.statistics.DataDistribution;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
@@ -27,6 +28,7 @@ import org.opentrackingtools.impl.VehicleStateInitialParameters;
 import org.opentrackingtools.statistics.distributions.impl.OnOffEdgeTransDirMulti;
 import org.opentrackingtools.statistics.filters.vehicles.particle_learning.AbstractVTParticleFilterUpdater;
 import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
+import org.opentrackingtools.statistics.filters.vehicles.road.impl.ForwardMovingRoadTrackingFilter;
 import org.opentrackingtools.statistics.impl.StatisticsUtil;
 import org.opentrackingtools.util.GeoUtils;
 import org.slf4j.Logger;
@@ -355,7 +357,7 @@ public class VehicleTrackingPathSamplerFilterUpdater extends
         newStateDist.setMean(
             movementFilter.sampleStateTransDist(
                 projectedMean, rng));
-
+        
         totalDistToTravel =
             newStateDist.getMean().getElement(0) - initialLocation;
 

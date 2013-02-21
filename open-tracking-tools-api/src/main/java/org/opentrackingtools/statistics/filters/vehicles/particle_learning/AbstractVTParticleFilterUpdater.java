@@ -100,7 +100,7 @@ public abstract class AbstractVTParticleFilterUpdater
       createInitialParticles(int numParticles) {
 
     final DataDistribution<VehicleState> retDist =
-        new DefaultCountedDataDistribution<VehicleState>(false);
+        new DefaultCountedDataDistribution<VehicleState>(true);
 
     for (int i = 0; i < numParticles; i++) {
       final AbstractRoadTrackingFilter tmpTrackingFilter =

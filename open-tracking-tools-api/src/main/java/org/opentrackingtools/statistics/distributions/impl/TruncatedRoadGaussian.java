@@ -62,6 +62,7 @@ public class TruncatedRoadGaussian extends AdjMultivariateGaussian {
   protected Vector truncateVector(Vector mean) {
     if (mean.getDimensionality() == 2) {
       final Vector adjMean = mean.clone();
+      adjMean.setElement(0, Math.max(0d, adjMean.getElement(0)));
       adjMean.setElement(1, 
           Math.min(velocityUpper, 
               Math.max(velocityLower, adjMean.getElement(1))));

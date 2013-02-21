@@ -159,8 +159,8 @@ public abstract class AbstractVTPLFilter extends
     ((DefaultCountedDataDistribution<VehicleState>) target)
         .copyAll(posteriorDist);
 
-    assert ((DefaultCountedDataDistribution<VehicleState>) target)
-        .getTotalCount() == this.numParticles;
+    Preconditions.checkState(((DefaultCountedDataDistribution<VehicleState>) target)
+        .getTotalCount() == this.numParticles);
 
   }
 

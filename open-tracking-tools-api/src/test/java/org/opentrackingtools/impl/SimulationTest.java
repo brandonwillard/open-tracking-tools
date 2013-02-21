@@ -259,7 +259,7 @@ public class SimulationTest {
       
       if (vehicleState.getMovementFilter() instanceof ForwardMovingRoadTrackingFilter) {
         for (VectorEntry entry : vehicleState.getBelief().getGlobalState()) {
-          AssertJUnit.assertTrue(entry.getValue() > 0);
+          AssertJUnit.assertTrue(entry.getValue() >= 0);
         }
       }
       
