@@ -8,12 +8,13 @@ import org.opentrackingtools.graph.paths.states.PathStateBelief;
 
 public class EdgePredictiveResults extends AbstractCloneableSerializable {
 
+  private static final long serialVersionUID = -281925765144327081L;
   protected PathStateBelief beliefPrediction;
   protected PathStateBelief locationPrediction;
   protected double edgePredMarginalLogLik;
   protected double edgePredTransLogLik;
   protected double measurementPredLogLik;
-  private Double total;
+  protected Double total;
 
   public EdgePredictiveResults(
     PathStateBelief beliefPrediction,

@@ -98,7 +98,7 @@ public class RoadTrackingFilterGraphTest {
                 Double.MAX_VALUE), VectorFactory.getDefault()
                 .createVector2D(Double.MAX_VALUE, 1d),
             VehicleTrackingPLFilter.class.getName(), 
-            ErrorEstimatingRoadTrackingFilter.class.getName(), 
+            ForwardMovingRoadTrackingFilter.class.getName(), 
             25, 30, 2159585l),
         new VehicleStateInitialParameters(VectorFactory
             .getDefault().createVector2D(70d, 70d), 20,
@@ -114,35 +114,35 @@ public class RoadTrackingFilterGraphTest {
         Boolean.FALSE,
         36000
         }
-        ,{
-          /*
-           * Mixed 
-           */
-        new VehicleStateInitialParameters(VectorFactory
-            .getDefault().createVector2D(70d, 70d), 20,
-            VectorFactory.getDefault().createVector1D(
-                6.25e-4), 20, VectorFactory.getDefault()
-                .createVector2D(6.25e-4, 6.25e-4), 20,
-            VectorFactory.getDefault().createVector2D(0.5d,
-                0.5d), VectorFactory.getDefault()
-                .createVector2D(0.5d, 0.5d),
-            VehicleTrackingPLFilter.class.getName(), 
-            ErrorEstimatingRoadTrackingFilter.class.getName(), 
-            25, 30, 2159585l),
-        new VehicleStateInitialParameters(VectorFactory
-            .getDefault().createVector2D(70d, 70d), 20,
-            VectorFactory.getDefault().createVector1D(
-                6.25e-4), 20, VectorFactory.getDefault()
-                .createVector2D(6.25e-4, 6.25e-4), 20,
-            VectorFactory.getDefault().createVector2D(70d,
-                30d), VectorFactory.getDefault()
-                .createVector2D(30d, 70d),
-            VehicleTrackingPLFilter.class.getName(), 
-            ErrorEstimatingRoadTrackingFilter.class.getName(), 
-            25, 30, 2159585l),
-        Boolean.FALSE,
-        36000
-        }
+//        ,{
+//          /*
+//           * Mixed 
+//           */
+//        new VehicleStateInitialParameters(VectorFactory
+//            .getDefault().createVector2D(70d, 70d), 20,
+//            VectorFactory.getDefault().createVector1D(
+//                6.25e-4), 20, VectorFactory.getDefault()
+//                .createVector2D(6.25e-4, 6.25e-4), 20,
+//            VectorFactory.getDefault().createVector2D(0.5d,
+//                0.5d), VectorFactory.getDefault()
+//                .createVector2D(0.5d, 0.5d),
+//            VehicleTrackingPLFilter.class.getName(), 
+//            ErrorEstimatingRoadTrackingFilter.class.getName(), 
+//            25, 30, 2159585l),
+//        new VehicleStateInitialParameters(VectorFactory
+//            .getDefault().createVector2D(70d, 70d), 20,
+//            VectorFactory.getDefault().createVector1D(
+//                6.25e-4), 20, VectorFactory.getDefault()
+//                .createVector2D(6.25e-4, 6.25e-4), 20,
+//            VectorFactory.getDefault().createVector2D(70d,
+//                30d), VectorFactory.getDefault()
+//                .createVector2D(30d, 70d),
+//            VehicleTrackingPLFilter.class.getName(), 
+//            ErrorEstimatingRoadTrackingFilter.class.getName(), 
+//            25, 30, 2159585l),
+//        Boolean.FALSE,
+//        36000
+//        }
     };
   }
   

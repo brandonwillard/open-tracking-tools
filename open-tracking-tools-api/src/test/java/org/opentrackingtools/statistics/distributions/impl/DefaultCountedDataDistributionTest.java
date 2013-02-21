@@ -98,6 +98,25 @@ public class DefaultCountedDataDistributionTest {
         1e-2);
 //         Math.sqrt(testDist.getFraction("item4") * (1d - testDist.getFraction("item4"))));
     
+    Random rng2 = new Random(1234533l);
+    DefaultCountedDataDistribution<String> sampleDist2 = new DefaultCountedDataDistribution<String>(true);
+    for (int i = 0; i < numSamples; i++) {
+      sampleDist2.increment(testDist.sample(rng2));
+    }
+    AssertJUnit.assertEquals(numSamples, sampleDist2.getTotalCount());
+    AssertJUnit.assertEquals(testDist.getLogFraction("item1"), sampleDist2.getLogFraction("item1"),
+        1e-2);
+//         Math.sqrt(testDist.getFraction("item1") * (1d - testDist.getFraction("item1"))));
+    AssertJUnit.assertEquals(testDist.getLogFraction("item2"), sampleDist2.getLogFraction("item2"), 
+        1e-2);
+//         Math.sqrt(testDist.getFraction("item2") * (1d - testDist.getFraction("item2"))));
+    AssertJUnit.assertEquals(testDist.getLogFraction("item3"), sampleDist2.getLogFraction("item3"),
+        1e-2);
+//         Math.sqrt(testDist.getFraction("item3") * (1d - testDist.getFraction("item3"))));
+    AssertJUnit.assertEquals(testDist.getLogFraction("item4"), sampleDist2.getLogFraction("item4"),
+        1e-2);
+//         Math.sqrt(testDist.getFraction("item4") * (1d - testDist.getFraction("item4"))));
+    
     testDistClone.clear(); 
     testDistClone.copyAll(testDist);
     

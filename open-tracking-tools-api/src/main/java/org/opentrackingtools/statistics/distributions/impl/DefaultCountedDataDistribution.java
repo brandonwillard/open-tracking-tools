@@ -612,11 +612,11 @@ public class DefaultCountedDataDistribution<KeyType>
   @Override
   public KeyType sample(Random random) {
     if (this.isLogScale) {
-      double w = random.nextDouble() * this.getTotal();
+      double w = random.nextDouble();
       for (ScalarMap.Entry<KeyType> entry : this.entrySet())
       {
-          w -= Math.exp(entry.getValue());
-          if (w <= Double.NEGATIVE_INFINITY)
+          w -= this.getFraction(entry.getKey());
+          if (w <= 0d)
           {
               return entry.getKey();
           }

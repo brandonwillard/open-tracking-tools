@@ -658,6 +658,9 @@ public class ErrorEstimatingRoadTrackingFilter
       if (updateError.normFrobenius()
             > 0.4 * trueQ.normFrobenius()) {
         log.warn("Large update error: " + updateError);
+        log.warn("True state:" + trueState);
+        log.warn("Posterior:" + posteriorState);
+        log.warn("PriorPrediction:" + priorPredictiveState);
       }
     }
     
