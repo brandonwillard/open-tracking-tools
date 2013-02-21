@@ -12,7 +12,7 @@ import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.opentrackingtools.GpsObservation;
 import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.graph.paths.states.PathStateBelief;
-import org.opentrackingtools.statistics.distributions.impl.OnOffEdgeTransDirMulti;
+import org.opentrackingtools.statistics.distributions.impl.OnOffEdgeTransDistribution;
 import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
 
 import com.google.common.base.Preconditions;
@@ -107,7 +107,7 @@ public class VehicleState implements
    * 3. edges transitions to others (one for all)
    * edges
    */
-  protected final OnOffEdgeTransDirMulti edgeTransitionDist;
+  protected final OnOffEdgeTransDistribution edgeTransitionDist;
   private final GpsObservation observation;
   private VehicleState parentState = null;
 
@@ -125,7 +125,7 @@ public class VehicleState implements
     GpsObservation observation,
     AbstractRoadTrackingFilter updatedFilter,
     PathStateBelief belief,
-    OnOffEdgeTransDirMulti edgeTransitionDist,
+    OnOffEdgeTransDistribution edgeTransitionDist,
     VehicleState parentState) {
 
     Preconditions.checkNotNull(inferredGraph);
@@ -227,7 +227,7 @@ public class VehicleState implements
     return belief;
   }
 
-  public OnOffEdgeTransDirMulti getEdgeTransitionDist() {
+  public OnOffEdgeTransDistribution getEdgeTransitionDist() {
     return edgeTransitionDist;
   }
 

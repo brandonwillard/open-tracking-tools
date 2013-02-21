@@ -25,7 +25,7 @@ import org.opentrackingtools.graph.paths.states.PathStateBelief;
 import org.opentrackingtools.graph.paths.util.PathUtils;
 import org.opentrackingtools.impl.VehicleState;
 import org.opentrackingtools.impl.VehicleStateInitialParameters;
-import org.opentrackingtools.statistics.distributions.impl.OnOffEdgeTransDirMulti;
+import org.opentrackingtools.statistics.distributions.impl.OnOffEdgeTransDistribution;
 import org.opentrackingtools.statistics.filters.vehicles.particle_learning.AbstractVTParticleFilterUpdater;
 import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
 import org.opentrackingtools.statistics.filters.vehicles.road.impl.ForwardMovingRoadTrackingFilter;
@@ -156,7 +156,7 @@ public class VehicleTrackingPathSamplerFilterUpdater extends
     rng.setSeed(this.seed);
 
     PathStateBelief currentStateBelief = currentState.getBelief();
-    OnOffEdgeTransDirMulti edgeTransDist = currentState.getEdgeTransitionDist();
+    OnOffEdgeTransDistribution edgeTransDist = currentState.getEdgeTransitionDist();
     AbstractRoadTrackingFilter movementFilter = currentState.getMovementFilter();
     
     PathEdge newEdge =
@@ -528,7 +528,7 @@ public class VehicleTrackingPathSamplerFilterUpdater extends
      * Nothing to update in this filter, besides the sampled path
      * and state.
      */
-    final OnOffEdgeTransDirMulti newTransDist =
+    final OnOffEdgeTransDistribution newTransDist =
         previousState.getEdgeTransitionDist().clone();
     final AbstractRoadTrackingFilter predictedFilter =
         previousState.getMovementFilter().clone();

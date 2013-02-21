@@ -38,7 +38,7 @@ import org.opentrackingtools.graph.paths.edges.impl.SimplePathEdge;
 import org.opentrackingtools.graph.paths.impl.SimpleInferredPath;
 import org.opentrackingtools.graph.paths.states.PathStateBelief;
 import org.opentrackingtools.impl.VehicleState;
-import org.opentrackingtools.statistics.distributions.impl.OnOffEdgeTransDirMulti;
+import org.opentrackingtools.statistics.distributions.impl.OnOffEdgeTransDistribution;
 import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
 import org.opentrackingtools.statistics.impl.StatisticsUtil;
 import org.opentrackingtools.util.GeoUtils;
@@ -539,7 +539,7 @@ public class GenericJTSGraph implements InferenceGraph {
   @Override
   public VehicleState createVehicleState(GpsObservation obs,
       AbstractRoadTrackingFilter trackingFilter,
-      PathStateBelief pathStateBelief, OnOffEdgeTransDirMulti edgeTransDist,
+      PathStateBelief pathStateBelief, OnOffEdgeTransDistribution edgeTransDist,
       VehicleState parent) {
     return new VehicleState(this, obs, trackingFilter, 
         pathStateBelief, edgeTransDist, parent);

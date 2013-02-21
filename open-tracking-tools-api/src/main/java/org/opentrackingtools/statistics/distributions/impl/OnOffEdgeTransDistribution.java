@@ -35,9 +35,9 @@ import com.google.common.collect.Lists;
  * @author bwillard
  * 
  */
-public class OnOffEdgeTransDirMulti extends
+public class OnOffEdgeTransDistribution extends
     AbstractCloneableSerializable implements
-    Comparable<OnOffEdgeTransDirMulti> {
+    Comparable<OnOffEdgeTransDistribution> {
 
   private static final long serialVersionUID =
       -8329433263373783485L;
@@ -89,7 +89,7 @@ public class OnOffEdgeTransDirMulti extends
    * @param freeMotionPriorParams
    * @param rng
    */
-  public OnOffEdgeTransDirMulti(InferenceGraph graph,
+  public OnOffEdgeTransDistribution(InferenceGraph graph,
     Vector edgeMotionPriorParams,
     Vector freeMotionPriorParams) {
     this.graph = graph;
@@ -106,7 +106,7 @@ public class OnOffEdgeTransDirMulti extends
         getEdgeMotionTransProbPrior().getMean());
   }
 
-  public OnOffEdgeTransDirMulti(InferenceGraph inferenceGraph,
+  public OnOffEdgeTransDistribution(InferenceGraph inferenceGraph,
       Vector onTransitionProbs, Vector offTransitionProbs, Random random) {
     this(inferenceGraph, onTransitionProbs, offTransitionProbs);
           
@@ -114,11 +114,11 @@ public class OnOffEdgeTransDirMulti extends
      * Sample an initial prior for the transition probabilities
      */
     final Vector edgePriorParams =
-        OnOffEdgeTransDirMulti.checkedSample(
+        OnOffEdgeTransDistribution.checkedSample(
         this 
             .getEdgeMotionTransProbPrior(), random);
     final Vector freeDriorParams =
-        OnOffEdgeTransDirMulti.checkedSample(
+        OnOffEdgeTransDistribution.checkedSample(
          this 
             .getFreeMotionTransProbPrior(), random);
     this.getEdgeMotionTransPrior()
@@ -128,9 +128,9 @@ public class OnOffEdgeTransDirMulti extends
   }
 
   @Override
-  public OnOffEdgeTransDirMulti clone() {
-    final OnOffEdgeTransDirMulti transDist =
-        (OnOffEdgeTransDirMulti) super.clone();
+  public OnOffEdgeTransDistribution clone() {
+    final OnOffEdgeTransDistribution transDist =
+        (OnOffEdgeTransDistribution) super.clone();
     transDist.edgeMotionTransEstimator =
         (MultinomialBayesianEstimator) this.edgeMotionTransEstimator
             .clone();
@@ -150,7 +150,7 @@ public class OnOffEdgeTransDirMulti extends
   }
 
   @Override
-  public int compareTo(OnOffEdgeTransDirMulti o) {
+  public int compareTo(OnOffEdgeTransDistribution o) {
     final CompareToBuilder comparator =
         new CompareToBuilder();
     comparator.append(((DenseVector) this
@@ -189,8 +189,8 @@ public class OnOffEdgeTransDirMulti extends
     if (getClass() != obj.getClass()) {
       return false;
     }
-    final OnOffEdgeTransDirMulti other =
-        (OnOffEdgeTransDirMulti) obj;
+    final OnOffEdgeTransDistribution other =
+        (OnOffEdgeTransDistribution) obj;
     if (getEdgeMotionTransPrior() == null) {
       if (other.getEdgeMotionTransPrior() != null) {
         return false;
@@ -312,16 +312,16 @@ public class OnOffEdgeTransDirMulti extends
       if (to.isNullEdge()) {
         return 
            LogMath.add(getFreeMotionTransPrior().getProbabilityFunction()
-               .logEvaluate(OnOffEdgeTransDirMulti.stateOffToOff)
+               .logEvaluate(OnOffEdgeTransDistribution.stateOffToOff)
                , getEdgeMotionTransPrior().getProbabilityFunction()
-               .logEvaluate(OnOffEdgeTransDirMulti.stateOnToOff)) 
+               .logEvaluate(OnOffEdgeTransDistribution.stateOnToOff)) 
                - totalProb;
       } else {
         return 
            LogMath.add(getFreeMotionTransPrior().getProbabilityFunction()
-               .logEvaluate(OnOffEdgeTransDirMulti.stateOffToOn)
+               .logEvaluate(OnOffEdgeTransDistribution.stateOffToOn)
                , getEdgeMotionTransPrior().getProbabilityFunction()
-               .logEvaluate(OnOffEdgeTransDirMulti.stateOnToOn)) 
+               .logEvaluate(OnOffEdgeTransDistribution.stateOnToOn)) 
                - totalProb;
       } 
     } else {

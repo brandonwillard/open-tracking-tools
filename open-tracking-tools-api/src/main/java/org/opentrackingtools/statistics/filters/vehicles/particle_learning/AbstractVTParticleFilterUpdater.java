@@ -25,7 +25,7 @@ import org.opentrackingtools.graph.paths.states.PathStateBelief;
 import org.opentrackingtools.impl.VehicleState;
 import org.opentrackingtools.impl.VehicleStateInitialParameters;
 import org.opentrackingtools.statistics.distributions.impl.DefaultCountedDataDistribution;
-import org.opentrackingtools.statistics.distributions.impl.OnOffEdgeTransDirMulti;
+import org.opentrackingtools.statistics.distributions.impl.OnOffEdgeTransDistribution;
 import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
 
 import com.google.common.collect.Sets;
@@ -157,8 +157,8 @@ public abstract class AbstractVTParticleFilterUpdater
           final PathStateBelief pathStateBelief =
               path.getStateBeliefOnPath(initialBelief);
 
-          final OnOffEdgeTransDirMulti edgeTransDist =
-              new OnOffEdgeTransDirMulti(inferenceGraph,
+          final OnOffEdgeTransDistribution edgeTransDist =
+              new OnOffEdgeTransDistribution(inferenceGraph,
                   parameters.getOnTransitionProbs(),
                   parameters.getOffTransitionProbs(), this.random);
 
@@ -181,8 +181,8 @@ public abstract class AbstractVTParticleFilterUpdater
       final AbstractRoadTrackingFilter trackingFilter =
           this.createRoadTrackingFilter();
 
-      final OnOffEdgeTransDirMulti edgeTransDist =
-          new OnOffEdgeTransDirMulti(inferenceGraph,
+      final OnOffEdgeTransDistribution edgeTransDist =
+          new OnOffEdgeTransDistribution(inferenceGraph,
               parameters.getOnTransitionProbs(),
               parameters.getOffTransitionProbs());
 
@@ -203,11 +203,11 @@ public abstract class AbstractVTParticleFilterUpdater
        * Sample an initial prior for the transition probabilities
        */
       final Vector edgeDriorParams =
-          OnOffEdgeTransDirMulti.checkedSample(
+          OnOffEdgeTransDistribution.checkedSample(
             edgeTransDist
                 .getEdgeMotionTransProbPrior(), this.random);
       final Vector freeDriorParams =
-          OnOffEdgeTransDirMulti.checkedSample(
+          OnOffEdgeTransDistribution.checkedSample(
             edgeTransDist
                 .getFreeMotionTransProbPrior(), this.random);
       

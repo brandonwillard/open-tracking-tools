@@ -21,7 +21,7 @@ import org.opentrackingtools.impl.VehicleState;
 import org.opentrackingtools.impl.VehicleStateInitialParameters;
 import org.opentrackingtools.impl.WrappedWeightedValue;
 import org.opentrackingtools.statistics.distributions.impl.DefaultCountedDataDistribution;
-import org.opentrackingtools.statistics.distributions.impl.OnOffEdgeTransDirMulti;
+import org.opentrackingtools.statistics.distributions.impl.OnOffEdgeTransDistribution;
 import org.opentrackingtools.statistics.filters.vehicles.AbstractVehicleTrackingFilter;
 import org.opentrackingtools.statistics.filters.vehicles.impl.FilterInformation;
 import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
@@ -125,6 +125,8 @@ public abstract class AbstractVTPLFilter extends
 
     final Random rng = getRandom();
 
+    Preconditions.checkState(!resampleDist.isEmpty());
+    
     // TODO low-variance sampling?
     final ArrayList<? extends VehicleState> smoothedStates =
         resampleDist.sample(rng, getNumParticles());
@@ -146,9 +148,10 @@ public abstract class AbstractVTPLFilter extends
        */
       this.seed = rng.nextLong();
 
+      EdgePredictiveResults edgePredResults = sampleEdge(stateToPaths.get(state));
+      
       final VehicleState newTransState =
-          propagateStates(state, obs,
-              stateToPaths.get(state));
+          propagateStates(state, obs, edgePredResults, stateToPaths.size());
 
       ((DefaultCountedDataDistribution<VehicleState>) posteriorDist)
           .increment(newTransState, 0d);
@@ -164,18 +167,15 @@ public abstract class AbstractVTPLFilter extends
 
   }
 
-  private VehicleState propagateStates(
-        VehicleState state,
-        GpsObservation obs,
-        Collection<WrappedWeightedValue<InferredPathPrediction>> weighedPaths) {
-
+  protected EdgePredictiveResults sampleEdge(
+      Collection<WrappedWeightedValue<InferredPathPrediction>> weighedPaths) {
+    
     final Random rng = getRandom();
     rng.setSeed(this.seed);
-
+    
     final PathEdge posteriorEdge;
     final InferredPathPrediction sampledPathEntry;
     final EdgePredictiveResults predictionResults;
-    final AbstractRoadTrackingFilter sampledFilter;
     /*
      * Sample a path
      */
@@ -202,7 +202,6 @@ public abstract class AbstractVTPLFilter extends
     predictionResults = Preconditions.checkNotNull(
         sampledPathEntry.getEdgeToPredictiveBelief().get(
             posteriorEdge));
-    sampledFilter = sampledPathEntry.getFilter();
 
     /*
      * Sample an edge directly
@@ -221,16 +220,28 @@ public abstract class AbstractVTPLFilter extends
     //    
     //    posteriorEdge = instStateDist.sample(rng);
     //    sampledPathEntry = edgeToPathEntries.get(posteriorEdge);
-    //    sampledFilter = sampledPathEntry.getFilter();
     //    predictionResults = sampledPathEntry.getEdgeToPredictiveBelief().get(posteriorEdge);
 
+    return predictionResults; 
+  }
+
+  protected VehicleState propagateStates(
+        VehicleState state,
+        GpsObservation obs,
+        EdgePredictiveResults predictionResults, int pathSupportSize) {
+
+    final Random rng = getRandom();
+    rng.setSeed(this.seed);
+
+    final PathEdge posteriorEdge = predictionResults.getLocationPrediction().getEdge();
+    final AbstractRoadTrackingFilter pathEstimator = state.getMovementFilter();
     /*
      * This is the belief that will be propagated.
      */
     final PathStateBelief priorPathStateBelief =
         predictionResults.getLocationPrediction().clone();
     final PathStateBelief updatedBelief =
-        sampledFilter.measure(priorPathStateBelief,
+        pathEstimator.measure(priorPathStateBelief,
             obs.getProjectedPoint(), posteriorEdge);
 
     /*
@@ -244,7 +255,7 @@ public abstract class AbstractVTPLFilter extends
     /*
      * Update edge transition priors.
      */
-    final OnOffEdgeTransDirMulti updatedEdgeTransDist =
+    final OnOffEdgeTransDistribution updatedEdgeTransDist =
         state.getEdgeTransitionDist().clone();
 
     /*
@@ -253,7 +264,7 @@ public abstract class AbstractVTPLFilter extends
      * would simply bias the results, and offer no real
      * benefit. 
      */
-    if (instStateDist.size() > 1) {
+    if (pathSupportSize > 1) {
       updatedEdgeTransDist.update(state.getBelief()
           .getEdge().getInferredEdge(),
           posteriorEdge.getInferredEdge());
@@ -263,7 +274,7 @@ public abstract class AbstractVTPLFilter extends
      * Update covariances, or not.
      */
     final AbstractRoadTrackingFilter updatedFilter =
-        sampledFilter.clone();
+        pathEstimator.clone();
 
     /*
      * To make sure that the samples connect when sampling

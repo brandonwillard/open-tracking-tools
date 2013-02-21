@@ -17,8 +17,11 @@ public class DeterministicDataDistribution<T> extends
   
   final protected static MutableDouble internalValue = new MutableDouble(1d);
   
+  protected T element;
+  
   public DeterministicDataDistribution(T element) {
     super(Collections.singletonMap(element, internalValue));
+    this.element = element;
   }
 
   @Override
@@ -77,5 +80,36 @@ public class DeterministicDataDistribution<T> extends
     }
 
   }
+
+  @Override
+  public int hashCode() {
+    final int prime = 31;
+    int result = 1;
+    result = prime * result + ((element == null) ? 0 : element.hashCode());
+    return result;
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj) {
+      return true;
+    }
+    if (obj == null) {
+      return false;
+    }
+    if (!(obj instanceof DeterministicDataDistribution)) {
+      return false;
+    }
+    DeterministicDataDistribution other = (DeterministicDataDistribution) obj;
+    if (element == null) {
+      if (other.element != null) {
+        return false;
+      }
+    } else if (!element.equals(other.element)) {
+      return false;
+    }
+    return true;
+  }
+
   
 }

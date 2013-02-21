@@ -28,7 +28,7 @@ import org.opentrackingtools.graph.impl.GenericJTSGraph;
 import org.opentrackingtools.graph.paths.impl.TrackingTestUtils;
 import org.opentrackingtools.graph.paths.states.PathStateBelief;
 import org.opentrackingtools.impl.Simulation.SimulationParameters;
-import org.opentrackingtools.statistics.distributions.impl.OnOffEdgeTransDirMulti;
+import org.opentrackingtools.statistics.distributions.impl.OnOffEdgeTransDistribution;
 import org.opentrackingtools.statistics.filters.vehicles.impl.VehicleTrackingBootstrapFilter;
 import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
 import org.opentrackingtools.statistics.filters.vehicles.road.impl.ForwardMovingRoadTrackingFilter;
@@ -221,7 +221,7 @@ public class SimulationTest {
       }
       System.out.println("movementMean=" + movementSS.getMean());
       
-      Vector transType = OnOffEdgeTransDirMulti.getTransitionType(
+      Vector transType = OnOffEdgeTransDistribution.getTransitionType(
           parentState.getBelief().getEdge().getInferredEdge(), 
           vehicleState.getBelief().getEdge().getInferredEdge());
       

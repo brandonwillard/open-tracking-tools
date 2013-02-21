@@ -12,7 +12,7 @@ import org.opentrackingtools.graph.paths.InferredPath;
 import org.opentrackingtools.graph.paths.edges.PathEdge;
 import org.opentrackingtools.graph.paths.states.PathStateBelief;
 import org.opentrackingtools.impl.VehicleState;
-import org.opentrackingtools.statistics.distributions.impl.OnOffEdgeTransDirMulti;
+import org.opentrackingtools.statistics.distributions.impl.OnOffEdgeTransDistribution;
 import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
 
 import com.vividsolutions.jts.geom.Envelope;
@@ -62,7 +62,7 @@ public interface InferenceGraph {
   public abstract VehicleState createVehicleState(
       GpsObservation obs,
       AbstractRoadTrackingFilter trackingFilter,
-      PathStateBelief pathStateBelief, OnOffEdgeTransDirMulti edgeTransDist,
+      PathStateBelief pathStateBelief, OnOffEdgeTransDistribution edgeTransDist,
       VehicleState parent);
 
 }

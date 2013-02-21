@@ -39,7 +39,7 @@ import org.opentrackingtools.impl.Simulation;
 import org.opentrackingtools.impl.Simulation.SimulationParameters;
 import org.opentrackingtools.impl.VehicleState;
 import org.opentrackingtools.impl.VehicleStateInitialParameters;
-import org.opentrackingtools.statistics.distributions.impl.OnOffEdgeTransDirMulti;
+import org.opentrackingtools.statistics.distributions.impl.OnOffEdgeTransDistribution;
 import org.opentrackingtools.statistics.filters.vehicles.VehicleTrackingFilter;
 import org.opentrackingtools.statistics.filters.vehicles.particle_learning.impl.VehicleTrackingPLFilter;
 import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
@@ -316,7 +316,7 @@ public class RoadTrackingFilterGraphTest {
       final VehicleState parentState = state.getParentState();
       if (parentState != null) {
         
-        Vector transType = OnOffEdgeTransDirMulti.getTransitionType(
+        Vector transType = OnOffEdgeTransDistribution.getTransitionType(
             parentState.getBelief().getEdge().getInferredEdge(), 
             state.getBelief().getEdge().getInferredEdge());
         

@@ -18,7 +18,7 @@ import org.opentrackingtools.graph.paths.states.PathState;
 import org.opentrackingtools.graph.paths.states.PathStateBelief;
 import org.opentrackingtools.graph.paths.states.impl.SimplePathStateBelief;
 import org.opentrackingtools.statistics.distributions.impl.AdjMultivariateGaussian;
-import org.opentrackingtools.statistics.distributions.impl.OnOffEdgeTransDirMulti;
+import org.opentrackingtools.statistics.distributions.impl.OnOffEdgeTransDistribution;
 import org.opentrackingtools.statistics.filters.vehicles.impl.VehicleTrackingPathSamplerFilterUpdater;
 import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
 import org.opentrackingtools.statistics.filters.vehicles.road.impl.ForwardMovingRoadTrackingFilter;
@@ -323,7 +323,7 @@ public class Simulation {
     vehicleState.getMovementFilter().setCurrentTimeDiff(
         this.simParameters.getFrequency());
 
-    final OnOffEdgeTransDirMulti currentEdgeTrans =
+    final OnOffEdgeTransDistribution currentEdgeTrans =
         vehicleState.getEdgeTransitionDist().clone();
 
     /*
