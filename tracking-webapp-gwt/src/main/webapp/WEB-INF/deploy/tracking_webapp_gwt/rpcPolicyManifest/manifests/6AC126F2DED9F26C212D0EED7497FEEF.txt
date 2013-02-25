@@ -1,2 +1,0 @@
-serviceClass: org.openplans.tools.tracking.client.TraceUploadService
-path: 14AEA8DB0A8AECC40DCC9B3EE29AA737.gwt.rpc

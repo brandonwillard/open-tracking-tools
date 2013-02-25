@@ -1,2 +1,0 @@
-serviceClass: org.openplans.tools.tracking.client.InferenceService
-path: F90791FBD1FA205818F215084BAB5DB7.gwt.rpc

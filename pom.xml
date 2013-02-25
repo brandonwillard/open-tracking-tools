@@ -16,7 +16,6 @@
 
   <modules>
     <module>open-tracking-tools-api</module>
-    <module>open-tracking-tools-otp</module>
   </modules>
 
   <build>
@@ -164,6 +163,17 @@
       </snapshots>
       <url>http://repo.opengeo.org/</url>
     </repository>
+    
+    <!-- Repo for the development version of Sandia Cognitive Foundry -->
+    <repository>
+      <id>sonatype-nexus-releases</id>
+      <name>Sonatype Nexus Releases</name>
+      <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+      <snapshots>
+        <enabled>true</enabled>
+      </snapshots>
+    </repository>
+    
   </repositories>
 
   <!-- define no dependencies in the top-level POM to minimize artifact size -->
@@ -277,7 +287,7 @@
 
   <properties>
     <jts.version>1.12</jts.version>
-    <foundry.version>3.3.2</foundry.version>
+    <foundry.version>3.3.3-SNAPSHOT</foundry.version>
     <geotools.version>9.0-M0</geotools.version>
     <jersey.version>1.11</jersey.version>
     <spring.version>3.0.5.RELEASE</spring.version>
