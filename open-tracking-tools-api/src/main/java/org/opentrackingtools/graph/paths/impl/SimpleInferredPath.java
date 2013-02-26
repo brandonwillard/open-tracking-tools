@@ -26,6 +26,7 @@ import org.opentrackingtools.graph.paths.util.PathUtils;
 import org.opentrackingtools.graph.paths.util.PathUtils.PathEdgeProjection;
 import org.opentrackingtools.impl.VehicleState;
 import org.opentrackingtools.impl.WrappedWeightedValue;
+import org.opentrackingtools.statistics.distributions.impl.DefaultCountedDataDistribution;
 import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
 
 import com.google.common.base.Preconditions;
@@ -276,7 +277,7 @@ public class SimpleInferredPath implements InferredPath {
    */
   @Override
   public
-      PathEdgeDistribution
+      PathEdgeDistributionWrapper
       getPriorPredictionResults(
         InferenceGraph graph,
         GpsObservation obs,
@@ -301,30 +302,14 @@ public class SimpleInferredPath implements InferredPath {
     
     final PathStateBelief beliefPrediction =
               filter.predict(state.getBelief(), this);
-    
-    /*
-     * XXX: testing movement restrictions
-     */
-//    if (!state.getBelief().isOnRoad()
-//        && !this.isNullPath()) {
-//      /*
-//       * We just got on a road
-//       */
-//      final double direction = this.isBackward ? -1d : 1d;
-//      final boolean isCorrectDirection =  
-//          AbstractRoadTrackingFilter.getVr().times(
-//              beliefPrediction.getRawState()).getElement(0) * direction >= 0d;
-//              
-//      if (!isCorrectDirection)
-//        return null;
-//    }
 
     double pathLogLik = Double.NEGATIVE_INFINITY;
 
-    final List<WrappedWeightedValue<PathEdge>> weightedPathEdges =
-        Lists.newArrayList();
+//    final List<WrappedWeightedValue<PathEdge>> weightedPathEdges =
+//        Lists.newArrayList();
+    final DefaultCountedDataDistribution<PathEdge> pathEdgeDistribution =
+        new DefaultCountedDataDistribution<PathEdge>(true);
     final List<? extends PathEdge> edgesLocal = this.getPathEdges();
-    //Collections.singletonList(Iterables.getLast(this.getEdges()));
     for (final PathEdge edge : edgesLocal) {
 
       final EdgePredictiveResults edgeResults;
@@ -376,9 +361,7 @@ public class SimpleInferredPath implements InferredPath {
       if (edgeResults.getLocationPrediction() == null)
         continue;
 
-      weightedPathEdges
-          .add(new WrappedWeightedValue<PathEdge>(edge,
-              edgeResults.getTotalLogLik()));
+      pathEdgeDistribution.increment(edge, edgeResults.getTotalLogLik());
       pathLogLik =
           LogMath.add(pathLogLik,
               edgeResults.getTotalLogLik());
@@ -393,9 +376,9 @@ public class SimpleInferredPath implements InferredPath {
 
     assert !Double.isNaN(pathLogLik);
 
-    return new PathEdgeDistribution(this,
+    return new PathEdgeDistributionWrapper(this,
         edgeToPreBeliefAndLogLik, filter,
-        weightedPathEdges, pathLogLik);
+        pathEdgeDistribution, pathLogLik);
   }
 
   @Override

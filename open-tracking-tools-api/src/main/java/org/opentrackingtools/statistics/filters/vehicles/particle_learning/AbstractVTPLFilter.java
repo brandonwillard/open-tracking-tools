@@ -15,7 +15,7 @@ import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.graph.paths.InferredPath;
 import org.opentrackingtools.graph.paths.edges.PathEdge;
 import org.opentrackingtools.graph.paths.edges.impl.EdgePredictiveResults;
-import org.opentrackingtools.graph.paths.impl.PathEdgeDistribution;
+import org.opentrackingtools.graph.paths.impl.PathEdgeDistributionWrapper;
 import org.opentrackingtools.graph.paths.states.PathStateBelief;
 import org.opentrackingtools.impl.VehicleState;
 import org.opentrackingtools.impl.VehicleStateInitialParameters;
@@ -56,7 +56,7 @@ public abstract class AbstractVTPLFilter extends
   protected void internalUpdate(
     DataDistribution<VehicleState> target, GpsObservation obs,
     double timeDiff) {
-    final Map<VehicleState, DefaultCountedDataDistribution<PathEdgeDistribution>> stateToPathDistributions =
+    final Map<VehicleState, DefaultCountedDataDistribution<PathEdgeDistributionWrapper>> stateToPathDistributions =
         Maps.newHashMap();
     final Set<InferredPath> evaluatedPaths =
         Sets.newHashSet();
@@ -92,14 +92,14 @@ public abstract class AbstractVTPLFilter extends
       final Map<PathEdge, EdgePredictiveResults> edgeToPreBeliefAndLogLik =
           Maps.newHashMap();
 
-      DefaultCountedDataDistribution<PathEdgeDistribution> pathPredictiveDistribution = 
-          new DefaultCountedDataDistribution<PathEdgeDistribution>(true);
+      DefaultCountedDataDistribution<PathEdgeDistributionWrapper> pathPredictiveDistribution = 
+          new DefaultCountedDataDistribution<PathEdgeDistributionWrapper>(true);
       for (final InferredPath path : instStateTransitions) {
         
         if (isDebug)
           evaluatedPaths.add(path);
 
-        final PathEdgeDistribution infPath =
+        final PathEdgeDistributionWrapper infPath =
             path.getPriorPredictionResults(this.inferredGraph, obs, state,
                 edgeToPreBeliefAndLogLik);
         
@@ -114,7 +114,7 @@ public abstract class AbstractVTPLFilter extends
               infPath.getTotalLogLikelihood());
         }
       }
-      DefaultCountedDataDistribution<PathEdgeDistribution> currentPathsDist = stateToPathDistributions.get(state);
+      DefaultCountedDataDistribution<PathEdgeDistributionWrapper> currentPathsDist = stateToPathDistributions.get(state);
       
       if (currentPathsDist == null) {
         stateToPathDistributions.put(state, pathPredictiveDistribution);
@@ -164,7 +164,7 @@ public abstract class AbstractVTPLFilter extends
   }
 
   protected EdgePredictiveResults sampleEdge(
-      DefaultCountedDataDistribution<PathEdgeDistribution> inferredPathsDistribution) {
+      DefaultCountedDataDistribution<PathEdgeDistributionWrapper> inferredPathsDistribution) {
     
     final Random rng = getRandom();
     rng.setSeed(this.seed);
@@ -172,26 +172,13 @@ public abstract class AbstractVTPLFilter extends
     /*
      * Sample a path, then an edge.
      */
-    final PathEdgeDistribution sampledPathEntry = inferredPathsDistribution.sample(rng);
+    final PathEdgeDistributionWrapper sampledPath = inferredPathsDistribution.sample(rng);
 
-    final PathEdge posteriorEdge;
-    if (sampledPathEntry.getWeightedPathEdges().size() > 1) {
-      /*
-       * TODO FIXME: cache the creation of these distributions
-       */
-      final DataDistribution<PathEdge> pathEdgeDist =
-          StatisticsUtil
-              .getLogNormalizedDistribution(sampledPathEntry
-                  .getWeightedPathEdges());
-      posteriorEdge = pathEdgeDist.sample(rng);
-
-    } else {
-      posteriorEdge =
-         Iterables.getOnlyElement(sampledPathEntry.getWeightedPathEdges()).getValue();
-    }
+    final DataDistribution<PathEdge> pathEdgeDist = sampledPath.getPathEdgeDisribution();
+    final PathEdge posteriorEdge = pathEdgeDist.sample(rng);
     
     final EdgePredictiveResults predictionResults = Preconditions.checkNotNull(
-        sampledPathEntry.getEdgeToPredictiveBelief().get(
+        sampledPath.getEdgeToPredictiveBelief().get(
             posteriorEdge));
 
     /*

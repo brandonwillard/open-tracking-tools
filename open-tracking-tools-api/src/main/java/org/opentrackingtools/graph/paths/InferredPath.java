@@ -9,7 +9,7 @@ import org.opentrackingtools.GpsObservation;
 import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.graph.paths.edges.PathEdge;
 import org.opentrackingtools.graph.paths.edges.impl.EdgePredictiveResults;
-import org.opentrackingtools.graph.paths.impl.PathEdgeDistribution;
+import org.opentrackingtools.graph.paths.impl.PathEdgeDistributionWrapper;
 import org.opentrackingtools.graph.paths.states.PathState;
 import org.opentrackingtools.graph.paths.states.PathStateBelief;
 import org.opentrackingtools.impl.VehicleState;
@@ -106,7 +106,7 @@ public interface InferredPath extends Comparable<InferredPath> {
    */
   public abstract InferredPath getPathTo(PathEdge edge);
 
-  public abstract PathEdgeDistribution getPriorPredictionResults(
+  public abstract PathEdgeDistributionWrapper getPriorPredictionResults(
     InferenceGraph graph, GpsObservation obs, VehicleState state,
     Map<PathEdge, EdgePredictiveResults> edgeToPreBeliefAndLogLik);
 

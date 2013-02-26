@@ -22,7 +22,7 @@ import org.opentrackingtools.graph.edges.InferredEdge;
 import org.opentrackingtools.graph.impl.LengthIndexedSubline;
 import org.opentrackingtools.graph.paths.InferredPath;
 import org.opentrackingtools.graph.paths.edges.PathEdge;
-import org.opentrackingtools.graph.paths.impl.PathEdgeDistribution;
+import org.opentrackingtools.graph.paths.impl.PathEdgeDistributionWrapper;
 import org.opentrackingtools.graph.paths.states.PathStateBelief;
 import org.opentrackingtools.impl.VehicleState;
 import org.opentrackingtools.impl.VehicleStateInitialParameters;
@@ -124,7 +124,7 @@ public abstract class AbstractVTParticleFilterUpdater
           new DefaultDataDistribution<VehicleState>(
               numParticles);
 
-      final Set<PathEdgeDistribution> evaluatedPaths =
+      final Set<PathEdgeDistributionWrapper> evaluatedPaths =
           Sets.newHashSet();
       if (!initialEdges.isEmpty()) {
         for (final LengthIndexedSubline line: initialEdges) {
@@ -133,7 +133,7 @@ public abstract class AbstractVTParticleFilterUpdater
               this.inferenceGraph.getPathEdge(line.getParentEdge(), edgeGeom, 0d, false);
           final InferredPath path =
               this.inferenceGraph.getInferredPath(pathEdge);
-          evaluatedPaths.add(new PathEdgeDistribution(path,
+          evaluatedPaths.add(new PathEdgeDistributionWrapper(path,
               null, null, null, Double.NEGATIVE_INFINITY));
 
           /*

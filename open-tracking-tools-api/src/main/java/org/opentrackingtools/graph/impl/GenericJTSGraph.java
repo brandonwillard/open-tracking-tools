@@ -146,27 +146,39 @@ public class GenericJTSGraph implements InferenceGraph {
    * @param lines
    */
   public GenericJTSGraph(Collection<LineString> lines) {
-    createGraphFromLineStrings(lines);
+    createGraphFromLineStrings(lines, true);
   }
   
-  protected void createGraphFromLineStrings(Collection<LineString> lines) {
+  public GenericJTSGraph(List<LineString> lines, boolean transformShapesToEuclidean) {
+    createGraphFromLineStrings(lines, transformShapesToEuclidean);
+  }
+
+  protected void createGraphFromLineStrings(Collection<LineString> lines, 
+      boolean transformShapesToEuclidean) {
     graphGenerator = new StrictLineStringGraphGenerator(); 
     edgeIndex = new STRtree();
     gpsEnv = new Envelope();
     projEnv = new Envelope();
     for (LineString edge : lines) {
       gpsEnv.expandToInclude(edge.getEnvelopeInternal());
-      final MathTransform transform = GeoUtils.getTransform(edge.getCoordinate());
+      
       Geometry projectedEdge; 
-      try {
-        projectedEdge = JTS.transform(edge, transform);
-        projEnv.expandToInclude(projectedEdge.getEnvelopeInternal());
-        final ConstLineString constLine = new ConstLineString((LineString)projectedEdge);
-        constLine.setUserData(edge);
-        graphGenerator.add(constLine);
-      } catch (final TransformException e) {
-        e.printStackTrace();
+      if (transformShapesToEuclidean) {
+        final MathTransform transform = GeoUtils.getTransform(edge.getCoordinate());
+        try {
+          projectedEdge = JTS.transform(edge, transform);
+        } catch (final TransformException e) {
+          e.printStackTrace();
+          continue;
+        }
+      } else {
+        projectedEdge = edge;
       }
+      
+      projEnv.expandToInclude(projectedEdge.getEnvelopeInternal());
+      final ConstLineString constLine = new ConstLineString((LineString)projectedEdge);
+      constLine.setUserData(edge);
+      graphGenerator.add(constLine);
     }
     /*
      * Initialize the id map and edge index.
@@ -347,24 +359,10 @@ public class GenericJTSGraph implements InferenceGraph {
           Path path = aStarIter.getPath();
           
           if (path != null) {
-            List<PathEdge> pathEdges = Lists.newArrayList();
-            double distToStart = 0d;
-            Iterator<?> iter = path.riterator();
-            BasicDirectedNode prevNode = (BasicDirectedNode) bStartEdge.getInNode();
-            while (iter.hasNext()) {
-              BasicDirectedNode node = (BasicDirectedNode)iter.next();
-              Edge edge = Preconditions.checkNotNull(prevNode.getOutEdge(node));
-              
-              final InferredEdge infEdge = getInferredEdge(edge);
-              final Pair<List<PathEdge>, Double> pathEdgePair = getPathEdges(startEdge, endEdge, infEdge, distToStart, false);
-              pathEdges.addAll(pathEdgePair.getFirst());
-              distToStart += pathEdgePair.getSecond();
-              
-              reachedEndNodes.add(node);
-              prevNode = node;
-            }
-            if (!pathEdges.isEmpty())
-              paths.add(getInferredPath(pathEdges, false));
+            final InferredPath newPath = getPathFromGraph(path, bStartEdge, 
+                startEdge, endEdge, reachedEndNodes);
+            if (newPath != null)
+              paths.add(newPath);
           }
           // TODO backward paths? 
         }
@@ -398,7 +396,38 @@ public class GenericJTSGraph implements InferenceGraph {
     return paths;
   }
 
-  private Pair<List<PathEdge>, Double> getPathEdges(
+  protected InferredPath getPathFromGraph(Path path, DirectedEdge bStartEdge, 
+    LengthIndexedSubline startEdge, LengthIndexedSubline endEdge, Set<Node> reachedEndNodes) {
+    List<PathEdge> pathEdges = Lists.newArrayList();
+    double distToStart = 0d;
+    Iterator<?> iter = path.riterator();
+    BasicDirectedNode prevNode = (BasicDirectedNode) bStartEdge.getInNode();
+    while (iter.hasNext()) {
+      BasicDirectedNode node = (BasicDirectedNode)iter.next();
+      Edge edge = Preconditions.checkNotNull(prevNode.getOutEdge(node));
+      
+      final InferredEdge infEdge = getInferredEdge(edge);
+      final Pair<List<PathEdge>, Double> pathEdgePair = getPathEdges(startEdge, endEdge, infEdge, distToStart, false);
+      pathEdges.addAll(pathEdgePair.getFirst());
+      distToStart += pathEdgePair.getSecond();
+      
+      reachedEndNodes.add(node);
+      prevNode = node;
+    }
+    if (!pathEdges.isEmpty()) {
+      final InferredPath newPath = getInferredPath(pathEdges, false);
+      
+      Preconditions.checkState(SimpleInferredPath.biDirComp.compare(
+          new Coordinate[] {startEdge.getLine().p0, startEdge.getLine().p1},
+          Iterables.getFirst(newPath.getPathEdges(), null)
+          .getGeometry().getCoordinates()) == 0);
+      return newPath;
+    } else {
+      return null;
+    }
+  }
+
+  protected Pair<List<PathEdge>, Double> getPathEdges(
       LengthIndexedSubline startEdge, LengthIndexedSubline endEdge,
       InferredEdge infEdge, double distToStart, boolean isBackward) {
     final List<PathEdge> edges = Lists.newArrayList();
@@ -423,9 +452,17 @@ public class GenericJTSGraph implements InferenceGraph {
     double distToStartSublines = distToStart;
     for (LineSegment lineSeg : GeoUtils.getSubLineSegments(subline)) {
       final Geometry line = lineSeg.toGeometry(geomFactory);
-      edges.add(getPathEdge(infEdge, line, distToStartSublines, isBackward));
+      final PathEdge pathEdge = getPathEdge(infEdge, line, distToStartSublines, isBackward);
+      
+      edges.add(pathEdge);
       distToStartSublines += lineSeg.getLength();
     }
+    
+    if (infEdge.equals(startEdge.getParentEdge()))
+      Preconditions.checkState(SimpleInferredPath.biDirComp.compare(
+          new Coordinate[] {startEdge.getLine().p0, startEdge.getLine().p1},
+          Iterables.getFirst(edges, null).getGeometry().getCoordinates()) == 0);
+    
     final double totalDist = distToStartSublines - distToStart;
     Preconditions.checkState(!edges.isEmpty());
     Preconditions.checkState(totalDist > 0d);

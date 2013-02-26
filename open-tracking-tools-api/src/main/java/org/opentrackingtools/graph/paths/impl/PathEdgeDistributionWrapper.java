@@ -7,14 +7,15 @@ import org.opentrackingtools.graph.paths.InferredPath;
 import org.opentrackingtools.graph.paths.edges.PathEdge;
 import org.opentrackingtools.graph.paths.edges.impl.EdgePredictiveResults;
 import org.opentrackingtools.impl.WrappedWeightedValue;
+import org.opentrackingtools.statistics.distributions.impl.DefaultCountedDataDistribution;
 import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
 
 import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ComparisonChain;
 
-public class PathEdgeDistribution implements
-    Comparable<PathEdgeDistribution> {
+public class PathEdgeDistributionWrapper implements
+    Comparable<PathEdgeDistributionWrapper> {
 
   private final AbstractRoadTrackingFilter filter;
 
@@ -27,13 +28,13 @@ public class PathEdgeDistribution implements
 
   private final double totalLogLikelihood;
 
-  private final List<WrappedWeightedValue<PathEdge>> weightedPathEdges;
+  private final DefaultCountedDataDistribution<PathEdge> pathEdgeDistribution;
 
-  public PathEdgeDistribution(
+  public PathEdgeDistributionWrapper(
     InferredPath path,
     Map<PathEdge, EdgePredictiveResults> edgeToPreBeliefAndLogLik,
     AbstractRoadTrackingFilter filter,
-    List<WrappedWeightedValue<PathEdge>> weightedPathEdges2,
+    DefaultCountedDataDistribution<PathEdge> pathEdgeDistribution,
     double totalLogLikelihood) {
     Preconditions.checkArgument(!Double
         .isNaN(totalLogLikelihood));
@@ -41,22 +42,22 @@ public class PathEdgeDistribution implements
     this.path = path;
     this.filter = filter;
     this.edgeToPredictiveBelief = edgeToPreBeliefAndLogLik;
-    this.weightedPathEdges = weightedPathEdges2;
+    this.pathEdgeDistribution = pathEdgeDistribution;
   }
 
   @Override
-  public int compareTo(PathEdgeDistribution o) {
+  public int compareTo(PathEdgeDistributionWrapper o) {
     return ComparisonChain.start()
         .compare(this.path, o.path).result();
   }
 
   @Override
   public boolean equals(Object object) {
-    if (object instanceof PathEdgeDistribution) {
+    if (object instanceof PathEdgeDistributionWrapper) {
       if (!super.equals(object))
         return false;
-      final PathEdgeDistribution that =
-          (PathEdgeDistribution) object;
+      final PathEdgeDistributionWrapper that =
+          (PathEdgeDistributionWrapper) object;
       return Objects.equal(this.path, that.path);
     }
     return false;
@@ -79,9 +80,9 @@ public class PathEdgeDistribution implements
     return totalLogLikelihood;
   }
 
-  public List<WrappedWeightedValue<PathEdge>>
-      getWeightedPathEdges() {
-    return this.weightedPathEdges;
+  public DefaultCountedDataDistribution<PathEdge>
+      getPathEdgeDisribution() {
+    return this.pathEdgeDistribution;
   }
 
   @Override
