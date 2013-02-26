@@ -1,5 +1,7 @@
 package org.opentrackingtools.paths;
 
+import org.opentrackingtools.util.PathUtils;
+
 import gov.sandia.cognition.math.matrix.AbstractVector;
 import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.util.AbstractCloneableSerializable;

@@ -14,7 +14,7 @@ import org.opentrackingtools.paths.InferredPath;
 import org.opentrackingtools.paths.PathEdge;
 import org.opentrackingtools.paths.PathState;
 import org.opentrackingtools.paths.PathStateBelief;
-import org.opentrackingtools.paths.PathUtils;
+import org.opentrackingtools.util.PathUtils;
 import org.opentrackingtools.util.StatisticsUtil;
 
 import com.google.common.base.Preconditions;

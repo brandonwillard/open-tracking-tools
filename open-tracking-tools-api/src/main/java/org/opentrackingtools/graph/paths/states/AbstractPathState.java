@@ -72,6 +72,7 @@ public abstract class AbstractPathState extends
     return PathUtils.stateDiff(fromState, this, false);
   }
   
+  
   @Override
   public AbstractPathState clone() {
     final AbstractPathState clone =

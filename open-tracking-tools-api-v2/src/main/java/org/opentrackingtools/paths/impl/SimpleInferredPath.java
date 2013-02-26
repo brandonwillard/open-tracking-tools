@@ -20,8 +20,8 @@ import org.opentrackingtools.paths.InferredPath;
 import org.opentrackingtools.paths.PathEdge;
 import org.opentrackingtools.paths.PathState;
 import org.opentrackingtools.paths.PathStateBelief;
-import org.opentrackingtools.paths.PathUtils;
-import org.opentrackingtools.paths.PathUtils.PathEdgeProjection;
+import org.opentrackingtools.util.PathUtils;
+import org.opentrackingtools.util.PathUtils.PathEdgeProjection;
 import org.opentrackingtools.util.model.WrappedWeightedValue;
 
 import com.google.common.base.Preconditions;

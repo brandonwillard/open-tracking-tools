@@ -1,4 +1,4 @@
-package org.opentrackingtools.paths;
+package org.opentrackingtools.util;
 
 import gov.sandia.cognition.math.matrix.Matrix;
 import gov.sandia.cognition.math.matrix.MatrixFactory;
@@ -19,10 +19,11 @@ import org.opentrackingtools.distributions.AdjMultivariateGaussian;
 import org.opentrackingtools.edges.InferredEdge;
 import org.opentrackingtools.estimators.AbstractRoadTrackingFilter;
 import org.opentrackingtools.model.VehicleState;
+import org.opentrackingtools.paths.InferredPath;
+import org.opentrackingtools.paths.PathEdge;
+import org.opentrackingtools.paths.PathState;
 import org.opentrackingtools.paths.impl.SimpleInferredPath;
 import org.opentrackingtools.paths.impl.SimplePathEdge;
-import org.opentrackingtools.util.GeoUtils;
-import org.opentrackingtools.util.StatisticsUtil;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Iterables;

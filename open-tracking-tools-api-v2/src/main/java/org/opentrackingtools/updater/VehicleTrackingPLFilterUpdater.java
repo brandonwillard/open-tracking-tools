@@ -13,8 +13,6 @@ import java.util.Collection;
 import java.util.Random;
 import java.util.Set;
 
-import javax.annotation.Nonnull;
-
 import org.opentrackingtools.VehicleStateInitialParameters;
 import org.opentrackingtools.distributions.DefaultCountedDataDistribution;
 import org.opentrackingtools.distributions.OnOffEdgeTransDistribution;
@@ -53,12 +51,11 @@ public abstract class VehicleTrackingPLFilterUpdater implements ParticleFilter.U
       InvocationTargetException {
 
     Class<?> filterType = Class.forName(parameters.getRoadFilterTypeName());
-
     Constructor<?> ctor =
         filterType.getConstructor(GpsObservation.class, InferenceGraph.class, VehicleStateInitialParameters.class,
             Random.class);
 
-    this.roadFilterGenerator = (AbstractRoadTrackingFilter) ctor.newInstance(obs, inferencedGraph, parameters, rng);
+    this.roadFilterGenerator = (AbstractRoadTrackingFilter)ctor.newInstance(obs, inferencedGraph, parameters, rng);
     this.initialObservation = obs;
     this.inferenceGraph = inferencedGraph;
     if (rng == null)
@@ -85,10 +82,8 @@ public abstract class VehicleTrackingPLFilterUpdater implements ParticleFilter.U
     return null;
   }
 
-  @Nonnull
   @Override
   public DataDistribution<VehicleState> createInitialParticles(int numParticles) {
-
     final DataDistribution<VehicleState> retDist = new DefaultCountedDataDistribution<VehicleState>(true);
 
     for (int i = 0; i < numParticles; i++) {
@@ -184,14 +179,8 @@ public abstract class VehicleTrackingPLFilterUpdater implements ParticleFilter.U
 
   @Override
   public double computeLogLikelihood(VehicleState particle, GpsObservation observation) {
-
     double logLikelihood = 0d;
-
-    /*
-     * Movement.
-     */
     logLikelihood += particle.getBelief().logLikelihood(observation.getProjectedPoint(), particle.getMovementFilter());
-
     return logLikelihood;
   }
 
@@ -200,22 +189,18 @@ public abstract class VehicleTrackingPLFilterUpdater implements ParticleFilter.U
     throw new RuntimeException("Not implemented");
   }
 
-  @Nonnull
   protected AbstractRoadTrackingFilter createRoadTrackingFilter() {
     return roadFilterGenerator.clone();
   }
 
-  @Nonnull
   public InferenceGraph getInferredGraph() {
     return inferenceGraph;
   }
 
-  @Nonnull
   public GpsObservation getInitialObservation() {
     return initialObservation;
   }
 
-  @Nonnull
   public VehicleStateInitialParameters getParameters() {
     return parameters;
   }
