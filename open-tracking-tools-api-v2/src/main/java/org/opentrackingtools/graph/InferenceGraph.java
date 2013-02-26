@@ -6,14 +6,14 @@ import gov.sandia.cognition.statistics.DistributionWithMean;
 import java.util.Collection;
 import java.util.List;
 
-import org.opentrackingtools.GpsObservation;
-import org.opentrackingtools.graph.edges.InferredEdge;
-import org.opentrackingtools.graph.paths.InferredPath;
-import org.opentrackingtools.graph.paths.edges.PathEdge;
-import org.opentrackingtools.graph.paths.states.PathStateBelief;
-import org.opentrackingtools.impl.VehicleState;
-import org.opentrackingtools.statistics.distributions.impl.OnOffEdgeTransDistribution;
-import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
+import org.opentrackingtools.distributions.OnOffEdgeTransDistribution;
+import org.opentrackingtools.edges.InferredEdge;
+import org.opentrackingtools.estimators.AbstractRoadTrackingFilter;
+import org.opentrackingtools.model.GpsObservation;
+import org.opentrackingtools.model.VehicleState;
+import org.opentrackingtools.paths.InferredPath;
+import org.opentrackingtools.paths.PathEdge;
+import org.opentrackingtools.paths.PathStateBelief;
 
 import com.vividsolutions.jts.geom.Envelope;
 import com.vividsolutions.jts.geom.Geometry;

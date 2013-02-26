@@ -12,8 +12,19 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 
+import org.opentrackingtools.distributions.DefaultCountedDataDistribution;
+import org.opentrackingtools.distributions.OnOffEdgeTransDistribution;
+import org.opentrackingtools.estimators.AbstractRoadTrackingFilter;
 import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.model.GpsObservation;
+import org.opentrackingtools.model.VehicleState;
+import org.opentrackingtools.paths.InferredPath;
+import org.opentrackingtools.paths.PathEdge;
+import org.opentrackingtools.paths.PathStateBelief;
+import org.opentrackingtools.paths.impl.EdgePredictiveResults;
+import org.opentrackingtools.paths.impl.InferredPathPrediction;
+import org.opentrackingtools.util.StatisticsUtil;
+import org.opentrackingtools.util.model.WrappedWeightedValue;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.HashMultimap;
@@ -23,20 +34,31 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Sets;
 
-public class VehicleStatePLFilter extends AbstractParticleFilter<GpsObservation, ?>{
+public class VehicleStatePLFilter extends AbstractParticleFilter<GpsObservation, VehicleState> {
 
   private long seed;
   private static final long serialVersionUID = -8257075186193062150L;
 
+  private GpsObservation obs;
+  private InferenceGraph inferredGraph;
+  private VehicleStateInitialParameters parameters;
+  private Boolean isDebug;
+  private Random rng;
+
   public VehicleStatePLFilter(GpsObservation obs, InferenceGraph inferredGraph,
-    VehicleStateInitialParameters parameters, ParticleFilter.Updater<GpsObservation, ?> updater, Boolean isDebug, Random rng) {
-    
-    
-    
-    super(obs, inferredGraph, parameters, updater, isDebug, rng);
+    VehicleStateInitialParameters parameters, ParticleFilter.Updater<GpsObservation, VehicleState> updater,
+    Boolean isDebug, Random rng) {
+
+    this.obs = obs;
+    this.inferredGraph = inferredGraph;
+    this.parameters = parameters;
+    this.isDebug = isDebug;
+    this.rng = rng;
+    this.setUpdater(updater);
   }
 
-  private void internalUpdate(DataDistribution<VehicleState> target, GpsObservation obs, double timeDiff) {
+  @Override
+  public void update(DataDistribution<VehicleState> target, GpsObservation obs) {
     final Multimap<VehicleState, WrappedWeightedValue<InferredPathPrediction>> stateToPaths = HashMultimap.create();
     final Set<InferredPath> evaluatedPaths = Sets.newHashSet();
 
@@ -51,6 +73,8 @@ public class VehicleStatePLFilter extends AbstractParticleFilter<GpsObservation,
       final int count = ((DefaultCountedDataDistribution<VehicleState>) target).getCount(state);
 
       final Collection<InferredPath> instStateTransitions = inferredGraph.getPaths(state, obs);
+      
+      double timeDiff = (obs.getTimestamp().getTime() - state.getObservation().getTimestamp().getTime())/1000;
 
       state.getMovementFilter().setCurrentTimeDiff(timeDiff);
       double totalLogLik = Double.NEGATIVE_INFINITY;
@@ -93,9 +117,6 @@ public class VehicleStatePLFilter extends AbstractParticleFilter<GpsObservation,
 
     // TODO low-variance sampling?
     final ArrayList<? extends VehicleState> smoothedStates = resampleDist.sample(rng, getNumParticles());
-
-    if (isDebug)
-      this.filterInfo.put(obs, new FilterInformation(evaluatedPaths, resampleDist, stateToPaths));
 
     final DataDistribution<VehicleState> posteriorDist = new DefaultCountedDataDistribution<VehicleState>(true);
 

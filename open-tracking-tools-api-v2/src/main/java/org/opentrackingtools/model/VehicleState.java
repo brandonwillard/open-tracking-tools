@@ -1,19 +1,13 @@
 package org.opentrackingtools.model;
 
 import gov.sandia.cognition.math.matrix.Vector;
-import gov.sandia.cognition.statistics.ComputableDistribution;
-import gov.sandia.cognition.statistics.ProbabilityFunction;
-
-import java.util.ArrayList;
-import java.util.Random;
 
 import org.apache.commons.lang.builder.CompareToBuilder;
 import org.apache.commons.lang3.builder.ToStringBuilder;
-import org.opentrackingtools.GpsObservation;
+import org.opentrackingtools.distributions.OnOffEdgeTransDistribution;
+import org.opentrackingtools.estimators.AbstractRoadTrackingFilter;
 import org.opentrackingtools.graph.InferenceGraph;
-import org.opentrackingtools.graph.paths.states.PathStateBelief;
-import org.opentrackingtools.statistics.distributions.impl.OnOffEdgeTransDistribution;
-import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
+import org.opentrackingtools.paths.PathStateBelief;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Iterables;
@@ -26,7 +20,7 @@ import com.google.common.collect.Iterables;
  * @author bwillard
  * 
  */
-public class VehicleState implements ComputableDistribution<GpsObservation>, Comparable<VehicleState> {
+public class VehicleState implements Comparable<VehicleState> {
 
   private static final long serialVersionUID = 3229140254421801273L;
 
@@ -190,11 +184,6 @@ public class VehicleState implements ComputableDistribution<GpsObservation>, Com
   }
 
   @Override
-  public VehicleState.PDF getProbabilityFunction() {
-    return new VehicleState.PDF(this);
-  }
-
-  @Override
   public int hashCode() {
     /*
      * We do this to avoid evaluating every parent down the chain.
@@ -210,16 +199,6 @@ public class VehicleState implements ComputableDistribution<GpsObservation>, Com
       hash = result;
       return result;
     }
-  }
-
-  @Override
-  public GpsObservation sample(Random random) {
-    throw new RuntimeException("Not implemented");
-  }
-
-  @Override
-  public ArrayList<GpsObservation> sample(Random random, int numSamples) {
-    throw new RuntimeException("Not implemented");
   }
 
   public void setParentState(VehicleState parentState) {
