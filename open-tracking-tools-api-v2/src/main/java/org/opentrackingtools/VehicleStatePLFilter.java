@@ -39,21 +39,15 @@ public class VehicleStatePLFilter extends AbstractParticleFilter<GpsObservation,
   private long seed;
   private static final long serialVersionUID = -8257075186193062150L;
 
-  private GpsObservation obs;
   private InferenceGraph inferredGraph;
-  private VehicleStateInitialParameters parameters;
   private Boolean isDebug;
-  private Random rng;
 
   public VehicleStatePLFilter(GpsObservation obs, InferenceGraph inferredGraph,
     VehicleStateInitialParameters parameters, ParticleFilter.Updater<GpsObservation, VehicleState> updater,
     Boolean isDebug, Random rng) {
 
-    this.obs = obs;
     this.inferredGraph = inferredGraph;
-    this.parameters = parameters;
     this.isDebug = isDebug;
-    this.rng = rng;
     this.setUpdater(updater);
   }
 

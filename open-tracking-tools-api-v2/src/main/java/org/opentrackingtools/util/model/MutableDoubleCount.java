@@ -3,10 +3,10 @@ package org.opentrackingtools.util.model;
 import gov.sandia.cognition.math.MutableDouble;
 
 public class MutableDoubleCount extends MutableDouble {
+
   public int count = 0;
 
-  private static final long serialVersionUID =
-      -6936453778285494680L;
+  private static final long serialVersionUID = -6936453778285494680L;
 
   public MutableDoubleCount(double value) {
     super(value);

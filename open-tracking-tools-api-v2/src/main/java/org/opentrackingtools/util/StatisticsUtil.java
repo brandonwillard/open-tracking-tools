@@ -72,11 +72,15 @@ public class StatisticsUtil {
   private static final double[] q = { 1.28426009614491121,
       0.468238212480865118, 0.0659881378689285515,
       0.00378239633202758244, 7.29751555083966205e-5 };
+
   private static final int CUTOFF = 16; /* Cutoff allowing exact "*" and "/" */
+  
   private static final double M_SQRT_32 =
       5.656854249492380195206754896838; /* The square root of 32 */
+  
   private static final double M_1_SQRT_2PI =
       0.398942280401432677939946059934;
+  
   private static final double DBL_EPSILON =
       2.2204460492503131e-016;
 
@@ -168,20 +172,6 @@ public class StatisticsUtil {
     final DefaultCountedDataDistribution<SupportType> result =
         new DefaultCountedDataDistribution<SupportType>(false);
 
-    /*
-     * Sort before putting in the data distribution
-     */
-    // Collections.sort(collection, new
-    // Comparator<DefaultWeightedValue<SupportType>> () {
-    //
-    // @Override
-    // public int compare(DefaultWeightedValue<SupportType> arg0,
-    // DefaultWeightedValue<SupportType> arg1) {
-    // return arg0.getValue().compareTo(arg1.getValue());
-    // }
-    //
-    // });
-
     for (final WrappedWeightedValue<SupportType> entry : map) {
       if (entry.getWeight() == Double.NEGATIVE_INFINITY
           || totalLikelihood == Double.NEGATIVE_INFINITY)
@@ -247,32 +237,6 @@ public class StatisticsUtil {
     }
     return true;
   }
-
-  /**
-   * Low variance resampler. Follows Thrun's example in Probabilistic Robots.
-   */
-  //  public static <SupportType> DataDistribution<SupportType> lowVarianceResampler(
-  //      Random rng, DataDistribution<SupportType> particles) {
-  //    Preconditions.checkArgument(particles.size() > 0);
-  //
-  //    final double M = particles.getDomainSize();
-  //    final Multiset<SupportType> resampled = HashMultiset.create((int) M);
-  //    final double r = rng.nextDouble() / M;
-  //    final Iterator<?> pIter = particles.asMap().entrySet().iterator();
-  //    SupportType p = (SupportType) pIter.next();
-  //    double c = p.getWeight() - Math.log(particles.count(p));
-  //    for (int m = 0; m < M; ++m) {
-  //      final double U = Math.log(r + m / M);
-  //      while (U > c && pIter.hasNext()) {
-  //        p = pIter.next();
-  //        c = LogMath.add(
-  //            p.getWeight() - Math.log(particles.count(p)), c);
-  //      }
-  //      resampled.add(p);
-  //    }
-  //
-  //    return resampled;
-  //  }
 
   public static double logEvaluateNormal(Vector input,
     Vector mean, Matrix cov) {
@@ -429,9 +393,6 @@ public class StatisticsUtil {
       }
       temp = (xnum + c[7]) / (xden + d[7]);
 
-      //do_del(y);
-      //swap_tail;
-      //#define do_del(X)             \
       xsq = ((int) (y * CUTOFF)) * 1.0 / CUTOFF;
       del = (y - xsq) * (y + xsq);
       if (log_p) {
@@ -449,7 +410,7 @@ public class StatisticsUtil {
                 * Math.exp(-del * 0.5) * temp;
         cp = 1.0 - p;
       }
-      //#define swap_tail           \
+
       if (x > 0.0) {
         temp = p;
         if (lower) {
@@ -584,7 +545,6 @@ public class StatisticsUtil {
         StatisticsUtil.rootOfSemiDefinite(invWish
             .getInverseScale().pseudoInverse(1e-9));
     final Matrix k = Z.times(scaleSqrt);
-    //Z.times(invWish.getScaleSqrt());
     final Matrix wishSample = k.transpose().times(k);
     final Matrix invWishSample =
         wishSample.pseudoInverse(1e-9);

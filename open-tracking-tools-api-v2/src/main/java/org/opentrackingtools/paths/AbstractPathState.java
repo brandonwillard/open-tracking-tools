@@ -5,7 +5,6 @@ import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.util.AbstractCloneableSerializable;
 import gov.sandia.cognition.util.ObjectUtil;
 
-
 public abstract class AbstractPathState extends
     AbstractCloneableSerializable implements PathState {
 

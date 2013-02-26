@@ -142,8 +142,8 @@ public class GeoUtils {
    * @param projection
    * @return
    */
+  // TODO FIXME XXX: what about when the geoms cross zones?
   public static Geometry invertGeom(Geometry orig, final MathTransform projection) {
-    // TODO FIXME XXX: what about when the geoms cross zones?
     final Geometry geom = (Geometry) orig.clone();
     geom.apply(new CoordinateFilter() {
       @Override
@@ -174,8 +174,8 @@ public class GeoUtils {
    * @return
    */
 
+  // TODO FIXME XXX: what about when the geoms cross zones?
   public static Geometry projectLonLatGeom(Geometry orig) {
-    // TODO FIXME XXX: what about when the geoms cross zones?
     final Geometry geom = (Geometry) orig.clone();
     geom.apply(new CoordinateFilter() {
       @Override

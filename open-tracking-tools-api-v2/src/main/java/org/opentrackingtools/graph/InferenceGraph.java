@@ -20,46 +20,46 @@ import com.vividsolutions.jts.geom.Geometry;
 
 public interface InferenceGraph {
 
-  public abstract Collection<InferredPath> getPaths(VehicleState fromState,
+  public Collection<InferredPath> getPaths(VehicleState fromState,
     GpsObservation toCoord);
 
-  public abstract Collection<InferredEdge> getTopoEquivEdges(
+  public Collection<InferredEdge> getTopoEquivEdges(
     InferredEdge edge);
 
-  public abstract Envelope getGPSGraphExtent();
+  public Envelope getGPSGraphExtent();
 
-  public abstract Collection<InferredEdge> getNearbyEdges(
+  public Collection<InferredEdge> getNearbyEdges(
     DistributionWithMean<Vector> tmpInitialBelief,
     AbstractRoadTrackingFilter tmpTrackingFilter);
 
-  public abstract Collection<InferredEdge> getNearbyEdges(Vector projLocation,
+  public Collection<InferredEdge> getNearbyEdges(Vector projLocation,
     double radius);
 
-  public abstract InferredEdge getNullInferredEdge();
-  public abstract InferredPath getNullPath();
-  public abstract PathEdge getNullPathEdge();
+  public InferredEdge getNullInferredEdge();
+  public InferredPath getNullPath();
+  public PathEdge getNullPathEdge();
 
-  public abstract Collection<InferredEdge>
+  public Collection<InferredEdge>
       getIncomingTransferableEdges(InferredEdge infEdge);
   
-  public abstract Collection<InferredEdge>
+  public Collection<InferredEdge>
       getOutgoingTransferableEdges(InferredEdge infEdge);
 
-  public abstract Envelope getProjGraphExtent();
+  public Envelope getProjGraphExtent();
 
-  public abstract PathEdge getPathEdge(InferredEdge edge, double d,
+  public PathEdge getPathEdge(InferredEdge edge, double d,
     Boolean b);
 
-  public abstract InferredPath getInferredPath(PathEdge pathEdge);
+  public InferredPath getInferredPath(PathEdge pathEdge);
 
-  public abstract InferredPath getInferredPath(
+  public InferredPath getInferredPath(
     List<PathEdge> currentPath, Boolean b);
 
-  public abstract boolean edgeHasReverse(Geometry edge);
+  public boolean edgeHasReverse(Geometry edge);
   
-  public abstract InferredEdge getInferredEdge(String id);
+  public InferredEdge getInferredEdge(String id);
 
-  public abstract VehicleState createVehicleState(
+  public VehicleState createVehicleState(
       GpsObservation obs,
       AbstractRoadTrackingFilter trackingFilter,
       PathStateBelief pathStateBelief, OnOffEdgeTransDistribution edgeTransDist,

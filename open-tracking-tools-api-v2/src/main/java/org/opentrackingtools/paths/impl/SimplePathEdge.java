@@ -8,7 +8,6 @@ import gov.sandia.cognition.statistics.distribution.UnivariateGaussian;
 import gov.sandia.cognition.util.AbstractCloneableSerializable;
 
 import org.opentrackingtools.edges.InferredEdge;
-import org.opentrackingtools.edges.impl.SimpleInferredEdge;
 import org.opentrackingtools.estimators.AbstractRoadTrackingFilter;
 import org.opentrackingtools.model.GpsObservation;
 import org.opentrackingtools.model.VehicleState;
@@ -31,7 +30,7 @@ public class SimplePathEdge extends AbstractCloneableSerializable implements Pat
   protected Boolean isBackward;
 
   protected final static SimplePathEdge nullPathEdge = new SimplePathEdge(
-      SimpleInferredEdge.getNullEdge()); 
+      InferredEdge.getNullEdge()); 
   
   protected SimplePathEdge(InferredEdge edge) {
     this.edge = edge;

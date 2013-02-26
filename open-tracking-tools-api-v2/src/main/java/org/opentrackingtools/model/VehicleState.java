@@ -49,12 +49,6 @@ public class VehicleState implements Comparable<VehicleState> {
 
   private final InferenceGraph graph;
 
-  // private final int initialHashCode;
-  // private final int edgeInitialHashCode;
-  // private final int obsInitialHashCode;
-  // private final int transInitialHashCode;
-  // private final int beliefInitialHashCode;
-
   private int hash = 0;
 
   public VehicleState(InferenceGraph inferredGraph, GpsObservation observation,
@@ -92,14 +86,6 @@ public class VehicleState implements Comparable<VehicleState> {
           (observation.getTimestamp().getTime() - observation.getPreviousObservation().getTimestamp().getTime()) / 1000d;
       this.movementFilter.setCurrentTimeDiff(timeDiff);
     }
-
-    // DEBUG
-    // this.initialHashCode = this.hashCode();
-    // this.edgeInitialHashCode = this.edge.hashCode();
-    // this.transInitialHashCode = this.edgeTransitionDist.hashCode();
-    // this.beliefInitialHashCode =
-    // Arrays.hashCode(((DenseVector)this.initialBelief.convertToVector()).getArray());
-    // this.obsInitialHashCode = this.observation.hashCode();
   }
 
   public VehicleState(VehicleState other) {
@@ -109,14 +95,6 @@ public class VehicleState implements Comparable<VehicleState> {
     this.edgeTransitionDist = other.edgeTransitionDist.clone();
     this.observation = other.observation;
     this.parentState = other.parentState;
-
-    // DEBUG
-    // this.initialHashCode = this.hashCode();
-    // this.edgeInitialHashCode = this.edge.hashCode();
-    // this.transInitialHashCode = this.edgeTransitionDist.hashCode();
-    // this.beliefInitialHashCode =
-    // Arrays.hashCode(((DenseVector)this.initialBelief.convertToVector()).getArray());
-    // this.obsInitialHashCode = this.observation.hashCode();
   }
 
   @Override

@@ -110,7 +110,6 @@ public class AdjMultivariateGaussian extends MultivariateGaussian {
 
   @Override
   public Vector sample(Random random) {
-    
     if (this.covSqrt == null) {
       covSqrt =
           StatisticsUtil.rootOfSemiDefinite(this.getCovariance());

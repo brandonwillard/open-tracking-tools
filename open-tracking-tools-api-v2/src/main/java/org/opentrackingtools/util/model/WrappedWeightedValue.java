@@ -3,14 +3,10 @@ package org.opentrackingtools.util.model;
 import gov.sandia.cognition.util.DefaultWeightedValue;
 import gov.sandia.cognition.util.WeightedValue;
 
-public class WrappedWeightedValue<T> extends
-    DefaultWeightedValue<T> {
+public class WrappedWeightedValue<T> extends DefaultWeightedValue<T> {
 
-  /**
-   * 
-   */
-  private static final long serialVersionUID =
-      -2223108371382713360L;
+  private static final long serialVersionUID = -2223108371382713360L;
+
   private int count = 0;
 
   public WrappedWeightedValue() {

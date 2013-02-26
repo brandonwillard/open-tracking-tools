@@ -58,8 +58,7 @@ public abstract class VehicleTrackingPLFilterUpdater implements ParticleFilter.U
         filterType.getConstructor(GpsObservation.class, InferenceGraph.class, VehicleStateInitialParameters.class,
             Random.class);
 
-    roadFilterGenerator = (AbstractRoadTrackingFilter) ctor.newInstance(obs, inferencedGraph, parameters, rng);
-
+    this.roadFilterGenerator = (AbstractRoadTrackingFilter) ctor.newInstance(obs, inferencedGraph, parameters, rng);
     this.initialObservation = obs;
     this.inferenceGraph = inferencedGraph;
     if (rng == null)

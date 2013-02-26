@@ -254,22 +254,6 @@ public class OnOffEdgeTransDistribution extends AbstractCloneableSerializable im
     }
   }
 
-  //  public double predictiveLogLikelihood(InferredEdge from,
-  //    InferredEdge to) {
-  //    final Vector state = getTransitionType(from, to);
-  //    if (from.isEmptyEdge()) {
-  //      final MultivariatePolyaDistribution predDist =
-  //          freeMotionTransEstimator
-  //              .createPredictiveDistribution(getFreeMotionTransProbPrior());
-  //      return predDist.getProbabilityFunction().logEvaluate(state);
-  //    } else {
-  //      final MultivariatePolyaDistribution predDist =
-  //          edgeMotionTransEstimator
-  //              .createPredictiveDistribution(getEdgeMotionTransProbPrior());
-  //      return predDist.getProbabilityFunction().logEvaluate(state);
-  //    }
-  //  }
-
   public InferredEdge sample(Random rng, List<InferredEdge> transferEdges, InferredEdge inferredEdge) {
 
     Preconditions.checkNotNull(inferredEdge);
