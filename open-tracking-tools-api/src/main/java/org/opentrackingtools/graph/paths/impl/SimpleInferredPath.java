@@ -83,7 +83,7 @@ public class SimpleInferredPath implements InferredPath {
     
     PathEdge lastEdge = null;
     //    double absTotalDistance = 0d;
-    final List<Coordinate> coords = Lists.newArrayList();
+    final CoordinateList coords = new CoordinateList();
     for (final PathEdge edge : edges) {
       this.normalEdges.add(edge.getInferredEdge());
       
@@ -91,14 +91,16 @@ public class SimpleInferredPath implements InferredPath {
         if (isBackward) {
           Preconditions
               .checkArgument(lastEdge == null
-                  || lastEdge
-                      .getInferredEdge()
-                      .getStartPoint()
-                      .equals(
-                          edge.getInferredEdge()
-                              .getEndPoint()));
+              || lastEdge.getInferredEdge().equals(edge.getInferredEdge()) 
+              || lastEdge
+                  .getInferredEdge()
+                  .getStartPoint()
+                  .equals(
+                      edge.getInferredEdge()
+                          .getEndPoint()));
         } else {
           Preconditions.checkArgument(lastEdge == null
+              || lastEdge.getInferredEdge().equals(edge.getInferredEdge()) 
               || lastEdge
                   .getInferredEdge()
                   .getEndPoint()
@@ -110,16 +112,8 @@ public class SimpleInferredPath implements InferredPath {
 
         final Geometry geom = edge.getGeometry();
         if (geom.getLength() > 1e-4) {
-          final Coordinate[] theseCoords =
-              isBackward ? geom.reverse().getCoordinates()
-                  : geom.getCoordinates();
-          final int startIdx = coords.size() == 0 ? 0 : 1;
-          for (int i = startIdx; i < theseCoords.length; i++) {
-            if (i == 0
-                || !theseCoords[i].equals(coords.get(coords
-                    .size() - 1)))
-              coords.add(theseCoords[i]);
-          }
+          final Coordinate[] theseCoords = geom.getCoordinates();
+          coords.add(theseCoords, false, !isBackward);
           edgeIds.add(edge.getInferredEdge().getEdgeId());
         }
       }
@@ -127,18 +121,16 @@ public class SimpleInferredPath implements InferredPath {
       lastEdge = edge;
     }
 
-    if (edges.size() > 1) {
+//    if (edges.size() > 1) {
+//    } else {
+//      final Geometry edgeGeom =
+//          Iterables.getOnlyElement(edges).getGeometry();
       this.geometry =
           JTSFactoryFinder.getGeometryFactory()
-              .createLineString(
-                  coords.toArray(new Coordinate[coords
-                      .size()]));
-    } else {
-      final Geometry edgeGeom =
-          Iterables.getOnlyElement(edges).getGeometry();
-      this.geometry =
-          isBackward ? edgeGeom.reverse() : edgeGeom;
-    }
+              .createLineString(coords.toCoordinateArray());
+//      this.geometry =
+//          isBackward ? edgeGeom.reverse() : edgeGeom;
+//    }
 
     final double direction = isBackward ? -1d : 1d;
     this.totalPathDistance =
@@ -162,7 +154,7 @@ public class SimpleInferredPath implements InferredPath {
     else
       this.totalPathDistance =
           (this.isBackward == Boolean.TRUE ? -1d : 1d)
-              * edge.getInferredEdge().getLength();
+              * edge.getLength();
     this.edgeIds.add(edge.getInferredEdge().getEdgeId());
     this.geometry =
         (this.isBackward == Boolean.TRUE)? edge.getGeometry().reverse()
@@ -284,7 +276,7 @@ public class SimpleInferredPath implements InferredPath {
    */
   @Override
   public
-      InferredPathPrediction
+      PathEdgeDistribution
       getPriorPredictionResults(
         InferenceGraph graph,
         GpsObservation obs,
@@ -401,7 +393,7 @@ public class SimpleInferredPath implements InferredPath {
 
     assert !Double.isNaN(pathLogLik);
 
-    return new InferredPathPrediction(this,
+    return new PathEdgeDistribution(this,
         edgeToPreBeliefAndLogLik, filter,
         weightedPathEdges, pathLogLik);
   }

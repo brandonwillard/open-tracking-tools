@@ -111,20 +111,6 @@
     </pluginManagement>
   </build>
 
-  <distributionManagement>
-    <repository>
-      <id>${distribution_id}</id>
-      <name>${distribution_name}</name>
-      <url>${distribution_url}</url>
-    </repository>
-    <snapshotRepository>
-      <id>${snapshot_distribution_id}</id>
-      <name>${snapshot_distribution_name}</name>
-      <url>${snapshot_distribution_url}</url>
-      <uniqueVersion>false</uniqueVersion>
-    </snapshotRepository>
-  </distributionManagement>
-
   <repositories>
     <!-- Hack to force maven to check central first. Maven central is inherited from the superpom,
       but ends up at the end of the list. Though most of the time the artifact is in central, 
@@ -163,6 +149,14 @@
         <enabled>true</enabled>
       </snapshots>
       <url>http://repo.opengeo.org/</url>
+    </repository>
+    <repository>
+      <id>sonatype-nexus-releases</id>
+      <name>Sonatype Nexus Releases</name>
+      <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+      <snapshots>
+        <enabled>true</enabled>
+      </snapshots>
     </repository>
   </repositories>
 
@@ -237,16 +231,6 @@
         <artifactId>slf4j-log4j12</artifactId>
         <version>1.5.8</version>
       </dependency>
-<!--       <dependency> -->
-<!--         <groupId>org.opentrackingtools</groupId> -->
-<!--         <artifactId>open-tracking-tools-api</artifactId> -->
-<!--         <version>0.0.1-SNAPSHOT</version> -->
-<!--       </dependency> -->
-<!--       <dependency> -->
-<!--         <groupId>org.opentrackingtools</groupId> -->
-<!--         <artifactId>open-tracking-tools-otp</artifactId> -->
-<!--         <version>0.0.1-SNAPSHOT</version> -->
-<!--       </dependency> -->
       <dependency>
         <groupId>gov.sandia.foundry</groupId>
         <artifactId>gov-sandia-cognition-learning-core</artifactId>
@@ -277,16 +261,10 @@
 
   <properties>
     <jts.version>1.12</jts.version>
-    <foundry.version>3.3.2</foundry.version>
+    <foundry.version>3.3.3-SNAPSHOT</foundry.version>
     <geotools.version>9.0-M0</geotools.version>
     <jersey.version>1.11</jersey.version>
     <spring.version>3.0.5.RELEASE</spring.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <distribution_id>opengeo</distribution_id>
-    <distribution_name>OpenGeo Maven Repository</distribution_name>
-    <distribution_url>dav:http://repo.opengeo.org</distribution_url>
-    <snapshot_distribution_id>opengeo</snapshot_distribution_id>
-    <snapshot_distribution_name>OpenGeo Maven Repository</snapshot_distribution_name>
-    <snapshot_distribution_url>dav:http://repo.opengeo.org</snapshot_distribution_url>
   </properties>
 </project>

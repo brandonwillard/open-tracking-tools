@@ -83,7 +83,7 @@ public class TrackingTestUtils {
     double distToStart = 0;
     for (final SimpleInferredEdge edge : edges) {
       final SimplePathEdge pe =
-          SimplePathEdge.getEdge(edge, (isBackward ? -1d : 1d)
+          SimplePathEdge.getEdge(edge, edge.getGeometry(), (isBackward ? -1d : 1d)
               * distToStart, isBackward);
       distToStart += edge.getLength();
       pathEdges.add(pe);

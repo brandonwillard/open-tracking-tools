@@ -13,6 +13,7 @@ import junit.framework.Assert;
 import org.junit.Test;
 import org.opentrackingtools.graph.edges.impl.SimpleInferredEdge;
 import org.opentrackingtools.graph.otp.impl.OtpGraph;
+import org.opentrackingtools.graph.paths.InferredPath;
 import org.opentrackingtools.graph.paths.edges.impl.SimplePathEdge;
 import org.opentrackingtools.graph.paths.impl.SimpleInferredPath;
 import org.opentripplanner.routing.edgetype.PlainStreetEdge;
@@ -74,8 +75,8 @@ public class UniquePathTest {
         new PlainStreetEdge(v3, v5, makeGeometry(v3, v5),
             "e5", 1.0, StreetTraversalPermission.ALL, false);
 
-    final Set<SimpleInferredPath> paths =
-        new HashSet<SimpleInferredPath>();
+    final Set<InferredPath> paths =
+        new HashSet<InferredPath>();
 
     final OtpGraph otpGraph = mock(OtpGraph.class);
 
@@ -83,7 +84,7 @@ public class UniquePathTest {
         new ArrayList<SimplePathEdge>(Arrays.asList(SimplePathEdge
             .getEdge(SimpleInferredEdge.getInferredEdge(e1.getGeometry(), e1, 1, otpGraph), 0,
                 false)));
-    final SimpleInferredPath p1 =
+    final InferredPath p1 =
         SimpleInferredPath.getInferredPath(edges1, false);
     paths.add(p1);
 
@@ -94,7 +95,7 @@ public class UniquePathTest {
     final List<SimplePathEdge> edges2 =
         Arrays.asList(SimplePathEdge.getEdge(SimpleInferredEdge.getInferredEdge(
             e2.getGeometry(), e2, 2, otpGraph), 0, false));
-    final SimpleInferredPath p2 =
+    final InferredPath p2 =
         SimpleInferredPath.getInferredPath(edges2, false);
     paths.add(p2);
 
@@ -107,7 +108,7 @@ public class UniquePathTest {
             e2.getGeometry(), e2, 2, otpGraph), 0, false), SimplePathEdge.getEdge(
             SimpleInferredEdge.getInferredEdge(
                 e3.getGeometry(), e3, 3, otpGraph), 0, false));
-    final SimpleInferredPath p3 =
+    final InferredPath p3 =
         SimpleInferredPath.getInferredPath(edges3, false);
     paths.add(p3);
 
@@ -122,7 +123,7 @@ public class UniquePathTest {
             e2.getGeometry(), e2, 2, otpGraph), 0, false), SimplePathEdge.getEdge(
             SimpleInferredEdge.getInferredEdge(
                 e4.getGeometry(), e4, 4, otpGraph), 0, false));
-    final SimpleInferredPath p4 =
+    final InferredPath p4 =
         SimpleInferredPath.getInferredPath(edges4, false);
     paths.add(p4);
 

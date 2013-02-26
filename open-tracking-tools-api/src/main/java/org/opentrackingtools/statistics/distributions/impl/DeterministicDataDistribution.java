@@ -1,5 +1,7 @@
 package org.opentrackingtools.statistics.distributions.impl;
 
+import org.apache.commons.lang3.builder.ToStringBuilder;
+
 import java.util.Collections;
 import java.util.Map;
 
@@ -109,6 +111,14 @@ public class DeterministicDataDistribution<T> extends
       return false;
     }
     return true;
+  }
+
+  @Override
+  public String toString() {
+    ToStringBuilder builder = new ToStringBuilder(this);
+    builder.append("element", element);
+    builder.append("map", map);
+    return builder.toString();
   }
 
   

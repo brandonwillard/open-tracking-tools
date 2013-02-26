@@ -8,6 +8,7 @@ import java.util.List;
 
 import org.opentrackingtools.GpsObservation;
 import org.opentrackingtools.graph.edges.InferredEdge;
+import org.opentrackingtools.graph.impl.LengthIndexedSubline;
 import org.opentrackingtools.graph.paths.InferredPath;
 import org.opentrackingtools.graph.paths.edges.PathEdge;
 import org.opentrackingtools.graph.paths.states.PathStateBelief;
@@ -28,11 +29,11 @@ public interface InferenceGraph {
 
   public abstract Envelope getGPSGraphExtent();
 
-  public abstract Collection<InferredEdge> getNearbyEdges(
+  public abstract Collection<LengthIndexedSubline> getNearbyEdges(
     DistributionWithMean<Vector> tmpInitialBelief,
     AbstractRoadTrackingFilter tmpTrackingFilter);
 
-  public abstract Collection<InferredEdge> getNearbyEdges(Vector projLocation,
+  public abstract Collection<LengthIndexedSubline> getNearbyEdges(Vector projLocation,
     double radius);
 
   public abstract InferredEdge getNullInferredEdge();
@@ -46,9 +47,6 @@ public interface InferenceGraph {
       getOutgoingTransferableEdges(InferredEdge infEdge);
 
   public abstract Envelope getProjGraphExtent();
-
-  public abstract PathEdge getPathEdge(InferredEdge edge, double d,
-    Boolean b);
 
   public abstract InferredPath getInferredPath(PathEdge pathEdge);
 
@@ -64,5 +62,7 @@ public interface InferenceGraph {
       AbstractRoadTrackingFilter trackingFilter,
       PathStateBelief pathStateBelief, OnOffEdgeTransDistribution edgeTransDist,
       VehicleState parent);
+
+  public abstract PathEdge getPathEdge(InferredEdge edge, Geometry line, double d, Boolean b);
 
 }

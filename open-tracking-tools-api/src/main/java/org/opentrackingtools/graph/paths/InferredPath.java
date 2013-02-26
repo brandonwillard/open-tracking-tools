@@ -9,7 +9,7 @@ import org.opentrackingtools.GpsObservation;
 import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.graph.paths.edges.PathEdge;
 import org.opentrackingtools.graph.paths.edges.impl.EdgePredictiveResults;
-import org.opentrackingtools.graph.paths.impl.InferredPathPrediction;
+import org.opentrackingtools.graph.paths.impl.PathEdgeDistribution;
 import org.opentrackingtools.graph.paths.states.PathState;
 import org.opentrackingtools.graph.paths.states.PathStateBelief;
 import org.opentrackingtools.impl.VehicleState;
@@ -52,22 +52,6 @@ public interface InferredPath extends Comparable<InferredPath> {
   public abstract Geometry getGeometry();
 
   public abstract Boolean isBackward();
-
-  /**
-   * XXX: the state must have a prior predictive mean.
-   * 
-   * @param obs
-   * @param state
-   * @param edgeToPreBeliefAndLogLik
-   * @return
-   */
-  public abstract
-      InferredPathPrediction
-      getPriorPredictionResults(
-        InferenceGraph graph,
-        GpsObservation obs,
-        VehicleState state,
-        Map<PathEdge, EdgePredictiveResults> edgeToPreBeliefAndLogLik);
 
   /**
    * @see {@link SimpleInferredPath#getStateOnPath(PathState)}
@@ -121,5 +105,10 @@ public interface InferredPath extends Comparable<InferredPath> {
    * @return
    */
   public abstract InferredPath getPathTo(PathEdge edge);
+
+  public abstract PathEdgeDistribution getPriorPredictionResults(
+    InferenceGraph graph, GpsObservation obs, VehicleState state,
+    Map<PathEdge, EdgePredictiveResults> edgeToPreBeliefAndLogLik);
+
 
 }

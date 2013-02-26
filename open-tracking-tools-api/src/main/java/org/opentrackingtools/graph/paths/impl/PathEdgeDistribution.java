@@ -13,8 +13,8 @@ import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ComparisonChain;
 
-public class InferredPathPrediction implements
-    Comparable<InferredPathPrediction> {
+public class PathEdgeDistribution implements
+    Comparable<PathEdgeDistribution> {
 
   private final AbstractRoadTrackingFilter filter;
 
@@ -29,7 +29,7 @@ public class InferredPathPrediction implements
 
   private final List<WrappedWeightedValue<PathEdge>> weightedPathEdges;
 
-  public InferredPathPrediction(
+  public PathEdgeDistribution(
     InferredPath path,
     Map<PathEdge, EdgePredictiveResults> edgeToPreBeliefAndLogLik,
     AbstractRoadTrackingFilter filter,
@@ -45,18 +45,18 @@ public class InferredPathPrediction implements
   }
 
   @Override
-  public int compareTo(InferredPathPrediction o) {
+  public int compareTo(PathEdgeDistribution o) {
     return ComparisonChain.start()
         .compare(this.path, o.path).result();
   }
 
   @Override
   public boolean equals(Object object) {
-    if (object instanceof InferredPathPrediction) {
+    if (object instanceof PathEdgeDistribution) {
       if (!super.equals(object))
         return false;
-      final InferredPathPrediction that =
-          (InferredPathPrediction) object;
+      final PathEdgeDistribution that =
+          (PathEdgeDistribution) object;
       return Objects.equal(this.path, that.path);
     }
     return false;

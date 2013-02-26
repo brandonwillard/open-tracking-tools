@@ -26,7 +26,7 @@ public class ForwardOnlyKalmanFilter extends AdjKalmanFilter {
   @Override
   public MultivariateGaussian createInitialLearnedObject() {
     return new TruncatedRoadGaussian(this.model.getState(),
-        this.getModelCovariance(), 2d, 0d);
+        this.getModelCovariance(), Double.POSITIVE_INFINITY, 0d);
   }
 
   @Override

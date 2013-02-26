@@ -54,9 +54,9 @@ public class PathStateTest {
   @Test(expectedExceptions = IllegalArgumentException.class)
   public void testBadPathError() {
     final List<SimplePathEdge> edges2_rev =
-        Lists.newArrayList(SimplePathEdge.getEdge(ie2_rev, 0,
+        Lists.newArrayList(SimplePathEdge.getEdge(ie2_rev, ie2_rev.getGeometry(), 0,
             false), SimplePathEdge.getEdge(ie3_rev,
-            ie2_rev.getLength(), false));
+                ie2_rev.getGeometry(), ie2_rev.getLength(), false));
 
     SimpleInferredPath.getInferredPath(edges2_rev, false);
 
@@ -598,8 +598,9 @@ public class PathStateTest {
     final SimplePathState y =
         SimplePathState.getPathState(
             SimpleInferredPath.getInferredPath(SimplePathEdge.getEdge(
-                p1.getPathEdges().get(1).getInferredEdge(), 0d,
-                false)),
+                p1.getPathEdges().get(1).getInferredEdge(), 
+                p1.getPathEdges().get(1).getGeometry(),
+                0d, false)),
             VectorFactory.getDenseDefault().createVector2D(
                 5d, -1d));
     final Vector diff = y.minus(x);
@@ -628,8 +629,9 @@ public class PathStateTest {
     final SimplePathState y =
         SimplePathState.getPathState(
             SimpleInferredPath.getInferredPath(SimplePathEdge.getEdge(
-                p1.getPathEdges().get(1).getInferredEdge(), 0d,
-                true)),
+                p1.getPathEdges().get(1).getInferredEdge(), 
+                p1.getPathEdges().get(1).getGeometry(),
+                0d, true)),
             VectorFactory.getDenseDefault().createVector2D(
                 0d, -1d));
     final Vector diff = y.minus(x);
@@ -666,8 +668,8 @@ public class PathStateTest {
             .getDenseDefault().createVector2D(5d, 1d));
     final SimplePathState y =
         SimplePathState.getPathState(SimpleInferredPath
-            .getInferredPath(SimplePathEdge.getEdge(ie3, 0d,
-                false)), VectorFactory.getDenseDefault()
+            .getInferredPath(SimplePathEdge.getEdge(ie3, 
+                ie3.getGeometry(), 0d, false)), VectorFactory.getDenseDefault()
             .createVector2D(5d, 1d));
     final Vector diff = y.minus(x);
     AssertJUnit.assertEquals("distance", 20d, diff.getElement(0),
@@ -706,8 +708,8 @@ public class PathStateTest {
             .getDenseDefault().createVector2D(5d, 1d));
     final SimplePathState y =
         SimplePathState.getPathState(SimpleInferredPath
-            .getInferredPath(SimplePathEdge.getEdge(ie3_rev, 0d,
-                false)), VectorFactory.getDenseDefault()
+            .getInferredPath(SimplePathEdge.getEdge(ie3_rev, 
+                ie3_rev.getGeometry(), 0d, false)), VectorFactory.getDenseDefault()
             .createVector2D(5d, -1d));
     final Vector diff = y.minus(x);
     AssertJUnit.assertEquals("distance", -20d, diff.getElement(0),

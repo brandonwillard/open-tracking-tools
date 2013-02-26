@@ -481,7 +481,8 @@ public class PathUtils {
       final InferredPath invPath =
           SimpleInferredPath.getInferredPath(Collections
               .singletonList(SimplePathEdge.getEdge(
-                  pathEdge.getInferredEdge(), 0d,
+                  pathEdge.getInferredEdge(), 
+                  pathEdge.getGeometry(), 0d,
                   isBackward)), isBackward);
       inversion =
           invPath.getStateOnPath(to)
@@ -662,7 +663,7 @@ public class PathUtils {
   
     if (Math.signum(mean.getElement(0)) != desiredDirection) {
       final double totalPosLength =
-          edge.getInferredEdge().getLength()
+          edge.getLength()
               + Math.abs(edge.getDistToStartOfEdge());
       double newPosLocation =
           totalPosLength - Math.abs(mean.getElement(0));

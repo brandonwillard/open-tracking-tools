@@ -20,7 +20,7 @@ import com.google.common.collect.Iterables;
 
 /**
  * This class represents the state of a vehicle, which is made up of the
- * vehicles location, whether it is on an edge, which path it took from its
+ * vehicle's location, on/off edge status, the path it took from its
  * previous location on an edge, and the distributions that determine these.
  * 
  * @author bwillard

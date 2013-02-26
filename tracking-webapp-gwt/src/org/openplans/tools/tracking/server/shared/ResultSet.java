@@ -376,15 +376,15 @@ public class ResultSet {
   public Map<String, Object> getPriorPredictiveResults() {
     final Map<String, Object> jsonData = Maps.newHashMap();
     
-    EdgePredictiveResults result = this.filter.getFilterInformation(state.getObservation()).
-        getEdgePredictiveResult(state.getParentState(), state.getBelief().getEdge());
-    
-    if (result == null)
-      return null;
-    
-    jsonData.put("edgeMarginalLogLik", result.getEdgePredMarginalLogLik());
-    jsonData.put("edgeTransLogLik", result.getEdgePredTransLogLik());
-    jsonData.put("measurementLogLik", result.getMeasurementPredLogLik());
+//    EdgePredictiveResults result = this.filter.getFilterInformation(state.getObservation()).
+//        getEdgePredictiveResult(state.getParentState(), state.getBelief().getEdge());
+//    
+//    if (result == null)
+//      return null;
+//    
+//    jsonData.put("edgeMarginalLogLik", result.getEdgePredMarginalLogLik());
+//    jsonData.put("edgeTransLogLik", result.getEdgePredTransLogLik());
+//    jsonData.put("measurementLogLik", result.getMeasurementPredLogLik());
     return jsonData;
   }
   
