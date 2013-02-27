@@ -9,8 +9,7 @@ import com.vividsolutions.jts.geom.Coordinate;
 
 public class ProjectedCoordinate extends Coordinate {
 
-  private static final long serialVersionUID =
-      2905131060296578237L;
+  private static final long serialVersionUID = 2905131060296578237L;
 
   final private MathTransform transform;
   final private Coordinate refLatLon;

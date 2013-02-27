@@ -10,9 +10,9 @@ import org.opentrackingtools.VehicleStateInitialParameters;
 import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.model.GpsObservation;
 import org.opentrackingtools.model.VehicleState;
-import org.opentrackingtools.paths.PathStateBelief;
 
-public class StandardRoadTrackingFilter extends AbstractRoadTrackingFilter {
+public class StandardRoadTrackingFilter extends
+    AbstractRoadTrackingFilter {
 
   private static final long serialVersionUID = -7872007182966059657L;
 
@@ -28,35 +28,45 @@ public class StandardRoadTrackingFilter extends AbstractRoadTrackingFilter {
    * @param a0Variance
    * @param angle
    */
-  public StandardRoadTrackingFilter(GpsObservation obs, InferenceGraph graph, VehicleStateInitialParameters params,
+  public StandardRoadTrackingFilter(GpsObservation obs,
+    InferenceGraph graph, VehicleStateInitialParameters params,
     Random rng) {
     super(obs, graph, params, rng);
 
-    this.obsCovar = MatrixFactory.getDefault().createDiagonal(params.getObsCov());
+    this.obsCovar =
+        MatrixFactory.getDefault().createDiagonal(params.getObsCov());
 
     this.currentTimeDiff = params.getInitialObsFreq();
 
     /*
      * Create the road-coordinates filter
      */
-    final LinearDynamicalSystem roadModel = new LinearDynamicalSystem(0, 2);
-    final Matrix roadG = createStateTransitionMatrix(currentTimeDiff, true);
+    final LinearDynamicalSystem roadModel =
+        new LinearDynamicalSystem(0, 2);
+    final Matrix roadG =
+        createStateTransitionMatrix(currentTimeDiff, true);
     roadModel.setA(roadG);
     roadModel.setB(MatrixFactory.getDefault().createIdentity(2, 2));
     roadModel.setC(Or);
     this.roadModel = roadModel;
 
-    this.setQr(MatrixFactory.getDefault().createDiagonal(params.getOnRoadStateCov()));
-    final Matrix roadStateCov = createStateCovarianceMatrix(this.currentTimeDiff, this.getQr(), true);
-    this.roadFilter = new AdjKalmanFilter(roadModel, roadStateCov, this.obsCovar);
+    this.setQr(MatrixFactory.getDefault().createDiagonal(
+        params.getOnRoadStateCov()));
+    final Matrix roadStateCov =
+        createStateCovarianceMatrix(this.currentTimeDiff,
+            this.getQr(), true);
+    this.roadFilter =
+        new AdjKalmanFilter(roadModel, roadStateCov, this.obsCovar);
     this.setOnRoadStateTransCovar(roadStateCov);
 
     /*
      * Create the ground-coordinates filter
      */
-    final LinearDynamicalSystem groundModel = new LinearDynamicalSystem(0, 4);
+    final LinearDynamicalSystem groundModel =
+        new LinearDynamicalSystem(0, 4);
 
-    final Matrix groundGct = createStateTransitionMatrix(currentTimeDiff, false);
+    final Matrix groundGct =
+        createStateTransitionMatrix(currentTimeDiff, false);
 
     groundModel.setA(groundGct);
     groundModel.setB(MatrixFactory.getDefault().createIdentity(4, 4));
@@ -64,9 +74,14 @@ public class StandardRoadTrackingFilter extends AbstractRoadTrackingFilter {
 
     this.groundModel = groundModel;
 
-    this.setQg(MatrixFactory.getDefault().createDiagonal(params.getOffRoadStateCov()));
-    final Matrix groundStateCov = createStateCovarianceMatrix(this.currentTimeDiff, this.getQg(), false);
-    this.groundFilter = new AdjKalmanFilter(groundModel, groundStateCov, this.obsCovar);
+    this.setQg(MatrixFactory.getDefault().createDiagonal(
+        params.getOffRoadStateCov()));
+    final Matrix groundStateCov =
+        createStateCovarianceMatrix(this.currentTimeDiff,
+            this.getQg(), false);
+    this.groundFilter =
+        new AdjKalmanFilter(groundModel, groundStateCov,
+            this.obsCovar);
     this.setOffRoadStateTransCovar(groundStateCov);
 
   }
@@ -80,8 +95,9 @@ public class StandardRoadTrackingFilter extends AbstractRoadTrackingFilter {
   }
 
   @Override
-  public void update(VehicleState state, GpsObservation obs, PathStateBelief posteriorState,
-    PathStateBelief priorPredictiveState, Random rng) {
+  public void update(VehicleState state, GpsObservation obs,
+    PathStateDistribution posteriorState,
+    PathStateDistribution priorPredictiveState, Random rng) {
 
   }
 

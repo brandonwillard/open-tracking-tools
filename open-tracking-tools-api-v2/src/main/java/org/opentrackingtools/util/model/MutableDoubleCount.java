@@ -29,8 +29,7 @@ public class MutableDoubleCount extends MutableDouble {
     if (getClass() != obj.getClass()) {
       return false;
     }
-    final MutableDoubleCount other =
-        (MutableDoubleCount) obj;
+    final MutableDoubleCount other = (MutableDoubleCount) obj;
     if (count != other.count) {
       return false;
     }
@@ -70,7 +69,7 @@ public class MutableDoubleCount extends MutableDouble {
 
   @Override
   public String toString() {
-    return "MutableDoubleCount [count=" + count
-        + ", value=" + value + "]";
+    return "MutableDoubleCount [count=" + count + ", value=" + value
+        + "]";
   }
 }

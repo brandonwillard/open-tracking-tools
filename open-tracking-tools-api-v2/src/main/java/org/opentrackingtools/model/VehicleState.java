@@ -1,14 +1,31 @@
 package org.opentrackingtools.model;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.Random;
+
+import gov.sandia.cognition.math.matrix.Matrix;
 import gov.sandia.cognition.math.matrix.Vector;
+import gov.sandia.cognition.statistics.ComputableDistribution;
+import gov.sandia.cognition.statistics.Distribution;
+import gov.sandia.cognition.statistics.DistributionEstimator;
+import gov.sandia.cognition.statistics.EstimableDistribution;
+import gov.sandia.cognition.statistics.ProbabilityFunction;
+import gov.sandia.cognition.statistics.bayesian.BayesianEstimatorPredictor;
+import gov.sandia.cognition.util.AbstractCloneableSerializable;
 
 import org.apache.commons.lang.builder.CompareToBuilder;
 import org.apache.commons.lang3.builder.ToStringBuilder;
+import org.opentrackingtools.distributions.BayesianEstimableDistribution;
+import org.opentrackingtools.distributions.BayesianEstimableParameter;
+import org.opentrackingtools.distributions.DeterministicDataDistribution;
 import org.opentrackingtools.distributions.OnOffEdgeTransDistribution;
 import org.opentrackingtools.estimators.AbstractRoadTrackingFilter;
+import org.opentrackingtools.estimators.RecursiveBayesianEstimatorPredictor;
 import org.opentrackingtools.graph.InferenceGraph;
-import org.opentrackingtools.paths.PathStateBelief;
-
+import org.opentrackingtools.graph.InferenceGraphEdge;
+import org.opentrackingtools.paths.PathState;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Iterables;
 
@@ -20,90 +37,261 @@ import com.google.common.collect.Iterables;
  * @author bwillard
  * 
  */
-public class VehicleState implements Comparable<VehicleState> {
+public class VehicleState<Observation extends GpsObservation> extends
+    AbstractCloneableSerializable
+    implements
+    BayesianEstimableDistribution<Observation, VehicleState<Observation>>,
+    Comparable<VehicleState<Observation>> {
 
   private static final long serialVersionUID = 3229140254421801273L;
 
-  /*
-   * These members represent the state/parameter samples/sufficient statistics.
-   */
-  private final AbstractRoadTrackingFilter movementFilter;
+  public static Vector getNonVelocityVector(Vector vector) {
+    final Vector res;
+    if (vector.getDimensionality() == 4)
+      res = AbstractRoadTrackingFilter.getOg().times(vector);
+    else
+      res = AbstractRoadTrackingFilter.getOr().times(vector);
+    return res;
+  }
 
-  /**
+  public static long getSerialversionuid() {
+    return serialVersionUID;
+  }
+
+  private static int oneStateCompareTo(
+    VehicleState<? extends GpsObservation> t,
+    VehicleState<? extends GpsObservation> o) {
+    if (t == o)
+      return 0;
+
+    if (t == null) {
+      if (o != null)
+        return -1;
+      else
+        return 0;
+    } else if (o == null) {
+      return 1;
+    }
+
+    final CompareToBuilder comparator = new CompareToBuilder();
+    comparator.append(t.pathStateParam, o.pathStateParam);
+    comparator.append(t.getObservation(), o.getObservation());
+    comparator.append(t.edgeTransitionParam, o.edgeTransitionParam);
+
+    return comparator.toComparison();
+  }
+
+  protected static boolean oneStateEquals(Object thisObj, Object obj) {
+    if (thisObj == obj) {
+      return true;
+    }
+    if (obj == null) {
+      return false;
+    }
+    if (thisObj.getClass() != obj.getClass()) {
+      return false;
+    }
+    final VehicleState<? extends GpsObservation> thisState =
+        (VehicleState<? extends GpsObservation>) thisObj;
+    final VehicleState<? extends GpsObservation> other =
+        (VehicleState<? extends GpsObservation>) obj;
+    if (thisState.pathStateParam == null) {
+      if (other.pathStateParam != null) {
+        return false;
+      }
+    } else if (!thisState.pathStateParam.equals(other.pathStateParam)) {
+      return false;
+    }
+    if (thisState.edgeTransitionParam == null) {
+      if (other.edgeTransitionParam != null) {
+        return false;
+      }
+    } else if (!thisState.edgeTransitionParam
+        .equals(other.edgeTransitionParam)) {
+      return false;
+    }
+    if (thisState.measurementCovarianceParam == null) {
+      if (other.measurementCovarianceParam != null) {
+        return false;
+      }
+    } else if (!thisState.measurementCovarianceParam
+        .equals(other.measurementCovarianceParam)) {
+      return false;
+    }
+    if (thisState.observationCovarianceParam == null) {
+      if (other.observationCovarianceParam != null) {
+        return false;
+      }
+    } else if (!thisState.observationCovarianceParam
+        .equals(other.observationCovarianceParam)) {
+      return false;
+    }
+    if (thisState.observation == null) {
+      if (other.observation != null) {
+        return false;
+      }
+    } else if (!thisState.observation.equals(other.observation)) {
+      return false;
+    }
+    return true;
+  }
+
+  protected static int oneStateHashCode(
+    VehicleState<? extends GpsObservation> state) {
+    final int prime = 31;
+    int result = 1;
+    result =
+        prime
+            * result
+            + ((state.pathStateParam == null) ? 0
+                : state.pathStateParam.hashCode());
+    result =
+        prime
+            * result
+            + ((state.measurementCovarianceParam == null) ? 0
+                : state.measurementCovarianceParam.hashCode());
+    result =
+        prime
+            * result
+            + ((state.observationCovarianceParam == null) ? 0
+                : state.observationCovarianceParam.hashCode());
+    result =
+        prime
+            * result
+            + ((state.edgeTransitionParam == null) ? 0
+                : state.edgeTransitionParam.hashCode());
+    result =
+        prime
+            * result
+            + ((state.observation == null) ? 0 : state.observation
+                .hashCode());
+    return result;
+  }
+
+  /*-
    * This could be the 4D ground-coordinates dist. for free motion, or the 2D
    * road-coordinates, either way the tracking filter will check. Also, this
    * could be the prior or prior predictive distribution.
    */
-  protected final PathStateBelief belief;
+  protected BayesianEstimableParameter<PathState, PathStateDistribution, PathStateDistribution> pathStateParam;
 
   /*-
-   * Edge transition priors 
+   * E.g. GPS error distribution 
+   */
+  protected BayesianEstimableParameter<Matrix, ?, ?> observationCovarianceParam;
+
+  /*-
+   * E.g. acceleration error distribution
+   */
+  protected BayesianEstimableParameter<Matrix, ?, ?> measurementCovarianceParam;
+
+  /*-
+   * E.g. edge transition priors 
    * 1. edge off 
    * 2. edge on 
    * 3. edges transitions to others (one for all)
    * edges
    */
-  protected final OnOffEdgeTransDistribution edgeTransitionDist;
-  private final GpsObservation observation;
-  private VehicleState parentState = null;
+  protected BayesianEstimableParameter<InferenceGraphEdge, OnOffEdgeTransDistribution<InferenceGraphEdge>, OnOffEdgeTransDistribution<InferenceGraphEdge>> edgeTransitionParam;
 
-  private final InferenceGraph graph;
-
-  private int hash = 0;
-
-  public VehicleState(InferenceGraph inferredGraph, GpsObservation observation,
-    AbstractRoadTrackingFilter updatedFilter, PathStateBelief belief, OnOffEdgeTransDistribution edgeTransitionDist,
-    VehicleState parentState) {
-
-    Preconditions.checkNotNull(inferredGraph);
-    Preconditions.checkNotNull(observation);
-    Preconditions.checkNotNull(updatedFilter);
-    Preconditions.checkNotNull(belief);
-
-    this.observation = observation;
-    this.movementFilter = updatedFilter;
-    this.belief = belief.clone();
-    this.graph = inferredGraph;
-
-    /*
-     * Check that the state's location corresponds
-     * to the last edge.
-     */
-    Preconditions.checkState(!belief.isOnRoad()
-        || belief.getEdge().equals(Iterables.getLast(belief.getPath().getPathEdges())));
-
-    this.edgeTransitionDist = edgeTransitionDist;
-
-    this.parentState = parentState;
-    /*
-     * Reset the parent's parent state so that we don't keep these objects
-     * forever.
-     */
-
-    final double timeDiff;
-    if (observation.getPreviousObservation() != null) {
-      timeDiff =
-          (observation.getTimestamp().getTime() - observation.getPreviousObservation().getTimestamp().getTime()) / 1000d;
-      this.movementFilter.setCurrentTimeDiff(timeDiff);
-    }
+  public
+      BayesianEstimableParameter<PathState, PathStateDistribution, PathStateDistribution>
+      getPathStateParam() {
+    return pathStateParam;
   }
 
-  public VehicleState(VehicleState other) {
+  public
+      void
+      setPathStateParam(
+        BayesianEstimableParameter<PathState, PathStateDistribution, PathStateDistribution> pathStateParam) {
+    this.pathStateParam = pathStateParam;
+  }
+
+  public BayesianEstimableParameter<Matrix, ?, ?>
+      getObservationCovarianceParam() {
+    return observationCovarianceParam;
+  }
+
+  public
+      void
+      setObservationCovarianceParam(
+        BayesianEstimableParameter<Matrix, ?, ?> observationCovarianceParam) {
+    this.observationCovarianceParam = observationCovarianceParam;
+  }
+
+  public BayesianEstimableParameter<Matrix, ?, ?>
+      getMeasurementCovarianceParam() {
+    return measurementCovarianceParam;
+  }
+
+  public
+      void
+      setMeasurementCovarianceParam(
+        BayesianEstimableParameter<Matrix, ?, ?> measurementCovarianceParam) {
+    this.measurementCovarianceParam = measurementCovarianceParam;
+  }
+
+  public
+      BayesianEstimableParameter<InferenceGraphEdge, OnOffEdgeTransDistribution<InferenceGraphEdge>, OnOffEdgeTransDistribution<InferenceGraphEdge>>
+      getEdgeTransitionParam() {
+    return edgeTransitionParam;
+  }
+
+  public
+      void
+      setEdgeTransitionParam(
+        BayesianEstimableParameter<InferenceGraphEdge, OnOffEdgeTransDistribution<InferenceGraphEdge>, OnOffEdgeTransDistribution<InferenceGraphEdge>> edgeTransitionParam) {
+    this.edgeTransitionParam = edgeTransitionParam;
+  }
+
+  protected Observation observation = null;
+
+  protected VehicleState<Observation> parentState = null;
+
+  protected InferenceGraph graph = null;
+
+  protected int hash = 0;
+
+  public VehicleState(
+    InferenceGraph inferredGraph,
+    Observation observation,
+    BayesianEstimableParameter<PathState, PathStateDistribution, PathStateDistribution> pathState,
+    BayesianEstimableParameter<Matrix, ?, ?> observationCovariance,
+    BayesianEstimableParameter<Matrix, ?, ?> measurementCovariance,
+    BayesianEstimableDistribution<E, ?> edgeTransitionDist,
+    VehicleState<Observation> parentState) {
+
+    this.graph = inferredGraph;
+    this.observation = observation;
+
+    this.pathStateParam = pathState;
+    this.observationCovarianceParam = observationCovariance;
+    this.measurementCovarianceParam = measurementCovariance;
+
+    this.edgeTransitionParam = edgeTransitionDist;
+
+    this.parentState = parentState;
+  }
+
+  public VehicleState(VehicleState<Observation> other) {
     this.graph = other.graph;
-    this.movementFilter = other.movementFilter.clone();
-    this.belief = other.belief.clone();
-    this.edgeTransitionDist = other.edgeTransitionDist.clone();
+    this.pathStateParam = other.pathStateParam.clone();
+    this.observationCovarianceParam =
+        other.observationCovarianceParam.clone();
+    this.measurementCovarianceParam =
+        other.measurementCovarianceParam.clone();
+    this.edgeTransitionParam = other.edgeTransitionParam.clone();
     this.observation = other.observation;
     this.parentState = other.parentState;
   }
 
   @Override
-  public VehicleState clone() {
-    return new VehicleState(this);
+  public VehicleState<Observation> clone() {
+    return new VehicleState<Observation>(this);
   }
 
   @Override
-  public int compareTo(VehicleState arg0) {
+  public int compareTo(VehicleState<Observation> arg0) {
     return oneStateCompareTo(this, arg0);
   }
 
@@ -115,7 +303,8 @@ public class VehicleState implements Comparable<VehicleState> {
     if (!oneStateEquals(this, obj))
       return false;
 
-    final VehicleState other = (VehicleState) obj;
+    final VehicleState<Observation> other =
+        (VehicleState<Observation>) obj;
     if (parentState == null) {
       if (other.parentState != null) {
         return false;
@@ -127,12 +316,14 @@ public class VehicleState implements Comparable<VehicleState> {
     return true;
   }
 
-  public PathStateBelief getBelief() {
-    return belief;
+  @Override
+  public
+      RecursiveBayesianEstimatorPredictor<Observation, VehicleState<Observation>>
+      getBayesianEstimatorPredictor() {
   }
 
-  public OnOffEdgeTransDistribution getEdgeTransitionDist() {
-    return edgeTransitionDist;
+  public PathStateDistribution getBelief() {
+    return pathStateParam.getConditionalDistribution();
   }
 
   public InferenceGraph getGraph() {
@@ -145,20 +336,21 @@ public class VehicleState implements Comparable<VehicleState> {
    * @return
    */
   public Vector getMeanLocation() {
-    final Vector v = belief.getGroundState();
+    final Vector v = pathStateParam.getValue().getGroundState();
     return AbstractRoadTrackingFilter.getOg().times(v);
   }
 
-  public AbstractRoadTrackingFilter getMovementFilter() {
-    return movementFilter;
-  }
-
-  public GpsObservation getObservation() {
+  public Observation getObservation() {
     return observation;
   }
 
-  public VehicleState getParentState() {
+  public VehicleState<Observation> getParentState() {
     return parentState;
+  }
+
+  @Override
+  public ProbabilityFunction<Observation> getProbabilityFunction() {
+
   }
 
   @Override
@@ -179,103 +371,33 @@ public class VehicleState implements Comparable<VehicleState> {
     }
   }
 
-  public void setParentState(VehicleState parentState) {
+  @Override
+  public Observation sample(Random random) {
+  }
+
+  @Override
+  public ArrayList<? extends Observation> sample(Random random,
+    int numSamples) {
+  }
+
+  public void setGraph(InferenceGraph graph) {
+    this.graph = graph;
+  }
+
+  public void setObservation(Observation observation) {
+    this.observation = observation;
+  }
+
+  public void setParentState(VehicleState<Observation> parentState) {
     this.parentState = parentState;
   }
 
   @Override
   public String toString() {
     ToStringBuilder builder = new ToStringBuilder(this);
-    builder.append("belief", belief);
+    builder.append("belief", pathStateParam);
     builder.append("observation", observation);
     return builder.toString();
-  }
-
-  public static Vector getNonVelocityVector(Vector vector) {
-    final Vector res;
-    if (vector.getDimensionality() == 4)
-      res = AbstractRoadTrackingFilter.getOg().times(vector);
-    else
-      res = AbstractRoadTrackingFilter.getOr().times(vector);
-    return res;
-  }
-
-  public static long getSerialversionuid() {
-    return serialVersionUID;
-  }
-
-  private static int oneStateCompareTo(VehicleState t, VehicleState o) {
-    if (t == o)
-      return 0;
-
-    if (t == null) {
-      if (o != null)
-        return -1;
-      else
-        return 0;
-    } else if (o == null) {
-      return 1;
-    }
-
-    final CompareToBuilder comparator = new CompareToBuilder();
-    comparator.append(t.belief, o.belief);
-    comparator.append(t.getObservation(), o.getObservation());
-    comparator.append(t.edgeTransitionDist, o.edgeTransitionDist);
-
-    return comparator.toComparison();
-  }
-
-  protected static boolean oneStateEquals(Object thisObj, Object obj) {
-    if (thisObj == obj) {
-      return true;
-    }
-    if (obj == null) {
-      return false;
-    }
-    if (thisObj.getClass() != obj.getClass()) {
-      return false;
-    }
-    final VehicleState thisState = (VehicleState) thisObj;
-    final VehicleState other = (VehicleState) obj;
-    if (thisState.belief == null) {
-      if (other.belief != null) {
-        return false;
-      }
-    } else if (!thisState.belief.equals(other.belief)) {
-      return false;
-    }
-    if (thisState.edgeTransitionDist == null) {
-      if (other.edgeTransitionDist != null) {
-        return false;
-      }
-    } else if (!thisState.edgeTransitionDist.equals(other.edgeTransitionDist)) {
-      return false;
-    }
-    if (thisState.movementFilter == null) {
-      if (other.movementFilter != null) {
-        return false;
-      }
-    } else if (!thisState.movementFilter.equals(other.movementFilter)) {
-      return false;
-    }
-    if (thisState.observation == null) {
-      if (other.observation != null) {
-        return false;
-      }
-    } else if (!thisState.observation.equals(other.observation)) {
-      return false;
-    }
-    return true;
-  }
-
-  protected static int oneStateHashCode(VehicleState state) {
-    final int prime = 31;
-    int result = 1;
-    result = prime * result + ((state.belief == null) ? 0 : state.belief.hashCode());
-    result = prime * result + ((state.edgeTransitionDist == null) ? 0 : state.edgeTransitionDist.hashCode());
-    result = prime * result + ((state.movementFilter == null) ? 0 : state.movementFilter.hashCode());
-    result = prime * result + ((state.observation == null) ? 0 : state.observation.hashCode());
-    return result;
   }
 
 }

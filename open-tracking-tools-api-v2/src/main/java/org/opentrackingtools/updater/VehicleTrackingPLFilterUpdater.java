@@ -3,6 +3,8 @@ package org.opentrackingtools.updater;
 import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.math.matrix.VectorFactory;
 import gov.sandia.cognition.statistics.DataDistribution;
+import gov.sandia.cognition.statistics.Distribution;
+import gov.sandia.cognition.statistics.bayesian.BayesianEstimatorPredictor;
 import gov.sandia.cognition.statistics.bayesian.ParticleFilter;
 import gov.sandia.cognition.statistics.distribution.DefaultDataDistribution;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
@@ -10,30 +12,31 @@ import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Random;
 import java.util.Set;
 
 import org.opentrackingtools.VehicleStateInitialParameters;
 import org.opentrackingtools.distributions.DefaultCountedDataDistribution;
 import org.opentrackingtools.distributions.OnOffEdgeTransDistribution;
-import org.opentrackingtools.edges.InferredEdge;
 import org.opentrackingtools.estimators.AbstractRoadTrackingFilter;
+import org.opentrackingtools.estimators.RecursiveBayesianEstimatorPredictor;
+import org.opentrackingtools.estimators.StandardVehicleStateEstimator;
 import org.opentrackingtools.graph.InferenceGraph;
+import org.opentrackingtools.graph.InferenceGraphEdge;
 import org.opentrackingtools.model.GpsObservation;
 import org.opentrackingtools.model.VehicleState;
-import org.opentrackingtools.paths.InferredPath;
+import org.opentrackingtools.paths.Path;
 import org.opentrackingtools.paths.PathEdge;
-import org.opentrackingtools.paths.PathStateBelief;
-import org.opentrackingtools.paths.impl.InferredPathPrediction;
-
 import com.google.common.collect.Sets;
 import com.vividsolutions.jts.linearref.LengthIndexedLine;
 
-public abstract class VehicleTrackingPLFilterUpdater implements ParticleFilter.Updater<GpsObservation, VehicleState> {
+public abstract class VehicleTrackingPLFilterUpdater<O extends GpsObservation, V extends VehicleState<O>>
+    implements ParticleFilter.Updater<O, V> {
 
   private static final long serialVersionUID = 7567157323292175525L;
 
-  protected GpsObservation initialObservation;
+  protected O initialObservation;
 
   protected InferenceGraph inferenceGraph;
 
@@ -45,17 +48,24 @@ public abstract class VehicleTrackingPLFilterUpdater implements ParticleFilter.U
 
   protected final AbstractRoadTrackingFilter roadFilterGenerator;
 
-  public VehicleTrackingPLFilterUpdater(GpsObservation obs, InferenceGraph inferencedGraph,
-    VehicleStateInitialParameters parameters, Random rng) throws ClassNotFoundException, SecurityException,
-      NoSuchMethodException, IllegalArgumentException, InstantiationException, IllegalAccessException,
+  public VehicleTrackingPLFilterUpdater(O obs,
+    InferenceGraph inferencedGraph,
+    VehicleStateInitialParameters parameters, Random rng)
+      throws ClassNotFoundException, SecurityException,
+      NoSuchMethodException, IllegalArgumentException,
+      InstantiationException, IllegalAccessException,
       InvocationTargetException {
 
-    Class<?> filterType = Class.forName(parameters.getRoadFilterTypeName());
+    Class<?> filterType =
+        Class.forName(parameters.getRoadFilterTypeName());
     Constructor<?> ctor =
-        filterType.getConstructor(GpsObservation.class, InferenceGraph.class, VehicleStateInitialParameters.class,
-            Random.class);
+        filterType.getConstructor(GpsObservation.class,
+            InferenceGraph.class,
+            VehicleStateInitialParameters.class, Random.class);
 
-    this.roadFilterGenerator = (AbstractRoadTrackingFilter)ctor.newInstance(obs, inferencedGraph, parameters, rng);
+    this.roadFilterGenerator =
+        (AbstractRoadTrackingFilter) ctor.newInstance(obs,
+            inferencedGraph, parameters, rng);
     this.initialObservation = obs;
     this.inferenceGraph = inferencedGraph;
     if (rng == null)
@@ -69,7 +79,8 @@ public abstract class VehicleTrackingPLFilterUpdater implements ParticleFilter.U
   @Override
   public VehicleTrackingPLFilterUpdater clone() {
     try {
-      final VehicleTrackingPLFilterUpdater clone = (VehicleTrackingPLFilterUpdater) super.clone();
+      final VehicleTrackingPLFilterUpdater clone =
+          (VehicleTrackingPLFilterUpdater) super.clone();
       clone.seed = seed;
       clone.inferenceGraph = inferenceGraph;
       clone.initialObservation = initialObservation;
@@ -83,110 +94,36 @@ public abstract class VehicleTrackingPLFilterUpdater implements ParticleFilter.U
   }
 
   @Override
-  public DataDistribution<VehicleState> createInitialParticles(int numParticles) {
-    final DataDistribution<VehicleState> retDist = new DefaultCountedDataDistribution<VehicleState>(true);
+  public DataDistribution<V> createInitialParticles(int numParticles) {
+    final DataDistribution<V> retDist =
+        new DefaultCountedDataDistribution<V>(true);
 
+    RecursiveBayesianEstimatorPredictor<O, V> estimator =
+        new StandardVehicleStateEstimator<O, V>(
+            this.initialObservation);
     for (int i = 0; i < numParticles; i++) {
-      final AbstractRoadTrackingFilter tmpTrackingFilter = this.createRoadTrackingFilter();
-      final MultivariateGaussian groundInitialBelief = tmpTrackingFilter.getGroundFilter().createInitialLearnedObject();
-      final Vector xyPoint = initialObservation.getProjectedPoint();
-      groundInitialBelief.setMean(VectorFactory.getDefault().copyArray(
-          new double[] { xyPoint.getElement(0), 0d, xyPoint.getElement(1), 0d }));
-      final Collection<InferredEdge> initialEdges =
-          inferenceGraph.getNearbyEdges(groundInitialBelief, tmpTrackingFilter);
-
-      final DataDistribution<VehicleState> initialDist = new DefaultDataDistribution<VehicleState>(numParticles);
-
-      final Set<InferredPathPrediction> evaluatedPaths = Sets.newHashSet();
-      if (!initialEdges.isEmpty()) {
-        for (final InferredEdge edge : initialEdges) {
-          final PathEdge pathEdge = this.inferenceGraph.getPathEdge(edge, 0d, false);
-          final InferredPath path = this.inferenceGraph.getInferredPath(pathEdge);
-          evaluatedPaths.add(new InferredPathPrediction(path, null, null, null, Double.NEGATIVE_INFINITY));
-
-          /*
-           * TODO this code should be contained in the filter,
-           * or somewhere other than here, no?
-           */
-          final AbstractRoadTrackingFilter trackingFilter = this.createRoadTrackingFilter();
-
-          final MultivariateGaussian initialBelief = trackingFilter.getRoadFilter().createInitialLearnedObject();
-
-          final double lengthLocation =
-              new LengthIndexedLine(edge.getGeometry()).project(initialObservation.getObsProjected());
-
-          final Vector stateSmpl = trackingFilter.sampleStateTransDist(initialBelief.getMean(), this.random);
-          initialBelief.setMean(stateSmpl);
-          initialBelief.getMean().setElement(0, lengthLocation);
-
-          final PathStateBelief pathStateBelief = path.getStateBeliefOnPath(initialBelief);
-
-          final OnOffEdgeTransDistribution edgeTransDist =
-              new OnOffEdgeTransDistribution(inferenceGraph, parameters.getOnTransitionProbs(),
-                  parameters.getOffTransitionProbs(), this.random);
-
-          final VehicleState state =
-              this.inferenceGraph.createVehicleState(initialObservation, trackingFilter, pathStateBelief,
-                  edgeTransDist, null);
-
-          final double lik = computeLogLikelihood(state, initialObservation);
-
-          initialDist.increment(state, lik);
-        }
-      }
-
-      /*
-       * Free-motion
-       */
-      final AbstractRoadTrackingFilter trackingFilter = this.createRoadTrackingFilter();
-
-      final OnOffEdgeTransDistribution edgeTransDist =
-          new OnOffEdgeTransDistribution(inferenceGraph, parameters.getOnTransitionProbs(),
-              parameters.getOffTransitionProbs());
-
-      final MultivariateGaussian initialBelief = groundInitialBelief.clone();
-
-      final Vector stateSmpl = trackingFilter.sampleStateTransDist(initialBelief.getMean(), this.random);
-
-      initialBelief.setMean(stateSmpl);
-
-      final PathStateBelief pathStateBelief = this.inferenceGraph.getNullPath().getStateBeliefOnPath(initialBelief);
-
-      /*
-       * Sample an initial prior for the transition probabilities
-       */
-      final Vector edgeDriorParams =
-          OnOffEdgeTransDistribution.checkedSample(edgeTransDist.getEdgeMotionTransProbPrior(), this.random);
-      final Vector freeDriorParams =
-          OnOffEdgeTransDistribution.checkedSample(edgeTransDist.getFreeMotionTransProbPrior(), this.random);
-
-      edgeTransDist.getEdgeMotionTransPrior().setParameters(edgeDriorParams);
-      edgeTransDist.getFreeMotionTransPrior().setParameters(freeDriorParams);
-
-      final VehicleState state =
-          this.inferenceGraph.createVehicleState(initialObservation, trackingFilter, pathStateBelief, edgeTransDist,
-              null);
-
-      final double lik = computeLogLikelihood(state, initialObservation);
-
-      initialDist.increment(state, lik);
-
-      retDist.increment(initialDist.sample(this.random));
+      final V state = estimator.createInitialLearnedObject();
+      retDist.increment(state);
     }
 
     return retDist;
   }
 
   @Override
-  public double computeLogLikelihood(VehicleState particle, GpsObservation observation) {
+  public double computeLogLikelihood(V particle, O observation) {
     double logLikelihood = 0d;
-    logLikelihood += particle.getBelief().logLikelihood(observation.getProjectedPoint(), particle.getMovementFilter());
+    logLikelihood +=
+        particle.getBelief().logLikelihood(
+            observation.getProjectedPoint(),
+            particle.getMovementFilter());
     return logLikelihood;
   }
 
   @Override
-  public VehicleState update(VehicleState previousParameter) {
-    throw new RuntimeException("Not implemented");
+  public V update(V state) {
+    state.getBayesianEstimatorPredictor().update(state,
+        this.initialObservation);
+    return state;
   }
 
   protected AbstractRoadTrackingFilter createRoadTrackingFilter() {

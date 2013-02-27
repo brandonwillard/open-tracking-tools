@@ -23,7 +23,7 @@ public class GpsObservation {
 
   public GpsObservation(String sourceId, Date timestamp,
     Coordinate coordsLatLon, Double velocity, Double heading,
-    Double accuracy, int recordNumber, GpsObservation prevObs, 
+    Double accuracy, int recordNumber, GpsObservation prevObs,
     ProjectedCoordinate coordsProjected) {
     this.sourceId = sourceId;
     this.timestamp = timestamp;
@@ -32,16 +32,17 @@ public class GpsObservation {
     this.heading = heading;
     this.accuracy = accuracy;
     this.recordNumber = recordNumber;
-    this.projPoint = VectorFactory.getDefault().createVector2D(
-                      coordsProjected.x, coordsProjected.y);
+    this.projPoint =
+        VectorFactory.getDefault().createVector2D(coordsProjected.x,
+            coordsProjected.y);
     this.prevObs = prevObs;
     this.coordsProjected = coordsProjected;
   }
-  
+
   public Double getAccuracy() {
     return accuracy;
   }
-  
+
   public Double getHeading() {
     return heading;
   }
@@ -49,42 +50,42 @@ public class GpsObservation {
   public Coordinate getObsCoordsLatLon() {
     return coordsLatLon;
   }
-  
+
   public Date getTimestamp() {
     return timestamp;
   }
-  
+
   public Double getVelocity() {
     return velocity;
   }
-  
+
   public ProjectedCoordinate getObsProjected() {
     return this.coordsProjected;
   }
-  
+
   public GpsObservation getPreviousObservation() {
     return this.prevObs;
   }
-  
+
   public Vector getProjectedPoint() {
     return this.projPoint;
   }
-  
+
   public int getRecordNumber() {
     return this.recordNumber;
   }
 
-  
   public String getSourceId() {
     return sourceId;
   }
-  
+
   public int compareTo(GpsObservation o) {
     return ComparisonChain.start()
         .compare(this.timestamp, o.getTimestamp())
         .compare(this.sourceId, o.getSourceId()).result();
   }
-  
+
+  @Override
   public boolean equals(Object obj) {
     if (this == obj) {
       return true;
@@ -113,22 +114,20 @@ public class GpsObservation {
     return true;
   }
 
+  @Override
   public int hashCode() {
     final int prime = 31;
     int result = 1;
     result =
-        prime
-            * result
-            + ((timestamp == null) ? 0 : timestamp
-                .hashCode());
+        prime * result
+            + ((timestamp == null) ? 0 : timestamp.hashCode());
     result =
-        prime
-            * result
-            + ((sourceId == null) ? 0 : sourceId
-                .hashCode());
+        prime * result
+            + ((sourceId == null) ? 0 : sourceId.hashCode());
     return result;
   }
-  
+
+  @Override
   public String toString() {
     StringBuilder builder = new StringBuilder();
     builder.append("SimpleObservation [sourceId=").append(sourceId)

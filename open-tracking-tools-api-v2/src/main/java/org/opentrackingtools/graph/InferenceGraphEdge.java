@@ -1,16 +1,15 @@
-package org.opentrackingtools.edges;
+package org.opentrackingtools.graph;
 
 import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.math.matrix.VectorFactory;
 
 import javax.annotation.Nonnull;
 
-import org.opentrackingtools.graph.InferenceGraph;
-
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 
-public class InferredEdge implements Comparable<InferredEdge> {
+public class InferenceGraphEdge implements
+    Comparable<InferenceGraphEdge> {
 
   protected final Integer edgeId;
   protected final Vector endPoint;
@@ -22,10 +21,10 @@ public class InferredEdge implements Comparable<InferredEdge> {
   /*
    * This is the empty edge, which stands for free movement
    */
-  protected final static InferredEdge emptyEdge =
-      new InferredEdge();
+  protected final static InferenceGraphEdge emptyEdge =
+      new InferenceGraphEdge();
 
-  protected InferredEdge() {
+  protected InferenceGraphEdge() {
     this.edgeId = null;
     this.endPoint = null;
     this.startPoint = null;
@@ -34,39 +33,40 @@ public class InferredEdge implements Comparable<InferredEdge> {
     this.hasReverse = null;
   }
 
-  public static InferredEdge getInferredEdge(@Nonnull Geometry geom,
-    @Nonnull Object backingEdge, @Nonnull Integer edgeId, 
-    @Nonnull InferenceGraph graph) {
-    return new InferredEdge(geom, backingEdge, edgeId, graph);
-  }
-  
-  protected InferredEdge(@Nonnull Geometry geom, @Nonnull Object backingEdge,
+  public static InferenceGraphEdge getInferredEdge(
+    @Nonnull Geometry geom, @Nonnull Object backingEdge,
     @Nonnull Integer edgeId, @Nonnull InferenceGraph graph) {
+    return new InferenceGraphEdge(geom, backingEdge, edgeId, graph);
+  }
+
+  protected InferenceGraphEdge(@Nonnull Geometry geom,
+    @Nonnull Object backingEdge, @Nonnull Integer edgeId,
+    @Nonnull InferenceGraph graph) {
 
     this.edgeId = edgeId;
     this.backingEdge = backingEdge;
-        
+
     this.geometry = geom;
-    
+
     this.hasReverse = graph.edgeHasReverse(geom);
 
     final Coordinate startPointCoord = geometry.getCoordinates()[0];
 
     this.startPoint =
-        VectorFactory.getDefault().createVector2D(
-            startPointCoord.x, startPointCoord.y);
+        VectorFactory.getDefault().createVector2D(startPointCoord.x,
+            startPointCoord.y);
 
     final Coordinate endPointCoord =
         geometry.getCoordinates()[geometry.getNumPoints() - 1];
-            
+
     this.endPoint =
-        VectorFactory.getDefault().createVector2D(
-            endPointCoord.x, endPointCoord.y);
+        VectorFactory.getDefault().createVector2D(endPointCoord.x,
+            endPointCoord.y);
 
   }
 
   @Override
-  public int compareTo(InferredEdge o) {
+  public int compareTo(InferenceGraphEdge o) {
     return this.getGeometry().compareTo(o.getGeometry());
   }
 
@@ -81,7 +81,7 @@ public class InferredEdge implements Comparable<InferredEdge> {
     if (getClass() != obj.getClass()) {
       return false;
     }
-    final InferredEdge other = (InferredEdge) obj;
+    final InferenceGraphEdge other = (InferenceGraphEdge) obj;
     if (geometry == null) {
       if (other.geometry != null) {
         return false;
@@ -128,10 +128,8 @@ public class InferredEdge implements Comparable<InferredEdge> {
     final int prime = 31;
     int result = 1;
     result =
-        prime
-            * result
-            + ((geometry == null) ? 0 : geometry 
-                .hashCode());
+        prime * result
+            + ((geometry == null) ? 0 : geometry.hashCode());
     return result;
   }
 
@@ -148,8 +146,8 @@ public class InferredEdge implements Comparable<InferredEdge> {
           + getLength() + "]";
   }
 
-  public static InferredEdge getNullEdge() {
-    return InferredEdge.emptyEdge;
+  public static InferenceGraphEdge getNullEdge() {
+    return InferenceGraphEdge.emptyEdge;
   }
 
   public boolean hasReverse() {

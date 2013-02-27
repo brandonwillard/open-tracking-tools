@@ -18,11 +18,8 @@ import org.opentrackingtools.estimators.AbstractRoadTrackingFilter;
 import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.model.GpsObservation;
 import org.opentrackingtools.model.VehicleState;
-import org.opentrackingtools.paths.InferredPath;
+import org.opentrackingtools.paths.Path;
 import org.opentrackingtools.paths.PathEdge;
-import org.opentrackingtools.paths.PathStateBelief;
-import org.opentrackingtools.paths.impl.EdgePredictiveResults;
-import org.opentrackingtools.paths.impl.InferredPathPrediction;
 import org.opentrackingtools.util.StatisticsUtil;
 import org.opentrackingtools.util.model.WrappedWeightedValue;
 
@@ -34,7 +31,8 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Sets;
 
-public class VehicleStatePLFilter extends AbstractParticleFilter<GpsObservation, VehicleState> {
+public class VehicleStatePLFilter<O extends GpsObservation, V extends VehicleState<O>>
+    extends AbstractParticleFilter<O, V> {
 
   private long seed;
   private static final long serialVersionUID = -8257075186193062150L;
@@ -42,9 +40,9 @@ public class VehicleStatePLFilter extends AbstractParticleFilter<GpsObservation,
   private InferenceGraph inferredGraph;
   private Boolean isDebug;
 
-  public VehicleStatePLFilter(GpsObservation obs, InferenceGraph inferredGraph,
-    VehicleStateInitialParameters parameters, ParticleFilter.Updater<GpsObservation, VehicleState> updater,
-    Boolean isDebug, Random rng) {
+  public VehicleStatePLFilter(O obs, InferenceGraph inferredGraph,
+    VehicleStateInitialParameters parameters,
+    ParticleFilter.Updater<O, V> updater, Boolean isDebug, Random rng) {
 
     this.inferredGraph = inferredGraph;
     this.isDebug = isDebug;
@@ -52,179 +50,50 @@ public class VehicleStatePLFilter extends AbstractParticleFilter<GpsObservation,
   }
 
   @Override
-  public void update(DataDistribution<VehicleState> target, GpsObservation obs) {
-    final Multimap<VehicleState, WrappedWeightedValue<InferredPathPrediction>> stateToPaths = HashMultimap.create();
-    final Set<InferredPath> evaluatedPaths = Sets.newHashSet();
+  public void update(DataDistribution<V> target, O obs) {
 
     /*
-     * Resample based on predictive likelihood to get a smoothed sample
+     * Compute predictive distributions, and create a distribution out of those and
+     * their likelihoods for the new observation.
      */
-    final DefaultCountedDataDistribution<VehicleState> resampleDist =
-        new DefaultCountedDataDistribution<VehicleState>(true);
+    final DefaultCountedDataDistribution<V> resampleDist =
+        new DefaultCountedDataDistribution<V>(true);
 
-    for (final VehicleState state : target.getDomain()) {
+    for (final V state : target.getDomain()) {
 
-      final int count = ((DefaultCountedDataDistribution<VehicleState>) target).getCount(state);
+      final V predictedState =
+          (V) state.getBayesianEstimatorPredictor()
+              .createPredictiveDistribution(state);
 
-      final Collection<InferredPath> instStateTransitions = inferredGraph.getPaths(state, obs);
-      
-      double timeDiff = (obs.getTimestamp().getTime() - state.getObservation().getTimestamp().getTime())/1000;
+      final double predictiveLogLikelihood =
+          predictedState.getProbabilityFunction().logEvaluate(obs);
 
-      state.getMovementFilter().setCurrentTimeDiff(timeDiff);
-      double totalLogLik = Double.NEGATIVE_INFINITY;
-
-      /*
-       * Create one table to hold all pathEdges to their
-       * likelihoods.  That way we can check for dups from
-       * overlapping paths.
-       * TODO determine if sharing this map between states is useful.
-       */
-      final Map<PathEdge, EdgePredictiveResults> edgeToPreBeliefAndLogLik = Maps.newHashMap();
-
-      final List<WrappedWeightedValue<InferredPathPrediction>> predictiveResults = Lists.newArrayList();
-      for (final InferredPath path : instStateTransitions) {
-
-        if (isDebug)
-          evaluatedPaths.add(path);
-
-        final InferredPathPrediction infPath =
-            path.getPriorPredictionResults(this.inferredGraph, obs, state, edgeToPreBeliefAndLogLik);
-
-        if (infPath != null) {
-          totalLogLik = LogMath.add(totalLogLik, infPath.getTotalLogLikelihood());
-
-          assert !Double.isNaN(totalLogLik);
-
-          predictiveResults.add(new WrappedWeightedValue<InferredPathPrediction>(infPath, infPath
-              .getTotalLogLikelihood()));
-        }
-      }
-
-      stateToPaths.putAll(state, predictiveResults);
-
-      resampleDist.increment(state, totalLogLik, count);
+      resampleDist.increment(predictedState, predictiveLogLikelihood);
     }
 
     final Random rng = getRandom();
 
     Preconditions.checkState(!resampleDist.isEmpty());
 
-    // TODO low-variance sampling?
-    final ArrayList<? extends VehicleState> smoothedStates = resampleDist.sample(rng, getNumParticles());
-
-    final DataDistribution<VehicleState> posteriorDist = new DefaultCountedDataDistribution<VehicleState>(true);
-
     /*
-     * Propagate states
+     * Resample the predictive distributions.  Now we're dealing with the "best" states.
      */
-    for (final VehicleState state : smoothedStates) {
-
-      /*
-       * TODO: debug seeding 
-       */
-      this.seed = rng.nextLong();
-
-      EdgePredictiveResults edgePredResults = sampleEdge(stateToPaths.get(state));
-
-      final VehicleState newTransState = propagateStates(state, obs, edgePredResults, stateToPaths.size());
-
-      ((DefaultCountedDataDistribution<VehicleState>) posteriorDist).increment(newTransState, 0d);
-
-    }
+    final ArrayList<V> smoothedStates =
+        resampleDist.sample(rng, getNumParticles());
 
     target.clear();
-    ((DefaultCountedDataDistribution<VehicleState>) target).copyAll(posteriorDist);
-
-    Preconditions
-        .checkState(((DefaultCountedDataDistribution<VehicleState>) target).getTotalCount() == this.numParticles);
-
-  }
-
-  protected EdgePredictiveResults sampleEdge(Collection<WrappedWeightedValue<InferredPathPrediction>> weighedPaths) {
-
-    final Random rng = getRandom();
-    rng.setSeed(this.seed);
-
-    final PathEdge posteriorEdge;
-    final InferredPathPrediction sampledPathEntry;
-    final EdgePredictiveResults predictionResults;
-    /*
-     * Sample a path
-     */
-    final DataDistribution<InferredPathPrediction> instStateDist =
-        StatisticsUtil.getLogNormalizedDistribution(Lists.newArrayList(weighedPaths));
-
-    sampledPathEntry = instStateDist.sample(rng);
-
-    if (sampledPathEntry.getWeightedPathEdges().size() > 1) {
-      /*
-       * TODO FIXME: cache the creation of these distributions
-       */
-      final DataDistribution<PathEdge> pathEdgeDist =
-          StatisticsUtil.getLogNormalizedDistribution(sampledPathEntry.getWeightedPathEdges());
-      posteriorEdge = pathEdgeDist.sample(rng);
-
-    } else {
-      posteriorEdge = Iterables.getOnlyElement(sampledPathEntry.getWeightedPathEdges()).getValue();
-    }
-    predictionResults = Preconditions.checkNotNull(sampledPathEntry.getEdgeToPredictiveBelief().get(posteriorEdge));
-
-    return predictionResults;
-  }
-
-  protected VehicleState propagateStates(VehicleState state, GpsObservation obs,
-    EdgePredictiveResults predictionResults, int pathSupportSize) {
-
-    final Random rng = getRandom();
-    rng.setSeed(this.seed);
-
-    final PathEdge posteriorEdge = predictionResults.getLocationPrediction().getEdge();
-    final AbstractRoadTrackingFilter pathEstimator = state.getMovementFilter();
-    /*
-     * This is the belief that will be propagated.
-     */
-    final PathStateBelief priorPathStateBelief = predictionResults.getLocationPrediction().clone();
-    final PathStateBelief updatedBelief =
-        pathEstimator.measure(priorPathStateBelief, obs.getProjectedPoint(), posteriorEdge);
 
     /*
-     * Update edge velocities
-     * TODO should be offline...actually almost all of what follows should be.
+     * Propagate/smooth the best states. 
      */
-    updatedBelief.getPath().updateEdges(obs, updatedBelief.getGlobalStateBelief(), this.inferredGraph);
+    for (final V state : smoothedStates) {
 
-    /*
-     * Update edge transition priors.
-     */
-    final OnOffEdgeTransDistribution updatedEdgeTransDist = state.getEdgeTransitionDist().clone();
+      this.getUpdater().update(state);
 
-    /*
-     * Note: we don't want to update a transition like
-     * off->off when there were no other choices.  This
-     * would simply bias the results, and offer no real
-     * benefit. 
-     */
-    if (pathSupportSize > 1) {
-      updatedEdgeTransDist.update(state.getBelief().getEdge().getInferredEdge(), posteriorEdge.getInferredEdge());
+      target.increment(state, 0d);
+
     }
 
-    /*
-     * Update covariances, or not.
-     */
-    final AbstractRoadTrackingFilter updatedFilter = pathEstimator.clone();
-
-    /*
-     * To make sure that the samples connect when sampling
-     * along paths in sequence, we need to adjust the prior
-     */
-    final PathStateBelief pathAdjustedPriorBelief = priorPathStateBelief;
-
-    updatedFilter.update(state, obs, updatedBelief, pathAdjustedPriorBelief, rng);
-
-    final VehicleState newTransState =
-        this.inferredGraph.createVehicleState(obs, updatedFilter, updatedBelief.clone(), updatedEdgeTransDist.clone(),
-            state);
-
-    return newTransState;
   }
+
 }

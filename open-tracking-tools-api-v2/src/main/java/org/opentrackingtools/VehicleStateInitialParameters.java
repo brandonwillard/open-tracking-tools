@@ -3,7 +3,7 @@ package org.opentrackingtools;
 import gov.sandia.cognition.math.matrix.Vector;
 
 public class VehicleStateInitialParameters {
-  
+
   private final Vector obsCov;
   private final Vector onRoadStateCov;
   private final Vector offRoadStateCov;
@@ -18,9 +18,11 @@ public class VehicleStateInitialParameters {
   private final int onRoadCovDof;
   private final int offRoadCovDof;
 
-  public VehicleStateInitialParameters(Vector obsCov, int obsCovDof, Vector onRoadStateCov, int onRoadCovDof,
-    Vector offRoadStateCov, int offRoadCovDof, Vector offProbs, Vector onProbs, String particleFilterTypeName,
-    String roadFilterTypeName, int numParticles, int initialObsFreq, long seed) {
+  public VehicleStateInitialParameters(Vector obsCov, int obsCovDof,
+    Vector onRoadStateCov, int onRoadCovDof, Vector offRoadStateCov,
+    int offRoadCovDof, Vector offProbs, Vector onProbs,
+    String particleFilterTypeName, String roadFilterTypeName,
+    int numParticles, int initialObsFreq, long seed) {
     this.obsCovDof = obsCovDof;
     this.onRoadCovDof = onRoadCovDof;
     this.offRoadCovDof = offRoadCovDof;
@@ -55,12 +57,14 @@ public class VehicleStateInitialParameters {
     if (getClass() != obj.getClass()) {
       return false;
     }
-    final VehicleStateInitialParameters other = (VehicleStateInitialParameters) obj;
+    final VehicleStateInitialParameters other =
+        (VehicleStateInitialParameters) obj;
     if (particleFilterTypeName == null) {
       if (other.particleFilterTypeName != null) {
         return false;
       }
-    } else if (!particleFilterTypeName.equals(other.particleFilterTypeName)) {
+    } else if (!particleFilterTypeName
+        .equals(other.particleFilterTypeName)) {
       return false;
     }
     if (roadFilterTypeName == null) {
@@ -174,18 +178,43 @@ public class VehicleStateInitialParameters {
   public int hashCode() {
     final int prime = 31;
     int result = 1;
-    result = prime * result + ((particleFilterTypeName == null) ? 0 : particleFilterTypeName.hashCode());
-    result = prime * result + ((roadFilterTypeName == null) ? 0 : roadFilterTypeName.hashCode());
+    result =
+        prime
+            * result
+            + ((particleFilterTypeName == null) ? 0
+                : particleFilterTypeName.hashCode());
+    result =
+        prime
+            * result
+            + ((roadFilterTypeName == null) ? 0 : roadFilterTypeName
+                .hashCode());
     result = prime * result + initialObsFreq;
     result = prime * result + numParticles;
-    result = prime * result + ((obsCov == null) ? 0 : obsCov.hashCode());
+    result =
+        prime * result + ((obsCov == null) ? 0 : obsCov.hashCode());
     result = prime * result + obsCovDof;
     result = prime * result + offRoadCovDof;
-    result = prime * result + ((offRoadStateCov == null) ? 0 : offRoadStateCov.hashCode());
-    result = prime * result + ((offTransitionProbs == null) ? 0 : offTransitionProbs.hashCode());
+    result =
+        prime
+            * result
+            + ((offRoadStateCov == null) ? 0 : offRoadStateCov
+                .hashCode());
+    result =
+        prime
+            * result
+            + ((offTransitionProbs == null) ? 0 : offTransitionProbs
+                .hashCode());
     result = prime * result + onRoadCovDof;
-    result = prime * result + ((onRoadStateCov == null) ? 0 : onRoadStateCov.hashCode());
-    result = prime * result + ((onTransitionProbs == null) ? 0 : onTransitionProbs.hashCode());
+    result =
+        prime
+            * result
+            + ((onRoadStateCov == null) ? 0 : onRoadStateCov
+                .hashCode());
+    result =
+        prime
+            * result
+            + ((onTransitionProbs == null) ? 0 : onTransitionProbs
+                .hashCode());
     result = prime * result + (int) (seed ^ (seed >>> 32));
     return result;
   }
@@ -193,13 +222,20 @@ public class VehicleStateInitialParameters {
   @Override
   public String toString() {
     final StringBuilder builder = new StringBuilder();
-    builder.append("VehicleStateInitialParameters [obsCov=").append(obsCov).append(", onRoadStateCov=")
-        .append(onRoadStateCov).append(", offRoadStateCov=").append(offRoadStateCov).append(", offTransitionProbs=")
-        .append(offTransitionProbs).append(", onTransitionProbs=").append(onTransitionProbs).append(", seed=")
-        .append(seed).append(", numParticles=").append(numParticles).append(", particleFilterTypeName=")
-        .append(particleFilterTypeName).append(", roadFilterTypeName=").append(roadFilterTypeName)
-        .append(", initialObsFreq=").append(initialObsFreq).append(", obsCovDof=").append(obsCovDof)
-        .append(", onRoadCovDof=").append(onRoadCovDof).append(", offRoadCovDof=").append(offRoadCovDof).append("]");
+    builder.append("VehicleStateInitialParameters [obsCov=")
+        .append(obsCov).append(", onRoadStateCov=")
+        .append(onRoadStateCov).append(", offRoadStateCov=")
+        .append(offRoadStateCov).append(", offTransitionProbs=")
+        .append(offTransitionProbs).append(", onTransitionProbs=")
+        .append(onTransitionProbs).append(", seed=").append(seed)
+        .append(", numParticles=").append(numParticles)
+        .append(", particleFilterTypeName=")
+        .append(particleFilterTypeName)
+        .append(", roadFilterTypeName=").append(roadFilterTypeName)
+        .append(", initialObsFreq=").append(initialObsFreq)
+        .append(", obsCovDof=").append(obsCovDof)
+        .append(", onRoadCovDof=").append(onRoadCovDof)
+        .append(", offRoadCovDof=").append(offRoadCovDof).append("]");
     return builder.toString();
   }
 }

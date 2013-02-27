@@ -40,30 +40,27 @@ import com.google.common.primitives.Doubles;
 
 public class StatisticsUtil {
 
-  static final public double MACHINE_EPS =
-      determineMachineEpsilon();
+  static final public double MACHINE_EPS = determineMachineEpsilon();
 
-  private static final double[] a = {
-      2.2352520354606839287, 161.02823106855587881,
-      1067.6894854603709582, 18154.981253343561249,
-      0.065682337918207449113 };
+  private static final double[] a = { 2.2352520354606839287,
+      161.02823106855587881, 1067.6894854603709582,
+      18154.981253343561249, 0.065682337918207449113 };
 
   private static final double[] b = { 47.20258190468824187,
       976.09855173777669322, 10260.932208618978205,
       45507.789335026729956 };
 
-  private static final double[] c = {
-      0.39894151208813466764, 8.8831497943883759412,
-      93.506656132177855979, 597.27027639480026226,
-      2494.5375852903726711, 6848.1904505362823326,
-      11602.651437647350124, 9842.7148383839780218,
-      1.0765576773720192317e-8 };
+  private static final double[] c = { 0.39894151208813466764,
+      8.8831497943883759412, 93.506656132177855979,
+      597.27027639480026226, 2494.5375852903726711,
+      6848.1904505362823326, 11602.651437647350124,
+      9842.7148383839780218, 1.0765576773720192317e-8 };
 
-  private static final double[] d = {
-      22.266688044328115691, 235.38790178262499861,
-      1519.377599407554805, 6485.558298266760755,
-      18615.571640885098091, 34900.952721145977266,
-      38912.003286093271411, 19685.429676859990727 };
+  private static final double[] d = { 22.266688044328115691,
+      235.38790178262499861, 1519.377599407554805,
+      6485.558298266760755, 18615.571640885098091,
+      34900.952721145977266, 38912.003286093271411,
+      19685.429676859990727 };
 
   private static final double[] p_ = { 0.21589853405795699,
       0.1274011611602473639, 0.022235277870649807,
@@ -74,15 +71,14 @@ public class StatisticsUtil {
       0.00378239633202758244, 7.29751555083966205e-5 };
 
   private static final int CUTOFF = 16; /* Cutoff allowing exact "*" and "/" */
-  
+
   private static final double M_SQRT_32 =
       5.656854249492380195206754896838; /* The square root of 32 */
-  
+
   private static final double M_1_SQRT_2PI =
       0.398942280401432677939946059934;
-  
-  private static final double DBL_EPSILON =
-      2.2204460492503131e-016;
+
+  private static final double DBL_EPSILON = 2.2204460492503131e-016;
 
   private static double determineMachineEpsilon() {
     final double d1 = 1.3333333333333333d;
@@ -105,17 +101,15 @@ public class StatisticsUtil {
    */
   public static Matrix getCholR(Matrix matrix) {
     final DenseCholesky cholesky =
-        DenseCholesky
-            .factorize(DenseMatrixFactoryMTJ.INSTANCE
-                .copyMatrix(matrix).getInternalMatrix());
+        DenseCholesky.factorize(DenseMatrixFactoryMTJ.INSTANCE
+            .copyMatrix(matrix).getInternalMatrix());
 
     final Matrix covSqrt =
         DenseMatrixFactoryMTJ.INSTANCE
             .createWrapper(new no.uib.cipr.matrix.DenseMatrix(
                 cholesky.getU()));
 
-    assert covSqrt.transpose().times(covSqrt)
-        .equals(matrix, 1e-4);
+    assert covSqrt.transpose().times(covSqrt).equals(matrix, 1e-4);
 
     return covSqrt;
   }
@@ -127,8 +121,7 @@ public class StatisticsUtil {
    * @param covar
    * @return
    */
-  public static double getLargeNormalCovRadius(
-    DenseMatrix covar) {
+  public static double getLargeNormalCovRadius(DenseMatrix covar) {
     try {
       final no.uib.cipr.matrix.Matrix covarMtj =
           DenseMatrixFactoryMTJ.INSTANCE.copyMatrix(covar)
@@ -137,18 +130,15 @@ public class StatisticsUtil {
           new SymmDenseEVD(covarMtj.numRows(), true, false)
               .factor(new UpperSymmDenseMatrix(covarMtj));
       final Double largestEigenval =
-          Iterables.getLast(Doubles.asList(evd
-              .getEigenvalues()));
-      final double varDistance =
-          3d * Math.sqrt(largestEigenval);
+          Iterables.getLast(Doubles.asList(evd.getEigenvalues()));
+      final double varDistance = 3d * Math.sqrt(largestEigenval);
       return varDistance;
     } catch (final NotConvergedException e) {
       return Double.NaN;
     }
   }
 
-  public static
-      <SupportType extends Comparable<SupportType>>
+  public static <SupportType extends Comparable<SupportType>>
       DefaultCountedDataDistribution<SupportType>
       getLogNormalizedDistribution(
         List<WrappedWeightedValue<SupportType>> map) {
@@ -160,8 +150,7 @@ public class StatisticsUtil {
     for (final WrappedWeightedValue<SupportType> weight : map) {
       for (int i = 0; i < weight.getCount(); i++) {
         totalLikelihood =
-            LogMath
-                .add(weight.getWeight(), totalLikelihood);
+            LogMath.add(weight.getWeight(), totalLikelihood);
       }
       assert !Double.isNaN(totalLikelihood);
     }
@@ -186,29 +175,26 @@ public class StatisticsUtil {
     return result;
   }
 
-  public static Matrix
-      getPseudoInverseReduced(Matrix matrix) {
+  public static Matrix getPseudoInverseReduced(Matrix matrix) {
     final SingularValueDecompositionMTJ svd =
         SingularValueDecompositionMTJ.create(matrix);
 
     final int effRank = svd.effectiveRank(1e-9);
 
     final DiagonalMatrixMTJ roots =
-        DiagonalMatrixFactoryMTJ.INSTANCE
-            .createMatrix(matrix.getNumColumns());
+        DiagonalMatrixFactoryMTJ.INSTANCE.createMatrix(matrix
+            .getNumColumns());
     final Matrix U = svd.getU();
     for (int i = 0; i < effRank; i++) {
       roots.setElement(i, 1d / svd.getS().getElement(i, i));
     }
 
     final Matrix firstHalf =
-        U.times(roots).getSubMatrix(0, U.getNumRows() - 1,
-            0, effRank - 1);
+        U.times(roots).getSubMatrix(0, U.getNumRows() - 1, 0,
+            effRank - 1);
 
     Matrix V = svd.getVtranspose().transpose();
-    V =
-        V.getSubMatrix(0, V.getNumRows() - 1, 0,
-            effRank - 1);
+    V = V.getSubMatrix(0, V.getNumRows() - 1, 0, effRank - 1);
     final Matrix result = V.times(firstHalf.transpose());
 
     return result;
@@ -226,23 +212,20 @@ public class StatisticsUtil {
       return vec.hashCode();
   }
 
-  public static boolean
-      isPosSemiDefinite(DenseMatrix covar) {
+  public static boolean isPosSemiDefinite(DenseMatrix covar) {
     try {
-      DenseCholesky
-          .factorize(DenseMatrixFactoryMTJ.INSTANCE
-              .copyMatrix(covar).getInternalMatrix());
+      DenseCholesky.factorize(DenseMatrixFactoryMTJ.INSTANCE
+          .copyMatrix(covar).getInternalMatrix());
     } catch (final IllegalArgumentException ex) {
       return false;
     }
     return true;
   }
 
-  public static double logEvaluateNormal(Vector input,
-    Vector mean, Matrix cov) {
-    Preconditions
-        .checkArgument(input.getDimensionality() == mean
-            .getDimensionality());
+  public static double logEvaluateNormal(Vector input, Vector mean,
+    Matrix cov) {
+    Preconditions.checkArgument(input.getDimensionality() == mean
+        .getDimensionality());
     final int k = mean.getDimensionality();
     final double logLeadingCoefficient =
         (-0.5 * k * MultivariateGaussian.LOG_TWO_PI)
@@ -256,28 +239,26 @@ public class StatisticsUtil {
                 .getArray(), false);
     final UpperSPDDenseMatrix spd =
         new UpperSPDDenseMatrix(
-            ((AbstractMTJMatrix) cov).getInternalMatrix(),
-            false);
+            ((AbstractMTJMatrix) cov).getInternalMatrix(), false);
     spd.transSolve(d, b);
     final double zsquared = b.dot(d);
     final double result = logLeadingCoefficient - 0.5 * zsquared;
-    
+
     return result;
   }
 
   /**
    * Low variance sampler. Follows Thrun's example in Probabilistic Robots.
    */
-  public static <SupportType extends Weighted>
-      Multiset<SupportType> lowVarianceSampler(Random rng,
-        Multiset<SupportType> particles, double M) {
+  public static <SupportType extends Weighted> Multiset<SupportType>
+      lowVarianceSampler(Random rng, Multiset<SupportType> particles,
+        double M) {
     Preconditions.checkArgument(particles.size() > 0);
 
     final Multiset<SupportType> resampled =
         HashMultiset.create((int) M);
     final double r = rng.nextDouble() / M;
-    final Iterator<SupportType> pIter =
-        particles.iterator();
+    final Iterator<SupportType> pIter = particles.iterator();
     SupportType p = pIter.next();
     double c = p.getWeight() - Math.log(particles.count(p));
     for (int m = 0; m < M; ++m) {
@@ -285,9 +266,8 @@ public class StatisticsUtil {
       while (U > c && pIter.hasNext()) {
         p = pIter.next();
         c =
-            LogMath.add(
-                p.getWeight()
-                    - Math.log(particles.count(p)), c);
+            LogMath.add(p.getWeight() - Math.log(particles.count(p)),
+                c);
       }
       resampled.add(p);
     }
@@ -318,13 +298,12 @@ public class StatisticsUtil {
    *          is p logged
    * @return cdf at x
    */
-  public static double normalCdf(double x, double mu,
-    double sigma, boolean log_p) {
+  public static double normalCdf(double x, double mu, double sigma,
+    boolean log_p) {
     final boolean i_tail = false;
     double p, cp = Double.NaN;
 
-    if (Double.isNaN(x) || Double.isNaN(mu)
-        || Double.isNaN(sigma)) {
+    if (Double.isNaN(x) || Double.isNaN(mu) || Double.isNaN(sigma)) {
       return Double.NaN;
     }
     if (Double.isInfinite(x) && mu == x) { /* x-mu is NaN */
@@ -396,18 +375,14 @@ public class StatisticsUtil {
       xsq = ((int) (y * CUTOFF)) * 1.0 / CUTOFF;
       del = (y - xsq) * (y + xsq);
       if (log_p) {
-        p =
-            (-xsq * xsq * 0.5) + (-del * 0.5)
-                + Math.log(temp);
+        p = (-xsq * xsq * 0.5) + (-del * 0.5) + Math.log(temp);
         if ((lower && x > 0.0) || (upper && x <= 0.0)) {
           cp =
               Math.log(1.0 - Math.exp(-xsq * xsq * 0.5)
                   * Math.exp(-del * 0.5) * temp);
         }
       } else {
-        p =
-            Math.exp(-xsq * xsq * 0.5)
-                * Math.exp(-del * 0.5) * temp;
+        p = Math.exp(-xsq * xsq * 0.5) * Math.exp(-del * 0.5) * temp;
         cp = 1.0 - p;
       }
 
@@ -443,18 +418,14 @@ public class StatisticsUtil {
       xsq = ((int) (x * CUTOFF)) * 1.0 / CUTOFF;
       del = (x - xsq) * (x + xsq);
       if (log_p) {
-        p =
-            (-xsq * xsq * 0.5) + (-del * 0.5)
-                + Math.log(temp);
+        p = (-xsq * xsq * 0.5) + (-del * 0.5) + Math.log(temp);
         if ((lower && x > 0.0) || (upper && x <= 0.0)) {
           cp =
               Math.log(1.0 - Math.exp(-xsq * xsq * 0.5)
                   * Math.exp(-del * 0.5) * temp);
         }
       } else {
-        p =
-            Math.exp(-xsq * xsq * 0.5)
-                * Math.exp(-del * 0.5) * temp;
+        p = Math.exp(-xsq * xsq * 0.5) * Math.exp(-del * 0.5) * temp;
         cp = 1.0 - p;
       }
       //swap_tail;
@@ -487,16 +458,14 @@ public class StatisticsUtil {
     final SingularValueDecompositionMTJ svd =
         SingularValueDecompositionMTJ.create(matrix);
 
-    final int effRank =
-        rank > 0 ? rank : svd.effectiveRank(1e-9);
+    final int effRank = rank > 0 ? rank : svd.effectiveRank(1e-9);
 
     final DiagonalMatrixMTJ roots =
-        DiagonalMatrixFactoryMTJ.INSTANCE
-            .createMatrix(matrix.getNumColumns());
+        DiagonalMatrixFactoryMTJ.INSTANCE.createMatrix(matrix
+            .getNumColumns());
     final Matrix U = svd.getU();
     for (int i = 0; i < effRank; i++) {
-      roots.setElement(i,
-          Math.sqrt(svd.getS().getElement(i, i)));
+      roots.setElement(i, Math.sqrt(svd.getS().getElement(i, i)));
     }
 
     Matrix result = U.times(roots);
@@ -510,8 +479,8 @@ public class StatisticsUtil {
 
     if (effRankDimResult)
       result =
-          result.getSubMatrix(0, result.getNumRows() - 1,
-              0, effRank - 1);
+          result.getSubMatrix(0, result.getNumRows() - 1, 0,
+              effRank - 1);
 
     return result;
   }
@@ -525,14 +494,12 @@ public class StatisticsUtil {
     for (int i = invWish.getDegreesOfFreedom(); i >= invWish
         .getDegreesOfFreedom() - p + 1; i--) {
       final double chiSmpl =
-          Math.sqrt(ChiSquareDistribution.sample(i, rng, 1)
-              .get(0));
+          Math.sqrt(ChiSquareDistribution.sample(i, rng, 1).get(0));
       Zdiag.setElement(ii, chiSmpl);
       ii++;
     }
     final Matrix Z =
-        MatrixFactory.getDenseDefault().createDiagonal(
-            Zdiag);
+        MatrixFactory.getDenseDefault().createDiagonal(Zdiag);
 
     for (int i = 0; i < p; i++) {
       for (int j = i + 1; j < p; j++) {
@@ -542,12 +509,11 @@ public class StatisticsUtil {
     }
 
     final Matrix scaleSqrt =
-        StatisticsUtil.rootOfSemiDefinite(invWish
-            .getInverseScale().pseudoInverse(1e-9));
+        StatisticsUtil.rootOfSemiDefinite(invWish.getInverseScale()
+            .pseudoInverse(1e-9));
     final Matrix k = Z.times(scaleSqrt);
     final Matrix wishSample = k.transpose().times(k);
-    final Matrix invWishSample =
-        wishSample.pseudoInverse(1e-9);
+    final Matrix invWishSample = wishSample.pseudoInverse(1e-9);
     return invWishSample;
   }
 
@@ -561,16 +527,14 @@ public class StatisticsUtil {
   /**
    * Uses the underlying arrays in these vector objects for comparison.
    */
-  public static boolean vectorEquals(Vector vec1,
-    Vector vec2) {
+  public static boolean vectorEquals(Vector vec1, Vector vec2) {
     if ((vec1 instanceof gov.sandia.cognition.math.matrix.mtj.DenseVector)
         && (vec2 instanceof gov.sandia.cognition.math.matrix.mtj.DenseVector))
-      return Arrays
-          .equals(
-              ((gov.sandia.cognition.math.matrix.mtj.DenseVector) vec1)
-                  .getArray(),
-              ((gov.sandia.cognition.math.matrix.mtj.DenseVector) vec2)
-                  .getArray());
+      return Arrays.equals(
+          ((gov.sandia.cognition.math.matrix.mtj.DenseVector) vec1)
+              .getArray(),
+          ((gov.sandia.cognition.math.matrix.mtj.DenseVector) vec2)
+              .getArray());
     else
       return Objects.equal(vec1, vec2);
   }

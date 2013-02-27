@@ -26,15 +26,15 @@ import com.google.common.base.Preconditions;
 import com.google.common.primitives.Doubles;
 
 /**
- * Copy of DefaultDataDistribution that an object count and
- * provides an configurable scale (log or not).
+ * Copy of DefaultDataDistribution that an object count and provides an
+ * configurable scale (log or not).
  * 
  * @author bwillard
- *
+ * 
  * @param <KeyType>
  */
-public class DefaultCountedDataDistribution<KeyType>
-    extends AbstractDataDistribution<KeyType> {
+public class DefaultCountedDataDistribution<KeyType> extends
+    AbstractDataDistribution<KeyType> {
 
   /**
    * A factory for {@code DefaultCountedDataDistribution} objects using some
@@ -50,8 +50,7 @@ public class DefaultCountedDataDistribution<KeyType>
     /**
        * 
        */
-    private static final long serialVersionUID =
-        681699655965182747L;
+    private static final long serialVersionUID = 681699655965182747L;
     /** The initial domain capacity. */
     protected int initialDomainCapacity;
     private boolean isLogScale;
@@ -79,8 +78,7 @@ public class DefaultCountedDataDistribution<KeyType>
     }
 
     @Override
-    public DefaultCountedDataDistribution<DataType>
-        create() {
+    public DefaultCountedDataDistribution<DataType> create() {
       // Create the histogram.
       return new DefaultCountedDataDistribution<DataType>(
           this.getInitialDomainCapacity(), isLogScale);
@@ -103,8 +101,8 @@ public class DefaultCountedDataDistribution<KeyType>
      */
     public void setInitialDomainCapacity(
       final int initialDomainCapacity) {
-      ArgumentChecker.assertIsPositive(
-          "initialDomainCapacity", initialDomainCapacity);
+      ArgumentChecker.assertIsPositive("initialDomainCapacity",
+          initialDomainCapacity);
       this.initialDomainCapacity = initialDomainCapacity;
     }
 
@@ -133,9 +131,8 @@ public class DefaultCountedDataDistribution<KeyType>
     /**
        * 
        */
-    private static final long serialVersionUID =
-        8787720132790311008L;
-    
+    private static final long serialVersionUID = 8787720132790311008L;
+
     protected boolean isLogScale;
 
     /**
@@ -149,15 +146,14 @@ public class DefaultCountedDataDistribution<KeyType>
     @Override
     public DefaultCountedDataDistribution.PMF<KeyType>
         createInitialLearnedObject() {
-      return new DefaultCountedDataDistribution.PMF<KeyType>(isLogScale);
+      return new DefaultCountedDataDistribution.PMF<KeyType>(
+          isLogScale);
     }
 
     @Override
-    public
-        void
-        update(
-          final DefaultCountedDataDistribution.PMF<KeyType> target,
-          final KeyType data) {
+    public void update(
+      final DefaultCountedDataDistribution.PMF<KeyType> target,
+      final KeyType data) {
       target.increment(data, isLogScale ? 0d : 1d);
     }
 
@@ -183,8 +179,7 @@ public class DefaultCountedDataDistribution<KeyType>
     /**
        * 
        */
-    private static final long serialVersionUID =
-        355507596128913991L;
+    private static final long serialVersionUID = 355507596128913991L;
 
     /**
      * Default constructor
@@ -199,7 +194,8 @@ public class DefaultCountedDataDistribution<KeyType>
      * @param other
      *          ScalarDataDistribution to copy
      */
-    public PMF(final DataDistribution<KeyType> other, boolean isLogScale) {
+    public PMF(final DataDistribution<KeyType> other,
+      boolean isLogScale) {
       super(other, isLogScale);
     }
 
@@ -219,7 +215,8 @@ public class DefaultCountedDataDistribution<KeyType>
      * @param data
      *          Data to create the distribution
      */
-    public PMF(final Iterable<? extends KeyType> data, boolean isLogScale) {
+    public PMF(final Iterable<? extends KeyType> data,
+      boolean isLogScale) {
       super(data, isLogScale);
     }
 
@@ -258,7 +255,7 @@ public class DefaultCountedDataDistribution<KeyType>
        */
     private static final long serialVersionUID =
         -9067384837227173014L;
-    
+
     private boolean isLogScaled;
 
     /**
@@ -272,17 +269,17 @@ public class DefaultCountedDataDistribution<KeyType>
     @Override
     public DefaultCountedDataDistribution.PMF<KeyType>
         createInitialLearnedObject() {
-      return new DefaultCountedDataDistribution.PMF<KeyType>(this.isLogScaled);
+      return new DefaultCountedDataDistribution.PMF<KeyType>(
+          this.isLogScaled);
     }
 
     @Override
-    public
-        void
-        update(
-          final DefaultCountedDataDistribution.PMF<KeyType> target,
-          final WeightedValue<? extends KeyType> data) {
-//      Preconditions.checkArgument(target.isLogScale && isLogScaled);
-      Preconditions.checkArgument(!isLogScaled || data.getWeight() <= 0d);
+    public void update(
+      final DefaultCountedDataDistribution.PMF<KeyType> target,
+      final WeightedValue<? extends KeyType> data) {
+      //      Preconditions.checkArgument(target.isLogScale && isLogScaled);
+      Preconditions.checkArgument(!isLogScaled
+          || data.getWeight() <= 0d);
       target.increment(data.getValue(), data.getWeight());
     }
 
@@ -291,8 +288,7 @@ public class DefaultCountedDataDistribution<KeyType>
   /**
    * 
    */
-  private static final long serialVersionUID =
-      6596579376152342279L;
+  private static final long serialVersionUID = 6596579376152342279L;
 
   /**
    * Default initial capacity, {@value} .
@@ -303,7 +299,7 @@ public class DefaultCountedDataDistribution<KeyType>
    * Total of the counts in the distribution
    */
   protected double total;
-  
+
   protected boolean isLogScale = false;
 
   /**
@@ -320,9 +316,10 @@ public class DefaultCountedDataDistribution<KeyType>
    *          DataDistribution to copy
    */
   public DefaultCountedDataDistribution(
-    final DataDistribution<? extends KeyType> other, boolean isLogScale) {
-    this(new LinkedHashMap<KeyType, MutableDouble>(
-        other.size()), isLogScale ? Double.NEGATIVE_INFINITY : 0d, isLogScale);
+    final DataDistribution<? extends KeyType> other,
+    boolean isLogScale) {
+    this(new LinkedHashMap<KeyType, MutableDouble>(other.size()),
+        isLogScale ? Double.NEGATIVE_INFINITY : 0d, isLogScale);
     this.incrementAll(other);
   }
 
@@ -332,9 +329,10 @@ public class DefaultCountedDataDistribution<KeyType>
    * @param initialCapacity
    *          Initial capacity of the Map
    */
-  public DefaultCountedDataDistribution(int initialCapacity, boolean isLogScale) {
-    this(new LinkedHashMap<KeyType, MutableDouble>(
-        initialCapacity), isLogScale ? Double.NEGATIVE_INFINITY : 0d, isLogScale);
+  public DefaultCountedDataDistribution(int initialCapacity,
+    boolean isLogScale) {
+    this(new LinkedHashMap<KeyType, MutableDouble>(initialCapacity),
+        isLogScale ? Double.NEGATIVE_INFINITY : 0d, isLogScale);
     this.isLogScale = isLogScale;
   }
 
@@ -359,8 +357,8 @@ public class DefaultCountedDataDistribution<KeyType>
    *          Sum of all values in the Map
    */
   protected DefaultCountedDataDistribution(
-    final Map<KeyType, MutableDouble> map,
-    final double total, boolean isLogScale) {
+    final Map<KeyType, MutableDouble> map, final double total,
+    boolean isLogScale) {
     super(map);
     this.isLogScale = isLogScale;
     this.total = total;
@@ -375,14 +373,13 @@ public class DefaultCountedDataDistribution<KeyType>
   @Override
   public DefaultCountedDataDistribution<KeyType> clone() {
     final DefaultCountedDataDistribution<KeyType> clone =
-        new DefaultCountedDataDistribution<KeyType>(
-            this.size(), this.isLogScale);
+        new DefaultCountedDataDistribution<KeyType>(this.size(),
+            this.isLogScale);
     for (final java.util.Map.Entry<KeyType, MutableDouble> entry : this.map
         .entrySet()) {
       final MutableDoubleCount count =
           (MutableDoubleCount) entry.getValue();
-      clone.set(entry.getKey(), count.getValue(),
-          count.getCount());
+      clone.set(entry.getKey(), count.getValue(), count.getCount());
     }
 
     assert this.getTotalCount() == clone.getTotalCount();
@@ -391,19 +388,18 @@ public class DefaultCountedDataDistribution<KeyType>
     return clone;
   }
 
-  public void copyAll(
-    DataDistribution<KeyType> posteriorDist) {
+  public void copyAll(DataDistribution<KeyType> posteriorDist) {
     for (final java.util.Map.Entry<KeyType, ? extends Number> entry : posteriorDist
         .asMap().entrySet()) {
       final MutableDoubleCount count =
           (MutableDoubleCount) entry.getValue();
-      this.set(entry.getKey(), count.getValue(),
-          count.getCount());
+      this.set(entry.getKey(), count.getValue(), count.getCount());
     }
   }
 
   public int getCount(KeyType key) {
-    MutableDoubleCount count = ((MutableDoubleCount) this.map.get(key));
+    MutableDoubleCount count =
+        ((MutableDoubleCount) this.map.get(key));
     return count != null ? count.getCount() : 0;
   }
 
@@ -411,7 +407,8 @@ public class DefaultCountedDataDistribution<KeyType>
   public
       DistributionEstimator<KeyType, ? extends DataDistribution<KeyType>>
       getEstimator() {
-    return new DefaultCountedDataDistribution.Estimator<KeyType>(this.isLogScale);
+    return new DefaultCountedDataDistribution.Estimator<KeyType>(
+        this.isLogScale);
   }
 
   /**
@@ -423,17 +420,17 @@ public class DefaultCountedDataDistribution<KeyType>
   public double getMeanValue() {
     final int ds = this.getTotalCount();
     if (ds > 0) {
-      return (this.isLogScale ? Math.exp(this.getTotal()) : this.getTotal()) / ds;
+      return (this.isLogScale ? Math.exp(this.getTotal()) : this
+          .getTotal()) / ds;
     } else {
       return 0.0;
     }
   }
 
   @Override
-  public DataDistribution.PMF<KeyType>
-      getProbabilityFunction() {
-    return new DefaultCountedDataDistribution.PMF<KeyType>(
-        this, this.isLogScale);
+  public DataDistribution.PMF<KeyType> getProbabilityFunction() {
+    return new DefaultCountedDataDistribution.PMF<KeyType>(this,
+        this.isLogScale);
   }
 
   @Override
@@ -447,8 +444,7 @@ public class DefaultCountedDataDistribution<KeyType>
   public int getTotalCount() {
     int total = 0;
     for (final MutableDouble value : this.map.values()) {
-      final MutableDoubleCount count =
-          (MutableDoubleCount) value;
+      final MutableDoubleCount count = (MutableDoubleCount) value;
       total += count.getCount();
     }
     return total;
@@ -459,14 +455,14 @@ public class DefaultCountedDataDistribution<KeyType>
     return this.increment(key, value, 1);
   }
 
-  public double increment(KeyType key, final double value,
-    int count) {
+  public double increment(KeyType key, final double value, int count) {
     // TODO FIXME terrible hack!
     final MutableDoubleCount entry =
         (MutableDoubleCount) this.map.get(key);
     double newValue;
     double delta;
-    final double identity = this.isLogScale ? Double.NEGATIVE_INFINITY : 0d;
+    final double identity =
+        this.isLogScale ? Double.NEGATIVE_INFINITY : 0d;
     if (entry == null) {
       if (value > identity) {
         this.map.put(key, new MutableDoubleCount(value, count));
@@ -476,7 +472,9 @@ public class DefaultCountedDataDistribution<KeyType>
       }
       newValue = value;
     } else {
-      final double sum = this.isLogScale ? LogMath.add(entry.value, value) : entry.value + value;
+      final double sum =
+          this.isLogScale ? LogMath.add(entry.value, value)
+              : entry.value + value;
       if (sum >= identity) {
         delta = value;
         entry.set(sum, entry.count + count);
@@ -491,7 +489,7 @@ public class DefaultCountedDataDistribution<KeyType>
       this.total = LogMath.add(this.total, value);
     else
       this.total += delta;
-    
+
     return newValue;
   }
 
@@ -504,9 +502,8 @@ public class DefaultCountedDataDistribution<KeyType>
   }
 
   /**
-   * In this case the given value is total across counts.
-   * There is a basic, but loose, assumption that 
-   * each count * key has value = totalValue/count.
+   * In this case the given value is total across counts. There is a basic, but
+   * loose, assumption that each count * key has value = totalValue/count.
    * 
    * @param key
    * @param totalValue
@@ -518,13 +515,13 @@ public class DefaultCountedDataDistribution<KeyType>
     // TODO FIXME terrible hack!
     final MutableDoubleCount entry =
         (MutableDoubleCount) this.map.get(key);
-    final double identity = this.isLogScale ? Double.NEGATIVE_INFINITY : 0d; 
+    final double identity =
+        this.isLogScale ? Double.NEGATIVE_INFINITY : 0d;
     if (entry == null) {
       // Only need to allocate if it's not null
       if (totalValue > identity) {
-        this.map.put(key, new MutableDoubleCount(totalValue,
-            count));
-        
+        this.map.put(key, new MutableDoubleCount(totalValue, count));
+
         if (isLogScale)
           this.total = LogMath.add(this.total, totalValue);
         else
@@ -533,11 +530,14 @@ public class DefaultCountedDataDistribution<KeyType>
     } else if (totalValue > identity) {
       if (isLogScale)
         if (entry.value > totalValue) {
-          final double totalsSum = LogMath.add(this.total, totalValue);
+          final double totalsSum =
+              LogMath.add(this.total, totalValue);
           Preconditions.checkState(totalsSum >= entry.value);
           this.total = LogMath.subtract(totalsSum, entry.value);
         } else {
-          this.total = LogMath.add(this.total, LogMath.subtract(totalValue , entry.value));
+          this.total =
+              LogMath.add(this.total,
+                  LogMath.subtract(totalValue, entry.value));
         }
       else
         this.total += totalValue - entry.value;
@@ -547,7 +547,8 @@ public class DefaultCountedDataDistribution<KeyType>
        * 'set' does not do a relative adjustment of the value
        * so we should check the value here.
        */
-      Preconditions.checkArgument(Doubles.compare(totalValue, identity) == 0);
+      Preconditions.checkArgument(Doubles.compare(totalValue,
+          identity) == 0);
       entry.set(identity, count);
     }
   }
@@ -558,25 +559,26 @@ public class DefaultCountedDataDistribution<KeyType>
 
   @Override
   public double getEntropy() {
-    final double identity = this.isLogScale ? Double.NEGATIVE_INFINITY : 0d;
+    final double identity =
+        this.isLogScale ? Double.NEGATIVE_INFINITY : 0d;
     double entropy = identity;
     final double total = this.getTotal();
-    final double denom = (Doubles.compare(total, identity) != 0) ? total : 
-      (this.isLogScale ? 0d : 1d);
-    for (ScalarMap.Entry<KeyType> entry : this.entrySet())
-    {
+    final double denom =
+        (Doubles.compare(total, identity) != 0) ? total
+            : (this.isLogScale ? 0d : 1d);
+    for (ScalarMap.Entry<KeyType> entry : this.entrySet()) {
       if (this.isLogScale) {
         double p = entry.getValue() - denom;
-        if (Doubles.compare(p, identity) != 0)
-        {
-            entropy = LogMath.subtract(entropy, p + p/MathUtil.log2(Math.E));
+        if (Doubles.compare(p, identity) != 0) {
+          entropy =
+              LogMath
+                  .subtract(entropy, p + p / MathUtil.log2(Math.E));
         }
-        
+
       } else {
         double p = entry.getValue() / denom;
-        if (Doubles.compare(p, identity) != 0)
-        {
-            entropy -= p * MathUtil.log2(p);
+        if (Doubles.compare(p, identity) != 0) {
+          entropy -= p * MathUtil.log2(p);
         }
       }
     }
@@ -595,7 +597,7 @@ public class DefaultCountedDataDistribution<KeyType>
   @Override
   public double getFraction(KeyType key) {
     if (this.isLogScale) {
-      return Math.exp(this.getLogFraction(key)); 
+      return Math.exp(this.getLogFraction(key));
     } else {
       return super.getFraction(key);
     }
@@ -613,13 +615,11 @@ public class DefaultCountedDataDistribution<KeyType>
   public KeyType sample(Random random) {
     if (this.isLogScale) {
       double w = random.nextDouble();
-      for (ScalarMap.Entry<KeyType> entry : this.entrySet())
-      {
-          w -= this.getFraction(entry.getKey());
-          if (w <= 0d)
-          {
-              return entry.getKey();
-          }
+      for (ScalarMap.Entry<KeyType> entry : this.entrySet()) {
+        w -= this.getFraction(entry.getKey());
+        if (w <= 0d) {
+          return entry.getKey();
+        }
       }
       return null;
     } else {
@@ -636,18 +636,18 @@ public class DefaultCountedDataDistribution<KeyType>
       double cumulativeSum = 0d;
       ArrayList<KeyType> domain = new ArrayList<KeyType>(size);
       int index = 0;
-      for (ScalarMap.Entry<KeyType> entry : this.entrySet())
-      {
-          domain.add(entry.getKey());
-          final double value = entry.getValue();
-          cumulativeSum += Math.exp(value);
-          cumulativeWeights[index] = cumulativeSum;
-          index++;
+      for (ScalarMap.Entry<KeyType> entry : this.entrySet()) {
+        domain.add(entry.getKey());
+        final double value = entry.getValue();
+        cumulativeSum += Math.exp(value);
+        cumulativeWeights[index] = cumulativeSum;
+        index++;
       }
 
       return ProbabilityMassFunctionUtil.sampleMultiple(
-          cumulativeWeights, cumulativeSum, domain, random, numSamples);
-      
+          cumulativeWeights, cumulativeSum, domain, random,
+          numSamples);
+
     } else {
       return super.sample(random, numSamples);
     }

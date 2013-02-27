@@ -20,19 +20,20 @@ import org.opentrackingtools.distributions.AdjMultivariateGaussian;
 import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.model.GpsObservation;
 import org.opentrackingtools.model.VehicleState;
-import org.opentrackingtools.paths.InferredPath;
+import org.opentrackingtools.paths.Path;
 import org.opentrackingtools.paths.PathEdge;
-import org.opentrackingtools.paths.PathStateBelief;
 import org.opentrackingtools.util.PathUtils;
 import org.opentrackingtools.util.StatisticsUtil;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Iterables;
 
-public abstract class AbstractRoadTrackingFilter extends AbstractCloneableSerializable implements
+public abstract class AbstractRoadTrackingFilter extends
+    AbstractCloneableSerializable implements
     Comparable<AbstractRoadTrackingFilter> {
 
-  protected AbstractRoadTrackingFilter(GpsObservation obs, InferenceGraph graph, VehicleStateInitialParameters params,
+  protected AbstractRoadTrackingFilter(GpsObservation obs,
+    InferenceGraph graph, VehicleStateInitialParameters params,
     Random rng) {
     this.graph = graph;
   }
@@ -119,9 +120,13 @@ public abstract class AbstractRoadTrackingFilter extends AbstractCloneableSerial
   public static Matrix U;
 
   static {
-    Vg = MatrixFactory.getDenseDefault().copyArray(new double[][] { { 0, 1, 0, 0 }, { 0, 0, 0, 1 } });
+    Vg =
+        MatrixFactory.getDenseDefault().copyArray(
+            new double[][] { { 0, 1, 0, 0 }, { 0, 0, 0, 1 } });
 
-    Vr = MatrixFactory.getDenseDefault().copyArray(new double[][] { { 0, 1 } });
+    Vr =
+        MatrixFactory.getDenseDefault().copyArray(
+            new double[][] { { 0, 1 } });
 
     Og = MatrixFactory.getDefault().createMatrix(2, 4);
     Og.setElement(0, 0, 1);
@@ -141,19 +146,22 @@ public abstract class AbstractRoadTrackingFilter extends AbstractCloneableSerial
 
   protected double prevTimeDiff = 0d;
 
-  public final static Vector zeros2D = VectorFactory.getDefault().copyValues(0, 0);
+  public final static Vector zeros2D = VectorFactory.getDefault()
+      .copyValues(0, 0);
 
   @Nonnull
   protected transient InferenceGraph graph;
 
   @Override
   public AbstractRoadTrackingFilter clone() {
-    final AbstractRoadTrackingFilter clone = (AbstractRoadTrackingFilter) super.clone();
+    final AbstractRoadTrackingFilter clone =
+        (AbstractRoadTrackingFilter) super.clone();
     clone.currentTimeDiff = this.currentTimeDiff;
     clone.groundFilter = this.groundFilter.clone();
     clone.groundModel = this.groundModel.clone();
     clone.obsCovar = this.obsCovar.clone();
-    clone.offRoadStateTransCovar = this.offRoadStateTransCovar.clone();
+    clone.offRoadStateTransCovar =
+        this.offRoadStateTransCovar.clone();
     clone.onRoadStateTransCovar = this.onRoadStateTransCovar.clone();
     clone.prevTimeDiff = this.prevTimeDiff;
     clone.Qg = this.Qg.clone();
@@ -227,13 +235,17 @@ public abstract class AbstractRoadTrackingFilter extends AbstractCloneableSerial
    * @param edge
    * @return
    */
-  public MultivariateGaussian getObservationBelief(final PathStateBelief stateBelief) {
-    final MultivariateGaussian projBelief = stateBelief.getGroundBelief().clone();
+  public MultivariateGaussian getObservationBelief(
+    final PathStateDistribution stateBelief) {
+    final MultivariateGaussian projBelief =
+        stateBelief.getGroundBelief().clone();
 
-    final Matrix Q = Og.times(projBelief.getCovariance()).times(Og.transpose());
+    final Matrix Q =
+        Og.times(projBelief.getCovariance()).times(Og.transpose());
     Q.plusEquals(this.groundFilter.getMeasurementCovariance());
 
-    final MultivariateGaussian res = new AdjMultivariateGaussian(Og.times(projBelief.getMean()), Q);
+    final MultivariateGaussian res =
+        new AdjMultivariateGaussian(Og.times(projBelief.getMean()), Q);
     return res;
   }
 
@@ -245,10 +257,12 @@ public abstract class AbstractRoadTrackingFilter extends AbstractCloneableSerial
    * @param observation
    * @param edge
    */
-  public PathStateBelief measure(PathStateBelief priorPathStateBelief, Vector observation, PathEdge edge) {
+  public PathStateDistribution measure(
+    PathStateDistribution priorPathStateBelief, Vector observation,
+    PathEdge edge) {
 
     final MultivariateGaussian updatedBelief;
-    final PathStateBelief result;
+    final PathStateDistribution result;
     if (priorPathStateBelief.isOnRoad()) {
       //      /*
       //       * TODO FIXME: should probably snap observation to road 
@@ -266,22 +280,31 @@ public abstract class AbstractRoadTrackingFilter extends AbstractCloneableSerial
       //      convertToRoadBelief(updatedBelief, belief.getPath(),
       //          edge, true);
       final MultivariateGaussian obsProj =
-          PathUtils.getRoadObservation(observation, this.obsCovar, priorPathStateBelief.getPath(), edge);
+          PathUtils.getRoadObservation(observation, this.obsCovar,
+              priorPathStateBelief.getPath(), edge);
       //              Iterables.getLast(belief.getPath().getEdges()));
 
-      this.roadFilter.setMeasurementCovariance(obsProj.getCovariance());
-      updatedBelief = priorPathStateBelief.getGlobalStateBelief().clone();
+      this.roadFilter.setMeasurementCovariance(obsProj
+          .getCovariance());
+      updatedBelief =
+          priorPathStateBelief.getGlobalStateBelief().clone();
 
       /*
        * Clamp the projected obs
        */
-      if (!priorPathStateBelief.getPath().isOnPath(obsProj.getMean().getElement(0))) {
-        obsProj.getMean().setElement(0, priorPathStateBelief.getPath().clampToPath(obsProj.getMean().getElement(0)));
+      if (!priorPathStateBelief.getPath().isOnPath(
+          obsProj.getMean().getElement(0))) {
+        obsProj.getMean().setElement(
+            0,
+            priorPathStateBelief.getPath().clampToPath(
+                obsProj.getMean().getElement(0)));
       }
 
       this.roadFilter.measure(updatedBelief, obsProj.getMean());
 
-      final PathStateBelief tmpBelief = priorPathStateBelief.getPath().getStateBeliefOnPath(updatedBelief);
+      final PathStateDistribution tmpBelief =
+          priorPathStateBelief.getPath().getStateBeliefOnPath(
+              updatedBelief);
 
       /*
        * Use the path actually traveled.
@@ -290,9 +313,12 @@ public abstract class AbstractRoadTrackingFilter extends AbstractCloneableSerial
       result = tmpBelief.getTruncatedPathStateBelief();
 
     } else {
-      updatedBelief = priorPathStateBelief.getGlobalStateBelief().clone();
+      updatedBelief =
+          priorPathStateBelief.getGlobalStateBelief().clone();
       this.groundFilter.measure(updatedBelief, observation);
-      result = priorPathStateBelief.getPath().getStateBeliefOnPath(updatedBelief);
+      result =
+          priorPathStateBelief.getPath().getStateBeliefOnPath(
+              updatedBelief);
     }
 
     return result;
@@ -307,7 +333,8 @@ public abstract class AbstractRoadTrackingFilter extends AbstractCloneableSerial
    * 
    * @param startOfEdgeDist
    */
-  public PathStateBelief predict(PathStateBelief currentBelief, InferredPath path) {
+  public PathStateDistribution predict(
+    PathStateDistribution currentBelief, Path path) {
 
     Preconditions.checkNotNull(path);
     MultivariateGaussian newBelief;
@@ -334,9 +361,11 @@ public abstract class AbstractRoadTrackingFilter extends AbstractCloneableSerial
          * project movement along the path.
          */
         newBelief = currentBelief.getLocalStateBelief().clone();
-        PathUtils.convertToRoadBelief(newBelief, path, Iterables.getFirst(path.getPathEdges(), null), true);
+        PathUtils.convertToRoadBelief(newBelief, path,
+            Iterables.getFirst(path.getPathEdges(), null), true);
       } else {
-        final PathStateBelief newBeliefOnPath = path.getStateBeliefOnPath(currentBelief);
+        final PathStateDistribution newBeliefOnPath =
+            path.getStateBeliefOnPath(currentBelief);
         newBelief = newBeliefOnPath.getGlobalStateBelief();
       }
       roadFilter.predict(newBelief);
@@ -344,7 +373,9 @@ public abstract class AbstractRoadTrackingFilter extends AbstractCloneableSerial
       /*
        * Clamp to path
        */
-      final double distance = AbstractRoadTrackingFilter.getOr().times(newBelief.getMean()).getElement(0);
+      final double distance =
+          AbstractRoadTrackingFilter.getOr()
+              .times(newBelief.getMean()).getElement(0);
       if (!path.isOnPath(distance)) {
         newBelief.getMean().setElement(0, path.clampToPath(distance));
       }
@@ -355,11 +386,15 @@ public abstract class AbstractRoadTrackingFilter extends AbstractCloneableSerial
 
   public void setCurrentTimeDiff(double currentTimeDiff) {
     if (currentTimeDiff != prevTimeDiff) {
-      groundFilter.setModelCovariance(createStateCovarianceMatrix(currentTimeDiff, Qg, false));
-      roadFilter.setModelCovariance(createStateCovarianceMatrix(currentTimeDiff, Qr, true));
+      groundFilter.setModelCovariance(createStateCovarianceMatrix(
+          currentTimeDiff, Qg, false));
+      roadFilter.setModelCovariance(createStateCovarianceMatrix(
+          currentTimeDiff, Qr, true));
 
-      groundModel.setA(createStateTransitionMatrix(currentTimeDiff, false));
-      roadModel.setA(createStateTransitionMatrix(currentTimeDiff, true));
+      groundModel.setA(createStateTransitionMatrix(currentTimeDiff,
+          false));
+      roadModel.setA(createStateTransitionMatrix(currentTimeDiff,
+          true));
     }
     this.prevTimeDiff = this.currentTimeDiff;
     this.currentTimeDiff = currentTimeDiff;
@@ -367,10 +402,12 @@ public abstract class AbstractRoadTrackingFilter extends AbstractCloneableSerial
 
   @Override
   public String toString() {
-    return "StandardRoadTrackingFilter [" + "groundFilterCov=" + groundFilter.getModelCovariance() + ", roadFilterCov="
-        + roadFilter.getModelCovariance() + ", onRoadStateVariance=" + onRoadStateTransCovar
-        + ", offRoadStateVariance=" + offRoadStateTransCovar + ", obsVariance=" + obsCovar + ", currentTimeDiff="
-        + currentTimeDiff + "]";
+    return "StandardRoadTrackingFilter [" + "groundFilterCov="
+        + groundFilter.getModelCovariance() + ", roadFilterCov="
+        + roadFilter.getModelCovariance() + ", onRoadStateVariance="
+        + onRoadStateTransCovar + ", offRoadStateVariance="
+        + offRoadStateTransCovar + ", obsVariance=" + obsCovar
+        + ", currentTimeDiff=" + currentTimeDiff + "]";
   }
 
   public Vector sampleStateTransDist(Vector state, Random rng) {
@@ -379,7 +416,8 @@ public abstract class AbstractRoadTrackingFilter extends AbstractCloneableSerial
 
     final Matrix covSqrt = StatisticsUtil.getCholR(cov);
     final Vector qSmpl =
-        MultivariateGaussian.sample(VectorFactory.getDefault().createVector(cov.getNumColumns()), covSqrt, rng);
+        MultivariateGaussian.sample(VectorFactory.getDefault()
+            .createVector(cov.getNumColumns()), covSqrt, rng);
 
     final Matrix covFactor = this.getCovarianceFactor(dim == 2);
     final Vector error = covFactor.times(qSmpl);
@@ -387,7 +425,8 @@ public abstract class AbstractRoadTrackingFilter extends AbstractCloneableSerial
     return stateSmpl;
   }
 
-  protected static Matrix createStateCovarianceMatrix(double timeDiff, Matrix Q, boolean isRoad) {
+  protected static Matrix createStateCovarianceMatrix(
+    double timeDiff, Matrix Q, boolean isRoad) {
 
     final Matrix A_half = getCovarianceFactor(timeDiff, isRoad);
     final Matrix A = A_half.times(Q).times(A_half.transpose());
@@ -397,7 +436,8 @@ public abstract class AbstractRoadTrackingFilter extends AbstractCloneableSerial
     return A;
   }
 
-  protected static Matrix createStateTransitionMatrix(double timeDiff, boolean isRoad) {
+  protected static Matrix createStateTransitionMatrix(
+    double timeDiff, boolean isRoad) {
 
     final int dim;
     if (isRoad) {
@@ -405,7 +445,8 @@ public abstract class AbstractRoadTrackingFilter extends AbstractCloneableSerial
     } else {
       dim = 4;
     }
-    final Matrix Gct = MatrixFactory.getDefault().createIdentity(dim, dim);
+    final Matrix Gct =
+        MatrixFactory.getDefault().createIdentity(dim, dim);
     Gct.setElement(0, 1, timeDiff);
     if (dim > 2)
       Gct.setElement(2, 3, timeDiff);
@@ -413,7 +454,8 @@ public abstract class AbstractRoadTrackingFilter extends AbstractCloneableSerial
     return Gct;
   }
 
-  public static Matrix getCovarianceFactor(double timeDiff, boolean isRoad) {
+  public static Matrix getCovarianceFactor(double timeDiff,
+    boolean isRoad) {
 
     final int dim;
     if (!isRoad) {
@@ -421,7 +463,8 @@ public abstract class AbstractRoadTrackingFilter extends AbstractCloneableSerial
     } else {
       dim = 1;
     }
-    final Matrix A_half = MatrixFactory.getDefault().createMatrix(dim * 2, dim);
+    final Matrix A_half =
+        MatrixFactory.getDefault().createMatrix(dim * 2, dim);
     A_half.setElement(0, 0, Math.pow(timeDiff, 2) / 2d);
     A_half.setElement(1, 0, timeDiff);
     if (dim == 2) {
@@ -432,7 +475,8 @@ public abstract class AbstractRoadTrackingFilter extends AbstractCloneableSerial
     return A_half;
   }
 
-  public static Matrix getCovarianceFactorLeftInv(double timeDiff, boolean isRoad) {
+  public static Matrix getCovarianceFactorLeftInv(double timeDiff,
+    boolean isRoad) {
 
     final int dim;
     if (!isRoad) {
@@ -440,7 +484,8 @@ public abstract class AbstractRoadTrackingFilter extends AbstractCloneableSerial
     } else {
       dim = 1;
     }
-    final Matrix A_half = MatrixFactory.getDefault().createMatrix(dim, dim * 2);
+    final Matrix A_half =
+        MatrixFactory.getDefault().createMatrix(dim, dim * 2);
     A_half.setElement(0, 0, 1d / Math.pow(timeDiff, 2));
     A_half.setElement(0, 1, 1d / (2d * timeDiff));
     //    A_half.setElement(0, 0, 2d * timeDiff/
@@ -476,9 +521,11 @@ public abstract class AbstractRoadTrackingFilter extends AbstractCloneableSerial
     return Or;
   }
 
-  protected static Matrix getRotatedCovarianceMatrix(double aVariance, double a0Variance, double angle) {
+  protected static Matrix getRotatedCovarianceMatrix(
+    double aVariance, double a0Variance, double angle) {
 
-    final Matrix rotationMatrix = MatrixFactory.getDefault().createIdentity(2, 2);
+    final Matrix rotationMatrix =
+        MatrixFactory.getDefault().createIdentity(2, 2);
     rotationMatrix.setElement(0, 0, Math.cos(angle));
     rotationMatrix.setElement(0, 1, -Math.sin(angle));
     rotationMatrix.setElement(1, 0, Math.sin(angle));
@@ -486,8 +533,10 @@ public abstract class AbstractRoadTrackingFilter extends AbstractCloneableSerial
 
     final Matrix temp =
         MatrixFactory.getDefault().createDiagonal(
-            VectorFactory.getDefault().copyArray(new double[] { a0Variance, aVariance }));
-    return rotationMatrix.times(temp).times(rotationMatrix.transpose());
+            VectorFactory.getDefault().copyArray(
+                new double[] { a0Variance, aVariance }));
+    return rotationMatrix.times(temp).times(
+        rotationMatrix.transpose());
   }
 
   public static Matrix getU() {
@@ -513,15 +562,20 @@ public abstract class AbstractRoadTrackingFilter extends AbstractCloneableSerial
   }
 
   protected void setOnRoadStateTransCovar(Matrix onRoadStateVariance) {
-    Preconditions.checkArgument(onRoadStateVariance.getNumColumns() == 2);
-    assert StatisticsUtil.isPosSemiDefinite((DenseMatrix) onRoadStateVariance);
+    Preconditions
+        .checkArgument(onRoadStateVariance.getNumColumns() == 2);
+    assert StatisticsUtil
+        .isPosSemiDefinite((DenseMatrix) onRoadStateVariance);
     this.onRoadStateTransCovar = onRoadStateVariance.clone();
     this.roadFilter.setModelCovariance(onRoadStateVariance);
   }
 
-  protected void setOffRoadStateTransCovar(Matrix offRoadStateVariance) {
-    Preconditions.checkArgument(offRoadStateVariance.getNumColumns() == 4);
-    assert StatisticsUtil.isPosSemiDefinite((DenseMatrix) offRoadStateVariance);
+  protected void
+      setOffRoadStateTransCovar(Matrix offRoadStateVariance) {
+    Preconditions
+        .checkArgument(offRoadStateVariance.getNumColumns() == 4);
+    assert StatisticsUtil
+        .isPosSemiDefinite((DenseMatrix) offRoadStateVariance);
     this.offRoadStateTransCovar = offRoadStateVariance.clone();
     this.groundFilter.setModelCovariance(offRoadStateVariance);
   }
@@ -529,7 +583,8 @@ public abstract class AbstractRoadTrackingFilter extends AbstractCloneableSerial
   protected void setObsCovar(Matrix obsVariance) {
     Preconditions.checkArgument(obsVariance.getNumColumns() == 2);
     Preconditions.checkState(!obsVariance.isZero());
-    assert StatisticsUtil.isPosSemiDefinite((DenseMatrix) obsVariance);
+    assert StatisticsUtil
+        .isPosSemiDefinite((DenseMatrix) obsVariance);
     this.obsCovar = obsVariance.clone();
     this.groundFilter.setMeasurementCovariance(obsVariance);
     this.roadFilter.setMeasurementCovariance(obsVariance);
@@ -543,16 +598,31 @@ public abstract class AbstractRoadTrackingFilter extends AbstractCloneableSerial
   public int hashCode() {
     final int prime = 31;
     int result = 1;
-    result = prime * result + ((Qg == null) ? 0 : ((AbstractMatrix) Qg).hashCode());
-    result = prime * result + ((Qr == null) ? 0 : ((AbstractMatrix) Qr).hashCode());
+    result =
+        prime * result
+            + ((Qg == null) ? 0 : ((AbstractMatrix) Qg).hashCode());
+    result =
+        prime * result
+            + ((Qr == null) ? 0 : ((AbstractMatrix) Qr).hashCode());
     long temp;
     temp = Double.doubleToLongBits(currentTimeDiff);
     result = prime * result + (int) (temp ^ (temp >>> 32));
-    result = prime * result + ((obsCovar == null) ? 0 : ((AbstractMatrix) obsCovar).hashCode());
     result =
-        prime * result + ((offRoadStateTransCovar == null) ? 0 : ((AbstractMatrix) offRoadStateTransCovar).hashCode());
+        prime
+            * result
+            + ((obsCovar == null) ? 0 : ((AbstractMatrix) obsCovar)
+                .hashCode());
     result =
-        prime * result + ((onRoadStateTransCovar == null) ? 0 : ((AbstractMatrix) onRoadStateTransCovar).hashCode());
+        prime
+            * result
+            + ((offRoadStateTransCovar == null) ? 0
+                : ((AbstractMatrix) offRoadStateTransCovar)
+                    .hashCode());
+    result =
+        prime
+            * result
+            + ((onRoadStateTransCovar == null) ? 0
+                : ((AbstractMatrix) onRoadStateTransCovar).hashCode());
     temp = Double.doubleToLongBits(prevTimeDiff);
     result = prime * result + (int) (temp ^ (temp >>> 32));
     return result;
@@ -569,7 +639,8 @@ public abstract class AbstractRoadTrackingFilter extends AbstractCloneableSerial
     if (getClass() != obj.getClass()) {
       return false;
     }
-    final AbstractRoadTrackingFilter other = (AbstractRoadTrackingFilter) obj;
+    final AbstractRoadTrackingFilter other =
+        (AbstractRoadTrackingFilter) obj;
     if (Qg == null) {
       if (other.Qg != null) {
         return false;
@@ -584,7 +655,8 @@ public abstract class AbstractRoadTrackingFilter extends AbstractCloneableSerial
     } else if (!((AbstractMatrix) Qr).equals((other.Qr))) {
       return false;
     }
-    if (Double.doubleToLongBits(currentTimeDiff) != Double.doubleToLongBits(other.currentTimeDiff)) {
+    if (Double.doubleToLongBits(currentTimeDiff) != Double
+        .doubleToLongBits(other.currentTimeDiff)) {
       return false;
     }
     if (obsCovar == null) {
@@ -598,24 +670,28 @@ public abstract class AbstractRoadTrackingFilter extends AbstractCloneableSerial
       if (other.offRoadStateTransCovar != null) {
         return false;
       }
-    } else if (!((AbstractMatrix) offRoadStateTransCovar).equals((other.offRoadStateTransCovar))) {
+    } else if (!((AbstractMatrix) offRoadStateTransCovar)
+        .equals((other.offRoadStateTransCovar))) {
       return false;
     }
     if (onRoadStateTransCovar == null) {
       if (other.onRoadStateTransCovar != null) {
         return false;
       }
-    } else if (!((AbstractMatrix) onRoadStateTransCovar).equals((other.onRoadStateTransCovar))) {
+    } else if (!((AbstractMatrix) onRoadStateTransCovar)
+        .equals((other.onRoadStateTransCovar))) {
       return false;
     }
-    if (Double.doubleToLongBits(prevTimeDiff) != Double.doubleToLongBits(other.prevTimeDiff)) {
+    if (Double.doubleToLongBits(prevTimeDiff) != Double
+        .doubleToLongBits(other.prevTimeDiff)) {
       return false;
     }
     return true;
   }
 
-  public abstract void update(VehicleState state, GpsObservation obs, PathStateBelief updatedBelief,
-    PathStateBelief pathAdjustedPriorBelief, Random rng);
+  public abstract void update(VehicleState state, GpsObservation obs,
+    PathStateDistribution updatedBelief,
+    PathStateDistribution pathAdjustedPriorBelief, Random rng);
 
   public static Matrix getVg() {
     return Vg;

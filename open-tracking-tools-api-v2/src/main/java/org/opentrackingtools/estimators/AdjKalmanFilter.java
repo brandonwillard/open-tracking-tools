@@ -21,8 +21,7 @@ import org.opentrackingtools.util.StatisticsUtil;
  */
 public class AdjKalmanFilter extends AbstractKalmanFilter {
 
-  private static final long serialVersionUID =
-      8046227346384488242L;
+  private static final long serialVersionUID = 8046227346384488242L;
 
   /**
    * Default autonomous dimension, {@value} .
@@ -54,14 +53,12 @@ public class AdjKalmanFilter extends AbstractKalmanFilter {
     // yn+1 = xn+1
     // Also, we're using an identity for the model covariance and
     // the measurement covariance
-    this(
-        new LinearDynamicalSystem(MatrixFactory
-            .getDefault().createIdentity(dim, dim),
-            MatrixFactory.getDefault().createMatrix(dim,
-                dim), MatrixFactory.getDefault()
-                .createIdentity(dim, dim)), MatrixFactory
-            .getDefault().createIdentity(dim, dim),
-        MatrixFactory.getDefault().createIdentity(dim, dim));
+    this(new LinearDynamicalSystem(MatrixFactory.getDefault()
+        .createIdentity(dim, dim), MatrixFactory.getDefault()
+        .createMatrix(dim, dim), MatrixFactory.getDefault()
+        .createIdentity(dim, dim)), MatrixFactory.getDefault()
+        .createIdentity(dim, dim), MatrixFactory.getDefault()
+        .createIdentity(dim, dim));
   }
 
   /**
@@ -84,8 +81,7 @@ public class AdjKalmanFilter extends AbstractKalmanFilter {
 
   @Override
   public AdjKalmanFilter clone() {
-    final AdjKalmanFilter clone =
-        (AdjKalmanFilter) super.clone();
+    final AdjKalmanFilter clone = (AdjKalmanFilter) super.clone();
     clone.setModel(ObjectUtil.cloneSafe(this.getModel()));
     return clone;
   }
@@ -112,8 +108,7 @@ public class AdjKalmanFilter extends AbstractKalmanFilter {
       if (other.model != null) {
         return false;
       }
-    } else if (!StatisticsUtil.vectorEquals(
-        model.convertToVector(),
+    } else if (!StatisticsUtil.vectorEquals(model.convertToVector(),
         other.model.convertToVector())) {
       return false;
     }
@@ -142,8 +137,8 @@ public class AdjKalmanFilter extends AbstractKalmanFilter {
   }
 
   @Override
-  public void measure(MultivariateGaussian belief,
-    Vector observation) {
+  public void
+      measure(MultivariateGaussian belief, Vector observation) {
     final Matrix C = this.model.getC();
 
     // Figure out what the model says the observation should be
@@ -213,8 +208,7 @@ public class AdjKalmanFilter extends AbstractKalmanFilter {
   @Override
   public void predict(MultivariateGaussian belief) {
     // Load the belief into the model and then predict the next state
-    this.getModel().evaluate(this.currentInput,
-        belief.getMean());
+    this.getModel().evaluate(this.currentInput, belief.getMean());
     final Vector xpred = this.model.getState();
 
     // Calculate the covariance, which will increase due to the

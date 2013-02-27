@@ -12,7 +12,7 @@ import org.opentrackingtools.util.StatisticsUtil;
 public class AdjMultivariateGaussian extends MultivariateGaussian {
 
   private static final long serialVersionUID = -7465667744835664792L;
-  
+
   protected Matrix covSqrt = null;
 
   public AdjMultivariateGaussian() {
@@ -26,7 +26,7 @@ public class AdjMultivariateGaussian extends MultivariateGaussian {
   public AdjMultivariateGaussian(MultivariateGaussian other) {
     super(other);
   }
-  
+
   public AdjMultivariateGaussian(AdjMultivariateGaussian other) {
     super(other);
     covSqrt = other.covSqrt.clone();
@@ -63,7 +63,7 @@ public class AdjMultivariateGaussian extends MultivariateGaussian {
   public double getLogLeadingCoefficient() {
     return super.getLogLeadingCoefficient() + Math.log(2);
   }
-  
+
   @Override
   public void setCovariance(Matrix covariance) {
     covSqrt = null;
@@ -114,13 +114,15 @@ public class AdjMultivariateGaussian extends MultivariateGaussian {
       covSqrt =
           StatisticsUtil.rootOfSemiDefinite(this.getCovariance());
     }
-    
-    return MultivariateGaussian.sample(this.getMean(), this.covSqrt, random);
+
+    return MultivariateGaussian.sample(this.getMean(), this.covSqrt,
+        random);
   }
 
   @Override
   public MultivariateGaussian clone() {
-    AdjMultivariateGaussian clone = (AdjMultivariateGaussian) super.clone();
+    AdjMultivariateGaussian clone =
+        (AdjMultivariateGaussian) super.clone();
     clone.covSqrt = ObjectUtil.cloneSmart(this.covSqrt);
     return clone;
   }

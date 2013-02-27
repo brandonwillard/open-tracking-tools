@@ -22,14 +22,12 @@ public class WrappedWeightedValue<T> extends DefaultWeightedValue<T> {
     this.count++;
   }
 
-  public WrappedWeightedValue(T value, double weight,
-    int count) {
+  public WrappedWeightedValue(T value, double weight, int count) {
     super(value, weight);
     this.count = count;
   }
 
-  public WrappedWeightedValue(
-    WeightedValue<? extends T> other) {
+  public WrappedWeightedValue(WeightedValue<? extends T> other) {
     super(other);
   }
 
@@ -39,7 +37,7 @@ public class WrappedWeightedValue<T> extends DefaultWeightedValue<T> {
 
   @Override
   public String toString() {
-    return "WrappedWeightedValue [count=" + count
-        + ", value=" + value + ", weight=" + weight + "]";
+    return "WrappedWeightedValue [count=" + count + ", value="
+        + value + ", weight=" + weight + "]";
   }
 }

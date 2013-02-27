@@ -7,62 +7,61 @@ import java.util.Collection;
 import java.util.List;
 
 import org.opentrackingtools.distributions.OnOffEdgeTransDistribution;
-import org.opentrackingtools.edges.InferredEdge;
+import org.opentrackingtools.distributions.PathStateDistribution;
 import org.opentrackingtools.estimators.AbstractRoadTrackingFilter;
 import org.opentrackingtools.model.GpsObservation;
 import org.opentrackingtools.model.VehicleState;
-import org.opentrackingtools.paths.InferredPath;
+import org.opentrackingtools.paths.Path;
 import org.opentrackingtools.paths.PathEdge;
-import org.opentrackingtools.paths.PathStateBelief;
 
 import com.vividsolutions.jts.geom.Envelope;
 import com.vividsolutions.jts.geom.Geometry;
 
 public interface InferenceGraph {
 
-  public Collection<InferredPath> getPaths(VehicleState fromState,
+  public Collection<Path> getPaths(VehicleState fromState,
     GpsObservation toCoord);
 
-  public Collection<InferredEdge> getTopoEquivEdges(
-    InferredEdge edge);
+  public Collection<InferenceGraphEdge> getTopoEquivEdges(
+    InferenceGraphEdge edge);
 
   public Envelope getGPSGraphExtent();
 
-  public Collection<InferredEdge> getNearbyEdges(
+  public Collection<InferenceGraphEdge> getNearbyEdges(
     DistributionWithMean<Vector> tmpInitialBelief,
     AbstractRoadTrackingFilter tmpTrackingFilter);
 
-  public Collection<InferredEdge> getNearbyEdges(Vector projLocation,
-    double radius);
+  public Collection<InferenceGraphEdge> getNearbyEdges(
+    Vector projLocation, double radius);
 
-  public InferredEdge getNullInferredEdge();
-  public InferredPath getNullPath();
+  public InferenceGraphEdge getNullInferredEdge();
+
+  public Path getNullPath();
+
   public PathEdge getNullPathEdge();
 
-  public Collection<InferredEdge>
-      getIncomingTransferableEdges(InferredEdge infEdge);
-  
-  public Collection<InferredEdge>
-      getOutgoingTransferableEdges(InferredEdge infEdge);
+  public Collection<InferenceGraphEdge> getIncomingTransferableEdges(
+    InferenceGraphEdge infEdge);
+
+  public Collection<InferenceGraphEdge> getOutgoingTransferableEdges(
+    InferenceGraphEdge infEdge);
 
   public Envelope getProjGraphExtent();
 
-  public PathEdge getPathEdge(InferredEdge edge, double d,
+  public PathEdge getPathEdge(InferenceGraphEdge edge, double d,
     Boolean b);
 
-  public InferredPath getInferredPath(PathEdge pathEdge);
+  public Path getInferredPath(PathEdge pathEdge);
 
-  public InferredPath getInferredPath(
-    List<PathEdge> currentPath, Boolean b);
+  public Path getInferredPath(List<PathEdge> currentPath, Boolean b);
 
   public boolean edgeHasReverse(Geometry edge);
-  
-  public InferredEdge getInferredEdge(String id);
 
-  public VehicleState createVehicleState(
-      GpsObservation obs,
-      AbstractRoadTrackingFilter trackingFilter,
-      PathStateBelief pathStateBelief, OnOffEdgeTransDistribution edgeTransDist,
-      VehicleState parent);
+  public InferenceGraphEdge getInferredEdge(String id);
+
+  public VehicleState createVehicleState(GpsObservation obs,
+    AbstractRoadTrackingFilter trackingFilter,
+    PathStateDistribution pathStateDistribution,
+    OnOffEdgeTransDistribution edgeTransDist, VehicleState parent);
 
 }

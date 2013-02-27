@@ -16,7 +16,7 @@ import com.google.common.base.Preconditions;
  * Truncated velocities when on-road, not when off.
  * 
  * @author bwillard
- *
+ * 
  */
 public class TruncatedRoadGaussian extends AdjMultivariateGaussian {
 
@@ -28,7 +28,8 @@ public class TruncatedRoadGaussian extends AdjMultivariateGaussian {
 
   protected TruncatedDist truncDist;
 
-  public TruncatedRoadGaussian(MultivariateGaussian other, double upper, double lower) {
+  public TruncatedRoadGaussian(MultivariateGaussian other,
+    double upper, double lower) {
     super(other);
     Preconditions.checkArgument(other.getInputDimensionality() == 2
         || other.getInputDimensionality() == 4);
@@ -38,14 +39,14 @@ public class TruncatedRoadGaussian extends AdjMultivariateGaussian {
     this.setMean(truncateVector(this.getMean()));
   }
 
-  public TruncatedRoadGaussian(Vector mean, Matrix covariance, 
+  public TruncatedRoadGaussian(Vector mean, Matrix covariance,
     double velocityUpper, double velocityLower) {
     super(mean, covariance);
     Preconditions.checkArgument(velocityUpper > velocityLower);
-    Preconditions.checkArgument(mean.getDimensionality() == 2 ||
-        mean.getDimensionality() == 4);
-    Preconditions.checkArgument(covariance.getNumColumns() == 2 ||
-        covariance.getNumColumns() == 4);
+    Preconditions.checkArgument(mean.getDimensionality() == 2
+        || mean.getDimensionality() == 4);
+    Preconditions.checkArgument(covariance.getNumColumns() == 2
+        || covariance.getNumColumns() == 4);
     this.velocityUpper = velocityUpper;
     this.velocityLower = velocityLower;
     this.setMean(truncateVector(this.getMean()));
@@ -60,11 +61,12 @@ public class TruncatedRoadGaussian extends AdjMultivariateGaussian {
     if (mean.getDimensionality() == 2) {
       final Vector adjMean = mean.clone();
       adjMean.setElement(0, Math.max(0d, adjMean.getElement(0)));
-      adjMean.setElement(1, 
-          Math.min(velocityUpper, 
+      adjMean.setElement(
+          1,
+          Math.min(velocityUpper,
               Math.max(velocityLower, adjMean.getElement(1))));
       return adjMean;
-    } 
+    }
     return mean;
   }
 
@@ -100,7 +102,8 @@ public class TruncatedRoadGaussian extends AdjMultivariateGaussian {
   }
 
   @Override
-  public void setCovarianceInverse(Matrix covarianceInverse, double symmetryTolerance) {
+  public void setCovarianceInverse(Matrix covarianceInverse,
+    double symmetryTolerance) {
     super.setCovarianceInverse(covarianceInverse, symmetryTolerance);
     this.truncDist = null;
   }
@@ -112,10 +115,14 @@ public class TruncatedRoadGaussian extends AdjMultivariateGaussian {
     if (this.getMean().getDimensionality() <= 2) {
       int dim = this.getMean().getDimensionality();
       if (this.truncDist == null) {
-        this.truncDist = new TruncatedDist(new NormalDist(this.getMean().getElement(dim - 1), 
-            Math.sqrt(this.getCovariance().getElement(dim - 1, dim - 1))), velocityLower, velocityUpper);
+        this.truncDist =
+            new TruncatedDist(new NormalDist(this.getMean()
+                .getElement(dim - 1), Math.sqrt(this.getCovariance()
+                .getElement(dim - 1, dim - 1))), velocityLower,
+                velocityUpper);
       }
-      final double truncSmpl = this.truncDist.inverseF(random.nextDouble());
+      final double truncSmpl =
+          this.truncDist.inverseF(random.nextDouble());
       sample.setElement(dim - 1, truncSmpl);
     }
 

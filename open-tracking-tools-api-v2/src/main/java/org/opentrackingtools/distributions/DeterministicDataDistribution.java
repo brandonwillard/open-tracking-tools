@@ -8,11 +8,13 @@ import gov.sandia.cognition.statistics.distribution.DefaultDataDistribution;
 
 import java.util.Collections;
 
-public class DeterministicDataDistribution<T> extends AbstractDataDistribution<T> {
+public class DeterministicDataDistribution<T> extends
+    AbstractDataDistribution<T> {
 
   private static final long serialVersionUID = 5553981567680543038L;
 
-  final protected static MutableDouble internalValue = new MutableDouble(1d);
+  final protected static MutableDouble internalValue =
+      new MutableDouble(1d);
 
   protected T element;
 
@@ -27,7 +29,8 @@ public class DeterministicDataDistribution<T> extends AbstractDataDistribution<T
   }
 
   @Override
-  public DistributionEstimator<T, ? extends DataDistribution<T>> getEstimator() {
+  public DistributionEstimator<T, ? extends DataDistribution<T>>
+      getEstimator() {
     return null;
   }
 
@@ -40,7 +43,8 @@ public class DeterministicDataDistribution<T> extends AbstractDataDistribution<T
   public int hashCode() {
     final int prime = 31;
     int result = 1;
-    result = prime * result + ((element == null) ? 0 : element.hashCode());
+    result =
+        prime * result + ((element == null) ? 0 : element.hashCode());
     return result;
   }
 
@@ -55,7 +59,8 @@ public class DeterministicDataDistribution<T> extends AbstractDataDistribution<T
     if (!(obj instanceof DeterministicDataDistribution)) {
       return false;
     }
-    DeterministicDataDistribution other = (DeterministicDataDistribution) obj;
+    DeterministicDataDistribution other =
+        (DeterministicDataDistribution) obj;
     if (element == null) {
       if (other.element != null) {
         return false;
@@ -65,6 +70,5 @@ public class DeterministicDataDistribution<T> extends AbstractDataDistribution<T
     }
     return true;
   }
-
 
 }
