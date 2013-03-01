@@ -19,7 +19,7 @@ public class LengthIndexedSubline {
     this.line = line;
     this.parentEdge = infEdge;
     this.startIndex = infEdge.getLocationIndexedLine().indexOf(line.p0);
-    this.endIndex = infEdge.getLocationIndexedLine().indexOf(line.p1);
+    this.endIndex = infEdge.getLocationIndexedLine().indexOfAfter(line.p1, this.startIndex);
   }
 
   public LineSegment getLine() {

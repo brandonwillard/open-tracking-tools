@@ -228,6 +228,14 @@
       <groupId>com.vividsolutions</groupId>
       <artifactId>jts</artifactId>
     </dependency>
+    <dependency>
+      <groupId>com.vividsolutions</groupId>
+      <artifactId>jcs</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.openjump</groupId>
+      <artifactId>openjump-api</artifactId>
+    </dependency>
   </dependencies>
 
   <properties>

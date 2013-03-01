@@ -332,7 +332,7 @@ public class GenericJTSGraph implements InferenceGraph {
           final InferredPath pathFromStartEdge = getInferredPath(currentEdgePathEdges.getFirst(), false);
           
           Preconditions.checkState(SimpleInferredPath.biDirComp.compare(
-              new Coordinate[] {startEdge.getLine().p0, startEdge.getLine().p1},
+              startEdge.getLine().toGeometry(geomFactory).getCoordinates(),
               Iterables.getFirst(pathFromStartEdge.getPathEdges(), null)
               .getGeometry().getCoordinates()) == 0);
           
@@ -396,18 +396,32 @@ public class GenericJTSGraph implements InferenceGraph {
     return paths;
   }
 
-  protected InferredPath getPathFromGraph(Path path, DirectedEdge bStartEdge, 
-    LengthIndexedSubline startEdge, LengthIndexedSubline endEdge, Set<Node> reachedEndNodes) {
+  protected InferredPath getPathFromGraph(Path path, final DirectedEdge bStartEdge, 
+    LengthIndexedSubline startIdx, LengthIndexedSubline endIdx, Set<Node> reachedEndNodes) {
     List<PathEdge> pathEdges = Lists.newArrayList();
     double distToStart = 0d;
     Iterator<?> iter = path.riterator();
     BasicDirectedNode prevNode = (BasicDirectedNode) bStartEdge.getInNode();
     while (iter.hasNext()) {
       BasicDirectedNode node = (BasicDirectedNode)iter.next();
-      Edge edge = Preconditions.checkNotNull(prevNode.getOutEdge(node));
+      final Edge edge;
+      /*
+       * When starting off, make sure we use the correct edge,
+       * i.e. the start edge we passed in.
+       */
+      if (distToStart == 0d) {
+        edge = Iterables.find(prevNode.getOutEdges(node), new Predicate<Edge>() {
+          @Override
+          public boolean apply(Edge input) {
+            return ((Edge)input).equals(bStartEdge);
+          }
+        });
+      } else {
+        edge = prevNode.getOutEdge(node);
+      }
       
       final InferredEdge infEdge = getInferredEdge(edge);
-      final Pair<List<PathEdge>, Double> pathEdgePair = getPathEdges(startEdge, endEdge, infEdge, distToStart, false);
+      final Pair<List<PathEdge>, Double> pathEdgePair = getPathEdges(startIdx, endIdx, infEdge, distToStart, false);
       pathEdges.addAll(pathEdgePair.getFirst());
       distToStart += pathEdgePair.getSecond();
       
@@ -418,7 +432,7 @@ public class GenericJTSGraph implements InferenceGraph {
       final InferredPath newPath = getInferredPath(pathEdges, false);
       
       Preconditions.checkState(SimpleInferredPath.biDirComp.compare(
-          new Coordinate[] {startEdge.getLine().p0, startEdge.getLine().p1},
+          new Coordinate[] {startIdx.getLine().p0, startIdx.getLine().p1},
           Iterables.getFirst(newPath.getPathEdges(), null)
           .getGeometry().getCoordinates()) == 0);
       return newPath;
@@ -439,14 +453,14 @@ public class GenericJTSGraph implements InferenceGraph {
     if (startIdx == null)
       startIdx = infEdge.getLocationIndexedLine().getStartIndex();
     
-    if (infEdge.equals(endEdge.getParentEdge()))
-      endIdx = endEdge.getEndIndex();
+    if (infEdge.equals(endEdge.getParentEdge())) {
+      if (startEdge.getEndIndex().compareTo(endEdge.getEndIndex()) > 0)
+        endIdx = startEdge.getEndIndex();
+      else
+        endIdx = endEdge.getEndIndex();
+    }
     if (endIdx == null)
       endIdx = infEdge.getLocationIndexedLine().getEndIndex();
-    
-    if (endIdx.compareTo(startIdx) <= 0) {
-      endIdx = startEdge.getEndIndex();
-    }
     
     final LineString subline = (LineString) infEdge.getLocationIndexedLine().extractLine(startIdx, endIdx);
     double distToStartSublines = distToStart;
@@ -543,6 +557,8 @@ public class GenericJTSGraph implements InferenceGraph {
     final Set<LengthIndexedSubline> streetEdges = Sets.newHashSet();
     for (final Object obj : edgeIndex.query(toEnv)) {
       final LengthIndexedSubline subline = (LengthIndexedSubline) obj;
+      Preconditions.checkState(subline.getEndIndex().getSegmentIndex() 
+          - subline.getStartIndex().getSegmentIndex() == 1);
       if (subline.getLine().distance(toCoord) < radius)
         streetEdges.add(subline);
       else
