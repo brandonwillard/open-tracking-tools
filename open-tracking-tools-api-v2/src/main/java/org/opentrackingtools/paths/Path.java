@@ -17,7 +17,7 @@ import org.apache.commons.lang.builder.CompareToBuilder;
 import org.geotools.geometry.jts.JTSFactoryFinder;
 import org.opentrackingtools.distributions.BayesianEstimableDistribution;
 import org.opentrackingtools.distributions.PathStateDistribution;
-import org.opentrackingtools.estimators.AbstractRoadTrackingFilter;
+import org.opentrackingtools.estimators.MotionStateEstimatorPredictor;
 import org.opentrackingtools.estimators.RecursiveBayesianEstimatorPredictor;
 import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.graph.InferenceGraphEdge;
@@ -43,9 +43,10 @@ import com.vividsolutions.jts.linearref.LengthIndexedLine;
  * 
  */
 public class Path extends AbstractCloneableSerializable implements
-    Comparable<Path>, BayesianEstimableDistribution<Path, Path> {
+    Comparable<Path> {
 
-  protected ImmutableList<PathEdge> edges;
+  private static final long serialVersionUID = -113041668509555507L;
+  protected ImmutableList<? extends PathEdge<?>> edges;
   protected Double totalPathDistance;
 
   public List<String> edgeIds = Lists.newArrayList();
@@ -56,30 +57,25 @@ public class Path extends AbstractCloneableSerializable implements
   protected Boolean isBackward = null;
 
   protected Geometry geometry;
-  protected List<InferenceGraphEdge> normalEdges;
-
-  private static Path nullPath = new Path();
 
   protected Path() {
-    this.edges = ImmutableList.of(PathEdge.getNullPathEdge());
+    this.edges = null;
     this.totalPathDistance = null;
     this.isBackward = null;
     this.geometry = null;
   }
 
-  protected Path(ImmutableList<PathEdge> edges, Boolean isBackward) {
+  protected Path(ImmutableList<? extends PathEdge<?>> edges, Boolean isBackward) {
     Preconditions.checkArgument(edges.size() > 0);
     Preconditions.checkState(Iterables.getFirst(edges, null)
         .getDistToStartOfEdge() == 0d);
     this.edges = edges;
     this.isBackward = isBackward;
-    this.normalEdges = Lists.newArrayList();
 
-    PathEdge lastEdge = null;
+    PathEdge<?> lastEdge = null;
     //    double absTotalDistance = 0d;
     final List<Coordinate> coords = Lists.newArrayList();
-    for (final PathEdge edge : edges) {
-      this.normalEdges.add(edge.getInferredEdge());
+    for (final PathEdge<?> edge : edges) {
 
       if (!edge.isNullEdge()) {
         if (isBackward) {
@@ -131,13 +127,12 @@ public class Path extends AbstractCloneableSerializable implements
    * 
    * @param edge
    */
-  protected Path(PathEdge edge) {
+  protected Path(PathEdge<?> edge) {
     // TODO FIXME remove specific PathEdge type.
-    this.edges = ImmutableList.<PathEdge> of(edge);
+    this.edges = ImmutableList.of(edge);
     Preconditions.checkArgument(edge.getDistToStartOfEdge() == null
         || edge.getDistToStartOfEdge() == 0d);
 
-    this.normalEdges = ImmutableList.of(edge.getInferredEdge());
     this.isBackward = edge.isBackward();
     if (edge.getInferredEdge().isNullEdge())
       this.totalPathDistance = null;
@@ -189,27 +184,16 @@ public class Path extends AbstractCloneableSerializable implements
     return true;
   }
 
-  public PathState getStateOnPath(Vector state) {
-    Preconditions.checkState(!isNullPath()
-        || state.getDimensionality() == 4);
-
-    if (isNullPath()) {
-      return PathState.getPathState(this, state);
-    }
-
-    return PathState.getPathState(this, state);
-  }
-
-  public PathEdge getEdgeForDistance(double distance, boolean clamp) {
+  public PathEdge<?> getEdgeForDistance(double distance, boolean clamp) {
     final double direction = Math.signum(totalPathDistance);
-    if (direction * distance - Math.abs(totalPathDistance) > AbstractRoadTrackingFilter
+    if (direction * distance - Math.abs(totalPathDistance) > MotionStateEstimatorPredictor
         .getEdgeLengthErrorTolerance()) {
       return clamp ? Iterables.getLast(edges) : null;
     } else if (direction * distance < 0d) {
       return clamp ? Iterables.getFirst(edges, null) : null;
     }
 
-    for (final PathEdge edge : edges.reverse()) {
+    for (final PathEdge<?> edge : edges.reverse()) {
       if (edge.isOnEdge(distance))
         return edge;
     }
@@ -223,7 +207,7 @@ public class Path extends AbstractCloneableSerializable implements
     return edgeIds;
   }
 
-  public ImmutableList<PathEdge> getPathEdges() {
+  public ImmutableList<? extends PathEdge<?>> getPathEdges() {
     return edges;
   }
 
@@ -235,211 +219,7 @@ public class Path extends AbstractCloneableSerializable implements
     return isBackward;
   }
 
-  public InferredPathPrediction getPriorPredictionResults(
-    InferenceGraph graph, GpsObservation obs, VehicleState state,
-    Map<PathEdge, EdgePredictiveResults> edgeToPreBeliefAndLogLik) {
 
-    /*
-     * We allow transitions from off-road onto a path, and vice-versa.  
-     * Otherwise, we require that the first edge of the path is the edge of the
-     * current state.
-     */
-    if (!(!state.getBelief().isOnRoad() || this.isNullPath() || (biDirComp
-        .compare(state.getBelief().getEdge().getGeometry()
-            .getCoordinates(),
-            Iterables.getFirst(this.getPathEdges(), null)
-                .getGeometry().getCoordinates()) == 0)))
-      return null;
-
-    final AbstractRoadTrackingFilter filter =
-        state.getMovementFilter();
-
-    final PathStateDistribution beliefPrediction =
-        filter.predict(state.getBelief(), this);
-
-    /*
-     * XXX: testing movement restrictions
-     */
-    //    if (!state.getBelief().isOnRoad()
-    //        && !this.isNullPath()) {
-    //      /*
-    //       * We just got on a road
-    //       */
-    //      final double direction = this.isBackward ? -1d : 1d;
-    //      final boolean isCorrectDirection =  
-    //          AbstractRoadTrackingFilter.getVr().times(
-    //              beliefPrediction.getRawState()).getElement(0) * direction >= 0d;
-    //              
-    //      if (!isCorrectDirection)
-    //        return null;
-    //    }
-
-    double pathLogLik = Double.NEGATIVE_INFINITY;
-
-    final List<WrappedWeightedValue<PathEdge>> weightedPathEdges =
-        Lists.newArrayList();
-    final List<? extends PathEdge> edgesLocal = this.getPathEdges();
-    //Collections.singletonList(Iterables.getLast(this.getEdges()));
-    for (final PathEdge edge : edgesLocal) {
-
-      final EdgePredictiveResults edgeResults;
-
-      if (edgeToPreBeliefAndLogLik != null
-          && edgeToPreBeliefAndLogLik.containsKey(edge)) {
-        final EdgePredictiveResults otherEdgeResults =
-            edgeToPreBeliefAndLogLik.get(edge);
-
-        if (otherEdgeResults == null)
-          continue;
-
-        final PathStateDistribution locationPrediction =
-            otherEdgeResults.getLocationPrediction();
-
-        if (locationPrediction == null)
-          continue;
-
-        /*
-         * Although path edges may be the same, transitions
-         * aren't guaranteed to be, especially for starting
-         * edges (off-on, on-on would mistakenly be equal).
-         */
-        final double edgeTransLik =
-            state.getEdgeTransitionDist().logEvaluate(
-                state.getBelief().getEdge().getInferredEdge(),
-                locationPrediction.getEdge().getInferredEdge());
-
-        edgeResults =
-            new EdgePredictiveResults(beliefPrediction,
-                locationPrediction,
-                otherEdgeResults.getEdgePredMarginalLogLik(),
-                edgeTransLik,
-                otherEdgeResults.getMeasurementPredLogLik());
-      } else {
-
-        edgeResults =
-            edge.getPredictiveLikelihoodResults(this, state,
-                beliefPrediction, obs);
-
-        if (edgeToPreBeliefAndLogLik != null)
-          edgeToPreBeliefAndLogLik.put(edge, edgeResults);
-
-      }
-
-      if (edgeResults.getLocationPrediction() == null)
-        continue;
-
-      weightedPathEdges.add(new WrappedWeightedValue<PathEdge>(edge,
-          edgeResults.getTotalLogLik()));
-      pathLogLik =
-          LogMath.add(pathLogLik, edgeResults.getTotalLogLik());
-
-    }
-
-    /*
-     * Total of zero likelihood
-     */
-    if (Double.isInfinite(pathLogLik))
-      return null;
-
-    assert !Double.isNaN(pathLogLik);
-
-    return new InferredPathPrediction(this, edgeToPreBeliefAndLogLik,
-        filter, weightedPathEdges, pathLogLik);
-  }
-
-  public PathStateDistribution getStateBeliefOnPath(
-    PathStateDistribution stateBelief) {
-
-    final PathState onThisPath = this.getStateOnPath(stateBelief);
-    final Matrix covar;
-    if (this.isNullPath()) {
-      covar = stateBelief.getGroundBelief().getCovariance();
-    } else {
-      if (!stateBelief.isOnRoad()) {
-        /*
-         * Project covar to edge 
-         */
-        PathEdgeProjection proj =
-            PathUtils.getRoadProjection(stateBelief.getGroundState(),
-                geometry, isBackward, isBackward ? onThisPath
-                    .getEdge().getGeometry().reverse() : onThisPath
-                    .getEdge().getGeometry(), onThisPath.getEdge()
-                    .getDistToStartOfEdge());
-        final Matrix C = stateBelief.getCovariance();
-        covar =
-            proj.getProjMatrix().transpose().times(C)
-                .times(proj.getProjMatrix());
-      } else {
-        covar = stateBelief.getGlobalStateBelief().getCovariance();
-      }
-    }
-    final MultivariateGaussian newBelief =
-        stateBelief.getGlobalStateBelief().clone();
-    newBelief.setMean(onThisPath.getGlobalState());
-    newBelief.setCovariance(covar);
-    return PathStateDistribution.getPathStateBelief(this, newBelief);
-  }
-
-  public PathState getStateOnPath(PathState currentState) {
-
-    final Vector adjState;
-    if (this.isNullPath()) {
-      adjState = currentState.getGroundState();
-    } else {
-
-      final PathState startState =
-          this.getStateOnPath(VectorFactory.getDefault()
-              .createVector2D(0d, 0d));
-
-      final Vector diff = startState.minus(currentState);
-      diff.negativeEquals();
-
-      adjState =
-          VectorFactory.getDefault().createVector2D(
-              this.clampToPath(diff.getElement(0)),
-              diff.getElement(1));
-
-      /*
-       * Make sure that we're still on the same edge,
-       * or that we had the same starting edge.
-       * 
-       */
-      //      if (!Iterables
-      //          .getFirst(this.edges, null)
-      //          .getGeometry()
-      //          .equalsTopo(
-      //              Iterables.getFirst(this.edges, null)
-      //                  .getGeometry())) {
-      //        boolean foundMatch = false;
-      //        for (final PathEdge thisEdge : this.edges) {
-      //          if (thisEdge.isOnEdge(adjState.getElement(0))
-      //              && currentState.getEdge().getGeometry()
-      //                  .equalsTopo(thisEdge.getGeometry())) {
-      //            foundMatch = true;
-      //            break;
-      //          }
-      //        }
-      //  
-      //        if (!foundMatch)
-      //          return null;
-      //      }
-
-      assert (this.isOnPath(adjState.getElement(0)));
-      assert !currentState.isOnRoad()
-          || Preconditions.checkNotNull(PathState
-              .getPathState(this, adjState)
-              .minus(currentState)
-              .isZero(
-                  AbstractRoadTrackingFilter
-                      .getEdgeLengthErrorTolerance()) ? Boolean.TRUE
-              : null);
-    }
-
-    // TODO set raw state?
-    PathState result = PathState.getPathState(this, adjState);
-
-    return result;
-  }
 
   public Double getTotalPathDistance() {
     return totalPathDistance;
@@ -455,7 +235,7 @@ public class Path extends AbstractCloneableSerializable implements
   }
 
   public boolean isNullPath() {
-    return this == nullPath;
+    return this.edges.isEmpty();
   }
 
   public boolean isOnPath(double distance) {
@@ -465,10 +245,10 @@ public class Path extends AbstractCloneableSerializable implements
     final double direction = Math.signum(totalPathDistance);
     final double overTheEndDist =
         direction * distance - Math.abs(totalPathDistance);
-    if (overTheEndDist > AbstractRoadTrackingFilter
+    if (overTheEndDist > MotionStateEstimatorPredictor
         .getEdgeLengthErrorTolerance()) {
       return false;
-    } else if (direction * distance < -AbstractRoadTrackingFilter
+    } else if (direction * distance < -MotionStateEstimatorPredictor
         .getEdgeLengthErrorTolerance()) {
       return false;
     }
@@ -485,45 +265,10 @@ public class Path extends AbstractCloneableSerializable implements
           + ", totalPathDistance=" + totalPathDistance + "]";
   }
 
-  public void updateEdges(GpsObservation obs,
-    MultivariateGaussian stateBelief, InferenceGraph graph) {
+  public Path getPathTo(PathEdge<?> edge) {
 
-  }
-
-  public static Path getNullPath() {
-    return nullPath;
-  }
-
-  public static Path getInferredPath(
-    List<? extends PathEdge> newEdges, Boolean isBackward) {
-    if (newEdges.size() == 1) {
-      final PathEdge edge = Iterables.getOnlyElement(newEdges);
-      if (edge.isNullEdge())
-        return nullPath;
-    }
-    return new Path(ImmutableList.copyOf(newEdges), isBackward);
-  }
-
-  public static Path getInferredPath(PathEdge pathEdge) {
-    if (pathEdge.isNullEdge())
-      return nullPath;
-    else
-      return new Path(pathEdge);
-  }
-
-  public List<InferenceGraphEdge> getInferredEdges() {
-    return normalEdges;
-  }
-
-  public PathStateDistribution getStateBeliefOnPath(
-    MultivariateGaussian belief) {
-    return PathStateDistribution.getPathStateBelief(this, belief);
-  }
-
-  public Path getPathTo(PathEdge edge) {
-
-    final List<PathEdge> newEdges = Lists.newArrayList();
-    for (PathEdge edge1 : this.getPathEdges()) {
+    final List<PathEdge<?>> newEdges = Lists.newArrayList();
+    for (PathEdge<?> edge1 : this.getPathEdges()) {
       newEdges.add(edge1);
       if (edge1.equals(edge)) {
         break;
@@ -534,24 +279,6 @@ public class Path extends AbstractCloneableSerializable implements
         new Path(ImmutableList.copyOf(newEdges), this.isBackward);
 
     return newPath;
-  }
-
-  @Override
-  public ProbabilityFunction<Path> getProbabilityFunction() {
-  }
-
-  @Override
-  public Path sample(Random random) {
-  }
-
-  @Override
-  public ArrayList<? extends Path> sample(Random random,
-    int numSamples) {
-  }
-
-  @Override
-  public RecursiveBayesianEstimatorPredictor<Path, Path>
-      getBayesianEstimatorPredictor() {
   }
 
 }

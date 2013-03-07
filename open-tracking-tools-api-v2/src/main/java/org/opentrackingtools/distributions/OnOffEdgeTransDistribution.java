@@ -6,28 +6,31 @@ import gov.sandia.cognition.math.matrix.VectorFactory;
 import gov.sandia.cognition.math.matrix.mtj.DenseVector;
 import gov.sandia.cognition.statistics.ClosedFormComputableDiscreteDistribution;
 import gov.sandia.cognition.statistics.ClosedFormComputableDistribution;
+import gov.sandia.cognition.statistics.ComputableDistribution;
+import gov.sandia.cognition.statistics.DiscreteDistribution;
 import gov.sandia.cognition.statistics.ProbabilityFunction;
-import gov.sandia.cognition.statistics.bayesian.BayesianParameter;
-import gov.sandia.cognition.statistics.bayesian.conjugate.MultinomialBayesianEstimator;
+import gov.sandia.cognition.statistics.ProbabilityMassFunction;
 import gov.sandia.cognition.statistics.distribution.DirichletDistribution;
 import gov.sandia.cognition.statistics.distribution.MultinomialDistribution;
 import gov.sandia.cognition.util.AbstractCloneableSerializable;
+import gov.sandia.cognition.util.ObjectUtil;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Random;
+import java.util.Set;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
 import org.apache.commons.lang.builder.CompareToBuilder;
-import org.opentrackingtools.estimators.RecursiveBayesianEstimatorPredictor;
 import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.graph.InferenceGraphEdge;
 import org.opentrackingtools.model.GpsObservation;
 import org.opentrackingtools.model.VehicleState;
 import org.opentrackingtools.util.StatisticsUtil;
+import org.testng.collections.Sets;
 
 import com.google.common.base.Preconditions;
 import com.google.common.base.Predicate;
@@ -42,9 +45,9 @@ import com.google.common.collect.Lists;
  * @author bwillard
  * 
  */
-public class OnOffEdgeTransDistribution<E extends InferenceGraphEdge>
+public class OnOffEdgeTransDistribution
     extends AbstractCloneableSerializable implements
-    ProbabilityFunction<E>, Comparable<OnOffEdgeTransDistribution<E>> {
+    DiscreteDistribution<InferenceGraphEdge>, Comparable<OnOffEdgeTransDistribution> {
 
   private static final long serialVersionUID = -8329433263373783485L;
 
@@ -63,21 +66,21 @@ public class OnOffEdgeTransDistribution<E extends InferenceGraphEdge>
   protected DirichletDistribution edgeMotionTransProbPrior;
   protected MultinomialDistribution edgeMotionTransPrior =
       new MultinomialDistribution(2, 1);
-  protected VehicleState<? extends GpsObservation> currentState;
+  
+  protected InferenceGraph graph;
+  protected InferenceGraphEdge currentEdge;
 
-  private final InferenceGraph graph;
-
-  private static final Vector stateOffToOff = VectorFactory
+  static final Vector stateOffToOff = VectorFactory
       .getDefault().copyValues(1d, 0d);
-  private static final Vector stateOffToOn = VectorFactory
+  static final Vector stateOffToOn = VectorFactory
       .getDefault().copyValues(0d, 1d);
 
-  private static final Vector stateOnToOn = VectorFactory
+  static final Vector stateOnToOn = VectorFactory
       .getDefault().copyValues(1d, 0d);
-  private static final Vector stateOnToOff = VectorFactory
+  static final Vector stateOnToOff = VectorFactory
       .getDefault().copyValues(0d, 1d);
 
-  private static final Double zeroTolerance = 1e-6;
+  static final Double zeroTolerance = 1e-6;
 
   /**
    * Initialize prior from the given hyper prior parameters, using the hyper
@@ -88,9 +91,13 @@ public class OnOffEdgeTransDistribution<E extends InferenceGraphEdge>
    * @param freeMotionPriorParams
    * @param rng
    */
-  public OnOffEdgeTransDistribution(InferenceGraph graph,
+  public OnOffEdgeTransDistribution(
+    InferenceGraph graph, InferenceGraphEdge currentEdge,
     Vector edgeMotionPriorParams, Vector freeMotionPriorParams) {
+    
     this.graph = graph;
+    this.currentEdge = currentEdge;
+    
     this.setFreeMotionTransProbPrior(new DirichletDistribution(
         freeMotionPriorParams));
     this.setEdgeMotionTransProbPrior(new DirichletDistribution(
@@ -104,27 +111,10 @@ public class OnOffEdgeTransDistribution<E extends InferenceGraphEdge>
         getEdgeMotionTransProbPrior().getMean());
   }
 
-  public OnOffEdgeTransDistribution(InferenceGraph inferenceGraph,
-    Vector onTransitionProbs, Vector offTransitionProbs, Random random) {
-    this(inferenceGraph, onTransitionProbs, offTransitionProbs);
-
-    /*
-     * Sample an initial prior for the transition probabilities
-     */
-    final Vector edgePriorParams =
-        OnOffEdgeTransDistribution.checkedSample(
-            this.getEdgeMotionTransProbPrior(), random);
-    final Vector freeDriorParams =
-        OnOffEdgeTransDistribution.checkedSample(
-            this.getFreeMotionTransProbPrior(), random);
-    this.getEdgeMotionTransProb().setParameters(edgePriorParams);
-    this.getFreeMotionTransProb().setParameters(freeDriorParams);
-  }
-
   @Override
-  public OnOffEdgeTransDistribution<E> clone() {
-    final OnOffEdgeTransDistribution<E> transDist =
-        (OnOffEdgeTransDistribution<E>) super.clone();
+  public OnOffEdgeTransDistribution clone() {
+    final OnOffEdgeTransDistribution transDist =
+        (OnOffEdgeTransDistribution) super.clone();
     transDist.setEdgeMotionTransPrior(this.getEdgeMotionTransProb()
         .clone());
     transDist.setFreeMotionTransPrior(this.getFreeMotionTransProb()
@@ -133,27 +123,26 @@ public class OnOffEdgeTransDistribution<E extends InferenceGraphEdge>
         .getEdgeMotionTransProbPrior().clone());
     transDist.setFreeMotionTransProbPrior(this
         .getFreeMotionTransProbPrior().clone());
+    transDist.currentEdge = ObjectUtil.cloneSmart(this.currentEdge);
+    transDist.graph = this.graph;
     return transDist;
   }
 
   @Override
-  public int compareTo(OnOffEdgeTransDistribution<E> o) {
+  public int compareTo(OnOffEdgeTransDistribution o) {
     final CompareToBuilder comparator = new CompareToBuilder();
-    comparator.append(((DenseVector) this.getEdgeMotionTransProb()
-        .getParameters()).getArray(), ((DenseVector) o
-        .getEdgeMotionTransProb().getParameters()).getArray());
-    comparator.append(((DenseVector) this.getFreeMotionTransProb()
-        .getParameters()).getArray(), ((DenseVector) o
-        .getFreeMotionTransProb().getParameters()).getArray());
+    comparator.append(this.getEdgeMotionTransProb().getParameters().toArray(), 
+        o.getEdgeMotionTransProb().getParameters().toArray());
+    comparator.append(this.getFreeMotionTransProb().getParameters().toArray(), 
+        o.getFreeMotionTransProb().getParameters().toArray());
 
-    comparator.append(((DenseVector) this
-        .getEdgeMotionTransProbPrior().getParameters()).getArray(),
-        ((DenseVector) o.getEdgeMotionTransProbPrior()
-            .getParameters()).getArray());
-    comparator.append(((DenseVector) this
-        .getFreeMotionTransProbPrior().getParameters()).getArray(),
-        ((DenseVector) o.getFreeMotionTransProbPrior()
-            .getParameters()).getArray());
+    comparator.append(this.getEdgeMotionTransProbPrior().getParameters().toArray(),
+        o.getEdgeMotionTransProbPrior().getParameters().toArray());
+    comparator.append(this.getFreeMotionTransProbPrior().getParameters().toArray(),
+        o.getFreeMotionTransProbPrior().getParameters().toArray());
+    comparator.append(this.getFreeMotionTransProbPrior().getParameters().toArray(),
+        o.getFreeMotionTransProbPrior().getParameters().toArray());
+    comparator.append(this.currentEdge, o.currentEdge);
 
     return comparator.toComparison();
   }
@@ -175,8 +164,8 @@ public class OnOffEdgeTransDistribution<E extends InferenceGraphEdge>
       if (other.getEdgeMotionTransProb() != null) {
         return false;
       }
-    } else if (!StatisticsUtil.vectorEquals(getEdgeMotionTransProb()
-        .getParameters(), other.getEdgeMotionTransProb()
+    } else if (!getEdgeMotionTransProb()
+        .getParameters().equals(other.getEdgeMotionTransProb()
         .getParameters())) {
       return false;
     }
@@ -184,8 +173,7 @@ public class OnOffEdgeTransDistribution<E extends InferenceGraphEdge>
       if (other.getEdgeMotionTransProbPrior() != null) {
         return false;
       }
-    } else if (!StatisticsUtil.vectorEquals(
-        getEdgeMotionTransProbPrior().getParameters(), other
+    } else if (!getEdgeMotionTransProbPrior().getParameters().equals(other
             .getEdgeMotionTransProbPrior().getParameters())) {
       return false;
     }
@@ -193,8 +181,8 @@ public class OnOffEdgeTransDistribution<E extends InferenceGraphEdge>
       if (other.getFreeMotionTransProb() != null) {
         return false;
       }
-    } else if (!StatisticsUtil.vectorEquals(getFreeMotionTransProb()
-        .getParameters(), other.getFreeMotionTransProb()
+    } else if (!getFreeMotionTransProb()
+        .getParameters().equals(other.getFreeMotionTransProb()
         .getParameters())) {
       return false;
     }
@@ -202,24 +190,20 @@ public class OnOffEdgeTransDistribution<E extends InferenceGraphEdge>
       if (other.getFreeMotionTransProbPrior() != null) {
         return false;
       }
-    } else if (!StatisticsUtil.vectorEquals(
-        getFreeMotionTransProbPrior().getParameters(), other
+    } else if (!getFreeMotionTransProbPrior().getParameters().equals(other
             .getFreeMotionTransProbPrior().getParameters())) {
+      return false;
+    }
+    if (this.currentEdge == null) {
+      if (other.currentEdge != null) {
+        return false;
+      }
+    } else if (!this.currentEdge.equals(other.currentEdge)) {
       return false;
     }
     return true;
   }
 
-  public double evaluate(InferenceGraphEdge from,
-    InferenceGraphEdge to) {
-    if (from.isNullEdge()) {
-      return getFreeMotionTransProb().getProbabilityFunction()
-          .evaluate(getTransitionType(from, to));
-    } else {
-      return getEdgeMotionTransProb().getProbabilityFunction()
-          .evaluate(getTransitionType(from, to));
-    }
-  }
 
   public MultinomialDistribution getEdgeMotionTransProb() {
     return edgeMotionTransPrior;
@@ -245,71 +229,32 @@ public class OnOffEdgeTransDistribution<E extends InferenceGraphEdge>
         prime
             * result
             + ((getEdgeMotionTransProb() == null) ? 0
-                : StatisticsUtil
-                    .hashCodeVector(getEdgeMotionTransProb()
-                        .getParameters()));
+                : getEdgeMotionTransProb()
+                        .getParameters().hashCode());
     result =
         prime
             * result
             + ((getEdgeMotionTransProbPrior() == null) ? 0
-                : StatisticsUtil
-                    .hashCodeVector(getEdgeMotionTransProbPrior()
-                        .getParameters()));
+                : getEdgeMotionTransProbPrior()
+                        .getParameters().hashCode());
     result =
         prime
             * result
             + ((getFreeMotionTransProb() == null) ? 0
-                : StatisticsUtil
-                    .hashCodeVector(getFreeMotionTransProb()
-                        .getParameters()));
+                : getFreeMotionTransProb()
+                        .getParameters().hashCode());
     result =
         prime
             * result
             + ((getFreeMotionTransProbPrior() == null) ? 0
-                : StatisticsUtil
-                    .hashCodeVector(getFreeMotionTransProbPrior()
-                        .getParameters()));
+                : getFreeMotionTransProbPrior()
+                        .getParameters().hashCode());
+    result =
+        prime
+            * result
+            + ((this.currentEdge == null) ? 0
+                : this.currentEdge.hashCode());
     return result;
-  }
-
-  @Override
-  public double logEvaluate(E to) {
-
-    if (from == null) {
-
-      final double totalProb =
-          Math.log(getFreeMotionTransProb().getParameters().sum()
-              + getEdgeMotionTransProb().getParameters().sum());
-      if (to.isNullEdge()) {
-        return LogMath
-            .add(
-                getFreeMotionTransProb().getProbabilityFunction()
-                    .logEvaluate(
-                        OnOffEdgeTransDistribution.stateOffToOff),
-                getEdgeMotionTransProb().getProbabilityFunction()
-                    .logEvaluate(
-                        OnOffEdgeTransDistribution.stateOnToOff))
-            - totalProb;
-      } else {
-        return LogMath
-            .add(
-                getFreeMotionTransProb().getProbabilityFunction()
-                    .logEvaluate(
-                        OnOffEdgeTransDistribution.stateOffToOn),
-                getEdgeMotionTransProb().getProbabilityFunction()
-                    .logEvaluate(
-                        OnOffEdgeTransDistribution.stateOnToOn))
-            - totalProb;
-      }
-    } else {
-      if (from.isNullEdge()) {
-        return getFreeMotionTransProb().getProbabilityFunction()
-            .logEvaluate(getTransitionType(from, to));
-      } else {
-        return getEdgeMotionTransProb().getProbabilityFunction()
-            .logEvaluate(getTransitionType(from, to));
-      }
-    }
   }
 
   /**
@@ -418,175 +363,74 @@ public class OnOffEdgeTransDistribution<E extends InferenceGraphEdge>
   }
 
   @Override
-  public E sample(Random random) {
-    final E inferredEdge =
-        Preconditions.checkNotNull(this.);
-    Preconditions.checkNotNull(transferEdges);
+  public InferenceGraphEdge sample(Random random) {
+    
+    List<InferenceGraphEdge> domain = Lists.newArrayList(this.getDomain());
 
-    if (inferredEdge.isNullEdge()) {
+    if (this.currentEdge.isNullEdge()) {
       /*
        * We're currently in free-motion. If there are transfer edges, then
        * sample from those.
        */
-      if (transferEdges.isEmpty()) {
-        return graph.getNullInferredEdge();
+      if (domain.isEmpty()) {
+        return this.graph.getNullInferredEdge();
       } else {
         final Vector sample =
-            checkedSample(this.getFreeMotionTransProb(), rng);
+            checkedSample(this.getFreeMotionTransProb(), random);
 
         if (sample.equals(stateOffToOn)) {
-          final List<InferenceGraphEdge> support =
-              Lists.newArrayList(transferEdges);
-          support.remove(graph.getNullInferredEdge());
-          return support.get(rng.nextInt(support.size()));
+          domain.remove(this.graph.getNullInferredEdge());
+          return domain.get(random.nextInt(domain.size()));
         } else {
-          return graph.getNullInferredEdge();
+          return this.graph.getNullInferredEdge();
         }
       }
     } else {
       /*
-       * We're on an edge, so sample whether we go off-road, or transfer/stay
-       * on.
-       * If the empty edge is contained in the support (transferEdges)
-       * then we sample for that.
+       * We're on an edge, so sample whether we go off-road, or transfer/stay on.
+       * If the empty edge is contained in the support then we sample for that.
        */
       final Vector sample =
-          transferEdges.contains(graph.getNullInferredEdge())
-              ? checkedSample(this.getEdgeMotionTransProb(), rng)
+          domain.contains(this.graph.getNullInferredEdge())
+              ? checkedSample(this.getEdgeMotionTransProb(), random)
               : stateOnToOn;
 
-      if (sample.equals(stateOnToOff) || transferEdges.isEmpty()) {
-        return graph.getNullInferredEdge();
+      if (sample.equals(stateOnToOff) || domain.isEmpty()) {
+        return this.graph.getNullInferredEdge();
       } else {
-        final List<InferenceGraphEdge> support =
-            Lists.newArrayList(transferEdges);
-        support.remove(graph.getNullInferredEdge());
-        return support.get(rng.nextInt(support.size()));
+        domain.remove(this.graph.getNullInferredEdge());
+        return domain.get(random.nextInt(domain.size()));
       }
     }
   }
 
   @Override
-  public ArrayList<E> sample(Random random, int numSamples) {
-    ArrayList<E> samples = Lists.newArrayList();
+  public ArrayList<InferenceGraphEdge> sample(Random random, int numSamples) {
+    ArrayList<InferenceGraphEdge> samples = Lists.newArrayList();
     for (int i = 0; i < numSamples; i++) {
       samples.add(sample(random));
     }
     return samples;
   }
 
-  public static class OnOffEdgeTransitionEstimatorPredictor<E extends InferenceGraphEdge>
-      extends AbstractCloneableSerializable
-      implements
-      RecursiveBayesianEstimatorPredictor<E, OnOffEdgeTransDistribution<E>> {
-
-    MultinomialBayesianEstimator estimator;
-
-    protected BayesianParameter<E, OnOffEdgeTransDistribution<E>, OnOffEdgeTransDistribution<E>> fromParameter;
-
-    private VehicleState<? extends GpsObservation> currentState;
-
-    public <V extends VehicleState<? extends GpsObservation>> OnOffEdgeTransitionEstimatorPredictor(
-      V currentState) {
-      MultinomialDistribution conditionalDist;
-      DirichletDistribution priorDist;
-      if (currentState.getPathStateParam() .isOnRoad()) {
-        conditionalDist =
-            currentState.getEdgeTransitionParam()
-                .getConditionalDistribution()
-                .getEdgeMotionTransProb();
-        priorDist =
-            currentState.getEdgeTransitionParam()
-                .getConditionalDistribution()
-                .getEdgeMotionTransProbPrior();
-      } else {
-        conditionalDist =
-            currentState.getEdgeTransitionParam()
-                .getConditionalDistribution()
-                .getFreeMotionTransProb();
-        priorDist =
-            currentState.getEdgeTransitionParam()
-                .getConditionalDistribution()
-                .getFreeMotionTransProbPrior();
-      }
-      this.estimator =
-          new MultinomialBayesianEstimator(conditionalDist, priorDist);
-      this.currentState = currentState;
-    }
-
-    @Override
-    public OnOffEdgeTransDistribution<E> learn(
-      Collection<? extends E> data) {
-      return null;
-    }
-
-    /**
-     * @see OnOffEdgeTransitionEstimatorPredictor#update(OnOffEdgeTransDistribution,
-     *      InferenceGraphEdge)
-     */
-    @Override
-    public void update(OnOffEdgeTransDistribution<E> target,
-      Iterable<? extends E> to) {
-      for (E toEdge : to) {
-        update(target, toEdge);
-      }
-    }
-
-    /**
-     * This method updates the target with the conditional assumptions within
-     * this estimator.
-     */
-    @Override
-    public void
-        update(OnOffEdgeTransDistribution<E> target, E toEdge) {
-      final Vector transType =
-          getTransitionType(fromParameter.getValue(), toEdge);
-      if (fromParameter.getValue().isNullEdge()) {
-        estimator.update(target.getFreeMotionTransProbPrior(),
-            transType);
-        target.getFreeMotionTransProb().setParameters(
-            target.getFreeMotionTransProbPrior().getMean());
-      } else {
-        estimator.update(target.getEdgeMotionTransProbPrior(),
-            transType);
-        target.getEdgeMotionTransProb().setParameters(
-            target.getEdgeMotionTransProbPrior().getMean());
-      }
-    }
-
-    @Override
-    public OnOffEdgeTransDistribution<E>
-        createPredictiveDistribution(
-          OnOffEdgeTransDistribution<E> posterior) {
-      // TODO what to do?
-      return null;
-      //      if (fromParameter.getValue().isNullEdge()) {
-      //        estimator.createPredictiveDistribution(posterior.freeMotionTransProbPrior);
-      //      } else {
-      //        estimator.createPredictiveDistribution(posterior.edgeMotionTransProbPrior);
-      //      }
-    }
-
-    @Override
-    public OnOffEdgeTransDistribution<E> createInitialLearnedObject() {
-      // TODO where do we get the initial config values?  the vehicle state, naturally.
-      return new OnOffEdgeTransDistribution<E>(
-          this.currentState.getGraph(), null, null);
-    }
+  @Override
+  public OnOffEdgeTransProbabilityFunction getProbabilityFunction() {
+    return new OnOffEdgeTransProbabilityFunction(this);
   }
   
-
-  @Override
-  public ProbabilityFunction<E> getProbabilityFunction() {
-    // TODO Auto-generated method stub
-    return null;
-  }
+  protected Set<? extends InferenceGraphEdge> domain = null;
   
-
   @Override
-  public Double evaluate(E input) {
-    return Math.exp(this.logEvaluate(input));
+  public Set<? extends InferenceGraphEdge> getDomain() {
+    if (domain == null) {
+      domain = Sets.newHashSet(this.graph.getOutgoingTransferableEdges(currentEdge));
+    }
+    return domain;
   }
 
+  @Override
+  public int getDomainSize() {
+    return this.getDomain().size();
+  }
 
 }

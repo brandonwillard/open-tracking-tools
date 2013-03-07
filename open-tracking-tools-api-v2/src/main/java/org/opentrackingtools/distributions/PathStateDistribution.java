@@ -1,32 +1,40 @@
 package org.opentrackingtools.distributions;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Random;
+import java.util.Set;
 
 import gov.sandia.cognition.math.matrix.Matrix;
 import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.statistics.ComputableDistribution;
+import gov.sandia.cognition.statistics.DiscreteDistribution;
 import gov.sandia.cognition.statistics.ProbabilityFunction;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
+import gov.sandia.cognition.util.AbstractCloneableSerializable;
 import gov.sandia.cognition.util.ObjectUtil;
 
-import javax.annotation.Nonnull;
-
 import org.apache.commons.lang3.builder.CompareToBuilder;
-import org.opentrackingtools.estimators.AbstractRoadTrackingFilter;
+import org.opentrackingtools.estimators.MotionStateEstimatorPredictor;
+import org.opentrackingtools.estimators.PathStateEstimatorPredictor;
 import org.opentrackingtools.estimators.RecursiveBayesianEstimatorPredictor;
+import org.opentrackingtools.graph.InferenceGraphEdge;
+import org.opentrackingtools.model.GpsObservation;
+import org.opentrackingtools.model.VehicleState;
 import org.opentrackingtools.paths.PathState;
 import org.opentrackingtools.paths.Path;
 import org.opentrackingtools.paths.PathEdge;
 import org.opentrackingtools.util.PathUtils;
-import org.opentrackingtools.util.StatisticsUtil;
+import org.opentrackingtools.util.PathUtils.PathEdgeProjection;
 
+import com.beust.jcommander.internal.Lists;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Iterables;
 
 /**
- * A distribution over the vector "state" of a PathState, i.e. [location,
- * velocity]. The distribution is MultivariateGaussian, where the mean takes the
+ * A distribution over the vector "state" of a PathState, i.e. the distribution 
+ * of location/velocity over a given path edge. 
+ * The distribution is MultivariateGaussian, where the mean takes the
  * place of the vector state. Transformations between paths apply equally to
  * PathStateDistributions, such that the Gaussian's covariance is project up in
  * dimension when going on-road to off, and vice versa.
@@ -34,57 +42,40 @@ import com.google.common.collect.Iterables;
  * @author bwillard
  * 
  */
-public class PathStateDistribution extends PathState implements
-    ComputableDistribution<PathState>,
-    BayesianEstimableDistribution<PathState, PathStateDistribution>,
-    Cloneable {
+public class PathStateDistribution 
+  extends TruncatedRoadGaussian 
+  implements Cloneable, Comparable<PathStateDistribution> {
 
   private static final long serialVersionUID = -31238492416118648L;
 
-  protected MultivariateGaussian localStateBelief;
-  protected MultivariateGaussian globalStateBelief;
-  protected MultivariateGaussian rawStateBelief;
   protected MultivariateGaussian groundBelief;
+  protected PathState pathState;
+  
+  public PathStateDistribution(Path path, MultivariateGaussian dist) {
+    super(dist, Double.POSITIVE_INFINITY, 0d);
+    this.pathState = new PathState(path, dist.getMean());
+    this.setMean(pathState);
+  }
 
-  protected PathStateDistribution(Path path,
-    MultivariateGaussian state) {
-    super(path, state.getMean());
-
-    this.path = path;
-    this.rawStateBelief = state.clone();
-    this.globalStateBelief = state.clone();
-
-    /*
-     * Now make sure the result is on this path.
-     */
-    if (!path.isNullPath()) {
-      this.globalStateBelief.getMean().setElement(
-          0,
-          path.clampToPath(this.globalStateBelief.getMean()
-              .getElement(0)));
-    }
+  public PathStateDistribution(PathState pathState, Matrix covar) {
+    super(pathState, covar, Double.POSITIVE_INFINITY, 0d);
+    this.pathState = pathState;
   }
 
   @Override
   public PathStateDistribution clone() {
     final PathStateDistribution clone =
         (PathStateDistribution) super.clone();
-    clone.rawStateBelief = ObjectUtil.cloneSmart(this.rawStateBelief);
-    clone.localStateBelief =
-        ObjectUtil.cloneSmart(this.localStateBelief);
-    clone.globalStateBelief =
-        ObjectUtil.cloneSmart(this.globalStateBelief);
+    clone.pathState = ObjectUtil.cloneSmart(this.pathState);
     clone.groundBelief = ObjectUtil.cloneSmart(this.groundBelief);
     return clone;
   }
 
   @Override
-  public int compareTo(PathState o) {
+  public int compareTo(PathStateDistribution o) {
     final CompareToBuilder comparator = new CompareToBuilder();
-    comparator.append(this.path, o.getPath());
-    if (o instanceof PathStateDistribution)
-      comparator.append(this.rawStateBelief,
-          ((PathStateDistribution) o).rawStateBelief);
+    comparator.append(this.pathState, o.pathState);
+    comparator.append(this.getCovariance().toArray(), o.getCovariance().toArray());
     return comparator.toComparison();
   }
 
@@ -100,92 +91,44 @@ public class PathStateDistribution extends PathState implements
       return false;
     }
     final PathStateDistribution other = (PathStateDistribution) obj;
-    if (rawStateBelief == null) {
-      if (other.rawStateBelief != null) {
+    if (pathState == null) {
+      if (other.pathState != null) {
         return false;
       }
-    } else if (!rawStateBelief.equals(other.rawStateBelief)) {
+    } else if (!pathState.equals(other.pathState)) {
       return false;
     }
     return true;
   }
 
-  public Matrix getCovariance() {
-    return globalStateBelief.getCovariance();
-  }
-
-  @Override
-  public PathEdge getEdge() {
-    if (!isOnRoad())
-      return Iterables.getOnlyElement(this.path.getPathEdges());
-
-    if (edge == null) {
-      Preconditions.checkState(!path.isNullPath());
-      this.edge =
-          path.getEdgeForDistance(
-              this.getGlobalState().getElement(0), false);
-    }
-    return Preconditions.checkNotNull(this.edge);
-  }
-
-  @Override
-  public Vector getGlobalState() {
-    return globalStateBelief.getMean();
-  }
-
-  public MultivariateGaussian getGlobalStateBelief() {
-    return globalStateBelief;
-  }
-
   public MultivariateGaussian getGroundBelief() {
 
-    if (!this.isOnRoad())
-      return this.globalStateBelief;
+    if (!pathState.isOnRoad())
+      return this;
 
     if (this.groundBelief == null) {
       this.groundBelief =
-          PathUtils.getGroundBeliefFromRoad(this.globalStateBelief,
-              this.getEdge(), true);
+          PathUtils.getGroundBeliefFromRoad(this,
+              pathState.getEdge(), true);
     }
 
     return this.groundBelief;
   }
 
-  @Override
-  public Vector getGroundState() {
-    return getGroundBelief().getMean();
-  }
-
-  @Override
-  public Vector getLocalState() {
-    return getLocalStateBelief().getMean();
-  }
-
   public MultivariateGaussian getLocalStateBelief() {
-    if (this.localStateBelief != null)
-      return this.localStateBelief;
-    if (this.path.isNullPath()) {
-      this.localStateBelief = this.globalStateBelief;
+    if (pathState.isOnRoad()) {
+      return this;
     } else {
       final Vector mean =
-          Preconditions.checkNotNull(this.getEdge()
+          Preconditions.checkNotNull(pathState.getEdge()
               .getCheckedStateOnEdge(
-                  this.globalStateBelief.getMean(),
-                  AbstractRoadTrackingFilter
+                  this.getMean(),
+                  MotionStateEstimatorPredictor
                       .getEdgeLengthErrorTolerance(), true));
-      this.localStateBelief = this.globalStateBelief.clone();
-      this.localStateBelief.setMean(mean);
+      MultivariateGaussian localStateBelief = super.clone();
+      localStateBelief.setMean(mean);
+      return localStateBelief;
     }
-    return this.localStateBelief;
-  }
-
-  @Override
-  public Vector getRawState() {
-    return rawStateBelief.getMean();
-  }
-
-  public MultivariateGaussian getRawStateBelief() {
-    return rawStateBelief;
   }
 
   @Override
@@ -195,115 +138,60 @@ public class PathStateDistribution extends PathState implements
     result =
         prime
             * result
-            + ((rawStateBelief == null) ? 0 : rawStateBelief
-                .hashCode());
-    return result;
-  }
-
-  public double logLikelihood(Vector obs,
-    AbstractRoadTrackingFilter filter) {
-    return PathStateDistribution.logLikelihood(obs,
-        filter.getObsCovar(), this);
-  }
-
-  public double priorPredictiveLogLikelihood(Vector obs,
-    AbstractRoadTrackingFilter filter) {
-
-    final Matrix measurementCovariance = filter.getObsCovar();
-    final Matrix Q =
-        AbstractRoadTrackingFilter.getOg()
-            .times(this.getGroundBelief().getCovariance())
-            .times(AbstractRoadTrackingFilter.getOg().transpose());
-    Q.plusEquals(measurementCovariance);
-
-    final double result =
-        PathStateDistribution.logLikelihood(obs, Q, this);
-    return result;
-  }
-
-  public PathStateDistribution getTruncatedPathStateBelief() {
-
-    if (!this.isOnRoad())
-      return this;
-
-    final Path newPath = this.path.getPathTo(this.getEdge());
-
-    return new PathStateDistribution(newPath, this.rawStateBelief);
-  }
-
-  @Override
-  public PathState getTruncatedPathState() {
-    return getTruncatedPathStateBelief();
-  }
-
-  public static PathStateDistribution getPathStateBelief(
-    @Nonnull Path path, @Nonnull MultivariateGaussian state) {
-
-    Preconditions.checkArgument(!path.isNullPath()
-        || state.getInputDimensionality() == 4);
-
-    final MultivariateGaussian adjState =
-        PathUtils.checkAndGetConvertedBelief(state, path);
-
-    return new PathStateDistribution(path, adjState);
-  }
-
-  public static double logLikelihood(Vector obs, PathState state,
-    AbstractRoadTrackingFilter filter) {
-    return PathStateDistribution.logLikelihood(obs,
-        filter.getObsCovar(), state);
-  }
-
-  /**
-   * Returns the log likelihood for given state and observation.<br>
-   * 
-   * Note: When in a road-state we break down the likelihood into its parallel
-   * and perpendicular components. This way the parallel (distance-along) is
-   * evaluated correctly, since if we just used the ground-state likelihood
-   * things like loops with considerable movement would be just as likely as
-   * staying in the same place (for any velocity!).
-   * 
-   * @param obs
-   * @param belief
-   * @param edge
-   * @return
-   */
-  public static double logLikelihood(Vector obs, Matrix obsCov,
-    PathState state) {
-    final double result;
-    final Vector groundState = state.getGroundState();
-    result =
-        StatisticsUtil.logEvaluateNormal(obs,
-            AbstractRoadTrackingFilter.getOg().times(groundState),
-            obsCov);
-
+            + ((pathState == null) ? 0 : pathState.hashCode());
     return result;
   }
 
   @Override
   public PathState sample(Random random) {
-    // TODO Auto-generated method stub
-    return null;
+    final Vector stateSample = this.sample(random);
+    PathState result = new PathState(this.pathState.getPath(), stateSample);
+    return result;
   }
 
-  @Override
-  public ArrayList<? extends PathState> sample(Random random,
-    int numSamples) {
-    // TODO Auto-generated method stub
-    return null;
+  public ArrayList<Vector> sample(Random random, int numSamples) {
+    List<Vector> samples = Lists.newArrayList();
+    for (int i = 0; i < numSamples; i++) {
+      samples.add(new PathState(pathState.getPath(), sample(random)));
+    }
+    return (ArrayList<Vector>) samples;
   }
 
-  @Override
-  public
-      RecursiveBayesianEstimatorPredictor<PathState, PathStateDistribution>
-      getBayesianEstimatorPredictor() {
-    // TODO Auto-generated method stub
-    return null;
+  public PathStateDistribution getRelatableState(PathStateDistribution stateBelief) {
+
+    final Path path = this.pathState.getPath();
+    final PathState onThisPath = this.pathState.getRelatableState(stateBelief.getPathState());
+    final Matrix covar;
+    if (path.isNullPath()) {
+      covar = stateBelief.getGroundBelief().getCovariance();
+    } else {
+      if (!stateBelief.getPathState().isOnRoad()) {
+        /*
+         * Project covar to edge 
+         */
+        final boolean pathIsBackward = path.isBackward();
+        PathEdgeProjection proj =
+            PathUtils.getRoadProjection(stateBelief.getMean(),
+                path.getGeometry(), pathIsBackward, pathIsBackward ? onThisPath
+                    .getEdge().getGeometry().reverse() : onThisPath
+                    .getEdge().getGeometry(), onThisPath.getEdge()
+                    .getDistToStartOfEdge());
+        final Matrix C = stateBelief.getCovariance();
+        covar =
+            proj.getProjMatrix().transpose().times(C)
+                .times(proj.getProjMatrix());
+      } else {
+        covar = stateBelief.getCovariance();
+      }
+    }
+    final PathStateDistribution newBelief =
+        stateBelief.clone();
+    newBelief.setMean(onThisPath.getGlobalState());
+    newBelief.setCovariance(covar);
+    return newBelief;
   }
 
-  @Override
-  public ProbabilityFunction<PathState> getProbabilityFunction() {
-    // TODO Auto-generated method stub
-    return null;
+  public PathState getPathState() {
+    return this.pathState;
   }
 }

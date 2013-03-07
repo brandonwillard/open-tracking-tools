@@ -6,13 +6,17 @@ import java.util.Random;
 import gov.sandia.cognition.math.LogMath;
 import gov.sandia.cognition.math.matrix.Matrix;
 import gov.sandia.cognition.math.matrix.Vector;
+import gov.sandia.cognition.statistics.DiscreteDistribution;
 import gov.sandia.cognition.statistics.ProbabilityFunction;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 import gov.sandia.cognition.statistics.distribution.UnivariateGaussian;
 import gov.sandia.cognition.util.AbstractCloneableSerializable;
 
 import org.opentrackingtools.distributions.BayesianEstimableDistribution;
-import org.opentrackingtools.estimators.AbstractRoadTrackingFilter;
+import org.opentrackingtools.distributions.PathEdgeDistribution;
+import org.opentrackingtools.distributions.PathEdgeProbabilityFunction;
+import org.opentrackingtools.distributions.PathStateDistribution;
+import org.opentrackingtools.estimators.MotionStateEstimatorPredictor;
 import org.opentrackingtools.estimators.RecursiveBayesianEstimatorPredictor;
 import org.opentrackingtools.graph.InferenceGraphEdge;
 import org.opentrackingtools.model.GpsObservation;
@@ -26,25 +30,22 @@ import com.google.common.collect.ComparisonChain;
 import com.google.common.collect.Ordering;
 import com.vividsolutions.jts.geom.Geometry;
 
-public class PathEdge extends AbstractCloneableSerializable implements
-    Comparable<PathEdge>, BayesianEstimableDistribution<PathEdge, PathEdge> {
+public class PathEdge<E extends InferenceGraphEdge> extends AbstractCloneableSerializable implements
+    Comparable<PathEdge<E>> {
 
   private static final long serialVersionUID = 2615199504616160384L;
 
-  protected InferenceGraphEdge edge;
+  protected E edge;
   protected Double distToStartOfEdge;
   protected Boolean isBackward;
 
-  protected final static PathEdge nullPathEdge = new PathEdge(
-      InferenceGraphEdge.getNullEdge());
-
-  protected PathEdge(InferenceGraphEdge edge) {
-    this.edge = edge;
+  protected PathEdge() {
+    this.edge = null;
     this.distToStartOfEdge = null;
     this.isBackward = null;
   }
 
-  protected PathEdge(InferenceGraphEdge edge,
+  protected PathEdge(E edge,
     Double distToStartOfEdge, Boolean isBackward) {
     Preconditions.checkState((isBackward != Boolean.TRUE)
         || distToStartOfEdge <= 0d);
@@ -54,7 +55,7 @@ public class PathEdge extends AbstractCloneableSerializable implements
   }
 
   @Override
-  public int compareTo(PathEdge o) {
+  public int compareTo(PathEdge<E> o) {
     return ComparisonChain
         .start()
         .compare(this.edge, o.getInferredEdge())
@@ -63,235 +64,7 @@ public class PathEdge extends AbstractCloneableSerializable implements
         .compare(this.distToStartOfEdge, o.getDistToStartOfEdge(),
             Ordering.natural().nullsLast()).result();
   }
-
-  public EdgePredictiveResults getPredictiveLikelihoodResults(
-    Path path, VehicleState state,
-    PathStateDistribution beliefPrediction, GpsObservation obs) {
-
-    final PathStateDistribution locationPrediction;
-
-    /*
-     * Edge marginal predictive likelihoods.
-     * Note: doesn't apply to free-movement, defaults to 0.
-     */
-    final double edgePredMarginalLogLik;
-    if (edge.isNullEdge()) {
-      edgePredMarginalLogLik = 0d;
-      locationPrediction = beliefPrediction;
-    } else {
-
-      MultivariateGaussian edgePrediction =
-          this.getPriorPredictive(beliefPrediction, obs);
-
-      edgePredMarginalLogLik =
-          this.marginalPredictiveLogLikelihood(state, path,
-              beliefPrediction.getRawStateBelief());
-
-      locationPrediction = path.getStateBeliefOnPath(edgePrediction);
-    }
-
-    final double measurementPredLik;
-    final double edgePredTransLogLik;
-    if (locationPrediction != null) {
-
-      measurementPredLik =
-          locationPrediction.priorPredictiveLogLikelihood(
-              obs.getProjectedPoint(), state.getMovementFilter());
-
-      edgePredTransLogLik =
-          state.getEdgeTransitionDist().logEvaluate(
-              state.getBelief().getEdge().getInferredEdge(),
-              locationPrediction.getEdge().getInferredEdge());
-
-    } else {
-      edgePredTransLogLik = Double.NaN;
-      measurementPredLik = Double.NaN;
-    }
-
-    return new EdgePredictiveResults(beliefPrediction,
-        locationPrediction, edgePredMarginalLogLik,
-        edgePredTransLogLik, measurementPredLik);
-  }
-
-  public double marginalPredictiveLogLikelihood(VehicleState state,
-    Path path, MultivariateGaussian beliefPrediction) {
-
-    Preconditions.checkArgument(!this.isNullEdge());
-    Preconditions.checkArgument(beliefPrediction
-        .getInputDimensionality() == 2);
-
-    return marginalPredictiveLogLikInternal(path, beliefPrediction);
-  }
-
-  /**
-   * Truncated normal mixing component.
-   * 
-   * @param beliefPrediction
-   * @return
-   */
-  protected double marginalPredictiveLogLikInternal(Path path,
-    MultivariateGaussian beliefPrediction) {
-
-    final double direction = this.isBackward() ? -1d : 1d;
-    final double thisStartDistance =
-        Math.abs(this.getDistToStartOfEdge());
-    final double thisEndDistance =
-        edge.getLength() + thisStartDistance;
-
-    final Matrix Or = AbstractRoadTrackingFilter.getOr();
-
-    final double var =
-        Or.times(beliefPrediction.getCovariance())
-            .times(Or.transpose()).getElement(0, 0);
-
-    final double mean =
-        direction
-            * Or.times(beliefPrediction.getMean()).getElement(0);
-
-    final double t1 =
-        UnivariateGaussian.CDF.evaluate(thisEndDistance, mean, var)
-            - UnivariateGaussian.CDF.evaluate(thisStartDistance,
-                mean, var);
-
-    final double Z =
-        UnivariateGaussian.CDF.evaluate(
-            Math.abs(path.getTotalPathDistance()), mean, var)
-            - UnivariateGaussian.CDF.evaluate(0, mean, var);
-
-    return Math.log(t1) - Math.log(Z);
-  }
-
-  private double marginalPredictiveLogLikInternalOld1(
-    MultivariateGaussian beliefPrediction) {
-
-    final Matrix Or = AbstractRoadTrackingFilter.getOr();
-    final double var =
-        Or.times(beliefPrediction.getCovariance())
-            .times(Or.transpose()).getElement(0, 0)
-            + Math.pow(this.getInferredEdge().getLength(), 2d) / 12d;
-    final double mean =
-        Or.times(beliefPrediction.getMean()).getElement(0);
-    final double direction = this.isBackward ? -1d : 1d;
-
-    final double evalPoint =
-        (this.getDistToStartOfEdge() + (this.getDistToStartOfEdge() + direction
-            * this.getInferredEdge().getLength())) / 2d;
-
-    final double result =
-        UnivariateGaussian.PDF.logEvaluate(evalPoint, mean, var);
-
-    return result;
-  }
-
-  private double marginalPredictiveLogLikInternalOld2(
-    MultivariateGaussian beliefPrediction) {
-
-    Preconditions.checkArgument(!this.isNullEdge());
-    Preconditions.checkArgument(beliefPrediction
-        .getInputDimensionality() == 2);
-
-    final Matrix Or = AbstractRoadTrackingFilter.getOr();
-    final double stdDev =
-        Math.sqrt(Or.times(beliefPrediction.getCovariance())
-            .times(Or.transpose()).getElement(0, 0));
-    final double mean =
-        Or.times(beliefPrediction.getMean()).getElement(0);
-    final double direction = this.isBackward ? -1d : 1d;
-    final double distToEndOfEdge =
-        direction * this.getInferredEdge().getLength()
-            + this.getDistToStartOfEdge();
-    final double startDistance =
-        direction > 0d ? this.getDistToStartOfEdge()
-            : distToEndOfEdge;
-    final double endDistance =
-        direction > 0d ? distToEndOfEdge : this
-            .getDistToStartOfEdge();
-
-    // FIXME use actual log calculations
-    final double result =
-        LogMath
-            .subtract(StatisticsUtil.normalCdf(endDistance, mean,
-                stdDev, true), StatisticsUtil.normalCdf(
-                startDistance, mean, stdDev, true));
-
-    return result;
-  }
-
-  private double getTruncatedNormalMean(final double origMean,
-    double stdDev) {
-    final double direction = this.isBackward() ? -1d : 1d;
-    final double mean =
-        (Math.signum(origMean) * direction) * Math.abs(origMean);
-    final double startDistance =
-        Math.abs(this.getDistToStartOfEdge());
-    final double endDistance = edge.getLength() + startDistance;
-
-    final double tt1 =
-        UnivariateGaussian.PDF.logEvaluate(startDistance, mean,
-            stdDev * stdDev);
-    final double tt2 =
-        UnivariateGaussian.PDF.logEvaluate(endDistance, mean, stdDev
-            * stdDev);
-    final double t1 =
-        LogMath
-            .subtract(tt1 > tt2 ? tt1 : tt2, tt1 > tt2 ? tt2 : tt1);
-
-    final double t2 =
-        LogMath
-            .subtract(StatisticsUtil.normalCdf(endDistance, mean,
-                stdDev, true), StatisticsUtil.normalCdf(
-                startDistance, mean, stdDev, true));
-
-    final double d2 = Math.log(stdDev) + t1 - t2;
-    final double tmean = mean + (tt2 > tt1 ? -1d : 1d) * Math.exp(d2);
-
-    return direction * tmean;
-  }
-
-  public MultivariateGaussian getPriorPredictive(
-    PathStateDistribution belief, GpsObservation obs) {
-
-    Preconditions.checkArgument(belief.isOnRoad());
-    Preconditions.checkArgument(!this.isNullEdge());
-
-    /*-
-     * TODO really, this should just be the truncated/conditional
-     * mean and covariance for the given interval/edge
-     */
-    final Matrix Or = AbstractRoadTrackingFilter.getOr();
-    final double S =
-        Or.times(belief.getCovariance()).times(Or.transpose())
-            .getElement(0, 0)
-            // + 1d;
-            + Math
-                .pow(
-                    this.getInferredEdge().getLength()
-                        / Math.sqrt(12), 2);
-    final Matrix W =
-        belief.getCovariance().times(Or.transpose()).scale(1 / S);
-    final Matrix R =
-        belief.getCovariance().minus(W.times(W.transpose()).scale(S));
-
-    final double direction = this.isBackward() ? -1d : 1d;
-    final double mean =
-        (this.getDistToStartOfEdge() + (this.getDistToStartOfEdge() + direction
-            * this.getInferredEdge().getLength())) / 2d;
-
-    final Vector beliefMean = belief.getRawState();
-    final double e = mean - Or.times(beliefMean).getElement(0);
-    final Vector a = beliefMean.plus(W.getColumn(0).scale(e));
-
-    assert StatisticsUtil
-        .isPosSemiDefinite((gov.sandia.cognition.math.matrix.mtj.DenseMatrix) R);
-
-    final MultivariateGaussian prediction =
-        belief.getGlobalStateBelief().clone();
-    prediction.setMean(a);
-    prediction.setCovariance(R);
-
-    return prediction;
-  }
-
+  
   @Override
   public boolean equals(Object obj) {
     if (this == obj) {
@@ -303,7 +76,7 @@ public class PathEdge extends AbstractCloneableSerializable implements
     if (getClass() != obj.getClass()) {
       return false;
     }
-    final PathEdge other = (PathEdge) obj;
+    final PathEdge<E> other = (PathEdge<E>) obj;
     if (distToStartOfEdge == null) {
       if (other.distToStartOfEdge != null) {
         return false;
@@ -379,7 +152,7 @@ public class PathEdge extends AbstractCloneableSerializable implements
     return this.edge.getGeometry();
   }
 
-  public InferenceGraphEdge getInferredEdge() {
+  public E getInferredEdge() {
     return edge;
   }
 
@@ -408,7 +181,7 @@ public class PathEdge extends AbstractCloneableSerializable implements
   }
 
   public boolean isNullEdge() {
-    return this == nullPathEdge;
+    return this.getInferredEdge() == null;
   }
 
   public boolean isOnEdge(double distance) {
@@ -440,49 +213,13 @@ public class PathEdge extends AbstractCloneableSerializable implements
     }
   }
 
-  public static PathEdge getEdge(InferenceGraphEdge infEdge,
-    double distToStart, Boolean isBackward) {
-    Preconditions.checkArgument(isBackward != Boolean.TRUE
-        || distToStart <= 0d);
-
-    PathEdge edge;
-    if (infEdge.isNullEdge() || isBackward == null) {
-      edge = PathEdge.getNullPathEdge();
-    } else {
-      edge = new PathEdge(infEdge, distToStart, isBackward);
-    }
-    return edge;
-  }
-
-  public static PathEdge getNullPathEdge() {
-    return nullPathEdge;
-  }
-
   @Override
-  public PathEdge clone() {
-    PathEdge clone = (PathEdge) super.clone();
+  public PathEdge<E> clone() {
+    PathEdge<E> clone = (PathEdge<E>) super.clone();
     clone.distToStartOfEdge = distToStartOfEdge;
     clone.edge = edge;
     clone.isBackward = isBackward;
     return clone;
-  }
-
-  @Override
-  public ProbabilityFunction<PathEdge> getProbabilityFunction() {
-  }
-
-  @Override
-  public PathEdge sample(Random random) {
-  }
-
-  @Override
-  public ArrayList<? extends PathEdge> sample(Random random,
-    int numSamples) {
-  }
-
-  @Override
-  public RecursiveBayesianEstimatorPredictor<PathEdge, PathEdge>
-      getBayesianEstimatorPredictor() {
   }
 
 }

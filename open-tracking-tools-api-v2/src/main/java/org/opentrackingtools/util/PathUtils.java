@@ -16,8 +16,9 @@ import javax.annotation.Nullable;
 import org.apache.commons.lang3.ArrayUtils;
 import org.geotools.geometry.jts.JTSFactoryFinder;
 import org.opentrackingtools.distributions.AdjMultivariateGaussian;
-import org.opentrackingtools.estimators.AbstractRoadTrackingFilter;
+import org.opentrackingtools.estimators.MotionStateEstimatorPredictor;
 import org.opentrackingtools.graph.InferenceGraphEdge;
+import org.opentrackingtools.model.GpsObservation;
 import org.opentrackingtools.model.VehicleState;
 import org.opentrackingtools.paths.Path;
 import org.opentrackingtools.paths.PathEdge;
@@ -101,7 +102,7 @@ public class PathUtils {
     if (path.isNullPath() && state.getDimensionality() != 4) {
 
       final double dist =
-          AbstractRoadTrackingFilter.getOr().times(state)
+          MotionStateEstimatorPredictor.getOr().times(state)
               .getElement(0);
       final PathEdge edge = path.getEdgeForDistance(dist, false);
 
@@ -131,7 +132,7 @@ public class PathUtils {
     if (path.isNullPath() && belief.getInputDimensionality() != 4) {
 
       final double dist =
-          AbstractRoadTrackingFilter.getOr().times(belief.getMean())
+          MotionStateEstimatorPredictor.getOr().times(belief.getMean())
               .getElement(0);
       final PathEdge edge = path.getEdgeForDistance(dist, false);
 
@@ -144,7 +145,7 @@ public class PathUtils {
     } else {
       if (!path.isNullPath()) {
         Preconditions.checkState(path
-            .isOnPath(AbstractRoadTrackingFilter.getOr()
+            .isOnPath(MotionStateEstimatorPredictor.getOr()
                 .times(belief.getMean()).getElement(0)));
       }
       adjBelief = belief;
@@ -158,18 +159,18 @@ public class PathUtils {
     return adjBelief;
   }
 
-  public static Geometry getMovementPath(VehicleState state) {
-    if (state.getBelief().isOnRoad()
+  public static Geometry getMovementPath(VehicleState<? extends GpsObservation> state) {
+    if (state.getPathStateParam().getValue().getDimensionality() == 2
         && state.getParentState() != null) {
+      final PathState pathState = (PathState) state.getPathStateParam().getValue();
+      final PathState prevPathState = (PathState) state.getParentState().getPathStateParam().getValue();
       final Geometry fullPath =
-          state.getBelief().getPath().getGeometry();
-      final PathState prevStateOnPath =
-          state.getBelief().getPath()
-              .getStateOnPath(state.getBelief());
+          pathState.getPath().getGeometry();
+      final PathState prevStateOnPath = pathState.getRelatableState(prevPathState);
       final double distStart =
           prevStateOnPath.getGlobalState().getElement(0);
       final double distEnd =
-          state.getBelief().getGlobalState().getElement(0);
+          state.getPathStateParam().getValue().getElement(0);
       final LinearLocation startLoc =
           LengthLocationMap.getLocation(fullPath, distStart);
       final LinearLocation endLoc =
@@ -247,12 +248,12 @@ public class PathUtils {
 
     if (useAbsVelocity) {
       final double absVelocity =
-          Math.abs(AbstractRoadTrackingFilter.getVr()
+          Math.abs(MotionStateEstimatorPredictor.getVr()
               .times(belief.getMean()).getElement(0));
       if (absVelocity > 0d) {
         final Vector velocities =
             VectorFactory.getDenseDefault().copyVector(
-                AbstractRoadTrackingFilter.getVg().times(projMean));
+                MotionStateEstimatorPredictor.getVg().times(projMean));
         velocities.scaleEquals(absVelocity / velocities.norm2());
         projMean.setElement(1, velocities.getElement(0));
         projMean.setElement(3, velocities.getElement(1));
@@ -277,7 +278,7 @@ public class PathUtils {
 
     final Geometry geom;
     double distance =
-        AbstractRoadTrackingFilter.getOr().times(locVelocity)
+        MotionStateEstimatorPredictor.getOr().times(locVelocity)
             .getElement(0);
     if (edge.isBackward()) {
       geom = edge.getGeometry().reverse();
@@ -312,7 +313,7 @@ public class PathUtils {
    * @return
    */
   public static void convertToRoadBelief(MultivariateGaussian belief,
-    Path path, @Nullable PathEdge pathEdge, boolean useAbsVelocity) {
+    Path path, @Nullable PathEdge<?> pathEdge, boolean useAbsVelocity) {
 
     MultivariateGaussian projBelief =
         getRoadBeliefFromGround(belief, path.getGeometry(),
@@ -365,7 +366,7 @@ public class PathUtils {
           VectorFactory
               .getDenseDefault()
               .copyVector(
-                  AbstractRoadTrackingFilter.getVg().times(state))
+                  MotionStateEstimatorPredictor.getVg().times(state))
               .norm2();
       final double projVelocity =
           Math.signum(projMean.getElement(1)) * absVelocity;
@@ -420,7 +421,7 @@ public class PathUtils {
           VectorFactory
               .getDenseDefault()
               .copyVector(
-                  AbstractRoadTrackingFilter.getVg().times(
+                  MotionStateEstimatorPredictor.getVg().times(
                       belief.getMean())).norm2();
       final double projVelocity =
           Math.signum(projMean.getElement(1)) * absVelocity;
@@ -437,41 +438,41 @@ public class PathUtils {
     return result;
   }
 
-  public static boolean isIsoMapping(@Nonnull Vector from,
-    @Nonnull Vector to, @Nonnull PathEdge pathEdge) {
-
-    /*
-     * XXX TODO FIXME: this is temporary!  we should be testing
-     * with full paths!!
-     */
-    final Vector adjFrom;
-    if (Math.abs(pathEdge.getDistToStartOfEdge()) > 0d) {
-      adjFrom = from.clone();
-      adjFrom.setElement(0,
-          adjFrom.getElement(0) - pathEdge.getDistToStartOfEdge());
-    } else {
-      adjFrom = from;
-    }
-
-    final boolean isBackward = pathEdge.isBackward();
-
-    final Vector inversion;
-    if (to.getDimensionality() == 2) {
-      inversion = getGroundStateFromRoad(to, pathEdge, true);
-    } else {
-
-      final Path invPath =
-          Path.getInferredPath(
-              Collections.singletonList(PathEdge.getEdge(
-                  pathEdge.getInferredEdge(), 0d, isBackward)),
-              isBackward);
-      inversion = invPath.getStateOnPath(to).getLocalState();
-    }
-    final boolean result =
-        inversion.equals(adjFrom,
-            AbstractRoadTrackingFilter.getEdgeLengthErrorTolerance());
-    return result;
-  }
+//  public static boolean isIsoMapping(@Nonnull Vector from,
+//    @Nonnull Vector to, @Nonnull PathEdge pathEdge) {
+//
+//    /*
+//     * XXX TODO FIXME: this is temporary!  we should be testing
+//     * with full paths!!
+//     */
+//    final Vector adjFrom;
+//    if (Math.abs(pathEdge.getDistToStartOfEdge()) > 0d) {
+//      adjFrom = from.clone();
+//      adjFrom.setElement(0,
+//          adjFrom.getElement(0) - pathEdge.getDistToStartOfEdge());
+//    } else {
+//      adjFrom = from;
+//    }
+//
+//    final boolean isBackward = pathEdge.isBackward();
+//
+//    final Vector inversion;
+//    if (to.getDimensionality() == 2) {
+//      inversion = getGroundStateFromRoad(to, pathEdge, true);
+//    } else {
+//
+//      final Path invPath =
+//          Path.getInferredPath(
+//              Collections.singletonList(PathEdge.getEdge(
+//                  pathEdge.getInferredEdge(), 0d, isBackward)),
+//              isBackward);
+//      inversion = invPath.getStateOnPath(to).getLocalState();
+//    }
+//    final boolean result =
+//        inversion.equals(adjFrom,
+//            PathStateEstimatorPredictor.getEdgeLengthErrorTolerance());
+//    return result;
+//  }
 
   public static void convertToRoadBelief(MultivariateGaussian belief,
     Path path, boolean useAbsVelocity) {
@@ -517,7 +518,7 @@ public class PathUtils {
      */
     final LinearLocation lineLocation;
     final Coordinate currentPos =
-        GeoUtils.makeCoordinate(AbstractRoadTrackingFilter.getOg()
+        GeoUtils.makeCoordinate(MotionStateEstimatorPredictor.getOg()
             .times(m));
     final double distanceToStartOfSegmentOnGeometry;
     final LineSegment pathLineSegment;
@@ -669,14 +670,14 @@ public class PathUtils {
     final Vector s1 = start.minus(P1.scale(distToStart));
 
     final Matrix P = MatrixFactory.getDefault().createMatrix(4, 2);
-    P.setColumn(0, P1.stack(AbstractRoadTrackingFilter.getZeros2d()));
-    P.setColumn(1, AbstractRoadTrackingFilter.getZeros2d().stack(P1));
+    P.setColumn(0, P1.stack(MotionStateEstimatorPredictor.getZeros2d()));
+    P.setColumn(1, MotionStateEstimatorPredictor.getZeros2d().stack(P1));
 
     final Vector a =
-        s1.stack(AbstractRoadTrackingFilter.getZeros2d());
+        s1.stack(MotionStateEstimatorPredictor.getZeros2d());
 
-    return new PathEdgeProjection(AbstractRoadTrackingFilter.getU()
-        .times(P), AbstractRoadTrackingFilter.getU().times(a));
+    return new PathEdgeProjection(MotionStateEstimatorPredictor.getU()
+        .times(P), MotionStateEstimatorPredictor.getU().times(a));
   }
 
   public static MultivariateGaussian getRoadBeliefFromGround(
@@ -705,20 +706,20 @@ public class PathUtils {
         && obsCov.getNumColumns() == 2 && obsCov.isSquare());
 
     final Matrix obsCovExp =
-        AbstractRoadTrackingFilter.getOg().transpose().times(obsCov)
-            .times(AbstractRoadTrackingFilter.getOg());
+        MotionStateEstimatorPredictor.getOg().transpose().times(obsCov)
+            .times(MotionStateEstimatorPredictor.getOg());
     final MultivariateGaussian obsProjBelief =
-        new AdjMultivariateGaussian(AbstractRoadTrackingFilter
+        new AdjMultivariateGaussian(MotionStateEstimatorPredictor
             .getOg().transpose().times(obs), obsCovExp);
     convertToRoadBelief(obsProjBelief, path, edge, true);
 
     final Vector y =
-        AbstractRoadTrackingFilter.getOr().times(
+        MotionStateEstimatorPredictor.getOr().times(
             obsProjBelief.getMean());
     final Matrix Sigma =
-        AbstractRoadTrackingFilter.getOr()
+        MotionStateEstimatorPredictor.getOr()
             .times(obsProjBelief.getCovariance())
-            .times(AbstractRoadTrackingFilter.getOr().transpose());
+            .times(MotionStateEstimatorPredictor.getOr().transpose());
     return new AdjMultivariateGaussian(y, Sigma);
   }
 
@@ -749,12 +750,12 @@ public class PathUtils {
 
     if (useAbsVelocity) {
       final double absVelocity =
-          Math.abs(AbstractRoadTrackingFilter.getVr()
+          Math.abs(MotionStateEstimatorPredictor.getVr()
               .times(locVelocity).getElement(0));
       if (absVelocity > 0d) {
         final Vector velocities =
             VectorFactory.getDenseDefault().copyVector(
-                AbstractRoadTrackingFilter.getVg().times(projMean));
+                MotionStateEstimatorPredictor.getVg().times(projMean));
         velocities.scaleEquals(absVelocity / velocities.norm2());
         projMean.setElement(1, velocities.getElement(0));
         projMean.setElement(3, velocities.getElement(1));
@@ -781,14 +782,14 @@ public class PathUtils {
         direction * distance - Math.abs(path.getTotalPathDistance());
 
     if (overTheEndDist > 0d) {
-      if (overTheEndDist > AbstractRoadTrackingFilter
+      if (overTheEndDist > MotionStateEstimatorPredictor
           .getEdgeLengthErrorTolerance()) {
         return null;
       } else {
         newState.setElement(0, path.getTotalPathDistance());
       }
     } else if (direction * distance < 0d) {
-      if (direction * distance < AbstractRoadTrackingFilter
+      if (direction * distance < MotionStateEstimatorPredictor
           .getEdgeLengthErrorTolerance()) {
         return null;
       } else {
@@ -1001,6 +1002,8 @@ public class PathUtils {
 
     return adjIndex;
   }
+  
+  public static CoordinateArrays.BidirectionalComparator biDirComp = new CoordinateArrays.BidirectionalComparator();
 
   public static Vector stateDiff(PathState fromState,
     PathState toState, boolean useRaw) {
@@ -1088,7 +1091,7 @@ public class PathUtils {
             Math.max(Math.abs(fromPath.getTotalPathDistance()),
                 Math.abs(toPath.getTotalPathDistance()));
 
-      } else if (Path.biDirComp.compare(
+      } else if (biDirComp.compare(
           fromLastActualGeom.getCoordinates(),
           toFirstActualGeom.getCoordinates()) == 0) {
         /*
@@ -1102,7 +1105,7 @@ public class PathUtils {
                 + Math.abs(toPath.getTotalPathDistance())
                 - fromLastActualGeom.getLength();
 
-      } else if (Path.biDirComp.compare(
+      } else if (biDirComp.compare(
           fromFirstActualGeom.getCoordinates(),
           toFirstActualGeom.getCoordinates()) == 0) {
         /*
