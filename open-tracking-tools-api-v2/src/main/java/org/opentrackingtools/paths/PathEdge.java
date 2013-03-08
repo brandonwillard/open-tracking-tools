@@ -39,13 +39,13 @@ public class PathEdge<E extends InferenceGraphEdge> extends AbstractCloneableSer
   protected Double distToStartOfEdge;
   protected Boolean isBackward;
 
-  protected PathEdge() {
+  public PathEdge() {
     this.edge = null;
     this.distToStartOfEdge = null;
     this.isBackward = null;
   }
 
-  protected PathEdge(E edge,
+  public PathEdge(E edge,
     Double distToStartOfEdge, Boolean isBackward) {
     Preconditions.checkState((isBackward != Boolean.TRUE)
         || distToStartOfEdge <= 0d);
@@ -181,7 +181,7 @@ public class PathEdge<E extends InferenceGraphEdge> extends AbstractCloneableSer
   }
 
   public boolean isNullEdge() {
-    return this.getInferredEdge() == null;
+    return this.edge == null;
   }
 
   public boolean isOnEdge(double distance) {

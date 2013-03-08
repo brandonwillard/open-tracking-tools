@@ -11,8 +11,11 @@ import gov.sandia.cognition.math.signals.LinearDynamicalSystem;
 import gov.sandia.cognition.statistics.ComputableDistribution;
 import gov.sandia.cognition.statistics.bayesian.AbstractKalmanFilter;
 import gov.sandia.cognition.statistics.bayesian.BayesianEstimatorPredictor;
+import gov.sandia.cognition.statistics.bayesian.BayesianParameter;
 import gov.sandia.cognition.statistics.bayesian.conjugate.ConjugatePriorBayesianEstimatorPredictor;
+import gov.sandia.cognition.statistics.bayesian.conjugate.MultivariateGaussianMeanBayesianEstimator;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
+import gov.sandia.cognition.statistics.distribution.MultivariateGaussian.PDF;
 import gov.sandia.cognition.util.AbstractCloneableSerializable;
 
 import java.util.Collection;
@@ -49,11 +52,51 @@ import com.google.common.collect.Iterables;
  */
 public class MotionStateEstimatorPredictor extends
     AbstractCloneableSerializable implements
-    BayesianEstimatorPredictor<Vector, Vector, PathStateDistribution>,
-    IncrementalLearner<Vector, PathStateDistribution> {
+    BayesianEstimatorPredictor<Vector, Vector, MultivariateGaussian>,
+    IncrementalLearner<Vector, MultivariateGaussian> {
+
+  public static class Parameter extends AbstractCloneableSerializable
+    implements BayesianParameter<Vector, MultivariateGaussian, MultivariateGaussian> {
+    
+    protected MultivariateGaussianMeanBayesianEstimator.Parameter parameter;
+    
+    public Parameter(MultivariateGaussian conditional, MultivariateGaussian prior) {
+      this.parameter = new MultivariateGaussianMeanBayesianEstimator.Parameter(conditional, prior);
+    }
+
+    @Override
+    public MultivariateGaussian getConditionalDistribution() {
+      return parameter.getConditionalDistribution();
+    }
+
+    @Override
+    public void setValue(Vector value) {
+      parameter.setValue(value);
+    }
+
+    @Override
+    public Vector getValue() {
+      return parameter.getValue();
+    }
+
+    @Override
+    public String getName() {
+      return parameter.getName();
+    }
+
+    @Override
+    public MultivariateGaussian getParameterPrior() {
+      return parameter.getParameterPrior();
+    }
+
+    @Override
+    public void updateConditionalDistribution(Random random) {
+      parameter.updateConditionalDistribution(random);
+    }
+
+  }
 
   protected VehicleState<? extends GpsObservation> currentState;
-  protected Path path;
   protected Random rng;
 
   /**
@@ -64,10 +107,8 @@ public class MotionStateEstimatorPredictor extends
    * free-motion.
    * 
    */
-  public MotionStateEstimatorPredictor(@Nonnull VehicleState<?> currentState, 
-    @Nonnull Path path, @Nonnull Random rng) {
+  public MotionStateEstimatorPredictor(@Nonnull VehicleState<?> currentState, @Nonnull Random rng, @Nullable Double currentTimeDiff) {
     
-    this.path = path;
     this.graph = this.currentState.getGraph();
     this.currentState = currentState;
     this.rng = rng;
@@ -75,6 +116,8 @@ public class MotionStateEstimatorPredictor extends
     if (currentState.getParentState() != null)
       this.currentTimeDiff = (currentState.getObservation().getTimestamp().getTime()
           - currentState.getParentState().getObservation().getTimestamp().getTime())/1000d;
+    else
+      this.currentTimeDiff = Preconditions.checkNotNull(currentTimeDiff);
     
     /*
      * Create the road-coordinates filter
@@ -274,8 +317,7 @@ public class MotionStateEstimatorPredictor extends
   }
 
   /**
-   * Updates the road-coordinates prior predictive belief to the posterior for
-   * the given observation, edge and path distance to the start of the edge.
+   * Updates the 
    * 
    * @param priorPathStateBelief
    * @param observation
@@ -283,92 +325,93 @@ public class MotionStateEstimatorPredictor extends
    */
   @Override
   public void update(
-    PathStateDistribution priorPathStateBelief, Vector observation) {
+    MultivariateGaussian prior, Vector observation) {
 
-    if (priorPathStateBelief.getPathState().isOnRoad()) {
-      final MultivariateGaussian obsProj =
-          PathUtils.getRoadObservation(observation, this.roadFilter.getMeasurementCovariance(),
-              priorPathStateBelief.getPathState().getPath(), priorPathStateBelief.getPathState().getEdge());
+    if (prior.getInputDimensionality() == 2) {
+//      final MultivariateGaussian obsProj =
+//          PathUtils.getRoadObservation(observation, this.roadFilter.getMeasurementCovariance(),
+//              prior.getPathState().getPath(), priorPathStateBelief.getPathState().getEdge());
+//
+//      this.roadFilter.setMeasurementCovariance(obsProj
+//          .getCovariance());
+//
+//      /*
+//       * Clamp the projected obs
+//       */
+//      if (!priorPathStateBelief.getPathState().getPath().isOnPath(
+//          obsProj.getMean().getElement(0))) {
+//        obsProj.getMean().setElement(
+//            0,
+//            priorPathStateBelief.getPathState().getPath().clampToPath(
+//                obsProj.getMean().getElement(0)));
+//      }
 
-      this.roadFilter.setMeasurementCovariance(obsProj
-          .getCovariance());
-
-      /*
-       * Clamp the projected obs
-       */
-      if (!priorPathStateBelief.getPathState().getPath().isOnPath(
-          obsProj.getMean().getElement(0))) {
-        obsProj.getMean().setElement(
-            0,
-            priorPathStateBelief.getPathState().getPath().clampToPath(
-                obsProj.getMean().getElement(0)));
-      }
-
-      this.roadFilter.measure(priorPathStateBelief, obsProj.getMean());
+      this.roadFilter.measure(prior, observation);
 
     } else {
-      this.groundFilter.measure(priorPathStateBelief, observation);
+      this.groundFilter.measure(prior, observation);
     }
   }
 
   @Override
-  public PathStateDistribution createInitialLearnedObject() {
-    final PathStateDistribution result;
-    if (this.path.isNullPath()) {
-      result = new PathStateDistribution(this.path, this.roadFilter.createInitialLearnedObject());
-    } else {
-      result = new PathStateDistribution(this.path, this.groundFilter.createInitialLearnedObject());
-    }
-    return result;
+  public MultivariateGaussian createInitialLearnedObject() {
+    return this.groundFilter.createInitialLearnedObject();
   }
 
   @Override
-  public PathStateDistribution createPredictiveDistribution(PathStateDistribution prior) {
-    Preconditions.checkNotNull(path);
-    PathStateDistribution newBelief;
-    if (this.path.isNullPath()) {
-      if (!prior.getPathState().isOnRoad()) {
-        /*-
-         * Predict free-movement
-         */
-        newBelief = prior.clone();
-        groundFilter.predict(newBelief);
-      } else {
-        /*-
-         * Going off-road
-         */
-        newBelief = new PathStateDistribution(this.path, prior.getGroundBelief().clone());
-
-        groundFilter.predict(newBelief);
-      }
+  public MultivariateGaussian createPredictiveDistribution(MultivariateGaussian  prior) {
+    MultivariateGaussian priorPrediction = prior.clone();
+    if (priorPrediction.getInputDimensionality() == 4) {
+      this.groundFilter.predict(priorPrediction);
     } else {
-
-      if (!prior.getPathState().isOnRoad()) {
-        /*-
-         * Project a current location onto the path, then 
-         * project movement along the path.
-         */
-        MultivariateGaussian localBelief = prior.getLocalStateBelief().clone();
-        PathUtils.convertToRoadBelief(localBelief, this.path,
-            Iterables.getFirst(this.path.getPathEdges(), null), true);
-        newBelief = new PathStateDistribution(this.path, localBelief);
-      } else {
-        newBelief = new PathStateDistribution(this.path, prior);
-      }
-      roadFilter.predict(newBelief);
-
-      /*
-       * Clamp to path
-       */
-      final double distance =
-          MotionStateEstimatorPredictor.getOr()
-              .times(newBelief.getMean()).getElement(0);
-      if (!path.isOnPath(distance)) {
-        newBelief.getMean().setElement(0, path.clampToPath(distance));
-      }
+      this.roadFilter.predict(priorPrediction);
     }
-
-    return newBelief;
+    return priorPrediction;
+    
+//    PathStateDistribution newBelief;
+//    if (this.path.isNullPath()) {
+//      if (!prior.getPathState().isOnRoad()) {
+//        /*-
+//         * Predict free-movement
+//         */
+//        newBelief = prior.clone();
+//        groundFilter.predict(newBelief);
+//      } else {
+//        /*-
+//         * Going off-road
+//         */
+//        newBelief = new PathStateDistribution(this.path, prior.getGroundBelief().clone());
+//
+//        groundFilter.predict(newBelief);
+//      }
+//    } else {
+//
+//      if (!prior.getPathState().isOnRoad()) {
+//        /*-
+//         * Project a current location onto the path, then 
+//         * project movement along the path.
+//         */
+//        MultivariateGaussian localBelief = prior.getLocalStateBelief().clone();
+//        PathUtils.convertToRoadBelief(localBelief, this.path,
+//            Iterables.getFirst(this.path.getPathEdges(), null), true);
+//        newBelief = new PathStateDistribution(this.path, localBelief);
+//      } else {
+//        newBelief = new PathStateDistribution(this.path, prior);
+//      }
+//      roadFilter.predict(newBelief);
+//
+//      /*
+//       * Clamp to path
+//       */
+//      final double distance =
+//          MotionStateEstimatorPredictor.getOr()
+//              .times(newBelief.getMean()).getElement(0);
+//      if (!path.isOnPath(distance)) {
+//        newBelief.getMean().setElement(0, path.clampToPath(distance));
+//      }
+//    }
+//
+//    return newBelief;
   }
 
   @Override
@@ -563,13 +606,13 @@ public class MotionStateEstimatorPredictor extends
   }
 
   @Override
-  public PathStateDistribution
+  public MultivariateGaussian 
       learn(Collection<? extends Vector> data) {
     return null;
   }
 
   @Override
-  public void update(PathStateDistribution target,
+  public void update(MultivariateGaussian target,
     Iterable<? extends Vector> data) {
     for (Vector point : data) {
       this.update(target, point);

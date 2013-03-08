@@ -55,20 +55,19 @@ public class OnOffEdgeTransDistribution
    * Distribution corresponding to free-movement -> free-movement and
    * free-movement -> edge-movement
    */
-  protected DirichletDistribution freeMotionTransProbPrior;
-  protected MultinomialDistribution freeMotionTransPrior =
+  protected MultinomialDistribution freeMotionTransProbs =
       new MultinomialDistribution(2, 1);
 
   /*
    * Distribution corresponding to edge-movement -> free-movement and
    * edge-movement -> edge-movement
    */
-  protected DirichletDistribution edgeMotionTransProbPrior;
-  protected MultinomialDistribution edgeMotionTransPrior =
+  protected MultinomialDistribution edgeMotionTransProbs =
       new MultinomialDistribution(2, 1);
   
   protected InferenceGraph graph;
   protected InferenceGraphEdge currentEdge;
+  protected VehicleState<?> currentState;
 
   static final Vector stateOffToOff = VectorFactory
       .getDefault().copyValues(1d, 0d);
@@ -82,47 +81,35 @@ public class OnOffEdgeTransDistribution
 
   static final Double zeroTolerance = 1e-6;
 
-  /**
-   * Initialize prior from the given hyper prior parameters, using the hyper
-   * prior means (i.e. the given parameters).
-   * 
-   * @param graph
-   * @param edgeMotionPriorParams
-   * @param freeMotionPriorParams
-   * @param rng
-   */
   public OnOffEdgeTransDistribution(
-    InferenceGraph graph, InferenceGraphEdge currentEdge,
-    Vector edgeMotionPriorParams, Vector freeMotionPriorParams) {
+    VehicleState<?> currentState, InferenceGraphEdge currentEdge,
+    Vector edgeMotionProbs, Vector freeMotionProbs) {
     
-    this.graph = graph;
+    this.currentState = currentState;
+    this.graph = currentState.getGraph();
     this.currentEdge = currentEdge;
     
-    this.setFreeMotionTransProbPrior(new DirichletDistribution(
-        freeMotionPriorParams));
-    this.setEdgeMotionTransProbPrior(new DirichletDistribution(
-        edgeMotionPriorParams));
     /*
      * Start by setting the means.
      */
-    getFreeMotionTransProb().setParameters(
-        getFreeMotionTransProbPrior().getMean());
-    getEdgeMotionTransProb().setParameters(
-        getEdgeMotionTransProbPrior().getMean());
+    getFreeMotionTransProbs().setParameters(freeMotionProbs);
+    getEdgeMotionTransProbs().setParameters(edgeMotionProbs);
+  }
+
+  public OnOffEdgeTransDistribution(
+    OnOffEdgeTransDistribution onOffEdgeTransProbsDistribution) {
+    this.currentEdge = onOffEdgeTransProbsDistribution.currentEdge;
+    this.currentState = onOffEdgeTransProbsDistribution.currentState;
+    this.edgeMotionTransProbs = onOffEdgeTransProbsDistribution.edgeMotionTransProbs;
+    this.freeMotionTransProbs = onOffEdgeTransProbsDistribution.freeMotionTransProbs;
   }
 
   @Override
   public OnOffEdgeTransDistribution clone() {
     final OnOffEdgeTransDistribution transDist =
         (OnOffEdgeTransDistribution) super.clone();
-    transDist.setEdgeMotionTransPrior(this.getEdgeMotionTransProb()
-        .clone());
-    transDist.setFreeMotionTransPrior(this.getFreeMotionTransProb()
-        .clone());
-    transDist.setEdgeMotionTransProbPrior(this
-        .getEdgeMotionTransProbPrior().clone());
-    transDist.setFreeMotionTransProbPrior(this
-        .getFreeMotionTransProbPrior().clone());
+    transDist.edgeMotionTransProbs = this.getEdgeMotionTransProbs().clone();
+    transDist.freeMotionTransProbs = this.getFreeMotionTransProbs().clone();
     transDist.currentEdge = ObjectUtil.cloneSmart(this.currentEdge);
     transDist.graph = this.graph;
     return transDist;
@@ -131,17 +118,10 @@ public class OnOffEdgeTransDistribution
   @Override
   public int compareTo(OnOffEdgeTransDistribution o) {
     final CompareToBuilder comparator = new CompareToBuilder();
-    comparator.append(this.getEdgeMotionTransProb().getParameters().toArray(), 
-        o.getEdgeMotionTransProb().getParameters().toArray());
-    comparator.append(this.getFreeMotionTransProb().getParameters().toArray(), 
-        o.getFreeMotionTransProb().getParameters().toArray());
-
-    comparator.append(this.getEdgeMotionTransProbPrior().getParameters().toArray(),
-        o.getEdgeMotionTransProbPrior().getParameters().toArray());
-    comparator.append(this.getFreeMotionTransProbPrior().getParameters().toArray(),
-        o.getFreeMotionTransProbPrior().getParameters().toArray());
-    comparator.append(this.getFreeMotionTransProbPrior().getParameters().toArray(),
-        o.getFreeMotionTransProbPrior().getParameters().toArray());
+    comparator.append(this.getEdgeMotionTransProbs().getParameters().toArray(), 
+        o.getEdgeMotionTransProbs().getParameters().toArray());
+    comparator.append(this.getFreeMotionTransProbs().getParameters().toArray(), 
+        o.getFreeMotionTransProbs().getParameters().toArray());
     comparator.append(this.currentEdge, o.currentEdge);
 
     return comparator.toComparison();
@@ -160,38 +140,22 @@ public class OnOffEdgeTransDistribution
     }
     final OnOffEdgeTransDistribution other =
         (OnOffEdgeTransDistribution) obj;
-    if (getEdgeMotionTransProb() == null) {
-      if (other.getEdgeMotionTransProb() != null) {
+    if (getEdgeMotionTransProbs() == null) {
+      if (other.getEdgeMotionTransProbs() != null) {
         return false;
       }
-    } else if (!getEdgeMotionTransProb()
-        .getParameters().equals(other.getEdgeMotionTransProb()
+    } else if (!getEdgeMotionTransProbs()
+        .getParameters().equals(other.getEdgeMotionTransProbs()
         .getParameters())) {
       return false;
     }
-    if (getEdgeMotionTransProbPrior() == null) {
-      if (other.getEdgeMotionTransProbPrior() != null) {
+    if (getFreeMotionTransProbs() == null) {
+      if (other.getFreeMotionTransProbs() != null) {
         return false;
       }
-    } else if (!getEdgeMotionTransProbPrior().getParameters().equals(other
-            .getEdgeMotionTransProbPrior().getParameters())) {
-      return false;
-    }
-    if (getFreeMotionTransProb() == null) {
-      if (other.getFreeMotionTransProb() != null) {
-        return false;
-      }
-    } else if (!getFreeMotionTransProb()
-        .getParameters().equals(other.getFreeMotionTransProb()
+    } else if (!getFreeMotionTransProbs()
+        .getParameters().equals(other.getFreeMotionTransProbs()
         .getParameters())) {
-      return false;
-    }
-    if (getFreeMotionTransProbPrior() == null) {
-      if (other.getFreeMotionTransProbPrior() != null) {
-        return false;
-      }
-    } else if (!getFreeMotionTransProbPrior().getParameters().equals(other
-            .getFreeMotionTransProbPrior().getParameters())) {
       return false;
     }
     if (this.currentEdge == null) {
@@ -205,20 +169,12 @@ public class OnOffEdgeTransDistribution
   }
 
 
-  public MultinomialDistribution getEdgeMotionTransProb() {
-    return edgeMotionTransPrior;
+  public MultinomialDistribution getEdgeMotionTransProbs() {
+    return edgeMotionTransProbs;
   }
 
-  public DirichletDistribution getEdgeMotionTransProbPrior() {
-    return edgeMotionTransProbPrior;
-  }
-
-  public MultinomialDistribution getFreeMotionTransProb() {
-    return freeMotionTransPrior;
-  }
-
-  public DirichletDistribution getFreeMotionTransProbPrior() {
-    return freeMotionTransProbPrior;
+  public MultinomialDistribution getFreeMotionTransProbs() {
+    return freeMotionTransProbs;
   }
 
   @Override
@@ -228,26 +184,14 @@ public class OnOffEdgeTransDistribution
     result =
         prime
             * result
-            + ((getEdgeMotionTransProb() == null) ? 0
-                : getEdgeMotionTransProb()
+            + ((getEdgeMotionTransProbs() == null) ? 0
+                : getEdgeMotionTransProbs()
                         .getParameters().hashCode());
     result =
         prime
             * result
-            + ((getEdgeMotionTransProbPrior() == null) ? 0
-                : getEdgeMotionTransProbPrior()
-                        .getParameters().hashCode());
-    result =
-        prime
-            * result
-            + ((getFreeMotionTransProb() == null) ? 0
-                : getFreeMotionTransProb()
-                        .getParameters().hashCode());
-    result =
-        prime
-            * result
-            + ((getFreeMotionTransProbPrior() == null) ? 0
-                : getFreeMotionTransProbPrior()
+            + ((getFreeMotionTransProbs() == null) ? 0
+                : getFreeMotionTransProbs()
                         .getParameters().hashCode());
     result =
         prime
@@ -301,32 +245,22 @@ public class OnOffEdgeTransDistribution
     return dist.sample(rng);
   }
 
-  public void setEdgeMotionTransPrior(
-    MultinomialDistribution edgeMotionTransPrior) {
-    this.edgeMotionTransPrior = edgeMotionTransPrior;
+  public void setEdgeMotionTransProbs(
+    Vector edgeMotionTransProbs) {
+    this.edgeMotionTransProbs.setParameters(edgeMotionTransProbs);
   }
 
-  public void setEdgeMotionTransProbPrior(
-    DirichletDistribution edgeMotionTransProbPrior) {
-    this.edgeMotionTransProbPrior = edgeMotionTransProbPrior;
-  }
-
-  public void setFreeMotionTransPrior(
-    MultinomialDistribution freeMotionTransPrior) {
-    this.freeMotionTransPrior = freeMotionTransPrior;
-  }
-
-  public void setFreeMotionTransProbPrior(
-    DirichletDistribution freeMotionTransProbPrior) {
-    this.freeMotionTransProbPrior = freeMotionTransProbPrior;
+  public void setFreeMotionTransProbs(
+    Vector freeMotionTransProbs) {
+    this.freeMotionTransProbs.setParameters(freeMotionTransProbs);
   }
 
   @Override
   public String toString() {
-    return "EdgeTransitionDistributions [freeMotionTransPrior="
-        + getFreeMotionTransProb().getParameters()
-        + ", edgeMotionTransPrior="
-        + getEdgeMotionTransProb().getParameters() + "]";
+    return "EdgeTransitionDistributions [freeMotionTransProbs="
+        + getFreeMotionTransProbs().getParameters()
+        + ", edgeMotionTransProbs="
+        + getEdgeMotionTransProbs().getParameters() + "]";
   }
 
   public static Vector getStateOffToOff() {
@@ -376,7 +310,7 @@ public class OnOffEdgeTransDistribution
         return this.graph.getNullInferredEdge();
       } else {
         final Vector sample =
-            checkedSample(this.getFreeMotionTransProb(), random);
+            checkedSample(this.getFreeMotionTransProbs(), random);
 
         if (sample.equals(stateOffToOn)) {
           domain.remove(this.graph.getNullInferredEdge());
@@ -392,7 +326,7 @@ public class OnOffEdgeTransDistribution
        */
       final Vector sample =
           domain.contains(this.graph.getNullInferredEdge())
-              ? checkedSample(this.getEdgeMotionTransProb(), random)
+              ? checkedSample(this.getEdgeMotionTransProbs(), random)
               : stateOnToOn;
 
       if (sample.equals(stateOnToOff) || domain.isEmpty()) {

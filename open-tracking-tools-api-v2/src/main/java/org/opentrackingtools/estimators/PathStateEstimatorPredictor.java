@@ -5,6 +5,7 @@ import java.util.Collection;
 import java.util.List;
 
 import org.opentrackingtools.distributions.PathStateDistribution;
+import org.opentrackingtools.distributions.PathStateMultivariateMixtureDensityModel;
 import org.opentrackingtools.graph.InferenceGraphEdge;
 import org.opentrackingtools.model.GpsObservation;
 import org.opentrackingtools.model.VehicleState;
@@ -37,7 +38,7 @@ import gov.sandia.cognition.util.AbstractCloneableSerializable;
  */
 public class PathStateEstimatorPredictor
     extends AbstractCloneableSerializable
-    implements BayesianEstimatorPredictor<Vector, Vector, PathStateDistribution> {
+    implements BayesianEstimatorPredictor<PathState, PathState, PathStateDistribution> {
   
   protected VehicleState<? extends GpsObservation> currentState;
   protected Path path;
@@ -48,7 +49,7 @@ public class PathStateEstimatorPredictor
   }
 
   @Override
-  public MultivariateMixtureDensityModel<PathStateDistribution> createPredictiveDistribution(
+  public PathStateMultivariateMixtureDensityModel<PathStateDistribution> createPredictiveDistribution(
     PathStateDistribution prior) {
     
     List<PathStateDistribution> distributions = Lists.newArrayList();
@@ -90,11 +91,11 @@ public class PathStateEstimatorPredictor
             new MultivariateGaussian(a, R));
         
         distributions.add(prediction);
-        weights.add(this.marginalPredictiveLogLikInternal(this.path, prediction, edge));
+        weights.add(this.marginalPredictiveLogLikInternal(this.path, prediction.getMotionStateDistribution(), edge));
       }
     }
-    final MultivariateMixtureDensityModel<PathStateDistribution> result = 
-        new MultivariateMixtureDensityModel<PathStateDistribution>(distributions);
+    final PathStateMultivariateMixtureDensityModel<PathStateDistribution> result = 
+        new PathStateMultivariateMixtureDensityModel<PathStateDistribution>(this.path, distributions);
     result.setDistributions((ArrayList)distributions);
     result.setPriorWeights(Doubles.toArray(weights));
     
@@ -141,8 +142,7 @@ public class PathStateEstimatorPredictor
   
   @Override
   public PathStateDistribution
-      learn(Collection<? extends Vector> data) {
-    // TODO Auto-generated method stub
+      learn(Collection<? extends PathState> data) {
     return null;
   }
 

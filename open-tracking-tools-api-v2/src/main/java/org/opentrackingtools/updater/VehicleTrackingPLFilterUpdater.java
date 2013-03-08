@@ -15,6 +15,7 @@ import gov.sandia.cognition.statistics.distribution.DefaultDataDistribution;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 import gov.sandia.cognition.statistics.distribution.MultivariateMixtureDensityModel;
 import gov.sandia.cognition.util.AbstractCloneableSerializable;
+import gov.sandia.cognition.util.CloneableSerializable;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
@@ -29,10 +30,11 @@ import org.opentrackingtools.distributions.DefaultCountedDataDistribution;
 import org.opentrackingtools.distributions.DeterministicBayesianParameter;
 import org.opentrackingtools.distributions.DeterministicDataDistribution;
 import org.opentrackingtools.distributions.OnOffEdgeTransDistribution;
+import org.opentrackingtools.distributions.OnOffEdgeTransPriorDistribution;
 import org.opentrackingtools.distributions.OnOffEdgeTransProbabilityFunction;
 import org.opentrackingtools.distributions.PathStateDistribution;
-import org.opentrackingtools.distributions.SimpleBayesianParameter;
 import org.opentrackingtools.estimators.MotionStateEstimatorPredictor;
+import org.opentrackingtools.estimators.OnOffEdgeTransitionEstimatorPredictor;
 import org.opentrackingtools.estimators.PathStateEstimatorPredictor;
 import org.opentrackingtools.estimators.RecursiveBayesianEstimatorPredictor;
 import org.opentrackingtools.graph.InferenceGraph;
@@ -41,6 +43,7 @@ import org.opentrackingtools.model.GpsObservation;
 import org.opentrackingtools.model.VehicleState;
 import org.opentrackingtools.paths.Path;
 import org.opentrackingtools.paths.PathEdge;
+import org.opentrackingtools.util.model.TransitionProbMatrix;
 
 import com.google.common.collect.Sets;
 import com.vividsolutions.jts.linearref.LengthIndexedLine;
@@ -94,18 +97,60 @@ public class VehicleTrackingPLFilterUpdater<O extends GpsObservation>
     final DataDistribution<VehicleState<O>> retDist =
         new DefaultCountedDataDistribution<VehicleState<O>>(true);
 
+    /*
+     * Start by creating an off-road vehicle state with which we can obtain the surrounding
+     * edges.
+     */
+    final InferenceGraphEdge nullEdge = new InferenceGraphEdge();
+    final VehicleState<O> nullState = constructInitialVehicleState(); 
+    MultivariateGaussian initialMotionStateDist = nullState.getPathStateParam().getConditionalDistribution();
+    Collection<InferenceGraphEdge> edges = this.inferenceGraph.getNearbyEdges(initialMotionStateDist,
+        initialMotionStateDist.getCovariance());
+    edges.add(nullEdge);      
+    
     for (int i = 0; i < numParticles; i++) {
       /*
-       * Start by creating an off-road vehicle state.
+       * From the surrounding edges, we create states on those edges.
        */
-      final VehicleState<O> state = constructInitialVehicleState(); 
-      MotionStateEstimatorPredictor motionStateEstimatorPredictor = new MotionStateEstimatorPredictor(state, new Path(), this.random);
-      PathStateDistribution initialPathState = motionStateEstimatorPredictor.createInitialLearnedObject();
-      Collection<InferenceGraphEdge> edges = this.inferenceGraph.getNearbyEdges(
-          this.initialObservation.getProjectedPoint(), );
-      edges.add(new InferenceGraphEdge());      
+      final DataDistribution<VehicleState<O>> statesOnEdgeDistribution  =
+          new DefaultCountedDataDistribution<VehicleState<O>>(true);
       
-      retDist.increment(state);
+      for (InferenceGraphEdge edge : edges) {
+        BayesianParameter obsCovParam = 
+            (BayesianParameter) nullState.getObservationCovarianceParam().clone();
+        BayesianParameter onRoadCovParam = 
+            (BayesianParameter) nullState.getOnRoadModelCovarianceParam().clone();
+        BayesianParameter offRoadCovParam = 
+            (BayesianParameter) nullState.getOffRoadModelCovarianceParam().clone();
+        BayesianParameter edgeTransPram = (BayesianParameter) nullState.getEdgeTransitionParam().clone();
+        
+        VehicleState<O> stateOnEdge = new VehicleState<O>(
+            this.inferenceGraph, this.initialObservation, 
+            null,
+            obsCovParam,
+            onRoadCovParam,
+            offRoadCovParam,
+            edgeTransPram,
+            null);
+        
+        MotionStateEstimatorPredictor motionStateEstimatorPredictor = new MotionStateEstimatorPredictor(nullState, 
+            new Path(new PathEdge<InferenceGraphEdge>(edge, 0d, false)), random);
+        
+        PathStateDistribution initialPathStateDist = motionStateEstimatorPredictor.createInitialLearnedObject();
+        
+        BayesianParameter<Vector, MultivariateGaussian, PathStateDistribution> motionStateParam = 
+            new MotionStateEstimatorPredictor.Parameter(initialPathStateDist, initialPathStateDist);
+        
+        stateOnEdge.setPathStateParam(motionStateParam);
+        
+        double logLikelihood = stateOnEdge.getEdgeTransitionParam()
+            .getConditionalDistribution().getProbabilityFunction().logEvaluate(edge)
+            + this.computeLogLikelihood(stateOnEdge, initialObservation);
+        
+        statesOnEdgeDistribution.increment(stateOnEdge, logLikelihood);
+      }
+      
+      retDist.increment(statesOnEdgeDistribution.sample(random));
     }
 
     return retDist;
@@ -132,18 +177,18 @@ public class VehicleTrackingPLFilterUpdater<O extends GpsObservation>
         new DeterministicDataDistribution<Matrix>(
             MatrixFactory.getDefault().createDiagonal(this.parameters.getOnRoadStateCov()));
     BayesianParameter<Matrix, ?, ?> onRoadCovParam =
-        new DeterministicBayesianParameter<Matrix>(onRoadCovDistribution, "observationCovariance");
+        new DeterministicBayesianParameter<Matrix>(onRoadCovDistribution, "onRoadCovariance");
     
     DeterministicDataDistribution<Matrix> offRoadCovDistribution = 
         new DeterministicDataDistribution<Matrix>(
             MatrixFactory.getDefault().createDiagonal(this.parameters.getOnRoadStateCov()));
     BayesianParameter<Matrix, ?, ?> offRoadCovParam =
-        new DeterministicBayesianParameter<Matrix>(onRoadCovDistribution, "observationCovariance");
+        new DeterministicBayesianParameter<Matrix>(offRoadCovDistribution, "offRoadCovariance");
     
-    BayesianParameter<Vector, MultivariateGaussian.PDF, MultivariateGaussian>
+    BayesianParameter<Vector, MultivariateGaussian, PathStateDistribution>
       motionStateParam = null;
     
-    BayesianParameter<? extends InferenceGraphEdge, OnOffEdgeTransProbabilityFunction, OnOffEdgeTransDistribution> 
+    BayesianParameter<TransitionProbMatrix, OnOffEdgeTransDistribution, OnOffEdgeTransPriorDistribution> 
       edgeTransitionParam = null;
     
     final VehicleState<O> state = new VehicleState<O>(
@@ -159,9 +204,19 @@ public class VehicleTrackingPLFilterUpdater<O extends GpsObservation>
     MotionStateEstimatorPredictor motionStateEstimatorPredictor = new MotionStateEstimatorPredictor(state, 
         new Path(), random);
     
-    PathStateDistribution initialDist = motionStateEstimatorPredictor.createInitialLearnedObject();
+    PathStateDistribution initialPathStateDist = motionStateEstimatorPredictor.createInitialLearnedObject();
     
-    motionStateParam = new MultivariateGaussianMeanBayesianEstimator.Parameter(initialDist, initialDist);
+    motionStateParam = new MotionStateEstimatorPredictor.Parameter(initialPathStateDist, initialPathStateDist);
+    
+    InferenceGraphEdge nullEdge = new InferenceGraphEdge();
+    OnOffEdgeTransitionEstimatorPredictor edgeTransitionEstimatorPredictor = new OnOffEdgeTransitionEstimatorPredictor(state, 
+        nullEdge);
+    OnOffEdgeTransPriorDistribution initialPriorTransDist = edgeTransitionEstimatorPredictor.createInitialLearnedObject();
+    OnOffEdgeTransDistribution initialTransDist = new OnOffEdgeTransDistribution(state, nullEdge,
+        initialPriorTransDist.getEdgeMotionTransProbPrior().getMean(), 
+        initialPriorTransDist.getFreeMotionTransProbPrior().getMean());
+    
+    edgeTransitionParam = new OnOffEdgeTransitionEstimatorPredictor.Parameter(initialTransDist, initialPriorTransDist);
     
     return state;
   }
@@ -170,7 +225,7 @@ public class VehicleTrackingPLFilterUpdater<O extends GpsObservation>
   public double computeLogLikelihood(VehicleState<O> particle, O observation) {
     double logLikelihood = 0d;
     logLikelihood +=
-        particle.getPathStateParam().getConditionalDistribution().logEvaluate(
+        particle.getPathStateParam().getConditionalDistribution().getProbabilityFunction().logEvaluate(
             observation.getProjectedPoint());
     return logLikelihood;
   }
@@ -188,7 +243,8 @@ public class VehicleTrackingPLFilterUpdater<O extends GpsObservation>
     
     for (Path path : paths) {
       PathStateEstimatorPredictor pathStateEstimatorPredictor = new PathStateEstimatorPredictor(state, path);
-      MultivariateMixtureDensityModel<PathStateDistribution> pathStateDist = pathStateEstimatorPredictor.createPredictiveDistribution(pathState);
+      MultivariateMixtureDensityModel<PathStateDistribution> pathStateDist = 
+          pathStateEstimatorPredictor.createPredictiveDistribution(pathState);
     }
     return state;
   }

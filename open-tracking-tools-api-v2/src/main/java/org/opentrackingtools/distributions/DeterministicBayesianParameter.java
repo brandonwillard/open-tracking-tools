@@ -6,6 +6,7 @@ import gov.sandia.cognition.math.matrix.Matrix;
 import gov.sandia.cognition.statistics.Distribution;
 import gov.sandia.cognition.statistics.bayesian.BayesianParameter;
 import gov.sandia.cognition.util.AbstractCloneableSerializable;
+import gov.sandia.cognition.util.CloneableSerializable;
 
 public class DeterministicBayesianParameter<T> 
   extends AbstractCloneableSerializable 
@@ -47,6 +48,14 @@ public class DeterministicBayesianParameter<T>
 
   @Override
   public void updateConditionalDistribution(Random random) {
+  }
+
+  @Override
+  public DeterministicBayesianParameter<T> clone() {
+    DeterministicBayesianParameter<T> clone = (DeterministicBayesianParameter<T>) super.clone();
+    clone.conditionalDistribution = this.conditionalDistribution.clone();
+    clone.name = this.name;
+    return clone;
   }
 
 }

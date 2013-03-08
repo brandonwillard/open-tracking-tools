@@ -5,6 +5,7 @@ import gov.sandia.cognition.statistics.AbstractDataDistribution;
 import gov.sandia.cognition.statistics.DataDistribution;
 import gov.sandia.cognition.statistics.DistributionEstimator;
 import gov.sandia.cognition.statistics.distribution.DefaultDataDistribution;
+import gov.sandia.cognition.util.ObjectUtil;
 
 import java.util.Collections;
 
@@ -23,6 +24,13 @@ public class DeterministicDataDistribution<T> extends
     this.element = element;
   }
   
+  @Override
+  public DeterministicDataDistribution<T> clone() {
+    DeterministicDataDistribution<T> clone = (DeterministicDataDistribution<T>) super.clone();
+    clone.element = ObjectUtil.cloneSmart(clone.element);
+    return clone;
+  }
+
   public T getElement() {
     return this.element;
   }

@@ -32,35 +32,35 @@ public class OnOffEdgeTransProbabilityFunction
     if (currentState == null) {
 
       final double totalProb =
-          Math.log(distribution.getFreeMotionTransProb().getParameters().sum()
-              + distribution.getEdgeMotionTransProb().getParameters().sum());
+          Math.log(distribution.getFreeMotionTransProbs().getParameters().sum()
+              + distribution.getEdgeMotionTransProbs().getParameters().sum());
       if (to.isNullEdge()) {
         return LogMath
             .add(
-                distribution.getFreeMotionTransProb().getProbabilityFunction()
+                distribution.getFreeMotionTransProbs().getProbabilityFunction()
                     .logEvaluate(
                         OnOffEdgeTransDistribution.stateOffToOff),
-                distribution.getEdgeMotionTransProb().getProbabilityFunction()
+                distribution.getEdgeMotionTransProbs().getProbabilityFunction()
                     .logEvaluate(
                         OnOffEdgeTransDistribution.stateOnToOff))
             - totalProb;
       } else {
         return LogMath
             .add(
-                distribution.getFreeMotionTransProb().getProbabilityFunction()
+                distribution.getFreeMotionTransProbs().getProbabilityFunction()
                     .logEvaluate(
                         OnOffEdgeTransDistribution.stateOffToOn),
-                distribution.getEdgeMotionTransProb().getProbabilityFunction()
+                distribution.getEdgeMotionTransProbs().getProbabilityFunction()
                     .logEvaluate(
                         OnOffEdgeTransDistribution.stateOnToOn))
             - totalProb;
       }
     } else {
       if (distribution.currentEdge.isNullEdge()) {
-        return distribution.getFreeMotionTransProb().getProbabilityFunction()
+        return distribution.getFreeMotionTransProbs().getProbabilityFunction()
             .logEvaluate(OnOffEdgeTransDistribution.getTransitionType(distribution.currentEdge, to));
       } else {
-        return distribution.getEdgeMotionTransProb().getProbabilityFunction()
+        return distribution.getEdgeMotionTransProbs().getProbabilityFunction()
             .logEvaluate(OnOffEdgeTransDistribution.getTransitionType(distribution.currentEdge, to));
       }
     }
