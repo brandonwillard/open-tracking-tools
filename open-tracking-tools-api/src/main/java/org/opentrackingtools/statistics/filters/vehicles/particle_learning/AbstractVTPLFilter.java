@@ -143,18 +143,20 @@ public abstract class AbstractVTPLFilter extends
      * Propagate states
      */
     for (final Entry<VehicleState> state : smoothedStates.entrySet()) {
+      Preconditions.checkState(state.getCount() > 0);
+      for (int i = 0; i < state.getCount(); i++) {
+        /*
+         * TODO: debug seeding 
+         */
+        this.seed = rng.nextLong();
+  
+        EdgePredictiveResults edgePredResults = sampleEdge(stateToPathDistributions.get(state.getElement()));
         
-      /*
-       * TODO: debug seeding 
-       */
-      this.seed = rng.nextLong();
-
-      EdgePredictiveResults edgePredResults = sampleEdge(stateToPathDistributions.get(state.getElement()));
-      
-      final VehicleState newTransState =
-          propagateStates(state.getElement(), obs, edgePredResults, stateToPathDistributions.size());
-
-      posteriorDist.increment(newTransState, 0d, state.getCount());
+        final VehicleState newTransState =
+            propagateStates(state.getElement(), obs, edgePredResults, stateToPathDistributions.size());
+  
+        posteriorDist.increment(newTransState, 0d, 1);
+      }
     }
 
     targetCountDist.clear();

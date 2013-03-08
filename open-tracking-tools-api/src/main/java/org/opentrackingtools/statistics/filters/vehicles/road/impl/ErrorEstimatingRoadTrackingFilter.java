@@ -22,6 +22,7 @@ import org.opentrackingtools.impl.VehicleState;
 import org.opentrackingtools.impl.VehicleStateInitialParameters;
 import org.opentrackingtools.statistics.distributions.impl.AdjMultivariateGaussian;
 import org.opentrackingtools.statistics.filters.impl.AdjKalmanFilter;
+import org.opentrackingtools.statistics.filters.impl.ForwardOnlyKalmanFilter;
 import org.opentrackingtools.statistics.impl.StatisticsUtil;
 import org.opentrackingtools.util.TrueObservation;
 import org.slf4j.Logger;
@@ -220,7 +221,7 @@ public class ErrorEstimatingRoadTrackingFilter
         createStateCovarianceMatrix(this.currentTimeDiff,
             this.getQr(), true);
     this.roadFilter =
-        new AdjKalmanFilter(roadModel,
+        new ForwardOnlyKalmanFilter(roadModel,
             onRoadStateTransCovar, this.getObsCovar());
     this.setOnRoadStateTransCovar(onRoadStateTransCovar);
 
@@ -245,7 +246,7 @@ public class ErrorEstimatingRoadTrackingFilter
         createStateCovarianceMatrix(this.currentTimeDiff,
             this.getQg(), false);
     this.groundFilter =
-        new AdjKalmanFilter(groundModel,
+        new ForwardOnlyKalmanFilter(groundModel,
             offRoadStateTransCovar, this.getObsCovar());
     this.setOffRoadStateTransCovar(offRoadStateTransCovar);
   }
