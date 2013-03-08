@@ -21,23 +21,23 @@ import com.vividsolutions.jts.geom.Geometry;
 public interface InferenceGraph {
 
   public <O extends GpsObservation, V extends VehicleState<O>> 
-    Collection<? extends Path> getPaths(V fromState, O toCoord);
+    Collection<Path> getPaths(V fromState, O toCoord);
 
-  public Collection<? extends InferenceGraphEdge> getTopoEquivEdges(
+  public Collection<InferenceGraphEdge> getTopoEquivEdges(
     InferenceGraphEdge edge);
 
   public Envelope getGPSGraphExtent();
 
-  public Collection<? extends InferenceGraphEdge> getNearbyEdges(
+  public Collection<InferenceGraphEdge> getNearbyEdges(
     DistributionWithMean<Vector> tmpInitialBelief, Matrix covariance);
 
-  public Collection<? extends InferenceGraphEdge> getNearbyEdges(
+  public Collection<InferenceGraphEdge> getNearbyEdges(
     Vector projLocation, double radius);
 
-  public Collection<? extends InferenceGraphEdge> getIncomingTransferableEdges(
+  public Collection<InferenceGraphEdge> getIncomingTransferableEdges(
     InferenceGraphEdge infEdge);
 
-  public Collection<? extends InferenceGraphEdge> getOutgoingTransferableEdges(
+  public Collection<InferenceGraphEdge> getOutgoingTransferableEdges(
     InferenceGraphEdge infEdge);
 
   public Envelope getProjGraphExtent();

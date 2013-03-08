@@ -49,20 +49,20 @@ public class PathStateEstimatorPredictor
 
   @Override
   public MultivariateMixtureDensityModel<PathStateDistribution> createPredictiveDistribution(
-    PathStateDistribution posterior) {
+    PathStateDistribution prior) {
     
     List<PathStateDistribution> distributions = Lists.newArrayList();
     List<Double> weights = Lists.newArrayList();
     if (this.path.isNullPath()) {
-      distributions.add(new PathStateDistribution(this.path, posterior.getGroundBelief()));
+      distributions.add(new PathStateDistribution(this.path, prior.getGroundBelief()));
       weights.add(1d);
     } else {
       for (PathEdge<?> edge : this.path.getPathEdges()) {
-        Preconditions.checkArgument(posterior.getPathState().isOnRoad());
+        Preconditions.checkArgument(prior.getPathState().isOnRoad());
     
         final Matrix Or = MotionStateEstimatorPredictor.getOr();
         final double S =
-            Or.times(posterior.getCovariance()).times(Or.transpose())
+            Or.times(prior.getCovariance()).times(Or.transpose())
                 .getElement(0, 0)
                 // + 1d;
                 + Math
@@ -70,16 +70,16 @@ public class PathStateEstimatorPredictor
                         edge.getLength()
                             / Math.sqrt(12), 2);
         final Matrix W =
-            posterior.getCovariance().times(Or.transpose()).scale(1 / S);
+            prior.getCovariance().times(Or.transpose()).scale(1 / S);
         final Matrix R =
-            posterior.getCovariance().minus(W.times(W.transpose()).scale(S));
+            prior.getCovariance().minus(W.times(W.transpose()).scale(S));
     
         final double direction = edge.isBackward() ? -1d : 1d;
         final double mean =
             (edge.getDistToStartOfEdge() + (edge.getDistToStartOfEdge() + direction
                 * edge.getLength())) / 2d;
     
-        final Vector beliefMean = posterior.getMean();
+        final Vector beliefMean = prior.getMean();
         final double e = mean - Or.times(beliefMean).getElement(0);
         final Vector a = beliefMean.plus(W.getColumn(0).scale(e));
     

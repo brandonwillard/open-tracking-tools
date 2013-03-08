@@ -24,7 +24,7 @@ public class InferenceGraphEdge implements
   protected final static InferenceGraphEdge emptyEdge =
       new InferenceGraphEdge();
 
-  protected InferenceGraphEdge() {
+  public InferenceGraphEdge() {
     this.edgeId = null;
     this.endPoint = null;
     this.startPoint = null;

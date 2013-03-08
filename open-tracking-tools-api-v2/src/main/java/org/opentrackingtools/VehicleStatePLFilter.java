@@ -63,7 +63,7 @@ public class VehicleStatePLFilter<O extends GpsObservation>
       this.updater.update(predictedState);
 
       final double predictiveLogLikelihood =
-          this.getUpdater().computeLogLikelihood(predictedState, obs.getProjectedPoint());
+          this.getUpdater().computeLogLikelihood(predictedState, obs);
 
       resampleDist.increment(predictedState, predictiveLogLikelihood);
     }

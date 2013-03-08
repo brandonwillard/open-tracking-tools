@@ -13,9 +13,11 @@ import gov.sandia.cognition.statistics.DistributionEstimator;
 import gov.sandia.cognition.statistics.EstimableDistribution;
 import gov.sandia.cognition.statistics.ProbabilityFunction;
 import gov.sandia.cognition.statistics.bayesian.BayesianEstimatorPredictor;
+import gov.sandia.cognition.statistics.bayesian.BayesianParameter;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian.PDF;
 import gov.sandia.cognition.util.AbstractCloneableSerializable;
+import gov.sandia.cognition.util.ObjectUtil;
 
 import org.apache.commons.lang.builder.CompareToBuilder;
 import org.apache.commons.lang3.builder.ToStringBuilder;
@@ -77,7 +79,7 @@ public class VehicleState<Observation extends GpsObservation> extends AbstractCl
     }
 
     final CompareToBuilder comparator = new CompareToBuilder();
-    comparator.append(t.pathStateParam, o.pathStateParam);
+    comparator.append(t.motionStateParam, o.motionStateParam);
     comparator.append(t.getObservation(), o.getObservation());
     comparator.append(t.edgeTransitionParam, o.edgeTransitionParam);
 
@@ -98,11 +100,11 @@ public class VehicleState<Observation extends GpsObservation> extends AbstractCl
         (VehicleState<? extends GpsObservation>) thisObj;
     final VehicleState<? extends GpsObservation> other =
         (VehicleState<? extends GpsObservation>) obj;
-    if (thisState.pathStateParam == null) {
-      if (other.pathStateParam != null) {
+    if (thisState.motionStateParam == null) {
+      if (other.motionStateParam != null) {
         return false;
       }
-    } else if (!thisState.pathStateParam.equals(other.pathStateParam)) {
+    } else if (!thisState.motionStateParam.equals(other.motionStateParam)) {
       return false;
     }
     if (thisState.edgeTransitionParam == null) {
@@ -113,12 +115,12 @@ public class VehicleState<Observation extends GpsObservation> extends AbstractCl
         .equals(other.edgeTransitionParam)) {
       return false;
     }
-    if (thisState.onRoadMeasurementCovarianceParam == null) {
-      if (other.onRoadMeasurementCovarianceParam != null) {
+    if (thisState.onRoadModelCovarianceParam == null) {
+      if (other.onRoadModelCovarianceParam != null) {
         return false;
       }
-    } else if (!thisState.onRoadMeasurementCovarianceParam
-        .equals(other.onRoadMeasurementCovarianceParam)) {
+    } else if (!thisState.onRoadModelCovarianceParam
+        .equals(other.onRoadModelCovarianceParam)) {
       return false;
     }
     if (thisState.observationCovarianceParam == null) {
@@ -129,12 +131,12 @@ public class VehicleState<Observation extends GpsObservation> extends AbstractCl
         .equals(other.observationCovarianceParam)) {
       return false;
     }
-    if (thisState.offRoadMeasurementCovarianceParam == null) {
-      if (other.offRoadMeasurementCovarianceParam != null) {
+    if (thisState.offRoadModelCovarianceParam == null) {
+      if (other.offRoadModelCovarianceParam != null) {
         return false;
       }
-    } else if (!thisState.offRoadMeasurementCovarianceParam
-        .equals(other.offRoadMeasurementCovarianceParam)) {
+    } else if (!thisState.offRoadModelCovarianceParam
+        .equals(other.offRoadModelCovarianceParam)) {
       return false;
     }
     if (thisState.observation == null) {
@@ -154,13 +156,13 @@ public class VehicleState<Observation extends GpsObservation> extends AbstractCl
     result =
         prime
             * result
-            + ((state.pathStateParam == null) ? 0
-                : state.pathStateParam.hashCode());
+            + ((state.motionStateParam == null) ? 0
+                : state.motionStateParam.hashCode());
     result =
         prime
             * result
-            + ((state.onRoadMeasurementCovarianceParam == null) ? 0
-                : state.onRoadMeasurementCovarianceParam.hashCode());
+            + ((state.onRoadModelCovarianceParam == null) ? 0
+                : state.onRoadModelCovarianceParam.hashCode());
     result =
         prime
             * result
@@ -169,8 +171,8 @@ public class VehicleState<Observation extends GpsObservation> extends AbstractCl
     result =
         prime
             * result
-            + ((state.offRoadMeasurementCovarianceParam == null) ? 0
-                : state.offRoadMeasurementCovarianceParam.hashCode());
+            + ((state.offRoadModelCovarianceParam == null) ? 0
+                : state.offRoadModelCovarianceParam.hashCode());
     result =
         prime
             * result
@@ -189,19 +191,19 @@ public class VehicleState<Observation extends GpsObservation> extends AbstractCl
    * road-coordinates, either way the tracking filter will check. Also, this
    * could be the prior or prior predictive distribution.
    */
-  protected BayesianEstimableParameter<Vector, PDF, PathStateDistribution> pathStateParam;
+  protected BayesianParameter<Vector, PDF, PathStateDistribution> motionStateParam;
 
   /*-
    * E.g. GPS error distribution 
    */
-  protected BayesianEstimableParameter<? extends Matrix, ?, ?> observationCovarianceParam;
+  protected BayesianParameter<? extends Matrix, ?, ?> observationCovarianceParam;
 
   /*-
    * E.g. acceleration error distribution
    */
-  protected BayesianEstimableParameter<? extends Matrix, ?, ?> onRoadMeasurementCovarianceParam;
+  protected BayesianParameter<? extends Matrix, ?, ?> onRoadModelCovarianceParam;
 
-  protected BayesianEstimableParameter<? extends Matrix, ?, ?> offRoadMeasurementCovarianceParam;
+  protected BayesianParameter<? extends Matrix, ?, ?> offRoadModelCovarianceParam;
 
   /*-
    * E.g. edge transition priors 
@@ -210,7 +212,7 @@ public class VehicleState<Observation extends GpsObservation> extends AbstractCl
    * 3. edges transitions to others (one for all)
    * edges
    */
-  protected BayesianEstimableParameter<? extends InferenceGraphEdge, 
+  protected BayesianParameter<? extends InferenceGraphEdge, 
       OnOffEdgeTransProbabilityFunction, 
       OnOffEdgeTransDistribution> edgeTransitionParam;
 
@@ -224,11 +226,11 @@ public class VehicleState<Observation extends GpsObservation> extends AbstractCl
   public VehicleState(
     InferenceGraph inferredGraph,
     Observation observation,
-    BayesianEstimableParameter<Vector, PDF, PathStateDistribution> pathState,
-    BayesianEstimableParameter<? extends Matrix, ?, ?> observationCovariance,
-    BayesianEstimableParameter<? extends Matrix, ?, ?> onRoadMeasurementCovariance,
-    BayesianEstimableParameter<? extends Matrix, ?, ?> offRoadMeasurementCovariance,
-    BayesianEstimableParameter<? extends InferenceGraphEdge, 
+    BayesianParameter<Vector, PDF, PathStateDistribution> pathState,
+    BayesianParameter<? extends Matrix, ?, ?> observationCovariance,
+    BayesianParameter<? extends Matrix, ?, ?> onRoadMeasurementCovariance,
+    BayesianParameter<? extends Matrix, ?, ?> offRoadMeasurementCovariance,
+    BayesianParameter<? extends InferenceGraphEdge, 
         OnOffEdgeTransProbabilityFunction, 
         OnOffEdgeTransDistribution> edgeTransitionDist,
     VehicleState<Observation> parentState) {
@@ -236,10 +238,10 @@ public class VehicleState<Observation extends GpsObservation> extends AbstractCl
     this.graph = inferredGraph;
     this.observation = observation;
 
-    this.pathStateParam = pathState;
+    this.motionStateParam = pathState;
     this.observationCovarianceParam = observationCovariance;
-    this.onRoadMeasurementCovarianceParam = onRoadMeasurementCovariance;
-    this.offRoadMeasurementCovarianceParam = offRoadMeasurementCovariance;
+    this.onRoadModelCovarianceParam = onRoadMeasurementCovariance;
+    this.offRoadModelCovarianceParam = offRoadMeasurementCovariance;
 
     this.edgeTransitionParam = edgeTransitionDist;
 
@@ -248,14 +250,14 @@ public class VehicleState<Observation extends GpsObservation> extends AbstractCl
 
   public VehicleState(VehicleState<Observation> other) {
     this.graph = other.graph;
-    this.pathStateParam = other.pathStateParam.clone();
+    this.motionStateParam = ObjectUtil.cloneSmart(other.motionStateParam);
     this.observationCovarianceParam =
-        other.observationCovarianceParam.clone();
-    this.onRoadMeasurementCovarianceParam =
-        other.onRoadMeasurementCovarianceParam.clone();
-    this.offRoadMeasurementCovarianceParam =
-        other.offRoadMeasurementCovarianceParam.clone();
-    this.edgeTransitionParam = other.edgeTransitionParam.clone();
+        ObjectUtil.cloneSmart(other.observationCovarianceParam);
+    this.onRoadModelCovarianceParam =
+        ObjectUtil.cloneSmart(other.onRoadModelCovarianceParam);
+    this.offRoadModelCovarianceParam =
+        ObjectUtil.cloneSmart(other.offRoadModelCovarianceParam);
+    this.edgeTransitionParam = ObjectUtil.cloneSmart(other.edgeTransitionParam);
     this.observation = other.observation;
     this.parentState = other.parentState;
   }
@@ -292,7 +294,7 @@ public class VehicleState<Observation extends GpsObservation> extends AbstractCl
   }
 
   public
-      BayesianEstimableParameter<? extends InferenceGraphEdge, 
+      BayesianParameter<? extends InferenceGraphEdge, 
           OnOffEdgeTransProbabilityFunction, 
           OnOffEdgeTransDistribution>
       getEdgeTransitionParam() {
@@ -309,7 +311,7 @@ public class VehicleState<Observation extends GpsObservation> extends AbstractCl
    * @return
    */
   public Vector getMeanLocation() {
-    final Vector v = ((PathState)pathStateParam.getValue()).getGroundState();
+    final Vector v = ((PathState)motionStateParam.getValue()).getGroundState();
     return MotionStateEstimatorPredictor.getOg().times(v);
   }
 
@@ -317,19 +319,19 @@ public class VehicleState<Observation extends GpsObservation> extends AbstractCl
     return observation;
   }
 
-  public BayesianEstimableParameter<? extends Matrix, ?, ?>
+  public BayesianParameter<? extends Matrix, ?, ?>
       getObservationCovarianceParam() {
     return observationCovarianceParam;
   }
 
-  public BayesianEstimableParameter<? extends Matrix, ?, ?>
-      getOffRoadMeasurementCovarianceParam() {
-    return offRoadMeasurementCovarianceParam;
+  public BayesianParameter<? extends Matrix, ?, ?>
+      getOffRoadModelCovarianceParam() {
+    return offRoadModelCovarianceParam;
   }
 
-  public BayesianEstimableParameter<? extends Matrix, ?, ?>
-      getOnRoadMeasurementCovarianceParam() {
-    return onRoadMeasurementCovarianceParam;
+  public BayesianParameter<? extends Matrix, ?, ?>
+      getOnRoadModelCovarianceParam() {
+    return onRoadModelCovarianceParam;
   }
 
   public VehicleState<Observation> getParentState() {
@@ -337,9 +339,9 @@ public class VehicleState<Observation extends GpsObservation> extends AbstractCl
   }
 
   public
-      BayesianEstimableParameter<Vector, MultivariateGaussian.PDF, PathStateDistribution>
+      BayesianParameter<Vector, MultivariateGaussian.PDF, PathStateDistribution>
       getPathStateParam() {
-    return pathStateParam;
+    return motionStateParam;
   }
 
   @Override
@@ -387,18 +389,18 @@ public class VehicleState<Observation extends GpsObservation> extends AbstractCl
 
   public
       void
-      setOffRoadMeasurementCovarianceParam(
-        BayesianEstimableParameter<? extends Matrix, ?, ?> offRoadMeasurementCovarianceParam) {
-    this.offRoadMeasurementCovarianceParam =
-        offRoadMeasurementCovarianceParam;
+      setOffRoadModelCovarianceParam(
+        BayesianEstimableParameter<? extends Matrix, ?, ?> offRoadModelCovarianceParam) {
+    this.offRoadModelCovarianceParam =
+        offRoadModelCovarianceParam;
   }
 
   public
       void
-      setOnRoadMeasurementCovarianceParam(
-        BayesianEstimableParameter<? extends Matrix, ?, ?> onRoadMeasurementCovarianceParam) {
-    this.onRoadMeasurementCovarianceParam =
-        onRoadMeasurementCovarianceParam;
+      setOnRoadModelCovarianceParam(
+        BayesianEstimableParameter<? extends Matrix, ?, ?> onRoadModelCovarianceParam) {
+    this.onRoadModelCovarianceParam =
+        onRoadModelCovarianceParam;
   }
 
   public void setParentState(VehicleState<Observation> parentState) {
@@ -409,13 +411,13 @@ public class VehicleState<Observation extends GpsObservation> extends AbstractCl
       void
       setPathStateParam(
         BayesianEstimableParameter<Vector, PDF, PathStateDistribution> pathStateParam) {
-    this.pathStateParam = pathStateParam;
+    this.motionStateParam = pathStateParam;
   }
 
   @Override
   public String toString() {
     ToStringBuilder builder = new ToStringBuilder(this);
-    builder.append("belief", pathStateParam);
+    builder.append("belief", motionStateParam);
     builder.append("observation", observation);
     return builder.toString();
   }

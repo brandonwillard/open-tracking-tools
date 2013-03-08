@@ -76,19 +76,19 @@ public class OnOffEdgeTransitionEstimatorPredictor
    */
   @Override
   public void
-      update(OnOffEdgeTransDistribution target, InferenceGraphEdge toEdge) {
+      update(OnOffEdgeTransDistribution prior, InferenceGraphEdge toEdge) {
     final Vector transType =
         OnOffEdgeTransDistribution.getTransitionType(fromParameter.getValue(), toEdge);
     if (fromParameter.getValue().isNullEdge()) {
-      estimator.update(target.getFreeMotionTransProbPrior(),
+      estimator.update(prior.getFreeMotionTransProbPrior(),
           transType);
-      target.getFreeMotionTransProb().setParameters(
-          target.getFreeMotionTransProbPrior().getMean());
+      prior.getFreeMotionTransProb().setParameters(
+          prior.getFreeMotionTransProbPrior().getMean());
     } else {
-      estimator.update(target.getEdgeMotionTransProbPrior(),
+      estimator.update(prior.getEdgeMotionTransProbPrior(),
           transType);
-      target.getEdgeMotionTransProb().setParameters(
-          target.getEdgeMotionTransProbPrior().getMean());
+      prior.getEdgeMotionTransProb().setParameters(
+          prior.getEdgeMotionTransProbPrior().getMean());
     }
   }
 
@@ -96,8 +96,7 @@ public class OnOffEdgeTransitionEstimatorPredictor
   public OnOffEdgeTransDistribution
       createPredictiveDistribution(
         OnOffEdgeTransDistribution posterior) {
-    // TODO what to do?
-    return null;
+    return posterior;
     //      if (fromParameter.getValue().isNullEdge()) {
     //        estimator.createPredictiveDistribution(posterior.freeMotionTransProbPrior);
     //      } else {

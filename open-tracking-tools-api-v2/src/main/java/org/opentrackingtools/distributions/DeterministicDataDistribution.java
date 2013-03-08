@@ -22,6 +22,10 @@ public class DeterministicDataDistribution<T> extends
     super(Collections.singletonMap(element, internalValue));
     this.element = element;
   }
+  
+  public T getElement() {
+    return this.element;
+  }
 
   @Override
   public double getTotal() {

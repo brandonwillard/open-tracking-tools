@@ -58,14 +58,14 @@ public class Path extends AbstractCloneableSerializable implements
 
   protected Geometry geometry;
 
-  protected Path() {
+  public Path() {
     this.edges = null;
     this.totalPathDistance = null;
     this.isBackward = null;
     this.geometry = null;
   }
 
-  protected Path(ImmutableList<? extends PathEdge<?>> edges, Boolean isBackward) {
+  public Path(ImmutableList<? extends PathEdge<?>> edges, Boolean isBackward) {
     Preconditions.checkArgument(edges.size() > 0);
     Preconditions.checkState(Iterables.getFirst(edges, null)
         .getDistToStartOfEdge() == 0d);
@@ -73,7 +73,6 @@ public class Path extends AbstractCloneableSerializable implements
     this.isBackward = isBackward;
 
     PathEdge<?> lastEdge = null;
-    //    double absTotalDistance = 0d;
     final List<Coordinate> coords = Lists.newArrayList();
     for (final PathEdge<?> edge : edges) {
 
@@ -127,23 +126,25 @@ public class Path extends AbstractCloneableSerializable implements
    * 
    * @param edge
    */
-  protected Path(PathEdge<?> edge) {
-    // TODO FIXME remove specific PathEdge type.
-    this.edges = ImmutableList.of(edge);
-    Preconditions.checkArgument(edge.getDistToStartOfEdge() == null
-        || edge.getDistToStartOfEdge() == 0d);
-
-    this.isBackward = edge.isBackward();
-    if (edge.getInferredEdge().isNullEdge())
+  public Path(PathEdge<?> edge) {
+    if (edge.isNullEdge()) {
+      this.isBackward = null;
       this.totalPathDistance = null;
-    else
+      this.totalPathDistance = null;
+      this.geometry = null;
+    } else {
+      Preconditions.checkArgument(edge.getDistToStartOfEdge() == null
+          || edge.getDistToStartOfEdge() == 0d);
+      this.isBackward = edge.isBackward();
+      this.edges = ImmutableList.of(edge);
       this.totalPathDistance =
           (this.isBackward == Boolean.TRUE ? -1d : 1d)
               * edge.getInferredEdge().getLength();
-    this.edgeIds.add(edge.getInferredEdge().getEdgeId());
-    this.geometry =
-        (this.isBackward == Boolean.TRUE) ? edge.getGeometry()
-            .reverse() : edge.getGeometry();
+      this.edgeIds.add(edge.getInferredEdge().getEdgeId());
+      this.geometry =
+          (this.isBackward == Boolean.TRUE) ? edge.getGeometry()
+              .reverse() : edge.getGeometry();
+    }
   }
 
   public double clampToPath(final double distance) {
@@ -235,7 +236,7 @@ public class Path extends AbstractCloneableSerializable implements
   }
 
   public boolean isNullPath() {
-    return this.edges.isEmpty();
+    return this.edges == null;
   }
 
   public boolean isOnPath(double distance) {

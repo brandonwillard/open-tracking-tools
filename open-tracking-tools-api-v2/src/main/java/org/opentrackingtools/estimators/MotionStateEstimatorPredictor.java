@@ -33,6 +33,7 @@ import org.opentrackingtools.paths.PathEdge;
 import org.opentrackingtools.paths.PathState;
 import org.opentrackingtools.util.PathUtils;
 import org.opentrackingtools.util.StatisticsUtil;
+import org.testng.internal.Nullable;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Iterables;
@@ -63,7 +64,8 @@ public class MotionStateEstimatorPredictor extends
    * free-motion.
    * 
    */
-  public MotionStateEstimatorPredictor(@Nonnull VehicleState<?> currentState, @Nonnull Path path, @Nonnull Random rng) {
+  public MotionStateEstimatorPredictor(@Nonnull VehicleState<?> currentState, 
+    @Nonnull Path path, @Nonnull Random rng) {
     
     this.path = path;
     this.graph = this.currentState.getGraph();
@@ -88,7 +90,7 @@ public class MotionStateEstimatorPredictor extends
     this.roadFilter =
         new AdjKalmanFilter(roadModel, 
             createStateCovarianceMatrix(currentTimeDiff, 
-                currentState.getOnRoadMeasurementCovarianceParam().getValue(), true), 
+                currentState.getOnRoadModelCovarianceParam().getValue(), true), 
             currentState.getObservationCovarianceParam().getValue());
 
     /*
@@ -107,7 +109,7 @@ public class MotionStateEstimatorPredictor extends
     this.groundFilter =
         new AdjKalmanFilter(groundModel, 
             createStateCovarianceMatrix(currentTimeDiff, 
-                currentState.getOffRoadMeasurementCovarianceParam().getValue(), false), 
+                currentState.getOffRoadModelCovarianceParam().getValue(), false), 
             currentState.getObservationCovarianceParam().getValue());
     
   }
@@ -321,37 +323,37 @@ public class MotionStateEstimatorPredictor extends
   }
 
   @Override
-  public PathStateDistribution createPredictiveDistribution(PathStateDistribution posterior) {
+  public PathStateDistribution createPredictiveDistribution(PathStateDistribution prior) {
     Preconditions.checkNotNull(path);
     PathStateDistribution newBelief;
     if (this.path.isNullPath()) {
-      if (!posterior.getPathState().isOnRoad()) {
+      if (!prior.getPathState().isOnRoad()) {
         /*-
          * Predict free-movement
          */
-        newBelief = posterior.clone();
+        newBelief = prior.clone();
         groundFilter.predict(newBelief);
       } else {
         /*-
          * Going off-road
          */
-        newBelief = new PathStateDistribution(this.path, posterior.getGroundBelief().clone());
+        newBelief = new PathStateDistribution(this.path, prior.getGroundBelief().clone());
 
         groundFilter.predict(newBelief);
       }
     } else {
 
-      if (!posterior.getPathState().isOnRoad()) {
+      if (!prior.getPathState().isOnRoad()) {
         /*-
          * Project a current location onto the path, then 
          * project movement along the path.
          */
-        MultivariateGaussian localBelief = posterior.getLocalStateBelief().clone();
+        MultivariateGaussian localBelief = prior.getLocalStateBelief().clone();
         PathUtils.convertToRoadBelief(localBelief, this.path,
             Iterables.getFirst(this.path.getPathEdges(), null), true);
         newBelief = new PathStateDistribution(this.path, localBelief);
       } else {
-        newBelief = new PathStateDistribution(this.path, posterior);
+        newBelief = new PathStateDistribution(this.path, prior);
       }
       roadFilter.predict(newBelief);
 
@@ -376,8 +378,8 @@ public class MotionStateEstimatorPredictor extends
 
   public Vector sampleStateTransDist(Vector state, Random rng) {
     final int dim = state.getDimensionality();
-    final Matrix cov = dim == 4 ? this.currentState.getOffRoadMeasurementCovarianceParam().getValue() : 
-      this.currentState.getOnRoadMeasurementCovarianceParam().getValue();
+    final Matrix cov = dim == 4 ? this.currentState.getOffRoadModelCovarianceParam().getValue() : 
+      this.currentState.getOnRoadModelCovarianceParam().getValue();
 
     final Matrix covSqrt = StatisticsUtil.getCholR(cov);
     final Vector qSmpl =
