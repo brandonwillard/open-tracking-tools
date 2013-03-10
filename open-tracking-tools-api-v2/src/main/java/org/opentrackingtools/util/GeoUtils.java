@@ -29,7 +29,7 @@ public class GeoUtils {
 
   public static ProjectedCoordinate convertToEuclidean(
     Coordinate latlon) {
-    final MathTransform transform = getTransform(latlon);
+    final MathTransform transform = GeoUtils.getTransform(latlon);
     final Coordinate to = new Coordinate();
     try {
       JTS.transform(latlon, to, transform);
@@ -41,8 +41,8 @@ public class GeoUtils {
   }
 
   public static ProjectedCoordinate convertToEuclidean(Vector vec) {
-    return convertToEuclidean(new Coordinate(vec.getElement(0),
-        vec.getElement(1)));
+    return GeoUtils.convertToEuclidean(new Coordinate(vec
+        .getElement(0), vec.getElement(1)));
   }
 
   public static Coordinate convertToLatLon(MathTransform transform,
@@ -58,7 +58,7 @@ public class GeoUtils {
       TransformException {
     final Coordinate point =
         new Coordinate(vec.getElement(0), vec.getElement(1));
-    return convertToLatLon(transform, point);
+    return GeoUtils.convertToLatLon(transform, point);
   }
 
   public static Coordinate convertToLatLon(Vector vec,
@@ -66,7 +66,7 @@ public class GeoUtils {
       throws NoninvertibleTransformException, TransformException {
     final Coordinate point =
         new Coordinate(vec.getElement(0), vec.getElement(1));
-    return convertToLatLon(projCoord.getTransform(), point);
+    return GeoUtils.convertToLatLon(projCoord.getTransform(), point);
   }
 
   public static Coordinate getCoordinates(Vector meanLocation) {
@@ -87,20 +87,37 @@ public class GeoUtils {
       epsg_code += 100;
     }
     // finally, add zone number to code
-    epsg_code += getUTMZoneForLongitude(refLatLon.y);
+    epsg_code += GeoUtils.getUTMZoneForLongitude(refLatLon.y);
 
     return epsg_code;
   }
 
   public static Vector getEuclideanVectorFromLatLon(
     Coordinate coordinate) {
-    final Coordinate resCoord = convertToEuclidean(coordinate);
+    final Coordinate resCoord =
+        GeoUtils.convertToEuclidean(coordinate);
     return VectorFactory.getDefault().createVector2D(resCoord.x,
         resCoord.y);
   }
 
   public static double getMetersInAngleDegrees(double distance) {
     return distance / (Math.PI / 180d) / 6378137d;
+  }
+
+  public static List<LineSegment> getSubLineSegments(
+    LineString lineString) {
+    Preconditions.checkArgument(lineString.getNumPoints() > 1);
+    final List<LineSegment> results = Lists.newArrayList();
+
+    Coordinate prevCoord = lineString.getCoordinateN(0);
+    for (int i = 1; i < lineString.getNumPoints(); ++i) {
+      final Coordinate nextCoord = lineString.getCoordinateN(i);
+      if (!nextCoord.equals2D(prevCoord)) {
+        results.add(new LineSegment(prevCoord, nextCoord));
+        prevCoord = nextCoord;
+      }
+    }
+    return results;
   }
 
   public static MathTransform getTransform(Coordinate refLatLon) {
@@ -114,7 +131,7 @@ public class GeoUtils {
 
       final CoordinateReferenceSystem dataCRS =
           crsAuthorityFactory.createCoordinateReferenceSystem("EPSG:"
-              + getEPSGCodefromUTS(refLatLon));
+              + GeoUtils.getEPSGCodefromUTS(refLatLon));
 
       final MathTransform transform =
           CRS.findMathTransform(geoCRS, dataCRS);
@@ -135,14 +152,16 @@ public class GeoUtils {
    */
   public static int getUTMZoneForLongitude(double lon) {
 
-    if (lon < -180 || lon > 180)
+    if (lon < -180 || lon > 180) {
       throw new IllegalArgumentException(
           "Coordinates not within UTM zone limits");
+    }
 
     int lonZone = (int) ((lon + 180) / 6);
 
-    if (lonZone == 60)
+    if (lonZone == 60) {
       lonZone--;
+    }
     return lonZone + 1;
   }
 
@@ -168,9 +187,9 @@ public class GeoUtils {
         final Coordinate to = new Coordinate();
         try {
           JTS.transform(coord, to, projection.inverse());
-        } catch (NoninvertibleTransformException e) {
+        } catch (final NoninvertibleTransformException e) {
           e.printStackTrace();
-        } catch (TransformException e) {
+        } catch (final TransformException e) {
           e.printStackTrace();
         }
         coord.setCoordinate(to);
@@ -205,21 +224,5 @@ public class GeoUtils {
 
     geom.geometryChanged();
     return geom;
-  }
-
-  public static List<LineSegment> getSubLineSegments(
-    LineString lineString) {
-    Preconditions.checkArgument(lineString.getNumPoints() > 1);
-    final List<LineSegment> results = Lists.newArrayList();
-
-    Coordinate prevCoord = lineString.getCoordinateN(0);
-    for (int i = 1; i < lineString.getNumPoints(); ++i) {
-      final Coordinate nextCoord = lineString.getCoordinateN(i);
-      if (!nextCoord.equals2D(prevCoord)) {
-        results.add(new LineSegment(prevCoord, nextCoord));
-        prevCoord = nextCoord;
-      }
-    }
-    return results;
   }
 }

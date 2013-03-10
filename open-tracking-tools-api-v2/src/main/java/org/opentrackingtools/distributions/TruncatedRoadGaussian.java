@@ -22,11 +22,11 @@ public class TruncatedRoadGaussian extends AdjMultivariateGaussian {
 
   private static final long serialVersionUID = -7465667744835664792L;
 
-  protected double velocityUpper = Double.POSITIVE_INFINITY;
+  protected TruncatedDist truncDist;
 
   protected double velocityLower = Double.NEGATIVE_INFINITY;
 
-  protected TruncatedDist truncDist;
+  protected double velocityUpper = Double.POSITIVE_INFINITY;
 
   public TruncatedRoadGaussian(MultivariateGaussian other,
     double upper, double lower) {
@@ -36,7 +36,7 @@ public class TruncatedRoadGaussian extends AdjMultivariateGaussian {
     Preconditions.checkArgument(upper > lower);
     this.velocityUpper = upper;
     this.velocityLower = lower;
-    this.setMean(truncateVector(this.getMean()));
+    this.setMean(this.truncateVector(this.getMean()));
   }
 
   public TruncatedRoadGaussian(Vector mean, Matrix covariance,
@@ -49,7 +49,7 @@ public class TruncatedRoadGaussian extends AdjMultivariateGaussian {
         || covariance.getNumColumns() == 4);
     this.velocityUpper = velocityUpper;
     this.velocityLower = velocityLower;
-    this.setMean(truncateVector(this.getMean()));
+    this.setMean(this.truncateVector(this.getMean()));
   }
 
   @Override
@@ -57,29 +57,30 @@ public class TruncatedRoadGaussian extends AdjMultivariateGaussian {
     return super.getLogLeadingCoefficient();
   }
 
-  protected Vector truncateVector(Vector mean) {
-    if (mean.getDimensionality() == 2) {
-      final Vector adjMean = mean.clone();
-      adjMean.setElement(0, Math.max(0d, adjMean.getElement(0)));
-      adjMean.setElement(
-          1,
-          Math.min(velocityUpper,
-              Math.max(velocityLower, adjMean.getElement(1))));
-      return adjMean;
+  @Override
+  public PDF getProbabilityFunction() {
+    return new PDF(this);
+  }
+
+  @Override
+  public Vector sample(Random random) {
+    final Vector sample = super.sample(random);
+
+    if (this.getMean().getDimensionality() <= 2) {
+      final int dim = this.getMean().getDimensionality();
+      if (this.truncDist == null) {
+        this.truncDist =
+            new TruncatedDist(new NormalDist(this.getMean()
+                .getElement(dim - 1), Math.sqrt(this.getCovariance()
+                .getElement(dim - 1, dim - 1))), this.velocityLower,
+                this.velocityUpper);
+      }
+      final double truncSmpl =
+          this.truncDist.inverseF(random.nextDouble());
+      sample.setElement(dim - 1, truncSmpl);
     }
-    return mean;
-  }
 
-  @Override
-  public void setMean(Vector mean) {
-    this.truncDist = null;
-    super.setMean(truncateVector(mean));
-  }
-
-  @Override
-  public void setCovSqrt(Matrix covSqrt) {
-    super.setCovSqrt(covSqrt);
-    this.truncDist = null;
+    return sample;
   }
 
   @Override
@@ -109,28 +110,27 @@ public class TruncatedRoadGaussian extends AdjMultivariateGaussian {
   }
 
   @Override
-  public Vector sample(Random random) {
-    final Vector sample = super.sample(random);
-
-    if (this.getMean().getDimensionality() <= 2) {
-      int dim = this.getMean().getDimensionality();
-      if (this.truncDist == null) {
-        this.truncDist =
-            new TruncatedDist(new NormalDist(this.getMean()
-                .getElement(dim - 1), Math.sqrt(this.getCovariance()
-                .getElement(dim - 1, dim - 1))), velocityLower,
-                velocityUpper);
-      }
-      final double truncSmpl =
-          this.truncDist.inverseF(random.nextDouble());
-      sample.setElement(dim - 1, truncSmpl);
-    }
-
-    return sample;
+  public void setCovSqrt(Matrix covSqrt) {
+    super.setCovSqrt(covSqrt);
+    this.truncDist = null;
   }
 
   @Override
-  public PDF getProbabilityFunction() {
-    return new PDF(this);
+  public void setMean(Vector mean) {
+    this.truncDist = null;
+    super.setMean(this.truncateVector(mean));
+  }
+
+  protected Vector truncateVector(Vector mean) {
+    if (mean.getDimensionality() == 2) {
+      final Vector adjMean = mean.clone();
+      adjMean.setElement(0, Math.max(0d, adjMean.getElement(0)));
+      adjMean.setElement(
+          1,
+          Math.min(this.velocityUpper,
+              Math.max(this.velocityLower, adjMean.getElement(1))));
+      return adjMean;
+    }
+    return mean;
   }
 }

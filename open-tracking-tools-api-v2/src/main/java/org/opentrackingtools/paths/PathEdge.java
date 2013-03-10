@@ -1,42 +1,22 @@
 package org.opentrackingtools.paths;
 
-import java.util.ArrayList;
-import java.util.Random;
-
-import gov.sandia.cognition.math.LogMath;
-import gov.sandia.cognition.math.matrix.Matrix;
 import gov.sandia.cognition.math.matrix.Vector;
-import gov.sandia.cognition.statistics.DiscreteDistribution;
-import gov.sandia.cognition.statistics.ProbabilityFunction;
-import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
-import gov.sandia.cognition.statistics.distribution.UnivariateGaussian;
 import gov.sandia.cognition.util.AbstractCloneableSerializable;
 
-import org.opentrackingtools.distributions.BayesianEstimableDistribution;
-import org.opentrackingtools.distributions.PathEdgeDistribution;
-import org.opentrackingtools.distributions.PathEdgeProbabilityFunction;
-import org.opentrackingtools.distributions.PathStateDistribution;
-import org.opentrackingtools.estimators.MotionStateEstimatorPredictor;
-import org.opentrackingtools.estimators.RecursiveBayesianEstimatorPredictor;
 import org.opentrackingtools.graph.InferenceGraphEdge;
-import org.opentrackingtools.model.GpsObservation;
-import org.opentrackingtools.model.VehicleState;
-import org.opentrackingtools.paths.Path;
-import org.opentrackingtools.paths.PathEdge;
-import org.opentrackingtools.util.StatisticsUtil;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ComparisonChain;
 import com.google.common.collect.Ordering;
 import com.vividsolutions.jts.geom.Geometry;
 
-public class PathEdge<E extends InferenceGraphEdge> extends AbstractCloneableSerializable implements
-    Comparable<PathEdge<E>> {
+public class PathEdge<E extends InferenceGraphEdge> extends
+    AbstractCloneableSerializable implements Comparable<PathEdge<E>> {
 
   private static final long serialVersionUID = 2615199504616160384L;
 
-  protected E edge;
   protected Double distToStartOfEdge;
+  protected E edge;
   protected Boolean isBackward;
 
   public PathEdge() {
@@ -45,13 +25,21 @@ public class PathEdge<E extends InferenceGraphEdge> extends AbstractCloneableSer
     this.isBackward = null;
   }
 
-  public PathEdge(E edge,
-    Double distToStartOfEdge, Boolean isBackward) {
+  public PathEdge(E edge, Double distToStartOfEdge, Boolean isBackward) {
     Preconditions.checkState((isBackward != Boolean.TRUE)
         || distToStartOfEdge <= 0d);
     this.edge = edge;
     this.distToStartOfEdge = distToStartOfEdge;
     this.isBackward = isBackward;
+  }
+
+  @Override
+  public PathEdge<E> clone() {
+    final PathEdge<E> clone = (PathEdge<E>) super.clone();
+    clone.distToStartOfEdge = this.distToStartOfEdge;
+    clone.edge = this.edge;
+    clone.isBackward = this.isBackward;
+    return clone;
   }
 
   @Override
@@ -64,7 +52,7 @@ public class PathEdge<E extends InferenceGraphEdge> extends AbstractCloneableSer
         .compare(this.distToStartOfEdge, o.getDistToStartOfEdge(),
             Ordering.natural().nullsLast()).result();
   }
-  
+
   @Override
   public boolean equals(Object obj) {
     if (this == obj) {
@@ -73,29 +61,30 @@ public class PathEdge<E extends InferenceGraphEdge> extends AbstractCloneableSer
     if (obj == null) {
       return false;
     }
-    if (getClass() != obj.getClass()) {
+    if (this.getClass() != obj.getClass()) {
       return false;
     }
     final PathEdge<E> other = (PathEdge<E>) obj;
-    if (distToStartOfEdge == null) {
+    if (this.distToStartOfEdge == null) {
       if (other.distToStartOfEdge != null) {
         return false;
       }
-    } else if (!distToStartOfEdge.equals(other.distToStartOfEdge)) {
+    } else if (!this.distToStartOfEdge
+        .equals(other.distToStartOfEdge)) {
       return false;
     }
-    if (edge == null) {
+    if (this.edge == null) {
       if (other.edge != null) {
         return false;
       }
-    } else if (!edge.equals(other.edge)) {
+    } else if (!this.edge.equals(other.edge)) {
       return false;
     }
-    if (isBackward == null) {
+    if (this.isBackward == null) {
       if (other.isBackward != null) {
         return false;
       }
-    } else if (!isBackward.equals(other.isBackward)) {
+    } else if (!this.isBackward.equals(other.isBackward)) {
       return false;
     }
     return true;
@@ -113,39 +102,41 @@ public class PathEdge<E extends InferenceGraphEdge> extends AbstractCloneableSer
    */
   public Vector getCheckedStateOnEdge(Vector state, double tolerance,
     boolean relative) {
-    Preconditions.checkState(!isNullEdge());
+    Preconditions.checkState(!this.isNullEdge());
     Preconditions.checkArgument(tolerance >= 0d);
     Preconditions.checkArgument(state.getDimensionality() == 2);
 
     final Vector newState = state.clone();
     final double distance = newState.getElement(0);
-    final double direction = isBackward ? -1d : 1d;
+    final double direction = this.isBackward ? -1d : 1d;
     final double posDistAdj =
-        direction * distance - Math.abs(distToStartOfEdge);
+        direction * distance - Math.abs(this.distToStartOfEdge);
     final double overEndDist = posDistAdj - this.edge.getLength();
     if (overEndDist > 0d) {
       if (overEndDist > tolerance) {
         return null;
       } else {
         newState.setElement(0, direction * this.edge.getLength()
-            + (relative ? 0d : distToStartOfEdge));
+            + (relative ? 0d : this.distToStartOfEdge));
       }
     } else if (posDistAdj < 0d) {
       if (posDistAdj < -tolerance) {
         return null;
       } else {
-        newState.setElement(0, (relative ? 0d : distToStartOfEdge));
+        newState.setElement(0, (relative ? 0d
+            : this.distToStartOfEdge));
       }
     }
 
-    if (relative)
+    if (relative) {
       newState.setElement(0, direction * posDistAdj);
+    }
 
     return newState;
   }
 
   public Double getDistToStartOfEdge() {
-    return distToStartOfEdge;
+    return this.distToStartOfEdge;
   }
 
   public Geometry getGeometry() {
@@ -153,7 +144,7 @@ public class PathEdge<E extends InferenceGraphEdge> extends AbstractCloneableSer
   }
 
   public E getInferredEdge() {
-    return edge;
+    return this.edge;
   }
 
   public double getLength() {
@@ -167,17 +158,21 @@ public class PathEdge<E extends InferenceGraphEdge> extends AbstractCloneableSer
     result =
         prime
             * result
-            + ((distToStartOfEdge == null) ? 0 : distToStartOfEdge
-                .hashCode());
-    result = prime * result + ((edge == null) ? 0 : edge.hashCode());
+            + ((this.distToStartOfEdge == null) ? 0
+                : this.distToStartOfEdge.hashCode());
     result =
         prime * result
-            + ((isBackward == null) ? 0 : isBackward.hashCode());
+            + ((this.edge == null) ? 0 : this.edge.hashCode());
+    result =
+        prime
+            * result
+            + ((this.isBackward == null) ? 0 : this.isBackward
+                .hashCode());
     return result;
   }
 
   public Boolean isBackward() {
-    return isBackward;
+    return this.isBackward;
   }
 
   public boolean isNullEdge() {
@@ -186,11 +181,11 @@ public class PathEdge<E extends InferenceGraphEdge> extends AbstractCloneableSer
 
   public boolean isOnEdge(double distance) {
     final double direction = this.isBackward ? -1d : 1d;
-    final double posDistToStart = Math.abs(distToStartOfEdge);
+    final double posDistToStart = Math.abs(this.distToStartOfEdge);
     final double posDistOffset =
         direction * distance - posDistToStart;
 
-    if (posDistOffset - edge.getLength() > 1e-7d) {
+    if (posDistOffset - this.edge.getLength() > 1e-7d) {
       return false;
     } else if (posDistOffset < 0d) {
       return false;
@@ -205,21 +200,12 @@ public class PathEdge<E extends InferenceGraphEdge> extends AbstractCloneableSer
       return "PathEdge [empty edge]";
     } else {
       final double distToStart =
-          distToStartOfEdge == 0d && this.isBackward ? -0d
-              : distToStartOfEdge.longValue();
-      return "PathEdge [edge=" + edge.getEdgeId() + " ("
-          + edge.getLength().longValue() + ")" + ", distToStart="
-          + distToStart + "]";
+          this.distToStartOfEdge == 0d && this.isBackward ? -0d
+              : this.distToStartOfEdge.longValue();
+      return "PathEdge [edge=" + this.edge.getEdgeId() + " ("
+          + this.edge.getLength().longValue() + ")"
+          + ", distToStart=" + distToStart + "]";
     }
-  }
-
-  @Override
-  public PathEdge<E> clone() {
-    PathEdge<E> clone = (PathEdge<E>) super.clone();
-    clone.distToStartOfEdge = distToStartOfEdge;
-    clone.edge = edge;
-    clone.isBackward = isBackward;
-    return clone;
   }
 
 }

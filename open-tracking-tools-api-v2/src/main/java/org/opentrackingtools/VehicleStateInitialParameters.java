@@ -4,19 +4,19 @@ import gov.sandia.cognition.math.matrix.Vector;
 
 public class VehicleStateInitialParameters {
 
+  private final int initialObsFreq;
+  private final int numParticles;
   private final Vector obsCov;
-  private final Vector onRoadStateCov;
+  private final int obsCovDof;
+  private final int offRoadCovDof;
   private final Vector offRoadStateCov;
   private final Vector offTransitionProbs;
+  private final int onRoadCovDof;
+  private final Vector onRoadStateCov;
   private final Vector onTransitionProbs;
-  private final long seed;
-  private final int numParticles;
   private final String particleFilterTypeName;
   private final String roadFilterTypeName;
-  private final int initialObsFreq;
-  private final int obsCovDof;
-  private final int onRoadCovDof;
-  private final int offRoadCovDof;
+  private final long seed;
 
   public VehicleStateInitialParameters(Vector obsCov, int obsCovDof,
     Vector onRoadStateCov, int onRoadCovDof, Vector offRoadStateCov,
@@ -38,14 +38,6 @@ public class VehicleStateInitialParameters {
     this.initialObsFreq = initialObsFreq;
   }
 
-  public String getParticleFilterTypeName() {
-    return particleFilterTypeName;
-  }
-
-  public String getRoadFilterTypeName() {
-    return roadFilterTypeName;
-  }
-
   @Override
   public boolean equals(Object obj) {
     if (this == obj) {
@@ -54,77 +46,80 @@ public class VehicleStateInitialParameters {
     if (obj == null) {
       return false;
     }
-    if (getClass() != obj.getClass()) {
+    if (this.getClass() != obj.getClass()) {
       return false;
     }
     final VehicleStateInitialParameters other =
         (VehicleStateInitialParameters) obj;
-    if (particleFilterTypeName == null) {
+    if (this.particleFilterTypeName == null) {
       if (other.particleFilterTypeName != null) {
         return false;
       }
-    } else if (!particleFilterTypeName
+    } else if (!this.particleFilterTypeName
         .equals(other.particleFilterTypeName)) {
       return false;
     }
-    if (roadFilterTypeName == null) {
+    if (this.roadFilterTypeName == null) {
       if (other.roadFilterTypeName != null) {
         return false;
       }
-    } else if (!roadFilterTypeName.equals(other.roadFilterTypeName)) {
+    } else if (!this.roadFilterTypeName
+        .equals(other.roadFilterTypeName)) {
       return false;
     }
-    if (initialObsFreq != other.initialObsFreq) {
+    if (this.initialObsFreq != other.initialObsFreq) {
       return false;
     }
-    if (numParticles != other.numParticles) {
+    if (this.numParticles != other.numParticles) {
       return false;
     }
-    if (obsCov == null) {
+    if (this.obsCov == null) {
       if (other.obsCov != null) {
         return false;
       }
-    } else if (!obsCov.equals(other.obsCov)) {
+    } else if (!this.obsCov.equals(other.obsCov)) {
       return false;
     }
-    if (obsCovDof != other.obsCovDof) {
+    if (this.obsCovDof != other.obsCovDof) {
       return false;
     }
-    if (offRoadCovDof != other.offRoadCovDof) {
+    if (this.offRoadCovDof != other.offRoadCovDof) {
       return false;
     }
-    if (offRoadStateCov == null) {
+    if (this.offRoadStateCov == null) {
       if (other.offRoadStateCov != null) {
         return false;
       }
-    } else if (!offRoadStateCov.equals(other.offRoadStateCov)) {
+    } else if (!this.offRoadStateCov.equals(other.offRoadStateCov)) {
       return false;
     }
-    if (offTransitionProbs == null) {
+    if (this.offTransitionProbs == null) {
       if (other.offTransitionProbs != null) {
         return false;
       }
-    } else if (!offTransitionProbs.equals(other.offTransitionProbs)) {
+    } else if (!this.offTransitionProbs
+        .equals(other.offTransitionProbs)) {
       return false;
     }
-    if (onRoadCovDof != other.onRoadCovDof) {
+    if (this.onRoadCovDof != other.onRoadCovDof) {
       return false;
     }
-    if (onRoadStateCov == null) {
+    if (this.onRoadStateCov == null) {
       if (other.onRoadStateCov != null) {
         return false;
       }
-    } else if (!onRoadStateCov.equals(other.onRoadStateCov)) {
+    } else if (!this.onRoadStateCov.equals(other.onRoadStateCov)) {
       return false;
     }
-    if (onTransitionProbs == null) {
+    if (this.onTransitionProbs == null) {
       if (other.onTransitionProbs != null) {
         return false;
       }
-    } else if (!onTransitionProbs.equals(other.onTransitionProbs)) {
+    } else if (!this.onTransitionProbs
+        .equals(other.onTransitionProbs)) {
       return false;
     }
-    if (seed != other.seed) {
+    if (this.seed != other.seed) {
       return false;
     }
     return true;
@@ -135,11 +130,11 @@ public class VehicleStateInitialParameters {
   }
 
   public int getNumParticles() {
-    return numParticles;
+    return this.numParticles;
   }
 
   public Vector getObsCov() {
-    return obsCov;
+    return this.obsCov;
   }
 
   public int getObsCovDof() {
@@ -147,31 +142,39 @@ public class VehicleStateInitialParameters {
   }
 
   public int getOffRoadCovDof() {
-    return offRoadCovDof;
+    return this.offRoadCovDof;
   }
 
   public Vector getOffRoadStateCov() {
-    return offRoadStateCov;
+    return this.offRoadStateCov;
   }
 
   public Vector getOffTransitionProbs() {
-    return offTransitionProbs;
+    return this.offTransitionProbs;
   }
 
   public int getOnRoadCovDof() {
-    return onRoadCovDof;
+    return this.onRoadCovDof;
   }
 
   public Vector getOnRoadStateCov() {
-    return onRoadStateCov;
+    return this.onRoadStateCov;
   }
 
   public Vector getOnTransitionProbs() {
-    return onTransitionProbs;
+    return this.onTransitionProbs;
+  }
+
+  public String getParticleFilterTypeName() {
+    return this.particleFilterTypeName;
+  }
+
+  public String getRoadFilterTypeName() {
+    return this.roadFilterTypeName;
   }
 
   public long getSeed() {
-    return seed;
+    return this.seed;
   }
 
   @Override
@@ -181,41 +184,42 @@ public class VehicleStateInitialParameters {
     result =
         prime
             * result
-            + ((particleFilterTypeName == null) ? 0
-                : particleFilterTypeName.hashCode());
+            + ((this.particleFilterTypeName == null) ? 0
+                : this.particleFilterTypeName.hashCode());
     result =
         prime
             * result
-            + ((roadFilterTypeName == null) ? 0 : roadFilterTypeName
-                .hashCode());
-    result = prime * result + initialObsFreq;
-    result = prime * result + numParticles;
+            + ((this.roadFilterTypeName == null) ? 0
+                : this.roadFilterTypeName.hashCode());
+    result = prime * result + this.initialObsFreq;
+    result = prime * result + this.numParticles;
     result =
-        prime * result + ((obsCov == null) ? 0 : obsCov.hashCode());
-    result = prime * result + obsCovDof;
-    result = prime * result + offRoadCovDof;
-    result =
-        prime
-            * result
-            + ((offRoadStateCov == null) ? 0 : offRoadStateCov
-                .hashCode());
+        prime * result
+            + ((this.obsCov == null) ? 0 : this.obsCov.hashCode());
+    result = prime * result + this.obsCovDof;
+    result = prime * result + this.offRoadCovDof;
     result =
         prime
             * result
-            + ((offTransitionProbs == null) ? 0 : offTransitionProbs
-                .hashCode());
-    result = prime * result + onRoadCovDof;
+            + ((this.offRoadStateCov == null) ? 0
+                : this.offRoadStateCov.hashCode());
     result =
         prime
             * result
-            + ((onRoadStateCov == null) ? 0 : onRoadStateCov
-                .hashCode());
+            + ((this.offTransitionProbs == null) ? 0
+                : this.offTransitionProbs.hashCode());
+    result = prime * result + this.onRoadCovDof;
     result =
         prime
             * result
-            + ((onTransitionProbs == null) ? 0 : onTransitionProbs
-                .hashCode());
-    result = prime * result + (int) (seed ^ (seed >>> 32));
+            + ((this.onRoadStateCov == null) ? 0
+                : this.onRoadStateCov.hashCode());
+    result =
+        prime
+            * result
+            + ((this.onTransitionProbs == null) ? 0
+                : this.onTransitionProbs.hashCode());
+    result = prime * result + (int) (this.seed ^ (this.seed >>> 32));
     return result;
   }
 
@@ -223,19 +227,22 @@ public class VehicleStateInitialParameters {
   public String toString() {
     final StringBuilder builder = new StringBuilder();
     builder.append("VehicleStateInitialParameters [obsCov=")
-        .append(obsCov).append(", onRoadStateCov=")
-        .append(onRoadStateCov).append(", offRoadStateCov=")
-        .append(offRoadStateCov).append(", offTransitionProbs=")
-        .append(offTransitionProbs).append(", onTransitionProbs=")
-        .append(onTransitionProbs).append(", seed=").append(seed)
-        .append(", numParticles=").append(numParticles)
+        .append(this.obsCov).append(", onRoadStateCov=")
+        .append(this.onRoadStateCov).append(", offRoadStateCov=")
+        .append(this.offRoadStateCov).append(", offTransitionProbs=")
+        .append(this.offTransitionProbs)
+        .append(", onTransitionProbs=")
+        .append(this.onTransitionProbs).append(", seed=")
+        .append(this.seed).append(", numParticles=")
+        .append(this.numParticles)
         .append(", particleFilterTypeName=")
-        .append(particleFilterTypeName)
-        .append(", roadFilterTypeName=").append(roadFilterTypeName)
-        .append(", initialObsFreq=").append(initialObsFreq)
-        .append(", obsCovDof=").append(obsCovDof)
-        .append(", onRoadCovDof=").append(onRoadCovDof)
-        .append(", offRoadCovDof=").append(offRoadCovDof).append("]");
+        .append(this.particleFilterTypeName)
+        .append(", roadFilterTypeName=")
+        .append(this.roadFilterTypeName).append(", initialObsFreq=")
+        .append(this.initialObsFreq).append(", obsCovDof=")
+        .append(this.obsCovDof).append(", onRoadCovDof=")
+        .append(this.onRoadCovDof).append(", offRoadCovDof=")
+        .append(this.offRoadCovDof).append("]");
     return builder.toString();
   }
 }

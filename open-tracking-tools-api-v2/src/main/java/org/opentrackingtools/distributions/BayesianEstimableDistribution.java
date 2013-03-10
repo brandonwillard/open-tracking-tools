@@ -1,13 +1,12 @@
 package org.opentrackingtools.distributions;
 
-import org.opentrackingtools.estimators.RecursiveBayesianEstimatorPredictor;
-
 import gov.sandia.cognition.statistics.ComputableDistribution;
-import gov.sandia.cognition.util.CloneableSerializable;
+
+import org.opentrackingtools.estimators.RecursiveBayesianEstimatorPredictor;
 
 public interface BayesianEstimableDistribution<O, V extends ComputableDistribution<O>> {
 
   public RecursiveBayesianEstimatorPredictor<O, V>
       getBayesianEstimatorPredictor();
-  
+
 }

@@ -37,7 +37,7 @@ public class WrappedWeightedValue<T> extends DefaultWeightedValue<T> {
 
   @Override
   public String toString() {
-    return "WrappedWeightedValue [count=" + count + ", value="
-        + value + ", weight=" + weight + "]";
+    return "WrappedWeightedValue [count=" + this.count + ", value="
+        + this.value + ", weight=" + this.weight + "]";
   }
 }

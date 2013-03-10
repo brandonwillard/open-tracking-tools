@@ -40,8 +40,6 @@ import com.google.common.primitives.Doubles;
 
 public class StatisticsUtil {
 
-  static final public double MACHINE_EPS = determineMachineEpsilon();
-
   private static final double[] a = { 2.2352520354606839287,
       161.02823106855587881, 1067.6894854603709582,
       18154.981253343561249, 0.065682337918207449113 };
@@ -56,29 +54,32 @@ public class StatisticsUtil {
       6848.1904505362823326, 11602.651437647350124,
       9842.7148383839780218, 1.0765576773720192317e-8 };
 
+  private static final int CUTOFF = 16; /* Cutoff allowing exact "*" and "/" */
+
   private static final double[] d = { 22.266688044328115691,
       235.38790178262499861, 1519.377599407554805,
       6485.558298266760755, 18615.571640885098091,
       34900.952721145977266, 38912.003286093271411,
       19685.429676859990727 };
 
-  private static final double[] p_ = { 0.21589853405795699,
-      0.1274011611602473639, 0.022235277870649807,
-      0.001421619193227893466, 2.9112874951168792e-5,
-      0.02307344176494017303 };
-  private static final double[] q = { 1.28426009614491121,
-      0.468238212480865118, 0.0659881378689285515,
-      0.00378239633202758244, 7.29751555083966205e-5 };
-
-  private static final int CUTOFF = 16; /* Cutoff allowing exact "*" and "/" */
+  private static final double DBL_EPSILON = 2.2204460492503131e-016;
+  private static final double M_1_SQRT_2PI =
+      0.398942280401432677939946059934;
 
   private static final double M_SQRT_32 =
       5.656854249492380195206754896838; /* The square root of 32 */
 
-  private static final double M_1_SQRT_2PI =
-      0.398942280401432677939946059934;
+  static final public double MACHINE_EPS = StatisticsUtil
+      .determineMachineEpsilon();
 
-  private static final double DBL_EPSILON = 2.2204460492503131e-016;
+  private static final double[] p_ = { 0.21589853405795699,
+      0.1274011611602473639, 0.022235277870649807,
+      0.001421619193227893466, 2.9112874951168792e-5,
+      0.02307344176494017303 };
+
+  private static final double[] q = { 1.28426009614491121,
+      0.468238212480865118, 0.0659881378689285515,
+      0.00378239633202758244, 7.29751555083966205e-5 };
 
   private static double determineMachineEpsilon() {
     final double d1 = 1.3333333333333333d;
@@ -155,19 +156,22 @@ public class StatisticsUtil {
       assert !Double.isNaN(totalLikelihood);
     }
 
-    if (totalLikelihood == Double.NEGATIVE_INFINITY)
+    if (totalLikelihood == Double.NEGATIVE_INFINITY) {
       return null;
+    }
 
     final DefaultCountedDataDistribution<SupportType> result =
         new DefaultCountedDataDistribution<SupportType>(false);
 
     for (final WrappedWeightedValue<SupportType> entry : map) {
       if (entry.getWeight() == Double.NEGATIVE_INFINITY
-          || totalLikelihood == Double.NEGATIVE_INFINITY)
+          || totalLikelihood == Double.NEGATIVE_INFINITY) {
         continue;
+      }
       double weight = entry.getWeight() - totalLikelihood;
-      if (weight > 0d)
+      if (weight > 0d) {
         weight = 0d;
+      }
       result.increment(entry.getValue(), Math.exp(weight),
           entry.getCount());
     }
@@ -204,12 +208,13 @@ public class StatisticsUtil {
    * Uses the underlying arrays in these vector objects for a hash code.
    */
   public static int hashCodeVector(Vector vec) {
-    if (vec instanceof gov.sandia.cognition.math.matrix.mtj.DenseVector)
+    if (vec instanceof gov.sandia.cognition.math.matrix.mtj.DenseVector) {
       return Arrays
           .hashCode(((gov.sandia.cognition.math.matrix.mtj.DenseVector) vec)
               .getArray());
-    else
+    } else {
       return vec.hashCode();
+    }
   }
 
   public static boolean isPosSemiDefinite(DenseMatrix covar) {
@@ -327,7 +332,7 @@ public class StatisticsUtil {
     double xden, xnum, temp, del, eps, xsq, y;
     int i;
     boolean lower, upper;
-    eps = DBL_EPSILON * 0.5;
+    eps = StatisticsUtil.DBL_EPSILON * 0.5;
     lower = !i_tail;
     upper = i_tail;
 
@@ -335,16 +340,18 @@ public class StatisticsUtil {
     if (y <= 0.67448975) { /* Normal.quantile(3/4, 1, 0) = 0.67448975 */
       if (y > eps) {
         xsq = x * x;
-        xnum = a[4] * xsq;
+        xnum = StatisticsUtil.a[4] * xsq;
         xden = xsq;
         for (i = 0; i < 3; i++) {
-          xnum = (xnum + a[i]) * xsq;
-          xden = (xden + b[i]) * xsq;
+          xnum = (xnum + StatisticsUtil.a[i]) * xsq;
+          xden = (xden + StatisticsUtil.b[i]) * xsq;
         }
       } else {
         xnum = xden = 0.0;
       }
-      temp = x * (xnum + a[3]) / (xden + b[3]);
+      temp =
+          x * (xnum + StatisticsUtil.a[3])
+              / (xden + StatisticsUtil.b[3]);
       if (lower) {
         p = 0.5 + temp;
       }
@@ -361,18 +368,21 @@ public class StatisticsUtil {
       }
     }
 
-    else if (y <= M_SQRT_32) {
+    else if (y <= StatisticsUtil.M_SQRT_32) {
       /* Evaluate pnorm for 0.67448975 = Normal.quantile(3/4, 1, 0) < |x| <= sqrt(32) ~= 5.657 */
 
-      xnum = c[8] * y;
+      xnum = StatisticsUtil.c[8] * y;
       xden = y;
       for (i = 0; i < 7; i++) {
-        xnum = (xnum + c[i]) * y;
-        xden = (xden + d[i]) * y;
+        xnum = (xnum + StatisticsUtil.c[i]) * y;
+        xden = (xden + StatisticsUtil.d[i]) * y;
       }
-      temp = (xnum + c[7]) / (xden + d[7]);
+      temp =
+          (xnum + StatisticsUtil.c[7]) / (xden + StatisticsUtil.d[7]);
 
-      xsq = ((int) (y * CUTOFF)) * 1.0 / CUTOFF;
+      xsq =
+          ((int) (y * StatisticsUtil.CUTOFF)) * 1.0
+              / StatisticsUtil.CUTOFF;
       del = (y - xsq) * (y + xsq);
       if (log_p) {
         p = (-xsq * xsq * 0.5) + (-del * 0.5) + Math.log(temp);
@@ -405,17 +415,21 @@ public class StatisticsUtil {
 
       /* Evaluate pnorm for x in (-37.5, -5.657) union (5.657, 37.5) */
       xsq = 1.0 / (x * x);
-      xnum = p_[5] * xsq;
+      xnum = StatisticsUtil.p_[5] * xsq;
       xden = xsq;
       for (i = 0; i < 4; i++) {
-        xnum = (xnum + p_[i]) * xsq;
-        xden = (xden + q[i]) * xsq;
+        xnum = (xnum + StatisticsUtil.p_[i]) * xsq;
+        xden = (xden + StatisticsUtil.q[i]) * xsq;
       }
-      temp = xsq * (xnum + p_[4]) / (xden + q[4]);
-      temp = (M_1_SQRT_2PI - temp) / y;
+      temp =
+          xsq * (xnum + StatisticsUtil.p_[4])
+              / (xden + StatisticsUtil.q[4]);
+      temp = (StatisticsUtil.M_1_SQRT_2PI - temp) / y;
 
       //do_del(x);
-      xsq = ((int) (x * CUTOFF)) * 1.0 / CUTOFF;
+      xsq =
+          ((int) (x * StatisticsUtil.CUTOFF)) * 1.0
+              / StatisticsUtil.CUTOFF;
       del = (x - xsq) * (x + xsq);
       if (log_p) {
         p = (-xsq * xsq * 0.5) + (-del * 0.5) + Math.log(temp);
@@ -450,7 +464,7 @@ public class StatisticsUtil {
   }
 
   public static Matrix rootOfSemiDefinite(Matrix matrix) {
-    return rootOfSemiDefinite(matrix, false, -1);
+    return StatisticsUtil.rootOfSemiDefinite(matrix, false, -1);
   }
 
   public static Matrix rootOfSemiDefinite(Matrix matrix,
@@ -474,13 +488,15 @@ public class StatisticsUtil {
      * XXX: just for fun/testing/keep things
      * positive.
      */
-    if (result.sumOfRows().sum() < 0d)
+    if (result.sumOfRows().sum() < 0d) {
       result.negativeEquals();
+    }
 
-    if (effRankDimResult)
+    if (effRankDimResult) {
       result =
           result.getSubMatrix(0, result.getNumRows() - 1, 0,
               effRank - 1);
+    }
 
     return result;
   }
@@ -519,8 +535,9 @@ public class StatisticsUtil {
 
   public static int sum(int[] array) {
     int sum = 0;
-    for (int i = 0; i < array.length; i++)
+    for (int i = 0; i < array.length; i++) {
       sum += array[i];
+    }
     return sum;
   }
 
@@ -529,13 +546,14 @@ public class StatisticsUtil {
    */
   public static boolean vectorEquals(Vector vec1, Vector vec2) {
     if ((vec1 instanceof gov.sandia.cognition.math.matrix.mtj.DenseVector)
-        && (vec2 instanceof gov.sandia.cognition.math.matrix.mtj.DenseVector))
+        && (vec2 instanceof gov.sandia.cognition.math.matrix.mtj.DenseVector)) {
       return Arrays.equals(
           ((gov.sandia.cognition.math.matrix.mtj.DenseVector) vec1)
               .getArray(),
           ((gov.sandia.cognition.math.matrix.mtj.DenseVector) vec2)
               .getArray());
-    else
+    } else {
       return Objects.equal(vec1, vec2);
+    }
   }
 }

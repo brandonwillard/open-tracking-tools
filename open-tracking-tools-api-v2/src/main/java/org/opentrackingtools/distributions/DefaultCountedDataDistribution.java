@@ -60,7 +60,7 @@ public class DefaultCountedDataDistribution<KeyType> extends
      * capacity.
      */
     public DefaultFactory(boolean isLogScale) {
-      this(DEFAULT_INITIAL_CAPACITY);
+      this(DefaultCountedDataDistribution.DEFAULT_INITIAL_CAPACITY);
       this.isLogScale = isLogScale;
     }
 
@@ -81,7 +81,7 @@ public class DefaultCountedDataDistribution<KeyType> extends
     public DefaultCountedDataDistribution<DataType> create() {
       // Create the histogram.
       return new DefaultCountedDataDistribution<DataType>(
-          this.getInitialDomainCapacity(), isLogScale);
+          this.getInitialDomainCapacity(), this.isLogScale);
     }
 
     /**
@@ -91,6 +91,10 @@ public class DefaultCountedDataDistribution<KeyType> extends
      */
     public int getInitialDomainCapacity() {
       return this.initialDomainCapacity;
+    }
+
+    public boolean isLogScale() {
+      return this.isLogScale;
     }
 
     /**
@@ -104,10 +108,6 @@ public class DefaultCountedDataDistribution<KeyType> extends
       ArgumentChecker.assertIsPositive("initialDomainCapacity",
           initialDomainCapacity);
       this.initialDomainCapacity = initialDomainCapacity;
-    }
-
-    public boolean isLogScale() {
-      return isLogScale;
     }
 
     public void setLogScale(boolean isLogScale) {
@@ -144,24 +144,25 @@ public class DefaultCountedDataDistribution<KeyType> extends
     }
 
     @Override
+    public Estimator<KeyType> clone() {
+      final Estimator<KeyType> clone =
+          (Estimator<KeyType>) super.clone();
+      clone.isLogScale = this.isLogScale;
+      return clone;
+    }
+
+    @Override
     public DefaultCountedDataDistribution.PMF<KeyType>
         createInitialLearnedObject() {
       return new DefaultCountedDataDistribution.PMF<KeyType>(
-          isLogScale);
+          this.isLogScale);
     }
 
     @Override
     public void update(
       final DefaultCountedDataDistribution.PMF<KeyType> target,
       final KeyType data) {
-      target.increment(data, isLogScale ? 0d : 1d);
-    }
-
-    @Override
-    public Estimator<KeyType> clone() {
-      Estimator<KeyType> clone = (Estimator<KeyType>) super.clone();
-      clone.isLogScale = this.isLogScale;
-      return clone;
+      target.increment(data, this.isLogScale ? 0d : 1d);
     }
 
   }
@@ -256,7 +257,7 @@ public class DefaultCountedDataDistribution<KeyType> extends
     private static final long serialVersionUID =
         -9067384837227173014L;
 
-    private boolean isLogScaled;
+    private final boolean isLogScaled;
 
     /**
      * Default constructor
@@ -278,7 +279,7 @@ public class DefaultCountedDataDistribution<KeyType> extends
       final DefaultCountedDataDistribution.PMF<KeyType> target,
       final WeightedValue<? extends KeyType> data) {
       //      Preconditions.checkArgument(target.isLogScale && isLogScaled);
-      Preconditions.checkArgument(!isLogScaled
+      Preconditions.checkArgument(!this.isLogScaled
           || data.getWeight() <= 0d);
       target.increment(data.getValue(), data.getWeight());
     }
@@ -286,27 +287,28 @@ public class DefaultCountedDataDistribution<KeyType> extends
   }
 
   /**
+   * Default initial capacity, {@value} .
+   */
+  public static final int DEFAULT_INITIAL_CAPACITY = 10;
+
+  /**
    * 
    */
   private static final long serialVersionUID = 6596579376152342279L;
 
-  /**
-   * Default initial capacity, {@value} .
-   */
-  public static final int DEFAULT_INITIAL_CAPACITY = 10;
+  protected boolean isLogScale = false;
 
   /**
    * Total of the counts in the distribution
    */
   protected double total;
 
-  protected boolean isLogScale = false;
-
   /**
    * Default constructor
    */
   public DefaultCountedDataDistribution(boolean isLogScale) {
-    this(DEFAULT_INITIAL_CAPACITY, isLogScale);
+    this(DefaultCountedDataDistribution.DEFAULT_INITIAL_CAPACITY,
+        isLogScale);
   }
 
   /**
@@ -367,7 +369,7 @@ public class DefaultCountedDataDistribution<KeyType> extends
   @Override
   public void clear() {
     super.clear();
-    this.total = isLogScale ? Double.NEGATIVE_INFINITY : 0d;
+    this.total = this.isLogScale ? Double.NEGATIVE_INFINITY : 0d;
   }
 
   @Override
@@ -398,9 +400,45 @@ public class DefaultCountedDataDistribution<KeyType> extends
   }
 
   public int getCount(KeyType key) {
-    MutableDoubleCount count =
+    final MutableDoubleCount count =
         ((MutableDoubleCount) this.map.get(key));
     return count != null ? count.getCount() : 0;
+  }
+
+  /**
+   * This value does not take duplicates into account.
+   */
+  @Override
+  public int getDomainSize() {
+    return super.getDomainSize();
+  }
+
+  @Override
+  public double getEntropy() {
+    final double identity =
+        this.isLogScale ? Double.NEGATIVE_INFINITY : 0d;
+    double entropy = identity;
+    final double total = this.getTotal();
+    final double denom =
+        (Doubles.compare(total, identity) != 0) ? total
+            : (this.isLogScale ? 0d : 1d);
+    for (final ScalarMap.Entry<KeyType> entry : this.entrySet()) {
+      if (this.isLogScale) {
+        final double p = entry.getValue() - denom;
+        if (Doubles.compare(p, identity) != 0) {
+          entropy =
+              LogMath
+                  .subtract(entropy, p + p / MathUtil.log2(Math.E));
+        }
+
+      } else {
+        final double p = entry.getValue() / denom;
+        if (Doubles.compare(p, identity) != 0) {
+          entropy -= p * MathUtil.log2(p);
+        }
+      }
+    }
+    return entropy;
   }
 
   @Override
@@ -409,6 +447,24 @@ public class DefaultCountedDataDistribution<KeyType> extends
       getEstimator() {
     return new DefaultCountedDataDistribution.Estimator<KeyType>(
         this.isLogScale);
+  }
+
+  @Override
+  public double getFraction(KeyType key) {
+    if (this.isLogScale) {
+      return Math.exp(this.getLogFraction(key));
+    } else {
+      return super.getFraction(key);
+    }
+  }
+
+  @Override
+  public double getLogFraction(KeyType key) {
+    if (this.isLogScale) {
+      return this.get(key) - this.getTotal();
+    } else {
+      return super.getLogFraction(key);
+    }
   }
 
   /**
@@ -485,12 +541,59 @@ public class DefaultCountedDataDistribution<KeyType> extends
       newValue = entry.value;
     }
 
-    if (isLogScale)
+    if (this.isLogScale) {
       this.total = LogMath.add(this.total, value);
-    else
+    } else {
       this.total += delta;
+    }
 
     return newValue;
+  }
+
+  public boolean isLogScale() {
+    return this.isLogScale;
+  }
+
+  @Override
+  public KeyType sample(Random random) {
+    if (this.isLogScale) {
+      double w = random.nextDouble();
+      for (final ScalarMap.Entry<KeyType> entry : this.entrySet()) {
+        w -= this.getFraction(entry.getKey());
+        if (w <= 0d) {
+          return entry.getKey();
+        }
+      }
+      return null;
+    } else {
+      return super.sample(random);
+    }
+  }
+
+  @Override
+  public ArrayList<KeyType> sample(Random random, int numSamples) {
+    if (this.isLogScale) {
+      // Compute the cumulative weights
+      final int size = this.getDomainSize();
+      final double[] cumulativeWeights = new double[size];
+      double cumulativeSum = 0d;
+      final ArrayList<KeyType> domain = new ArrayList<KeyType>(size);
+      int index = 0;
+      for (final ScalarMap.Entry<KeyType> entry : this.entrySet()) {
+        domain.add(entry.getKey());
+        final double value = entry.getValue();
+        cumulativeSum += Math.exp(value);
+        cumulativeWeights[index] = cumulativeSum;
+        index++;
+      }
+
+      return ProbabilityMassFunctionUtil.sampleMultiple(
+          cumulativeWeights, cumulativeSum, domain, random,
+          numSamples);
+
+    } else {
+      return super.sample(random, numSamples);
+    }
   }
 
   @Override
@@ -498,7 +601,7 @@ public class DefaultCountedDataDistribution<KeyType> extends
     // TODO FIXME terrible hack!
     final MutableDoubleCount entry =
         (MutableDoubleCount) this.map.get(key);
-    set(key, value, entry == null ? 1 : entry.getCount());
+    this.set(key, value, entry == null ? 1 : entry.getCount());
   }
 
   /**
@@ -522,13 +625,14 @@ public class DefaultCountedDataDistribution<KeyType> extends
       if (totalValue > identity) {
         this.map.put(key, new MutableDoubleCount(totalValue, count));
 
-        if (isLogScale)
+        if (this.isLogScale) {
           this.total = LogMath.add(this.total, totalValue);
-        else
+        } else {
           this.total += totalValue;
+        }
       }
     } else if (totalValue > identity) {
-      if (isLogScale)
+      if (this.isLogScale) {
         if (entry.value > totalValue) {
           final double totalsSum =
               LogMath.add(this.total, totalValue);
@@ -539,8 +643,9 @@ public class DefaultCountedDataDistribution<KeyType> extends
               LogMath.add(this.total,
                   LogMath.subtract(totalValue, entry.value));
         }
-      else
+      } else {
         this.total += totalValue - entry.value;
+      }
       entry.set(totalValue, count);
     } else {
       /*
@@ -550,106 +655,6 @@ public class DefaultCountedDataDistribution<KeyType> extends
       Preconditions.checkArgument(Doubles.compare(totalValue,
           identity) == 0);
       entry.set(identity, count);
-    }
-  }
-
-  public boolean isLogScale() {
-    return isLogScale;
-  }
-
-  @Override
-  public double getEntropy() {
-    final double identity =
-        this.isLogScale ? Double.NEGATIVE_INFINITY : 0d;
-    double entropy = identity;
-    final double total = this.getTotal();
-    final double denom =
-        (Doubles.compare(total, identity) != 0) ? total
-            : (this.isLogScale ? 0d : 1d);
-    for (ScalarMap.Entry<KeyType> entry : this.entrySet()) {
-      if (this.isLogScale) {
-        double p = entry.getValue() - denom;
-        if (Doubles.compare(p, identity) != 0) {
-          entropy =
-              LogMath
-                  .subtract(entropy, p + p / MathUtil.log2(Math.E));
-        }
-
-      } else {
-        double p = entry.getValue() / denom;
-        if (Doubles.compare(p, identity) != 0) {
-          entropy -= p * MathUtil.log2(p);
-        }
-      }
-    }
-    return entropy;
-  }
-
-  @Override
-  public double getLogFraction(KeyType key) {
-    if (this.isLogScale) {
-      return this.get(key) - this.getTotal();
-    } else {
-      return super.getLogFraction(key);
-    }
-  }
-
-  @Override
-  public double getFraction(KeyType key) {
-    if (this.isLogScale) {
-      return Math.exp(this.getLogFraction(key));
-    } else {
-      return super.getFraction(key);
-    }
-  }
-
-  /**
-   * This value does not take duplicates into account.
-   */
-  @Override
-  public int getDomainSize() {
-    return super.getDomainSize();
-  }
-
-  @Override
-  public KeyType sample(Random random) {
-    if (this.isLogScale) {
-      double w = random.nextDouble();
-      for (ScalarMap.Entry<KeyType> entry : this.entrySet()) {
-        w -= this.getFraction(entry.getKey());
-        if (w <= 0d) {
-          return entry.getKey();
-        }
-      }
-      return null;
-    } else {
-      return super.sample(random);
-    }
-  }
-
-  @Override
-  public ArrayList<KeyType> sample(Random random, int numSamples) {
-    if (this.isLogScale) {
-      // Compute the cumulative weights
-      final int size = this.getDomainSize();
-      double[] cumulativeWeights = new double[size];
-      double cumulativeSum = 0d;
-      ArrayList<KeyType> domain = new ArrayList<KeyType>(size);
-      int index = 0;
-      for (ScalarMap.Entry<KeyType> entry : this.entrySet()) {
-        domain.add(entry.getKey());
-        final double value = entry.getValue();
-        cumulativeSum += Math.exp(value);
-        cumulativeWeights[index] = cumulativeSum;
-        index++;
-      }
-
-      return ProbabilityMassFunctionUtil.sampleMultiple(
-          cumulativeWeights, cumulativeSum, domain, random,
-          numSamples);
-
-    } else {
-      return super.sample(random, numSamples);
     }
   }
 

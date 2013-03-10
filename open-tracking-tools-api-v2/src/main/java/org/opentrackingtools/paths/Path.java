@@ -1,34 +1,15 @@
 package org.opentrackingtools.paths;
 
-import gov.sandia.cognition.math.LogMath;
-import gov.sandia.cognition.math.matrix.Matrix;
-import gov.sandia.cognition.math.matrix.Vector;
-import gov.sandia.cognition.math.matrix.VectorFactory;
-import gov.sandia.cognition.statistics.ProbabilityFunction;
-import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 import gov.sandia.cognition.util.AbstractCloneableSerializable;
 
-import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
-import java.util.Map;
-import java.util.Random;
 
 import org.apache.commons.lang.builder.CompareToBuilder;
 import org.geotools.geometry.jts.JTSFactoryFinder;
-import org.opentrackingtools.distributions.BayesianEstimableDistribution;
-import org.opentrackingtools.distributions.PathStateDistribution;
 import org.opentrackingtools.estimators.MotionStateEstimatorPredictor;
-import org.opentrackingtools.estimators.RecursiveBayesianEstimatorPredictor;
-import org.opentrackingtools.graph.InferenceGraph;
-import org.opentrackingtools.graph.InferenceGraphEdge;
-import org.opentrackingtools.model.GpsObservation;
-import org.opentrackingtools.model.VehicleState;
-import org.opentrackingtools.util.PathUtils;
-import org.opentrackingtools.util.PathUtils.PathEdgeProjection;
-import org.opentrackingtools.util.model.WrappedWeightedValue;
 
 import com.google.common.base.Preconditions;
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.vividsolutions.jts.geom.Coordinate;
@@ -46,17 +27,17 @@ public class Path extends AbstractCloneableSerializable implements
     Comparable<Path> {
 
   private static final long serialVersionUID = -113041668509555507L;
-  protected ImmutableList<? extends PathEdge<?>> edges;
-  protected Double totalPathDistance;
-
   public List<String> edgeIds = Lists.newArrayList();
+  protected List<? extends PathEdge<?>> edges;
+
+  protected Geometry geometry;
 
   /*
    * Note: single edges are considered forward
    */
   protected Boolean isBackward = null;
 
-  protected Geometry geometry;
+  protected Double totalPathDistance;
 
   public Path() {
     this.edges = null;
@@ -65,7 +46,7 @@ public class Path extends AbstractCloneableSerializable implements
     this.geometry = null;
   }
 
-  public Path(ImmutableList<? extends PathEdge<?>> edges, Boolean isBackward) {
+  public Path(List<? extends PathEdge<?>> edges, Boolean isBackward) {
     Preconditions.checkArgument(edges.size() > 0);
     Preconditions.checkState(Iterables.getFirst(edges, null)
         .getDistToStartOfEdge() == 0d);
@@ -97,10 +78,11 @@ public class Path extends AbstractCloneableSerializable implements
           for (int i = startIdx; i < theseCoords.length; i++) {
             if (i == 0
                 || !theseCoords[i]
-                    .equals(coords.get(coords.size() - 1)))
+                    .equals(coords.get(coords.size() - 1))) {
               coords.add(theseCoords[i]);
+            }
           }
-          edgeIds.add(edge.getInferredEdge().getEdgeId());
+          this.edgeIds.add(edge.getInferredEdge().getEdgeId());
         }
       }
 
@@ -136,7 +118,7 @@ public class Path extends AbstractCloneableSerializable implements
       Preconditions.checkArgument(edge.getDistToStartOfEdge() == null
           || edge.getDistToStartOfEdge() == 0d);
       this.isBackward = edge.isBackward();
-      this.edges = ImmutableList.of(edge);
+      this.edges = Collections.singletonList(edge);
       this.totalPathDistance =
           (this.isBackward == Boolean.TRUE ? -1d : 1d)
               * edge.getInferredEdge().getLength();
@@ -171,32 +153,34 @@ public class Path extends AbstractCloneableSerializable implements
     if (obj == null) {
       return false;
     }
-    if (getClass() != obj.getClass()) {
+    if (this.getClass() != obj.getClass()) {
       return false;
     }
     final Path other = (Path) obj;
-    if (edges == null) {
+    if (this.edges == null) {
       if (other.edges != null) {
         return false;
       }
-    } else if (!edges.equals(other.edges)) {
+    } else if (!this.edges.equals(other.edges)) {
       return false;
     }
     return true;
   }
 
-  public PathEdge<?> getEdgeForDistance(double distance, boolean clamp) {
-    final double direction = Math.signum(totalPathDistance);
-    if (direction * distance - Math.abs(totalPathDistance) > MotionStateEstimatorPredictor
+  public PathEdge<?>
+      getEdgeForDistance(double distance, boolean clamp) {
+    final double direction = Math.signum(this.totalPathDistance);
+    if (direction * distance - Math.abs(this.totalPathDistance) > MotionStateEstimatorPredictor
         .getEdgeLengthErrorTolerance()) {
-      return clamp ? Iterables.getLast(edges) : null;
+      return clamp ? Iterables.getLast(this.edges) : null;
     } else if (direction * distance < 0d) {
-      return clamp ? Iterables.getFirst(edges, null) : null;
+      return clamp ? Iterables.getFirst(this.edges, null) : null;
     }
 
-    for (final PathEdge<?> edge : edges.reverse()) {
-      if (edge.isOnEdge(distance))
+    for (final PathEdge<?> edge : Lists.reverse(this.edges)) {
+      if (edge.isOnEdge(distance)) {
         return edge;
+      }
     }
 
     assert Preconditions.checkNotNull(null);
@@ -205,25 +189,34 @@ public class Path extends AbstractCloneableSerializable implements
   }
 
   public List<String> getEdgeIds() {
-    return edgeIds;
-  }
-
-  public ImmutableList<? extends PathEdge<?>> getPathEdges() {
-    return edges;
+    return this.edgeIds;
   }
 
   public Geometry getGeometry() {
-    return geometry;
+    return this.geometry;
   }
 
-  public Boolean isBackward() {
-    return isBackward;
+  public List<? extends PathEdge<?>> getPathEdges() {
+    return this.edges;
   }
 
+  public Path getPathTo(PathEdge<?> edge) {
 
+    final List<PathEdge<?>> newEdges = Lists.newArrayList();
+    for (final PathEdge<?> edge1 : this.getPathEdges()) {
+      newEdges.add(edge1);
+      if (edge1.equals(edge)) {
+        break;
+      }
+    }
+
+    final Path newPath = new Path(newEdges, this.isBackward);
+
+    return newPath;
+  }
 
   public Double getTotalPathDistance() {
-    return totalPathDistance;
+    return this.totalPathDistance;
   }
 
   @Override
@@ -231,8 +224,13 @@ public class Path extends AbstractCloneableSerializable implements
     final int prime = 31;
     int result = 1;
     result =
-        prime * result + ((edges == null) ? 0 : edges.hashCode());
+        prime * result
+            + ((this.edges == null) ? 0 : this.edges.hashCode());
     return result;
+  }
+
+  public Boolean isBackward() {
+    return this.isBackward;
   }
 
   public boolean isNullPath() {
@@ -241,11 +239,11 @@ public class Path extends AbstractCloneableSerializable implements
 
   public boolean isOnPath(double distance) {
 
-    Preconditions.checkState(!isNullPath());
+    Preconditions.checkState(!this.isNullPath());
 
-    final double direction = Math.signum(totalPathDistance);
+    final double direction = Math.signum(this.totalPathDistance);
     final double overTheEndDist =
-        direction * distance - Math.abs(totalPathDistance);
+        direction * distance - Math.abs(this.totalPathDistance);
     if (overTheEndDist > MotionStateEstimatorPredictor
         .getEdgeLengthErrorTolerance()) {
       return false;
@@ -259,27 +257,12 @@ public class Path extends AbstractCloneableSerializable implements
 
   @Override
   public String toString() {
-    if (this.isNullPath())
+    if (this.isNullPath()) {
       return "SimpleInferredPath [null path]";
-    else
-      return "SimpleInferredPath [edges=" + edgeIds
-          + ", totalPathDistance=" + totalPathDistance + "]";
-  }
-
-  public Path getPathTo(PathEdge<?> edge) {
-
-    final List<PathEdge<?>> newEdges = Lists.newArrayList();
-    for (PathEdge<?> edge1 : this.getPathEdges()) {
-      newEdges.add(edge1);
-      if (edge1.equals(edge)) {
-        break;
-      }
+    } else {
+      return "SimpleInferredPath [edges=" + this.edgeIds
+          + ", totalPathDistance=" + this.totalPathDistance + "]";
     }
-
-    Path newPath =
-        new Path(ImmutableList.copyOf(newEdges), this.isBackward);
-
-    return newPath;
   }
 
 }

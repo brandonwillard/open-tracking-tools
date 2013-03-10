@@ -10,16 +10,16 @@ import com.vividsolutions.jts.geom.Coordinate;
 
 public class GpsObservation {
 
+  private final Double accuracy;
+  private final Coordinate coordsLatLon;
+  private final ProjectedCoordinate coordsProjected;
+  private final Double heading;
+  private GpsObservation prevObs;
+  private final Vector projPoint;
+  private final int recordNumber;
   private final String sourceId;
   private final Date timestamp;
-  private final Coordinate coordsLatLon;
   private final Double velocity;
-  private final Double heading;
-  private final Double accuracy;
-  private final int recordNumber;
-  private final Vector projPoint;
-  private GpsObservation prevObs;
-  private final ProjectedCoordinate coordsProjected;
 
   public GpsObservation(String sourceId, Date timestamp,
     Coordinate coordsLatLon, Double velocity, Double heading,
@@ -39,24 +39,51 @@ public class GpsObservation {
     this.coordsProjected = coordsProjected;
   }
 
+  public int compareTo(GpsObservation o) {
+    return ComparisonChain.start()
+        .compare(this.timestamp, o.getTimestamp())
+        .compare(this.sourceId, o.getSourceId()).result();
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj) {
+      return true;
+    }
+    if (obj == null) {
+      return false;
+    }
+    if (this.getClass() != obj.getClass()) {
+      return false;
+    }
+    final GpsObservation other = (GpsObservation) obj;
+    if (this.timestamp == null) {
+      if (other.timestamp != null) {
+        return false;
+      }
+    } else if (!this.timestamp.equals(other.timestamp)) {
+      return false;
+    }
+    if (this.sourceId == null) {
+      if (other.sourceId != null) {
+        return false;
+      }
+    } else if (!this.sourceId.equals(other.sourceId)) {
+      return false;
+    }
+    return true;
+  }
+
   public Double getAccuracy() {
-    return accuracy;
+    return this.accuracy;
   }
 
   public Double getHeading() {
-    return heading;
+    return this.heading;
   }
 
   public Coordinate getObsCoordsLatLon() {
-    return coordsLatLon;
-  }
-
-  public Date getTimestamp() {
-    return timestamp;
-  }
-
-  public Double getVelocity() {
-    return velocity;
+    return this.coordsLatLon;
   }
 
   public ProjectedCoordinate getObsProjected() {
@@ -76,42 +103,15 @@ public class GpsObservation {
   }
 
   public String getSourceId() {
-    return sourceId;
+    return this.sourceId;
   }
 
-  public int compareTo(GpsObservation o) {
-    return ComparisonChain.start()
-        .compare(this.timestamp, o.getTimestamp())
-        .compare(this.sourceId, o.getSourceId()).result();
+  public Date getTimestamp() {
+    return this.timestamp;
   }
 
-  @Override
-  public boolean equals(Object obj) {
-    if (this == obj) {
-      return true;
-    }
-    if (obj == null) {
-      return false;
-    }
-    if (getClass() != obj.getClass()) {
-      return false;
-    }
-    final GpsObservation other = (GpsObservation) obj;
-    if (timestamp == null) {
-      if (other.timestamp != null) {
-        return false;
-      }
-    } else if (!timestamp.equals(other.timestamp)) {
-      return false;
-    }
-    if (sourceId == null) {
-      if (other.sourceId != null) {
-        return false;
-      }
-    } else if (!sourceId.equals(other.sourceId)) {
-      return false;
-    }
-    return true;
+  public Double getVelocity() {
+    return this.velocity;
   }
 
   @Override
@@ -119,28 +119,31 @@ public class GpsObservation {
     final int prime = 31;
     int result = 1;
     result =
-        prime * result
-            + ((timestamp == null) ? 0 : timestamp.hashCode());
+        prime
+            * result
+            + ((this.timestamp == null) ? 0 : this.timestamp
+                .hashCode());
     result =
-        prime * result
-            + ((sourceId == null) ? 0 : sourceId.hashCode());
+        prime
+            * result
+            + ((this.sourceId == null) ? 0 : this.sourceId.hashCode());
     return result;
-  }
-
-  @Override
-  public String toString() {
-    StringBuilder builder = new StringBuilder();
-    builder.append("SimpleObservation [sourceId=").append(sourceId)
-        .append(", timestamp=").append(timestamp)
-        .append(", coordsLatLon=").append(coordsLatLon)
-        .append(", recordNumber=").append(recordNumber)
-        .append(", coordsProjected=").append(coordsProjected)
-        .append("]");
-    return builder.toString();
   }
 
   public void reset() {
     this.prevObs = null;
+  }
+
+  @Override
+  public String toString() {
+    final StringBuilder builder = new StringBuilder();
+    builder.append("SimpleObservation [sourceId=")
+        .append(this.sourceId).append(", timestamp=")
+        .append(this.timestamp).append(", coordsLatLon=")
+        .append(this.coordsLatLon).append(", recordNumber=")
+        .append(this.recordNumber).append(", coordsProjected=")
+        .append(this.coordsProjected).append("]");
+    return builder.toString();
   }
 
 }

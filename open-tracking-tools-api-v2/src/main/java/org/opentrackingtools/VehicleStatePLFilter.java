@@ -1,49 +1,41 @@
 package org.opentrackingtools;
 
-import gov.sandia.cognition.math.LogMath;
 import gov.sandia.cognition.statistics.DataDistribution;
 import gov.sandia.cognition.statistics.bayesian.AbstractParticleFilter;
-import gov.sandia.cognition.statistics.bayesian.ParticleFilter;
+import gov.sandia.cognition.statistics.bayesian.DefaultBayesianParameter;
+import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
 import java.util.Random;
-import java.util.Set;
 
 import org.opentrackingtools.distributions.DefaultCountedDataDistribution;
-import org.opentrackingtools.distributions.OnOffEdgeTransDistribution;
+import org.opentrackingtools.distributions.PathStateDistribution;
+import org.opentrackingtools.distributions.PathStateMixtureDensityModel;
+import org.opentrackingtools.estimators.OnOffEdgeTransitionEstimatorPredictor;
+import org.opentrackingtools.estimators.PathStateEstimatorPredictor;
 import org.opentrackingtools.graph.InferenceGraph;
+import org.opentrackingtools.graph.InferenceGraphEdge;
 import org.opentrackingtools.model.GpsObservation;
 import org.opentrackingtools.model.VehicleState;
-import org.opentrackingtools.paths.Path;
-import org.opentrackingtools.paths.PathEdge;
 import org.opentrackingtools.updater.VehicleTrackingPLFilterUpdater;
-import org.opentrackingtools.util.StatisticsUtil;
-import org.opentrackingtools.util.model.WrappedWeightedValue;
 
 import com.google.common.base.Preconditions;
-import com.google.common.collect.HashMultimap;
-import com.google.common.collect.Iterables;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Multimap;
-import com.google.common.collect.Sets;
 
-public class VehicleStatePLFilter<O extends GpsObservation>
-    extends AbstractParticleFilter<O, VehicleState<O>> {
+public class VehicleStatePLFilter<O extends GpsObservation> extends
+    AbstractParticleFilter<O, VehicleState<O>> {
 
   private static final long serialVersionUID = -8257075186193062150L;
 
-  private InferenceGraph inferredGraph;
-  private Boolean isDebug;
+  private final InferenceGraph inferredGraph;
+  private final Boolean isDebug;
 
   public VehicleStatePLFilter(O obs, InferenceGraph inferredGraph,
-    VehicleStateInitialParameters parameters, Boolean isDebug, Random rng) {
+    VehicleStateInitialParameters parameters, Boolean isDebug,
+    Random rng) {
     this.inferredGraph = inferredGraph;
     this.isDebug = isDebug;
-    this.setUpdater(new VehicleTrackingPLFilterUpdater<O>(obs, inferredGraph, parameters, rng));
+    this.setUpdater(new VehicleTrackingPLFilterUpdater<O>(obs,
+        inferredGraph, parameters, rng));
   }
 
   @Override
@@ -58,17 +50,67 @@ public class VehicleStatePLFilter<O extends GpsObservation>
 
     for (final VehicleState<O> state : target.getDomain()) {
 
-      final VehicleState<O> predictedState = new VehicleState<O>(state);
+      final int count;
+      if (target instanceof DefaultCountedDataDistribution<?>) {
+        count =
+            ((DefaultCountedDataDistribution) target).getCount(state);
+      } else {
+        count = 1;
+      }
+
+      final double logCount = Math.log(count);
+
+      final VehicleState<O> predictedState =
+          new VehicleState<O>(state);
       predictedState.setObservation(obs);
       this.updater.update(predictedState);
 
-      final double predictiveLogLikelihood =
-          this.getUpdater().computeLogLikelihood(predictedState, obs);
+      final PathStateMixtureDensityModel<PathStateDistribution> predictedPathStateMixture =
+          predictedState.getPathStateParam()
+              .getConditionalDistribution();
+      for (int i = 0; i < predictedPathStateMixture
+          .getDistributionCount(); i++) {
+        final PathStateDistribution predictedPathStateDist =
+            predictedPathStateMixture.getDistributions().get(i);
+        final double pathStateDistLogLikelihood =
+            predictedPathStateMixture.getPriorWeights()[i];
+        final double edgeTransitionLogLikelihood =
+            predictedState
+                .getEdgeTransitionParam()
+                .getConditionalDistribution()
+                .getProbabilityFunction()
+                .logEvaluate(
+                    predictedPathStateDist.getPathState().getEdge()
+                        .getInferredEdge());
+        final VehicleState<O> predictedChildState =
+            new VehicleState<O>(predictedState);
+        predictedChildState
+            .setPathStateParam(DefaultBayesianParameter.create(
+                predictedPathStateMixture, predictedChildState
+                    .getPathStateParam().getName(),
+                predictedPathStateDist));
 
-      resampleDist.increment(predictedState, predictiveLogLikelihood);
+        final MultivariateGaussian measurementPredictionDist =
+            predictedState.getMotionStateEstimatorPredictor()
+                .getMeasurementBelief(predictedPathStateDist);
+
+        predictedChildState
+            .setMotionStateParam(DefaultBayesianParameter.create(
+                measurementPredictionDist, predictedChildState
+                    .getMotionStateParam().getName(),
+                predictedPathStateDist.getMotionStateDistribution()));
+
+        final double predictiveLogLikelihood =
+            this.getUpdater().computeLogLikelihood(predictedState,
+                obs);
+
+        resampleDist.increment(predictedChildState,
+            predictiveLogLikelihood + pathStateDistLogLikelihood
+                + edgeTransitionLogLikelihood + logCount);
+      }
     }
 
-    final Random rng = getRandom();
+    final Random rng = this.getRandom();
 
     Preconditions.checkState(!resampleDist.isEmpty());
 
@@ -76,7 +118,7 @@ public class VehicleStatePLFilter<O extends GpsObservation>
      * Resample the predictive distributions.  Now we're dealing with the "best" states.
      */
     final ArrayList<VehicleState<O>> smoothedStates =
-        resampleDist.sample(rng, getNumParticles());
+        resampleDist.sample(rng, this.getNumParticles());
 
     target.clear();
 
@@ -85,8 +127,43 @@ public class VehicleStatePLFilter<O extends GpsObservation>
      */
     for (final VehicleState<O> state : smoothedStates) {
 
-      target.increment(state, 0d);
+      final VehicleState<O> updateadState = state.clone();
+      final PathStateDistribution pathStateDist =
+          updateadState.getPathStateParam().getParameterPrior();
 
+      /*
+       * Update motion and path state by first updating the ground
+       * coordinates, then reprojecting onto the edge.
+       */
+      final MultivariateGaussian updatedMotionState =
+          pathStateDist.getGroundBelief().clone();
+      updateadState.getMotionStateEstimatorPredictor().update(
+          updatedMotionState, obs.getProjectedPoint());
+
+      final PathStateEstimatorPredictor pathStateEstimator =
+          new PathStateEstimatorPredictor(state, pathStateDist
+              .getPathState().getPath());
+
+      pathStateDist.setGroundDistribution(updatedMotionState);
+
+      pathStateEstimator.update(pathStateDist,
+          obs.getProjectedPoint());
+
+      /*
+       * Update parameters
+       */
+      updateadState.getPathStateParam().setValue(
+          pathStateDist.getPathState());
+
+      final InferenceGraphEdge graphEdge =
+          pathStateDist.getPathState().getEdge().getInferredEdge();
+      final OnOffEdgeTransitionEstimatorPredictor edgeTransitionEstimatorPredictor =
+          new OnOffEdgeTransitionEstimatorPredictor(updateadState,
+              graphEdge);
+      edgeTransitionEstimatorPredictor.update(updateadState
+          .getEdgeTransitionParam().getParameterPrior(), graphEdge);
+
+      target.increment(updateadState, 0d);
     }
 
   }

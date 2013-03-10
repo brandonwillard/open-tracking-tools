@@ -11,8 +11,8 @@ public class ProjectedCoordinate extends Coordinate {
 
   private static final long serialVersionUID = 2905131060296578237L;
 
-  final private MathTransform transform;
   final private Coordinate refLatLon;
+  final private MathTransform transform;
 
   public ProjectedCoordinate(MathTransform mathTransform,
     Coordinate to, Coordinate refLatLon) {
@@ -25,18 +25,18 @@ public class ProjectedCoordinate extends Coordinate {
   @JsonSerialize
   public String epsgCode() {
     final String epsgCode =
-        "EPSG:" + GeoUtils.getEPSGCodefromUTS(refLatLon);
+        "EPSG:" + GeoUtils.getEPSGCodefromUTS(this.refLatLon);
     return epsgCode;
   }
 
   @JsonSerialize
   public Coordinate getReferenceLatLon() {
-    return refLatLon;
+    return this.refLatLon;
   }
 
   @JsonIgnore
   public MathTransform getTransform() {
-    return transform;
+    return this.transform;
   }
 
 }

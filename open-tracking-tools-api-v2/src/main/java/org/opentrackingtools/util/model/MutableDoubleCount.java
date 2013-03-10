@@ -26,11 +26,11 @@ public class MutableDoubleCount extends MutableDouble {
     if (!super.equals(obj)) {
       return false;
     }
-    if (getClass() != obj.getClass()) {
+    if (this.getClass() != obj.getClass()) {
       return false;
     }
     final MutableDoubleCount other = (MutableDoubleCount) obj;
-    if (count != other.count) {
+    if (this.count != other.count) {
       return false;
     }
     return true;
@@ -44,7 +44,7 @@ public class MutableDoubleCount extends MutableDouble {
   public int hashCode() {
     final int prime = 31;
     int result = super.hashCode();
-    result = prime * result + count;
+    result = prime * result + this.count;
     return result;
   }
 
@@ -69,7 +69,7 @@ public class MutableDoubleCount extends MutableDouble {
 
   @Override
   public String toString() {
-    return "MutableDoubleCount [count=" + count + ", value=" + value
-        + "]";
+    return "MutableDoubleCount [count=" + this.count + ", value="
+        + this.value + "]";
   }
 }

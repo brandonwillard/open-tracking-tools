@@ -11,18 +11,31 @@ import com.vividsolutions.jts.geom.Geometry;
 public class InferenceGraphEdge implements
     Comparable<InferenceGraphEdge> {
 
-  protected final Integer edgeId;
-  protected final Vector endPoint;
-  protected final Vector startPoint;
-  protected final Object backingEdge;
-  protected final Geometry geometry;
-  protected final Boolean hasReverse;
-
   /*
    * This is the empty edge, which stands for free movement
    */
   protected final static InferenceGraphEdge emptyEdge =
       new InferenceGraphEdge();
+
+  public static InferenceGraphEdge getInferredEdge(
+    @Nonnull Geometry geom, @Nonnull Object backingEdge,
+    @Nonnull Integer edgeId, @Nonnull InferenceGraph graph) {
+    return new InferenceGraphEdge(geom, backingEdge, edgeId, graph);
+  }
+
+  public static InferenceGraphEdge getNullEdge() {
+    return InferenceGraphEdge.emptyEdge;
+  }
+
+  protected final Object backingEdge;
+  protected final Integer edgeId;
+  protected final Vector endPoint;
+
+  protected final Geometry geometry;
+
+  protected final Boolean hasReverse;
+
+  protected final Vector startPoint;
 
   public InferenceGraphEdge() {
     this.edgeId = null;
@@ -31,12 +44,6 @@ public class InferenceGraphEdge implements
     this.backingEdge = null;
     this.geometry = null;
     this.hasReverse = null;
-  }
-
-  public static InferenceGraphEdge getInferredEdge(
-    @Nonnull Geometry geom, @Nonnull Object backingEdge,
-    @Nonnull Integer edgeId, @Nonnull InferenceGraph graph) {
-    return new InferenceGraphEdge(geom, backingEdge, edgeId, graph);
   }
 
   protected InferenceGraphEdge(@Nonnull Geometry geom,
@@ -50,14 +57,15 @@ public class InferenceGraphEdge implements
 
     this.hasReverse = graph.edgeHasReverse(geom);
 
-    final Coordinate startPointCoord = geometry.getCoordinates()[0];
+    final Coordinate startPointCoord =
+        this.geometry.getCoordinates()[0];
 
     this.startPoint =
         VectorFactory.getDefault().createVector2D(startPointCoord.x,
             startPointCoord.y);
 
     final Coordinate endPointCoord =
-        geometry.getCoordinates()[geometry.getNumPoints() - 1];
+        this.geometry.getCoordinates()[this.geometry.getNumPoints() - 1];
 
     this.endPoint =
         VectorFactory.getDefault().createVector2D(endPointCoord.x,
@@ -78,30 +86,30 @@ public class InferenceGraphEdge implements
     if (obj == null) {
       return false;
     }
-    if (getClass() != obj.getClass()) {
+    if (this.getClass() != obj.getClass()) {
       return false;
     }
     final InferenceGraphEdge other = (InferenceGraphEdge) obj;
-    if (geometry == null) {
+    if (this.geometry == null) {
       if (other.geometry != null) {
         return false;
       }
-    } else if (!geometry.equalsExact(other.geometry)) {
+    } else if (!this.geometry.equalsExact(other.geometry)) {
       return false;
     }
     return true;
-  }
-
-  public Coordinate getCenterPointCoord() {
-    return this.geometry.getCentroid().getCoordinate();
   }
 
   public Object getBackingEdge() {
     return this.backingEdge;
   }
 
+  public Coordinate getCenterPointCoord() {
+    return this.geometry.getCentroid().getCoordinate();
+  }
+
   public String getEdgeId() {
-    return String.valueOf(edgeId);
+    return String.valueOf(this.edgeId);
   }
 
   public Vector getEndPoint() {
@@ -109,18 +117,18 @@ public class InferenceGraphEdge implements
   }
 
   public Geometry getGeometry() {
-    return geometry;
+    return this.geometry;
   }
 
   public Double getLength() {
-    if (geometry == null) {
+    if (this.geometry == null) {
       return null;
     }
-    return geometry.getLength();
+    return this.geometry.getLength();
   }
 
   public Vector getStartPoint() {
-    return startPoint;
+    return this.startPoint;
   }
 
   @Override
@@ -128,30 +136,28 @@ public class InferenceGraphEdge implements
     final int prime = 31;
     int result = 1;
     result =
-        prime * result
-            + ((geometry == null) ? 0 : geometry.hashCode());
+        prime
+            * result
+            + ((this.geometry == null) ? 0 : this.geometry.hashCode());
     return result;
-  }
-
-  public boolean isNullEdge() {
-    return this == emptyEdge;
-  }
-
-  @Override
-  public String toString() {
-    if (this == emptyEdge)
-      return "InferredEdge [null]";
-    else
-      return "InferredEdge [edgeId=" + edgeId + ", length="
-          + getLength() + "]";
-  }
-
-  public static InferenceGraphEdge getNullEdge() {
-    return InferenceGraphEdge.emptyEdge;
   }
 
   public boolean hasReverse() {
     return this.hasReverse;
+  }
+
+  public boolean isNullEdge() {
+    return this == InferenceGraphEdge.emptyEdge;
+  }
+
+  @Override
+  public String toString() {
+    if (this == InferenceGraphEdge.emptyEdge) {
+      return "InferredEdge [null]";
+    } else {
+      return "InferredEdge [edgeId=" + this.edgeId + ", length="
+          + this.getLength() + "]";
+    }
   }
 
 }

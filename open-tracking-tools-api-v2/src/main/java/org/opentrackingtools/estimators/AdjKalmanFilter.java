@@ -21,12 +21,12 @@ import org.opentrackingtools.util.StatisticsUtil;
  */
 public class AdjKalmanFilter extends AbstractKalmanFilter {
 
-  private static final long serialVersionUID = 8046227346384488242L;
-
   /**
    * Default autonomous dimension, {@value} .
    */
   public static final int DEFAULT_DIMENSION = 1;
+
+  private static final long serialVersionUID = 8046227346384488242L;
 
   /**
    * Motion model of the underlying system.
@@ -37,7 +37,7 @@ public class AdjKalmanFilter extends AbstractKalmanFilter {
    * Creates a new instance of KalmanFilter
    */
   public AdjKalmanFilter() {
-    this(DEFAULT_DIMENSION);
+    this(AdjKalmanFilter.DEFAULT_DIMENSION);
   }
 
   /**
@@ -100,16 +100,16 @@ public class AdjKalmanFilter extends AbstractKalmanFilter {
     if (obj == null) {
       return false;
     }
-    if (getClass() != obj.getClass()) {
+    if (this.getClass() != obj.getClass()) {
       return false;
     }
     final AdjKalmanFilter other = (AdjKalmanFilter) obj;
-    if (model == null) {
+    if (this.model == null) {
       if (other.model != null) {
         return false;
       }
-    } else if (!StatisticsUtil.vectorEquals(model.convertToVector(),
-        other.model.convertToVector())) {
+    } else if (!StatisticsUtil.vectorEquals(
+        this.model.convertToVector(), other.model.convertToVector())) {
       return false;
     }
     return true;
@@ -131,8 +131,8 @@ public class AdjKalmanFilter extends AbstractKalmanFilter {
     result =
         prime
             * result
-            + ((model == null) ? 0 : StatisticsUtil
-                .hashCodeVector(model.convertToVector()));
+            + ((this.model == null) ? 0 : StatisticsUtil
+                .hashCodeVector(this.model.convertToVector()));
     return result;
   }
 
