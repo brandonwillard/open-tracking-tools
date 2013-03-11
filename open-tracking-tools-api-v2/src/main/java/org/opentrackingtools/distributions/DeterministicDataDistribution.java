@@ -1,7 +1,10 @@
 package org.opentrackingtools.distributions;
 
 import gov.sandia.cognition.math.MutableDouble;
+import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.statistics.AbstractDataDistribution;
+import gov.sandia.cognition.statistics.ClosedFormComputableDiscreteDistribution;
+import gov.sandia.cognition.statistics.ComputableDistribution;
 import gov.sandia.cognition.statistics.DataDistribution;
 import gov.sandia.cognition.statistics.DistributionEstimator;
 import gov.sandia.cognition.statistics.distribution.DefaultDataDistribution;
@@ -10,7 +13,7 @@ import gov.sandia.cognition.util.ObjectUtil;
 import java.util.Collections;
 
 public class DeterministicDataDistribution<T> extends
-    AbstractDataDistribution<T> {
+    AbstractDataDistribution<T> implements ClosedFormComputableDiscreteDistribution<T> {
 
   final protected static MutableDouble internalValue =
       new MutableDouble(1d);
@@ -84,6 +87,23 @@ public class DeterministicDataDistribution<T> extends
         prime * result
             + ((this.element == null) ? 0 : this.element.hashCode());
     return result;
+  }
+
+  @Override
+  public T getMean() {
+    return this.element;
+  }
+
+  @Deprecated
+  @Override
+  public Vector convertToVector() {
+    return null;
+  }
+
+  @Deprecated
+  @Override
+  public void convertFromVector(Vector parameters) {
+    
   }
 
 }

@@ -46,56 +46,6 @@ public class MotionStateEstimatorPredictor extends
     BayesianEstimatorPredictor<Vector, Vector, MultivariateGaussian>,
     IncrementalLearner<Vector, MultivariateGaussian> {
 
-  public static class Parameter extends AbstractCloneableSerializable
-      implements
-      BayesianParameter<Vector, MultivariateGaussian, MultivariateGaussian> {
-
-    /**
-     * 
-     */
-    private static final long serialVersionUID =
-        -2678129951549114319L;
-    protected MultivariateGaussianMeanBayesianEstimator.Parameter parameter;
-
-    public Parameter(MultivariateGaussian conditional,
-      MultivariateGaussian prior) {
-      this.parameter =
-          new MultivariateGaussianMeanBayesianEstimator.Parameter(
-              conditional, prior);
-    }
-
-    @Override
-    public MultivariateGaussian getConditionalDistribution() {
-      return this.parameter.getConditionalDistribution();
-    }
-
-    @Override
-    public String getName() {
-      return this.parameter.getName();
-    }
-
-    @Override
-    public MultivariateGaussian getParameterPrior() {
-      return this.parameter.getParameterPrior();
-    }
-
-    @Override
-    public Vector getValue() {
-      return this.parameter.getValue();
-    }
-
-    @Override
-    public void setValue(Vector value) {
-      this.parameter.setValue(value);
-    }
-
-    @Override
-    public void updateConditionalDistribution(Random random) {
-      this.parameter.updateConditionalDistribution(random);
-    }
-
-  }
-
   /**
    * We allow {@value} meters of error when checking distance values on a path.
    */

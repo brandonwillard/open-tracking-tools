@@ -4,6 +4,8 @@ import gov.sandia.cognition.math.RingAccumulator;
 import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.math.matrix.VectorFactory;
 import gov.sandia.cognition.statistics.ClosedFormComputableDistribution;
+import gov.sandia.cognition.statistics.DataDistribution;
+import gov.sandia.cognition.statistics.Distribution;
 import gov.sandia.cognition.statistics.ProbabilityDensityFunction;
 import gov.sandia.cognition.statistics.ProbabilityFunction;
 import gov.sandia.cognition.statistics.distribution.DefaultDataDistribution;
@@ -14,6 +16,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Map;
 
+import org.opentrackingtools.paths.Path;
 import org.opentrackingtools.paths.PathEdge;
 import org.opentrackingtools.paths.PathState;
 
@@ -198,30 +201,38 @@ public class PathStateMixtureDensityModel<DistributionType extends ClosedFormCom
   @Override
   public PathState getMean() {
 
-    final Map<PathEdge, RingAccumulator<Vector>> edgeToMean =
-        Maps.newHashMap();
+    final Map<PathEdge<?>, RingAccumulator<Vector>> edgeToMean = Maps.newHashMap();
+    final Map<PathEdge<?>, DataDistribution<Path>> edgeToPaths = Maps.newHashMap();
     final int K = this.getDistributionCount();
     final DefaultDataDistribution<PathEdge<?>> edgeDist =
         new DefaultDataDistribution<PathEdge<?>>();
     for (int k = 0; k < K; k++) {
       final double priorWeight = this.getPriorWeights()[k];
       final DistributionType dist = this.getDistributions().get(k);
-      edgeDist.increment(dist.getMean().getEdge(), priorWeight);
+      PathEdge<?> edge = dist.getMean().getEdge();
+      edgeDist.increment(edge, priorWeight);
+      
+      Path path = dist.getMean().getPath();
+      DataDistribution<Path> pathDist = edgeToPaths.get(path);
+      if (pathDist == null) {
+        pathDist = new DefaultDataDistribution<Path>();
+        pathDist.increment(path, priorWeight);
+      }
 
       RingAccumulator<Vector> mean =
-          edgeToMean.get(dist.getMean().getEdge());
+          edgeToMean.get(edge);
 
       if (mean == null) {
         mean = new RingAccumulator<Vector>();
-        edgeToMean.put(dist.getMean().getEdge(), mean);
+        edgeToMean.put(edge, mean);
       }
       mean.accumulate(dist.getMean().scale(priorWeight));
     }
 
     final PathEdge<?> bestEdge = edgeDist.getMaxValueKey();
+    final Path bestPath = edgeToPaths.get(bestEdge).getMaxValueKey();
     final RingAccumulator<Vector> mean = edgeToMean.get(bestEdge);
-    return new PathState(bestEdge, mean.getSum().scale(
-        1.0 / this.getPriorWeightSum()));
+    return new PathState(bestPath, mean.getMean());
 
   }
 

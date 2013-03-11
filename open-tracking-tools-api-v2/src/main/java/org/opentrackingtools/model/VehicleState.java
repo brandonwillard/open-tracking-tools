@@ -2,7 +2,7 @@ package org.opentrackingtools.model;
 
 import gov.sandia.cognition.math.matrix.Matrix;
 import gov.sandia.cognition.math.matrix.Vector;
-import gov.sandia.cognition.statistics.bayesian.BayesianParameter;
+import gov.sandia.cognition.statistics.bayesian.DefaultBayesianParameter;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 import gov.sandia.cognition.util.AbstractCloneableSerializable;
 import gov.sandia.cognition.util.ObjectUtil;
@@ -19,9 +19,16 @@ import org.opentrackingtools.paths.PathState;
 import org.opentrackingtools.util.model.TransitionProbMatrix;
 
 /**
- * This class represents the state of a vehicle, which is made up of the
- * vehicles location, whether it is on an edge, which path it took from its
- * previous location on an edge, and the distributions that determine these.
+ * This object represents a joint distribution over the basic components
+ * of a vehicle state:
+ * <ul>
+ * <li>motion state: <ul><li> location and velocity</li></ul></li>
+ * <li>path state: <ul><li> edge and path
+ *  </li><li>also encapsulates the motion state conditioned on the path, which can differ from
+ *  the raw motion state in that the conditioned motion state is more likely to be on
+ *  a given edge or path</li></ul>
+ * </li>
+ * </ul> 
  * 
  * @author bwillard
  * 
@@ -67,6 +74,7 @@ public class VehicleState<Observation extends GpsObservation> extends
     comparator.append(t.motionStateParam, o.motionStateParam);
     comparator.append(t.getObservation(), o.getObservation());
     comparator.append(t.edgeTransitionParam, o.edgeTransitionParam);
+    comparator.append(t.pathStateParam, o.pathStateParam);
 
     return comparator.toComparison();
   }
@@ -179,7 +187,7 @@ public class VehicleState<Observation extends GpsObservation> extends
    * 3. edges transitions to others (one for all)
    * edges
    */
-  protected BayesianParameter<TransitionProbMatrix, OnOffEdgeTransDistribution, OnOffEdgeTransPriorDistribution> edgeTransitionParam;
+  protected DefaultBayesianParameter<TransitionProbMatrix, OnOffEdgeTransDistribution, OnOffEdgeTransPriorDistribution> edgeTransitionParam;
 
   protected InferenceGraph graph = null;
 
@@ -189,45 +197,45 @@ public class VehicleState<Observation extends GpsObservation> extends
    * Allow ourself to hold on to estimator predictors in case we want
    * to use them again.
    */
-  private MotionStateEstimatorPredictor motionStateEstimatorPredictor;
+  protected MotionStateEstimatorPredictor motionStateEstimatorPredictor = null;
 
   /*-
    * These parameters are for the motion state, comprised of the 4D ground-coordinates dist. for free motion or the 2D
    * road-coordinates.  This distribution, however, has nothing to do with paths or edges, only
    * generalized motion on or off of a road. 
    */
-  protected BayesianParameter<Vector, MultivariateGaussian, MultivariateGaussian> motionStateParam;
+  protected DefaultBayesianParameter<Vector, MultivariateGaussian, MultivariateGaussian> motionStateParam;
 
   protected Observation observation = null;
 
   /*-
    * E.g. GPS error distribution 
    */
-  protected BayesianParameter<Matrix, ?, ?> observationCovarianceParam;
+  protected DefaultBayesianParameter<Matrix, ?, ?> observationCovarianceParam;
 
-  protected BayesianParameter<Matrix, ?, ?> offRoadModelCovarianceParam;
+  protected DefaultBayesianParameter<Matrix, ?, ?> offRoadModelCovarianceParam;
 
   /*-
    * E.g. acceleration error distribution
    */
-  protected BayesianParameter<Matrix, ?, ?> onRoadModelCovarianceParam;
+  protected DefaultBayesianParameter<Matrix, ?, ?> onRoadModelCovarianceParam;
 
   protected VehicleState<Observation> parentState = null;
 
   /*-
    * These parameters are for the PathState  
    */
-  protected BayesianParameter<PathState, PathStateMixtureDensityModel<PathStateDistribution>, PathStateDistribution> pathStateParam;
+  protected DefaultBayesianParameter<PathState, PathStateMixtureDensityModel<PathStateDistribution>, PathStateDistribution> pathStateParam;
 
   public VehicleState(
     InferenceGraph inferredGraph,
     Observation observation,
-    BayesianParameter<Vector, MultivariateGaussian, MultivariateGaussian> motionStateParam,
-    BayesianParameter<PathState, PathStateMixtureDensityModel<PathStateDistribution>, PathStateDistribution> pathStateParam,
-    BayesianParameter<Matrix, ?, ?> observationCovParam,
-    BayesianParameter<Matrix, ?, ?> onRoadModelCovParam,
-    BayesianParameter<Matrix, ?, ?> offRoadModelCovParam,
-    BayesianParameter<TransitionProbMatrix, OnOffEdgeTransDistribution, OnOffEdgeTransPriorDistribution> edgeTransitionDist,
+    DefaultBayesianParameter<Vector, MultivariateGaussian, MultivariateGaussian> motionStateParam,
+    DefaultBayesianParameter<PathState, PathStateMixtureDensityModel<PathStateDistribution>, PathStateDistribution> pathStateParam,
+    DefaultBayesianParameter<Matrix, ?, ?> observationCovParam,
+    DefaultBayesianParameter<Matrix, ?, ?> onRoadModelCovParam,
+    DefaultBayesianParameter<Matrix, ?, ?> offRoadModelCovParam,
+    DefaultBayesianParameter<TransitionProbMatrix, OnOffEdgeTransDistribution, OnOffEdgeTransPriorDistribution> edgeTransitionDist,
     VehicleState<Observation> parentState) {
 
     this.graph = inferredGraph;
@@ -246,6 +254,10 @@ public class VehicleState<Observation extends GpsObservation> extends
 
   public VehicleState(VehicleState<Observation> other) {
     this.graph = other.graph;
+    this.observation = other.observation;
+    this.parentState = other.parentState;
+    this.motionStateEstimatorPredictor = other.motionStateEstimatorPredictor;
+    
     this.motionStateParam =
         ObjectUtil.cloneSmart(other.motionStateParam);
     this.observationCovarianceParam =
@@ -256,8 +268,6 @@ public class VehicleState<Observation extends GpsObservation> extends
         ObjectUtil.cloneSmart(other.offRoadModelCovarianceParam);
     this.edgeTransitionParam =
         ObjectUtil.cloneSmart(other.edgeTransitionParam);
-    this.observation = other.observation;
-    this.parentState = other.parentState;
   }
 
   @Override
@@ -294,7 +304,7 @@ public class VehicleState<Observation extends GpsObservation> extends
   }
 
   public
-      BayesianParameter<TransitionProbMatrix, OnOffEdgeTransDistribution, OnOffEdgeTransPriorDistribution>
+      DefaultBayesianParameter<TransitionProbMatrix, OnOffEdgeTransDistribution, OnOffEdgeTransPriorDistribution>
       getEdgeTransitionParam() {
     return this.edgeTransitionParam;
   }
@@ -321,7 +331,7 @@ public class VehicleState<Observation extends GpsObservation> extends
   }
 
   public
-      BayesianParameter<Vector, MultivariateGaussian, MultivariateGaussian>
+      DefaultBayesianParameter<Vector, MultivariateGaussian, MultivariateGaussian>
       getMotionStateParam() {
     return this.motionStateParam;
   }
@@ -330,17 +340,17 @@ public class VehicleState<Observation extends GpsObservation> extends
     return this.observation;
   }
 
-  public BayesianParameter<? extends Matrix, ?, ?>
+  public DefaultBayesianParameter<? extends Matrix, ?, ?>
       getObservationCovarianceParam() {
     return this.observationCovarianceParam;
   }
 
-  public BayesianParameter<? extends Matrix, ?, ?>
+  public DefaultBayesianParameter<? extends Matrix, ?, ?>
       getOffRoadModelCovarianceParam() {
     return this.offRoadModelCovarianceParam;
   }
 
-  public BayesianParameter<? extends Matrix, ?, ?>
+  public DefaultBayesianParameter<? extends Matrix, ?, ?>
       getOnRoadModelCovarianceParam() {
     return this.onRoadModelCovarianceParam;
   }
@@ -350,7 +360,7 @@ public class VehicleState<Observation extends GpsObservation> extends
   }
 
   public
-      BayesianParameter<PathState, PathStateMixtureDensityModel<PathStateDistribution>, PathStateDistribution>
+      DefaultBayesianParameter<PathState, PathStateMixtureDensityModel<PathStateDistribution>, PathStateDistribution>
       getPathStateParam() {
     return this.pathStateParam;
   }
@@ -379,7 +389,7 @@ public class VehicleState<Observation extends GpsObservation> extends
   public
       void
       setEdgeTransitionParam(
-        BayesianParameter<TransitionProbMatrix, OnOffEdgeTransDistribution, OnOffEdgeTransPriorDistribution> edgeTransitionParam) {
+        DefaultBayesianParameter<TransitionProbMatrix, OnOffEdgeTransDistribution, OnOffEdgeTransPriorDistribution> edgeTransitionParam) {
     this.edgeTransitionParam = edgeTransitionParam;
   }
 
@@ -396,7 +406,7 @@ public class VehicleState<Observation extends GpsObservation> extends
   public
       void
       setMotionStateParam(
-        BayesianParameter<Vector, MultivariateGaussian, MultivariateGaussian> motionStateParam) {
+        DefaultBayesianParameter<Vector, MultivariateGaussian, MultivariateGaussian> motionStateParam) {
     this.motionStateParam = motionStateParam;
   }
 
@@ -405,17 +415,17 @@ public class VehicleState<Observation extends GpsObservation> extends
   }
 
   public void setObservationCovarianceParam(
-    BayesianParameter<Matrix, ?, ?> observationCovarianceParam) {
+    DefaultBayesianParameter<Matrix, ?, ?> observationCovarianceParam) {
     this.observationCovarianceParam = observationCovarianceParam;
   }
 
   public void setOffRoadModelCovarianceParam(
-    BayesianParameter<Matrix, ?, ?> offRoadModelCovarianceParam) {
+    DefaultBayesianParameter<Matrix, ?, ?> offRoadModelCovarianceParam) {
     this.offRoadModelCovarianceParam = offRoadModelCovarianceParam;
   }
 
   public void setOnRoadModelCovarianceParam(
-    BayesianParameter<Matrix, ?, ?> onRoadModelCovarianceParam) {
+    DefaultBayesianParameter<Matrix, ?, ?> onRoadModelCovarianceParam) {
     this.onRoadModelCovarianceParam = onRoadModelCovarianceParam;
   }
 
@@ -426,7 +436,7 @@ public class VehicleState<Observation extends GpsObservation> extends
   public
       void
       setPathStateParam(
-        BayesianParameter<PathState, PathStateMixtureDensityModel<PathStateDistribution>, PathStateDistribution> pathStateParam) {
+        DefaultBayesianParameter<PathState, PathStateMixtureDensityModel<PathStateDistribution>, PathStateDistribution> pathStateParam) {
     this.pathStateParam = pathStateParam;
   }
 

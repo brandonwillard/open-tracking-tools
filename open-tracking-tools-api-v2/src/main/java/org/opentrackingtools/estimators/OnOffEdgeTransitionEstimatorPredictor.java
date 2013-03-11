@@ -4,6 +4,7 @@ import gov.sandia.cognition.learning.algorithm.IncrementalLearner;
 import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.statistics.bayesian.BayesianEstimatorPredictor;
 import gov.sandia.cognition.statistics.bayesian.BayesianParameter;
+import gov.sandia.cognition.statistics.bayesian.DefaultBayesianParameter;
 import gov.sandia.cognition.statistics.bayesian.conjugate.MultinomialBayesianEstimator;
 import gov.sandia.cognition.statistics.distribution.DirichletDistribution;
 import gov.sandia.cognition.statistics.distribution.MultinomialDistribution;
@@ -24,54 +25,25 @@ public class OnOffEdgeTransitionEstimatorPredictor extends
     BayesianEstimatorPredictor<InferenceGraphEdge, TransitionProbMatrix, OnOffEdgeTransPriorDistribution>,
     IncrementalLearner<InferenceGraphEdge, OnOffEdgeTransPriorDistribution> {
 
-  public static class Parameter extends AbstractCloneableSerializable
-      implements
-      BayesianParameter<TransitionProbMatrix, OnOffEdgeTransDistribution, OnOffEdgeTransPriorDistribution> {
+  public static class Parameter extends 
+      DefaultBayesianParameter<TransitionProbMatrix, OnOffEdgeTransDistribution, OnOffEdgeTransPriorDistribution> {
+
+    public Parameter(
+      OnOffEdgeTransDistribution conditionalDistribution,
+      OnOffEdgeTransPriorDistribution parameterPrior) {
+      super(conditionalDistribution, "edgeTransition", parameterPrior);
+    }
 
     private static final long serialVersionUID =
         -1188148823031520367L;
-    protected OnOffEdgeTransDistribution conditional;
-    protected OnOffEdgeTransPriorDistribution prior;
-    protected TransitionProbMatrix value = null;
-
-    public Parameter(OnOffEdgeTransDistribution conditional,
-      OnOffEdgeTransPriorDistribution prior) {
-      this.conditional = conditional;
-      this.prior = prior;
-    }
-
-    @Override
-    public OnOffEdgeTransDistribution getConditionalDistribution() {
-      return this.conditional;
-    }
-
-    @Override
-    public String getName() {
-      return "transitionProbMatrix";
-    }
-
-    @Override
-    public OnOffEdgeTransPriorDistribution getParameterPrior() {
-      return this.prior;
-    }
-
-    @Override
-    public TransitionProbMatrix getValue() {
-      return this.value;
-    }
-
-    @Override
-    public void setValue(TransitionProbMatrix value) {
-      this.value = value;
-    }
 
     @Override
     public void updateConditionalDistribution(Random random) {
       final TransitionProbMatrix transMatrix =
-          this.prior.sample(random);
-      this.conditional.setEdgeMotionTransProbs(transMatrix
+          this.getParameterPrior().sample(random);
+      this.getConditionalDistribution().setEdgeMotionTransProbs(transMatrix
           .getEdgeMotionTransProbs());
-      this.conditional.setEdgeMotionTransProbs(transMatrix
+      this.getConditionalDistribution().setEdgeMotionTransProbs(transMatrix
           .getFreeMotionTransProbs());
 
     }
@@ -117,8 +89,7 @@ public class OnOffEdgeTransitionEstimatorPredictor extends
 
   @Override
   public OnOffEdgeTransPriorDistribution createInitialLearnedObject() {
-    return new OnOffEdgeTransPriorDistribution(this.currentState,
-        this.currentEdge, this.estimator.createInitialLearnedObject()
+    return new OnOffEdgeTransPriorDistribution(this.estimator.createInitialLearnedObject()
             .getMean(), this.estimator.createInitialLearnedObject()
             .getMean());
   }

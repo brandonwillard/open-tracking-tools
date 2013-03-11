@@ -434,7 +434,7 @@ public class PathUtils {
       final PathState prevStateOnPath =
           pathState.getRelatableState(prevPathState);
       final double distStart =
-          prevStateOnPath.getGlobalState().getElement(0);
+          prevStateOnPath.getMotionState().getElement(0);
       final double distEnd =
           state.getPathStateParam().getValue().getElement(0);
       final LinearLocation startLoc =
@@ -816,10 +816,10 @@ public class PathUtils {
     final double otherDir =
         otherState.getPath().isBackward() ? -1d : 1d;
     final Vector otherStateVec =
-        useRaw ? otherState.getRawState() : otherState
-            .getGlobalState();
+        useRaw ? otherState.getMotionState() : otherState
+            .getMotionState();
     final Vector thisStateVec =
-        useRaw ? thisState.getRawState() : thisState.getGlobalState();
+        useRaw ? thisState.getMotionState() : thisState.getMotionState();
     final double otherDist =
         (thisState.getPath().isBackward() ? -1d : 1d)
             * (Math.abs(otherState.getPath().getTotalPathDistance()) - Math
@@ -1153,10 +1153,10 @@ public class PathUtils {
       final double distanceMax;
 
       final Vector toStateVec =
-          useRaw ? toState.getRawState() : toState.getGlobalState();
+          useRaw ? toState.getMotionState() : toState.getMotionState();
       final Vector fromStateVec =
-          useRaw ? fromState.getRawState() : fromState
-              .getGlobalState();
+          useRaw ? fromState.getMotionState() : fromState
+              .getMotionState();
 
       if (fromLastActualGeom.equalsExact(toFirstActualGeom)) {
         /*

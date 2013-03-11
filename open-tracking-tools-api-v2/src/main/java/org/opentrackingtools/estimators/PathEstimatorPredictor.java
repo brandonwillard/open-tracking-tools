@@ -8,7 +8,7 @@ import gov.sandia.cognition.util.AbstractCloneableSerializable;
 
 import java.util.Collection;
 
-import org.opentrackingtools.distributions.DefaultCountedDataDistribution;
+import org.opentrackingtools.distributions.CountedDataDistribution;
 import org.opentrackingtools.distributions.PathStateDistribution;
 import org.opentrackingtools.model.GpsObservation;
 import org.opentrackingtools.model.VehicleState;
@@ -43,8 +43,8 @@ public class PathEstimatorPredictor extends
 
   @Override
   public DiscreteDistribution<Path> createInitialLearnedObject() {
-    final DefaultCountedDataDistribution<Path> result =
-        new DefaultCountedDataDistribution<Path>(true);
+    final CountedDataDistribution<Path> result =
+        new CountedDataDistribution<Path>(true);
     result.incrementAll(this.currentState.getGraph().getPaths(
         this.currentState, this.obs));
     return result;

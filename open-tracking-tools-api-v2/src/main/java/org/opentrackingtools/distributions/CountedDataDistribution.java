@@ -33,7 +33,7 @@ import com.google.common.primitives.Doubles;
  * 
  * @param <KeyType>
  */
-public class DefaultCountedDataDistribution<KeyType> extends
+public class CountedDataDistribution<KeyType> extends
     AbstractDataDistribution<KeyType> {
 
   /**
@@ -45,7 +45,7 @@ public class DefaultCountedDataDistribution<KeyType> extends
    */
   public static class DefaultFactory<DataType> extends
       AbstractCloneableSerializable implements
-      Factory<DefaultCountedDataDistribution<DataType>> {
+      Factory<CountedDataDistribution<DataType>> {
 
     /**
        * 
@@ -60,7 +60,7 @@ public class DefaultCountedDataDistribution<KeyType> extends
      * capacity.
      */
     public DefaultFactory(boolean isLogScale) {
-      this(DefaultCountedDataDistribution.DEFAULT_INITIAL_CAPACITY);
+      this(CountedDataDistribution.DEFAULT_INITIAL_CAPACITY);
       this.isLogScale = isLogScale;
     }
 
@@ -78,9 +78,9 @@ public class DefaultCountedDataDistribution<KeyType> extends
     }
 
     @Override
-    public DefaultCountedDataDistribution<DataType> create() {
+    public CountedDataDistribution<DataType> create() {
       // Create the histogram.
-      return new DefaultCountedDataDistribution<DataType>(
+      return new CountedDataDistribution<DataType>(
           this.getInitialDomainCapacity(), this.isLogScale);
     }
 
@@ -124,9 +124,9 @@ public class DefaultCountedDataDistribution<KeyType> extends
    */
   public static class Estimator<KeyType>
       extends
-      AbstractBatchAndIncrementalLearner<KeyType, DefaultCountedDataDistribution.PMF<KeyType>>
+      AbstractBatchAndIncrementalLearner<KeyType, CountedDataDistribution.PMF<KeyType>>
       implements
-      DistributionEstimator<KeyType, DefaultCountedDataDistribution.PMF<KeyType>> {
+      DistributionEstimator<KeyType, CountedDataDistribution.PMF<KeyType>> {
 
     /**
        * 
@@ -152,15 +152,15 @@ public class DefaultCountedDataDistribution<KeyType> extends
     }
 
     @Override
-    public DefaultCountedDataDistribution.PMF<KeyType>
+    public CountedDataDistribution.PMF<KeyType>
         createInitialLearnedObject() {
-      return new DefaultCountedDataDistribution.PMF<KeyType>(
+      return new CountedDataDistribution.PMF<KeyType>(
           this.isLogScale);
     }
 
     @Override
     public void update(
-      final DefaultCountedDataDistribution.PMF<KeyType> target,
+      final CountedDataDistribution.PMF<KeyType> target,
       final KeyType data) {
       target.increment(data, this.isLogScale ? 0d : 1d);
     }
@@ -174,7 +174,7 @@ public class DefaultCountedDataDistribution<KeyType> extends
    *          Type of Key in the distribution
    */
   public static class PMF<KeyType> extends
-      DefaultCountedDataDistribution<KeyType> implements
+      CountedDataDistribution<KeyType> implements
       DataDistribution.PMF<KeyType> {
 
     /**
@@ -227,7 +227,7 @@ public class DefaultCountedDataDistribution<KeyType> extends
     }
 
     @Override
-    public DefaultCountedDataDistribution.PMF<KeyType>
+    public CountedDataDistribution.PMF<KeyType>
         getProbabilityFunction() {
       return this;
     }
@@ -247,9 +247,9 @@ public class DefaultCountedDataDistribution<KeyType> extends
    */
   public static class WeightedEstimator<KeyType>
       extends
-      AbstractBatchAndIncrementalLearner<WeightedValue<? extends KeyType>, DefaultCountedDataDistribution.PMF<KeyType>>
+      AbstractBatchAndIncrementalLearner<WeightedValue<? extends KeyType>, CountedDataDistribution.PMF<KeyType>>
       implements
-      DistributionWeightedEstimator<KeyType, DefaultCountedDataDistribution.PMF<KeyType>> {
+      DistributionWeightedEstimator<KeyType, CountedDataDistribution.PMF<KeyType>> {
 
     /**
        * 
@@ -268,15 +268,15 @@ public class DefaultCountedDataDistribution<KeyType> extends
     }
 
     @Override
-    public DefaultCountedDataDistribution.PMF<KeyType>
+    public CountedDataDistribution.PMF<KeyType>
         createInitialLearnedObject() {
-      return new DefaultCountedDataDistribution.PMF<KeyType>(
+      return new CountedDataDistribution.PMF<KeyType>(
           this.isLogScaled);
     }
 
     @Override
     public void update(
-      final DefaultCountedDataDistribution.PMF<KeyType> target,
+      final CountedDataDistribution.PMF<KeyType> target,
       final WeightedValue<? extends KeyType> data) {
       //      Preconditions.checkArgument(target.isLogScale && isLogScaled);
       Preconditions.checkArgument(!this.isLogScaled
@@ -306,8 +306,8 @@ public class DefaultCountedDataDistribution<KeyType> extends
   /**
    * Default constructor
    */
-  public DefaultCountedDataDistribution(boolean isLogScale) {
-    this(DefaultCountedDataDistribution.DEFAULT_INITIAL_CAPACITY,
+  public CountedDataDistribution(boolean isLogScale) {
+    this(CountedDataDistribution.DEFAULT_INITIAL_CAPACITY,
         isLogScale);
   }
 
@@ -317,7 +317,7 @@ public class DefaultCountedDataDistribution<KeyType> extends
    * @param other
    *          DataDistribution to copy
    */
-  public DefaultCountedDataDistribution(
+  public CountedDataDistribution(
     final DataDistribution<? extends KeyType> other,
     boolean isLogScale) {
     this(new LinkedHashMap<KeyType, MutableDouble>(other.size()),
@@ -331,7 +331,7 @@ public class DefaultCountedDataDistribution<KeyType> extends
    * @param initialCapacity
    *          Initial capacity of the Map
    */
-  public DefaultCountedDataDistribution(int initialCapacity,
+  public CountedDataDistribution(int initialCapacity,
     boolean isLogScale) {
     this(new LinkedHashMap<KeyType, MutableDouble>(initialCapacity),
         isLogScale ? Double.NEGATIVE_INFINITY : 0d, isLogScale);
@@ -344,7 +344,7 @@ public class DefaultCountedDataDistribution<KeyType> extends
    * @param data
    *          Data to create the distribution
    */
-  public DefaultCountedDataDistribution(
+  public CountedDataDistribution(
     final Iterable<? extends KeyType> data, boolean isLogScale) {
     this(isLogScale);
     this.incrementAll(data);
@@ -358,7 +358,7 @@ public class DefaultCountedDataDistribution<KeyType> extends
    * @param total
    *          Sum of all values in the Map
    */
-  protected DefaultCountedDataDistribution(
+  protected CountedDataDistribution(
     final Map<KeyType, MutableDouble> map, final double total,
     boolean isLogScale) {
     super(map);
@@ -373,9 +373,9 @@ public class DefaultCountedDataDistribution<KeyType> extends
   }
 
   @Override
-  public DefaultCountedDataDistribution<KeyType> clone() {
-    final DefaultCountedDataDistribution<KeyType> clone =
-        new DefaultCountedDataDistribution<KeyType>(this.size(),
+  public CountedDataDistribution<KeyType> clone() {
+    final CountedDataDistribution<KeyType> clone =
+        new CountedDataDistribution<KeyType>(this.size(),
             this.isLogScale);
     for (final java.util.Map.Entry<KeyType, MutableDouble> entry : this.map
         .entrySet()) {
@@ -445,7 +445,7 @@ public class DefaultCountedDataDistribution<KeyType> extends
   public
       DistributionEstimator<KeyType, ? extends DataDistribution<KeyType>>
       getEstimator() {
-    return new DefaultCountedDataDistribution.Estimator<KeyType>(
+    return new CountedDataDistribution.Estimator<KeyType>(
         this.isLogScale);
   }
 
@@ -485,7 +485,7 @@ public class DefaultCountedDataDistribution<KeyType> extends
 
   @Override
   public DataDistribution.PMF<KeyType> getProbabilityFunction() {
-    return new DefaultCountedDataDistribution.PMF<KeyType>(this,
+    return new CountedDataDistribution.PMF<KeyType>(this,
         this.isLogScale);
   }
 

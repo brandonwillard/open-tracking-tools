@@ -8,7 +8,7 @@ import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 import java.util.ArrayList;
 import java.util.Random;
 
-import org.opentrackingtools.distributions.DefaultCountedDataDistribution;
+import org.opentrackingtools.distributions.CountedDataDistribution;
 import org.opentrackingtools.distributions.PathStateDistribution;
 import org.opentrackingtools.distributions.PathStateMixtureDensityModel;
 import org.opentrackingtools.estimators.OnOffEdgeTransitionEstimatorPredictor;
@@ -26,8 +26,8 @@ public class VehicleStatePLFilter<O extends GpsObservation> extends
 
   private static final long serialVersionUID = -8257075186193062150L;
 
-  private final InferenceGraph inferredGraph;
-  private final Boolean isDebug;
+  protected final InferenceGraph inferredGraph;
+  protected final Boolean isDebug;
 
   public VehicleStatePLFilter(O obs, InferenceGraph inferredGraph,
     VehicleStateInitialParameters parameters, Boolean isDebug,
@@ -45,15 +45,15 @@ public class VehicleStatePLFilter<O extends GpsObservation> extends
      * Compute predictive distributions, and create a distribution out of those and
      * their likelihoods for the new observation.
      */
-    final DefaultCountedDataDistribution<VehicleState<O>> resampleDist =
-        new DefaultCountedDataDistribution<VehicleState<O>>(true);
+    final CountedDataDistribution<VehicleState<O>> resampleDist =
+        new CountedDataDistribution<VehicleState<O>>(true);
 
     for (final VehicleState<O> state : target.getDomain()) {
 
       final int count;
-      if (target instanceof DefaultCountedDataDistribution<?>) {
+      if (target instanceof CountedDataDistribution<?>) {
         count =
-            ((DefaultCountedDataDistribution) target).getCount(state);
+            ((CountedDataDistribution) target).getCount(state);
       } else {
         count = 1;
       }

@@ -12,10 +12,7 @@ import java.util.ArrayList;
 import java.util.Random;
 
 import org.apache.commons.lang.builder.CompareToBuilder;
-import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.graph.InferenceGraphEdge;
-import org.opentrackingtools.model.GpsObservation;
-import org.opentrackingtools.model.VehicleState;
 import org.opentrackingtools.util.model.TransitionProbMatrix;
 
 import com.google.common.collect.Lists;
@@ -74,10 +71,6 @@ public class OnOffEdgeTransPriorDistribution extends
 
   private static final long serialVersionUID = -8329433263373783485L;
 
-  protected InferenceGraphEdge currentEdge;
-
-  protected VehicleState<? extends GpsObservation> currentState;
-
   /*
    * Distribution corresponding to edge-movement -> free-movement and
    * edge-movement -> edge-movement
@@ -88,12 +81,9 @@ public class OnOffEdgeTransPriorDistribution extends
    * free-movement -> edge-movement
    */
   protected DirichletDistribution freeMotionTransProbPrior;
-  protected InferenceGraph graph;
 
   public OnOffEdgeTransPriorDistribution(
     OnOffEdgeTransPriorDistribution onOffEdgeTransPriorDistribution) {
-    this.currentEdge = onOffEdgeTransPriorDistribution.currentEdge;
-    this.currentState = onOffEdgeTransPriorDistribution.currentState;
     this.edgeMotionTransProbPrior =
         onOffEdgeTransPriorDistribution.edgeMotionTransProbPrior;
     this.freeMotionTransProbPrior =
@@ -110,13 +100,7 @@ public class OnOffEdgeTransPriorDistribution extends
    * @param rng
    */
   public OnOffEdgeTransPriorDistribution(
-    VehicleState<?> currentState, InferenceGraphEdge currentEdge,
     Vector edgeMotionPriorParams, Vector freeMotionPriorParams) {
-
-    this.currentState = currentState;
-    this.graph = currentState.getGraph();
-    this.currentEdge = currentEdge;
-
     this.setFreeMotionTransProbPrior(new DirichletDistribution(
         freeMotionPriorParams));
     this.setEdgeMotionTransProbPrior(new DirichletDistribution(
@@ -131,8 +115,6 @@ public class OnOffEdgeTransPriorDistribution extends
         .getEdgeMotionTransProbPrior().clone());
     transDist.setFreeMotionTransProbPrior(this
         .getFreeMotionTransProbPrior().clone());
-    transDist.currentEdge = ObjectUtil.cloneSmart(this.currentEdge);
-    transDist.graph = this.graph;
     return transDist;
   }
 
@@ -148,7 +130,6 @@ public class OnOffEdgeTransPriorDistribution extends
     comparator.append(this.getFreeMotionTransProbPrior()
         .getParameters().toArray(), o.getFreeMotionTransProbPrior()
         .getParameters().toArray());
-    comparator.append(this.currentEdge, o.currentEdge);
 
     return comparator.toComparison();
   }
@@ -180,13 +161,6 @@ public class OnOffEdgeTransPriorDistribution extends
       }
     } else if (!this.getFreeMotionTransProbPrior().getParameters()
         .equals(other.getFreeMotionTransProbPrior().getParameters())) {
-      return false;
-    }
-    if (this.currentEdge == null) {
-      if (other.currentEdge != null) {
-        return false;
-      }
-    } else if (!this.currentEdge.equals(other.currentEdge)) {
       return false;
     }
     return true;
@@ -222,11 +196,6 @@ public class OnOffEdgeTransPriorDistribution extends
             + ((this.getFreeMotionTransProbPrior() == null) ? 0
                 : this.getFreeMotionTransProbPrior().getParameters()
                     .hashCode());
-    result =
-        prime
-            * result
-            + ((this.currentEdge == null) ? 0 : this.currentEdge
-                .hashCode());
     return result;
   }
 

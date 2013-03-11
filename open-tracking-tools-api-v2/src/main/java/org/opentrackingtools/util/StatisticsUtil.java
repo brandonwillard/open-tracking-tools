@@ -28,7 +28,7 @@ import no.uib.cipr.matrix.SymmDenseEVD;
 import no.uib.cipr.matrix.UpperSPDDenseMatrix;
 import no.uib.cipr.matrix.UpperSymmDenseMatrix;
 
-import org.opentrackingtools.distributions.DefaultCountedDataDistribution;
+import org.opentrackingtools.distributions.CountedDataDistribution;
 import org.opentrackingtools.util.model.WrappedWeightedValue;
 
 import com.google.common.base.Objects;
@@ -140,7 +140,7 @@ public class StatisticsUtil {
   }
 
   public static <SupportType extends Comparable<SupportType>>
-      DefaultCountedDataDistribution<SupportType>
+      CountedDataDistribution<SupportType>
       getLogNormalizedDistribution(
         List<WrappedWeightedValue<SupportType>> map) {
 
@@ -160,8 +160,8 @@ public class StatisticsUtil {
       return null;
     }
 
-    final DefaultCountedDataDistribution<SupportType> result =
-        new DefaultCountedDataDistribution<SupportType>(false);
+    final CountedDataDistribution<SupportType> result =
+        new CountedDataDistribution<SupportType>(false);
 
     for (final WrappedWeightedValue<SupportType> entry : map) {
       if (entry.getWeight() == Double.NEGATIVE_INFINITY

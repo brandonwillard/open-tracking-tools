@@ -124,37 +124,7 @@ public class PathStateEstimatorPredictor extends
       }
 
       for (final PathEdge<?> edge : this.path.getPathEdges()) {
-
-        final Matrix Or = MotionStateEstimatorPredictor.getOr();
-        final double S =
-            Or.times(roadDistribution.getCovariance())
-                .times(Or.transpose()).getElement(0, 0)
-                // + 1d;
-                + Math.pow(edge.getLength() / Math.sqrt(12), 2);
-        final Matrix W =
-            roadDistribution.getCovariance().times(Or.transpose())
-                .scale(1 / S);
-        final Matrix R =
-            roadDistribution.getCovariance().minus(
-                W.times(W.transpose()).scale(S));
-
-        final double direction = edge.isBackward() ? -1d : 1d;
-        final double mean =
-            (edge.getDistToStartOfEdge() + (edge
-                .getDistToStartOfEdge() + direction
-                * edge.getLength())) / 2d;
-
-        final Vector beliefMean = roadDistribution.getMean();
-        final double e = mean - Or.times(beliefMean).getElement(0);
-        final Vector a = beliefMean.plus(W.getColumn(0).scale(e));
-
-        assert StatisticsUtil
-            .isPosSemiDefinite((gov.sandia.cognition.math.matrix.mtj.DenseMatrix) R);
-
-        final PathStateDistribution prediction =
-            new PathStateDistribution(this.path,
-                new MultivariateGaussian(a, R));
-
+        PathStateDistribution prediction = getPathEdgePredictive(roadDistribution, edge);
         distributions.add(prediction);
         weights.add(this.marginalPredictiveLogLikInternal(this.path,
             prediction.getMotionStateDistribution(), edge));
@@ -167,6 +137,47 @@ public class PathStateEstimatorPredictor extends
     result.setPriorWeights(Doubles.toArray(weights));
 
     return result;
+  }
+  
+  /**
+   * Returns the predictive distribution for the given edge.
+   * 
+   * @param roadDistribution
+   * @param edge
+   * @return
+   */
+  public PathStateDistribution getPathEdgePredictive(MultivariateGaussian roadDistribution, PathEdge edge) {
+    final Matrix Or = MotionStateEstimatorPredictor.getOr();
+    final double S =
+        Or.times(roadDistribution.getCovariance())
+            .times(Or.transpose()).getElement(0, 0)
+            // + 1d;
+            + Math.pow(edge.getLength() / Math.sqrt(12), 2);
+    final Matrix W =
+        roadDistribution.getCovariance().times(Or.transpose())
+            .scale(1 / S);
+    final Matrix R =
+        roadDistribution.getCovariance().minus(
+            W.times(W.transpose()).scale(S));
+
+    final double direction = edge.isBackward() ? -1d : 1d;
+    final double mean =
+        (edge.getDistToStartOfEdge() + (edge
+            .getDistToStartOfEdge() + direction
+            * edge.getLength())) / 2d;
+
+    final Vector beliefMean = roadDistribution.getMean();
+    final double e = mean - Or.times(beliefMean).getElement(0);
+    final Vector a = beliefMean.plus(W.getColumn(0).scale(e));
+
+    assert StatisticsUtil
+        .isPosSemiDefinite((gov.sandia.cognition.math.matrix.mtj.DenseMatrix) R);
+
+    final PathStateDistribution prediction =
+        new PathStateDistribution(this.path,
+            new MultivariateGaussian(a, R));
+    
+    return prediction;
   }
 
   /**
@@ -220,7 +231,7 @@ public class PathStateEstimatorPredictor extends
    * @param beliefPrediction
    * @return
    */
-  protected double marginalPredictiveLogLikInternal(Path path,
+  public double marginalPredictiveLogLikInternal(Path path,
     MultivariateGaussian beliefPrediction, PathEdge<?> currentEdge) {
 
     final double direction = currentEdge.isBackward() ? -1d : 1d;

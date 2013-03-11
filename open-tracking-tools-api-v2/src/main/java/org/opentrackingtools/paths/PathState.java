@@ -22,26 +22,20 @@ public class PathState extends AbstractVector implements
 
   private static final long serialVersionUID = 2846671162796173049L;
 
-  protected PathEdge<?> edge;
-
-  private Vector globalState;
-
-  private Vector groundState;
-
-  private Vector localState;
-
+  protected Vector globalState;
   protected Path path;
-
-  private Vector rawState;
+  
+  protected PathEdge<?> edge = null;
+  protected Vector groundState = null;
+  protected Vector localState = null;
 
   public PathState(Path path, Vector state) {
-
-    Preconditions.checkArgument(!path.isNullPath()
-        || state.getDimensionality() == 4);
-
+    
+    Preconditions.checkArgument(!path.isNullPath() || state.getDimensionality() == 4);
+    
+    this.globalState = state;
     this.path = path;
-    this.rawState = state.clone();
-    this.globalState = state.clone();
+    
     /*
      * Now make sure the result is on this path.
      */
@@ -51,8 +45,8 @@ public class PathState extends AbstractVector implements
     }
   }
 
-  public PathState(PathEdge<?> pathEdge, Vector stateSample) {
-    this.edge = pathEdge;
+  public PathState(Path path, PathEdge<?> pathEdge, Vector stateSample) {
+    this.path = path;
     this.globalState = stateSample;
   }
 
@@ -62,7 +56,6 @@ public class PathState extends AbstractVector implements
     this.groundState = pathState.groundState;
     this.localState = pathState.localState;
     this.path = pathState.path;
-    this.rawState = pathState.rawState;
   }
 
   @Override
@@ -95,7 +88,6 @@ public class PathState extends AbstractVector implements
      * of the path edges, then we need to find the new edge.
      */
     clone.edge = null;
-    clone.rawState = ObjectUtil.cloneSmart(this.rawState);
     clone.localState = ObjectUtil.cloneSmart(this.localState);
     clone.globalState = ObjectUtil.cloneSmart(this.globalState);
     clone.groundState = ObjectUtil.cloneSmart(this.groundState);
@@ -106,8 +98,7 @@ public class PathState extends AbstractVector implements
   public int compareTo(PathState o) {
     final CompareToBuilder comparator = new CompareToBuilder();
     comparator.append(this.path, o.getPath());
-    comparator.append(this.globalState, o.getGlobalState());
-    comparator.append(this.rawState, o.getRawState());
+    comparator.append(this.globalState, o.getMotionState());
     return comparator.toComparison();
   }
 
@@ -162,22 +153,15 @@ public class PathState extends AbstractVector implements
       return false;
     }
 
-    if (this.getGlobalState() == null) {
-      if (other.getGlobalState() != null) {
+    if (this.getMotionState() == null) {
+      if (other.getMotionState() != null) {
         return false;
       }
-    } else if (!this.getGlobalState()
-        .equals((other.getGlobalState()))) {
+    } else if (!this.getMotionState()
+        .equals((other.getMotionState()))) {
       return false;
     }
 
-    if (this.getRawState() == null) {
-      if (other.getRawState() != null) {
-        return false;
-      }
-    } else if (!this.getRawState().equals((other.getRawState()))) {
-      return false;
-    }
     return true;
   }
 
@@ -221,7 +205,7 @@ public class PathState extends AbstractVector implements
     return this.globalState.getElement(index);
   }
 
-  public Vector getGlobalState() {
+  public Vector getMotionState() {
     return this.globalState;
   }
 
@@ -257,10 +241,6 @@ public class PathState extends AbstractVector implements
 
   public Path getPath() {
     return this.path;
-  }
-
-  public Vector getRawState() {
-    return this.rawState;
   }
 
   public PathState getRelatableState(PathState currentState) {
@@ -305,7 +285,7 @@ public class PathState extends AbstractVector implements
 
     final Path newPath = this.path.getPathTo(this.getEdge());
 
-    return new PathState(newPath, this.rawState);
+    return new PathState(newPath, this.globalState);
   }
 
   @Override
@@ -318,13 +298,8 @@ public class PathState extends AbstractVector implements
     result =
         prime
             * result
-            + ((this.getGlobalState() == null) ? 0 : this
-                .getGlobalState().hashCode());
-    result =
-        prime
-            * result
-            + ((this.getRawState() == null) ? 0 : this.getRawState()
-                .hashCode());
+            + ((this.getMotionState() == null) ? 0 : this
+                .getMotionState().hashCode());
     return result;
   }
 
@@ -357,13 +332,12 @@ public class PathState extends AbstractVector implements
     return this.globalState.iterator();
   }
 
-  public Vector minus(PathState currentState) {
-    return PathUtils.stateDiff(currentState, this, false);
-  }
-
   @Override
   public Vector minus(Vector other) {
-    return this.globalState.minus(other);
+    if (other instanceof PathState)
+      return PathUtils.stateDiff((PathState)other, this, false);
+    else
+      return this.globalState.minus(other);
   }
 
   @Override
@@ -520,6 +494,39 @@ public class PathState extends AbstractVector implements
   @Override
   public void zero() {
     this.globalState.zero();
+  }
+
+  public PathState convertToPath(Path newPath) {
+    final Vector adjState;
+    if (newPath.isNullPath()) {
+      adjState = this.getGroundState().clone();
+    } else {
+  
+      final PathState startState =
+          new PathState(newPath, VectorFactory
+              .getDefault().createVector2D(0d, 0d));
+  
+      final Vector diff = startState.minus(this);
+      diff.negativeEquals();
+  
+      adjState =
+          VectorFactory.getDefault().createVector2D(
+              newPath.clampToPath(diff.getElement(0)),
+              diff.getElement(1));
+  
+      assert (newPath.isOnPath(adjState.getElement(0)));
+      assert !this.isOnRoad() || Preconditions.checkNotNull(
+          new PathState(newPath, adjState)
+            .minus(this)
+            .isZero(
+               MotionStateEstimatorPredictor 
+                    .getEdgeLengthErrorTolerance())
+          ? Boolean.TRUE : null);
+    }
+  
+    PathState result = new PathState(newPath, adjState);
+    
+    return result;
   }
 
 }
