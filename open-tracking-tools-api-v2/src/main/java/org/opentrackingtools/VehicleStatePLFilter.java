@@ -2,7 +2,6 @@ package org.opentrackingtools;
 
 import gov.sandia.cognition.statistics.DataDistribution;
 import gov.sandia.cognition.statistics.bayesian.AbstractParticleFilter;
-import gov.sandia.cognition.statistics.bayesian.DefaultBayesianParameter;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 
 import java.util.ArrayList;
@@ -16,6 +15,7 @@ import org.opentrackingtools.estimators.PathStateEstimatorPredictor;
 import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.graph.InferenceGraphEdge;
 import org.opentrackingtools.model.GpsObservation;
+import org.opentrackingtools.model.SimpleBayesianParameter;
 import org.opentrackingtools.model.VehicleState;
 import org.opentrackingtools.updater.VehicleTrackingPLFilterUpdater;
 
@@ -85,19 +85,17 @@ public class VehicleStatePLFilter<O extends GpsObservation> extends
         final VehicleState<O> predictedChildState =
             new VehicleState<O>(predictedState);
         predictedChildState
-            .setPathStateParam(DefaultBayesianParameter.create(
-                predictedPathStateMixture, predictedChildState
-                    .getPathStateParam().getName(),
-                predictedPathStateDist));
+            .setPathStateParam(SimpleBayesianParameter.create(predictedPathStateDist.getPathState(),
+                predictedPathStateMixture, predictedPathStateDist));
 
         final MultivariateGaussian measurementPredictionDist =
             predictedState.getMotionStateEstimatorPredictor()
                 .getMeasurementBelief(predictedPathStateDist);
 
         predictedChildState
-            .setMotionStateParam(DefaultBayesianParameter.create(
-                measurementPredictionDist, predictedChildState
-                    .getMotionStateParam().getName(),
+            .setMotionStateParam(SimpleBayesianParameter.create(
+                measurementPredictionDist.getMean(),
+                measurementPredictionDist, 
                 predictedPathStateDist.getMotionStateDistribution()));
 
         final double predictiveLogLikelihood =

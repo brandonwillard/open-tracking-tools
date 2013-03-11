@@ -1,14 +1,8 @@
 package org.opentrackingtools.model;
 
-import java.util.ArrayList;
-import java.util.Random;
 
 import gov.sandia.cognition.math.matrix.Matrix;
 import gov.sandia.cognition.math.matrix.Vector;
-import gov.sandia.cognition.statistics.Distribution;
-import gov.sandia.cognition.statistics.DistributionEstimator;
-import gov.sandia.cognition.statistics.EstimableDistribution;
-import gov.sandia.cognition.statistics.bayesian.DefaultBayesianParameter;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 import gov.sandia.cognition.util.AbstractCloneableSerializable;
 import gov.sandia.cognition.util.ObjectUtil;
@@ -193,7 +187,7 @@ public class VehicleState<Observation extends GpsObservation> extends
    * 3. edges transitions to others (one for all)
    * edges
    */
-  protected DefaultBayesianParameter<TransitionProbMatrix, OnOffEdgeTransDistribution, OnOffEdgeTransPriorDistribution> edgeTransitionParam;
+  protected SimpleBayesianParameter<TransitionProbMatrix, OnOffEdgeTransDistribution, OnOffEdgeTransPriorDistribution> edgeTransitionParam;
 
   protected InferenceGraph graph = null;
 
@@ -210,38 +204,38 @@ public class VehicleState<Observation extends GpsObservation> extends
    * road-coordinates.  This distribution, however, has nothing to do with paths or edges, only
    * generalized motion on or off of a road. 
    */
-  protected DefaultBayesianParameter<Vector, MultivariateGaussian, MultivariateGaussian> motionStateParam;
+  protected SimpleBayesianParameter<Vector, MultivariateGaussian, MultivariateGaussian> motionStateParam;
 
   protected Observation observation = null;
 
   /*-
    * E.g. GPS error distribution 
    */
-  protected DefaultBayesianParameter<Matrix, ?, ?> observationCovarianceParam;
+  protected SimpleBayesianParameter<Matrix, ?, ?> observationCovarianceParam;
 
-  protected DefaultBayesianParameter<Matrix, ?, ?> offRoadModelCovarianceParam;
+  protected SimpleBayesianParameter<Matrix, ?, ?> offRoadModelCovarianceParam;
 
   /*-
    * E.g. acceleration error distribution
    */
-  protected DefaultBayesianParameter<Matrix, ?, ?> onRoadModelCovarianceParam;
+  protected SimpleBayesianParameter<Matrix, ?, ?> onRoadModelCovarianceParam;
 
   protected VehicleState<Observation> parentState = null;
 
   /*-
    * These parameters are for the PathState  
    */
-  protected DefaultBayesianParameter<PathState, PathStateMixtureDensityModel<PathStateDistribution>, PathStateDistribution> pathStateParam;
+  protected SimpleBayesianParameter<PathState, PathStateMixtureDensityModel<PathStateDistribution>, PathStateDistribution> pathStateParam;
 
   public VehicleState(
     InferenceGraph inferredGraph,
     Observation observation,
-    DefaultBayesianParameter<Vector, MultivariateGaussian, MultivariateGaussian> motionStateParam,
-    DefaultBayesianParameter<PathState, PathStateMixtureDensityModel<PathStateDistribution>, PathStateDistribution> pathStateParam,
-    DefaultBayesianParameter<Matrix, ?, ?> observationCovParam,
-    DefaultBayesianParameter<Matrix, ?, ?> onRoadModelCovParam,
-    DefaultBayesianParameter<Matrix, ?, ?> offRoadModelCovParam,
-    DefaultBayesianParameter<TransitionProbMatrix, OnOffEdgeTransDistribution, OnOffEdgeTransPriorDistribution> edgeTransitionDist,
+    SimpleBayesianParameter<Vector, MultivariateGaussian, MultivariateGaussian> motionStateParam,
+    SimpleBayesianParameter<PathState, PathStateMixtureDensityModel<PathStateDistribution>, PathStateDistribution> pathStateParam,
+    SimpleBayesianParameter<Matrix, ?, ?> observationCovParam,
+    SimpleBayesianParameter<Matrix, ?, ?> onRoadModelCovParam,
+    SimpleBayesianParameter<Matrix, ?, ?> offRoadModelCovParam,
+    SimpleBayesianParameter<TransitionProbMatrix, OnOffEdgeTransDistribution, OnOffEdgeTransPriorDistribution> edgeTransitionDist,
     VehicleState<Observation> parentState) {
 
     this.graph = inferredGraph;
@@ -310,7 +304,7 @@ public class VehicleState<Observation extends GpsObservation> extends
   }
 
   public
-      DefaultBayesianParameter<TransitionProbMatrix, OnOffEdgeTransDistribution, OnOffEdgeTransPriorDistribution>
+      SimpleBayesianParameter<TransitionProbMatrix, OnOffEdgeTransDistribution, OnOffEdgeTransPriorDistribution>
       getEdgeTransitionParam() {
     return this.edgeTransitionParam;
   }
@@ -325,10 +319,7 @@ public class VehicleState<Observation extends GpsObservation> extends
    * @return
    */
   public Vector getMeanLocation() {
-    final Vector v =
-        ((PathState) this.motionStateParam.getValue())
-            .getGroundState();
-    return MotionStateEstimatorPredictor.getOg().times(v);
+    return this.motionStateParam.getValue();
   }
 
   public MotionStateEstimatorPredictor
@@ -337,7 +328,7 @@ public class VehicleState<Observation extends GpsObservation> extends
   }
 
   public
-      DefaultBayesianParameter<Vector, MultivariateGaussian, MultivariateGaussian>
+      SimpleBayesianParameter<Vector, MultivariateGaussian, MultivariateGaussian>
       getMotionStateParam() {
     return this.motionStateParam;
   }
@@ -346,17 +337,17 @@ public class VehicleState<Observation extends GpsObservation> extends
     return this.observation;
   }
 
-  public DefaultBayesianParameter<? extends Matrix, ?, ?>
+  public SimpleBayesianParameter<? extends Matrix, ?, ?>
       getObservationCovarianceParam() {
     return this.observationCovarianceParam;
   }
 
-  public DefaultBayesianParameter<? extends Matrix, ?, ?>
+  public SimpleBayesianParameter<? extends Matrix, ?, ?>
       getOffRoadModelCovarianceParam() {
     return this.offRoadModelCovarianceParam;
   }
 
-  public DefaultBayesianParameter<? extends Matrix, ?, ?>
+  public SimpleBayesianParameter<? extends Matrix, ?, ?>
       getOnRoadModelCovarianceParam() {
     return this.onRoadModelCovarianceParam;
   }
@@ -366,7 +357,7 @@ public class VehicleState<Observation extends GpsObservation> extends
   }
 
   public
-      DefaultBayesianParameter<PathState, PathStateMixtureDensityModel<PathStateDistribution>, PathStateDistribution>
+      SimpleBayesianParameter<PathState, PathStateMixtureDensityModel<PathStateDistribution>, PathStateDistribution>
       getPathStateParam() {
     return this.pathStateParam;
   }
@@ -395,7 +386,7 @@ public class VehicleState<Observation extends GpsObservation> extends
   public
       void
       setEdgeTransitionParam(
-        DefaultBayesianParameter<TransitionProbMatrix, OnOffEdgeTransDistribution, OnOffEdgeTransPriorDistribution> edgeTransitionParam) {
+        SimpleBayesianParameter<TransitionProbMatrix, OnOffEdgeTransDistribution, OnOffEdgeTransPriorDistribution> edgeTransitionParam) {
     this.edgeTransitionParam = edgeTransitionParam;
   }
 
@@ -412,7 +403,7 @@ public class VehicleState<Observation extends GpsObservation> extends
   public
       void
       setMotionStateParam(
-        DefaultBayesianParameter<Vector, MultivariateGaussian, MultivariateGaussian> motionStateParam) {
+        SimpleBayesianParameter<Vector, MultivariateGaussian, MultivariateGaussian> motionStateParam) {
     this.motionStateParam = motionStateParam;
   }
 
@@ -421,17 +412,17 @@ public class VehicleState<Observation extends GpsObservation> extends
   }
 
   public void setObservationCovarianceParam(
-    DefaultBayesianParameter<Matrix, ?, ?> observationCovarianceParam) {
+    SimpleBayesianParameter<Matrix, ?, ?> observationCovarianceParam) {
     this.observationCovarianceParam = observationCovarianceParam;
   }
 
   public void setOffRoadModelCovarianceParam(
-    DefaultBayesianParameter<Matrix, ?, ?> offRoadModelCovarianceParam) {
+    SimpleBayesianParameter<Matrix, ?, ?> offRoadModelCovarianceParam) {
     this.offRoadModelCovarianceParam = offRoadModelCovarianceParam;
   }
 
   public void setOnRoadModelCovarianceParam(
-    DefaultBayesianParameter<Matrix, ?, ?> onRoadModelCovarianceParam) {
+    SimpleBayesianParameter<Matrix, ?, ?> onRoadModelCovarianceParam) {
     this.onRoadModelCovarianceParam = onRoadModelCovarianceParam;
   }
 
@@ -442,7 +433,7 @@ public class VehicleState<Observation extends GpsObservation> extends
   public
       void
       setPathStateParam(
-        DefaultBayesianParameter<PathState, PathStateMixtureDensityModel<PathStateDistribution>, PathStateDistribution> pathStateParam) {
+        SimpleBayesianParameter<PathState, PathStateMixtureDensityModel<PathStateDistribution>, PathStateDistribution> pathStateParam) {
     this.pathStateParam = pathStateParam;
   }
 

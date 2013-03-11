@@ -88,7 +88,7 @@ public class VehicleTrackingBootstrapUpdater<O extends GpsObservation>
     
     final VehicleState<O> updatedState = new VehicleState<O>(previousState);
     MotionStateEstimatorPredictor motionStatePredictor = new MotionStateEstimatorPredictor(
-        updatedState, random, (double)this.parameters.getInitialObsFreq());
+        updatedState, random, null);
     
     MultivariateGaussian predictedMotionState = motionStatePredictor.createPredictiveDistribution(
         updatedState.getMotionStateParam().getParameterPrior());

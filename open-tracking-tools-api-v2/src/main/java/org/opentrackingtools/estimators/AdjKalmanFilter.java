@@ -82,7 +82,10 @@ public class AdjKalmanFilter extends AbstractKalmanFilter {
   @Override
   public AdjKalmanFilter clone() {
     final AdjKalmanFilter clone = (AdjKalmanFilter) super.clone();
-    clone.setModel(ObjectUtil.cloneSafe(this.getModel()));
+    clone.model = this.model.clone();
+    clone.currentInput = this.currentInput.clone();
+    clone.measurementCovariance = this.measurementCovariance.clone();
+    clone.modelCovariance = this.modelCovariance.clone();
     return clone;
   }
 

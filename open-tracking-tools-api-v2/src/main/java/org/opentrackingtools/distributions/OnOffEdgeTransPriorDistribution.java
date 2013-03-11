@@ -2,6 +2,8 @@ package org.opentrackingtools.distributions;
 
 import gov.sandia.cognition.math.LogMath;
 import gov.sandia.cognition.math.matrix.Vector;
+import gov.sandia.cognition.statistics.ClosedFormComputableDiscreteDistribution;
+import gov.sandia.cognition.statistics.ClosedFormComputableDistribution;
 import gov.sandia.cognition.statistics.ComputableDistribution;
 import gov.sandia.cognition.statistics.ProbabilityFunction;
 import gov.sandia.cognition.statistics.distribution.DirichletDistribution;
@@ -27,7 +29,7 @@ import com.google.common.collect.Lists;
  */
 public class OnOffEdgeTransPriorDistribution extends
     AbstractCloneableSerializable implements
-    ComputableDistribution<TransitionProbMatrix>,
+    ClosedFormComputableDistribution<TransitionProbMatrix>,
     Comparable<OnOffEdgeTransPriorDistribution> {
 
   public static class OnOffEdgeTransPriorProbabilityFunction extends
@@ -48,12 +50,6 @@ public class OnOffEdgeTransPriorDistribution extends
     @Override
     public Double evaluate(TransitionProbMatrix input) {
       return Math.exp(this.logEvaluate(input));
-    }
-
-    @Override
-    public OnOffEdgeTransPriorProbabilityFunction
-        getProbabilityFunction() {
-      return null;
     }
 
     @Override
@@ -175,12 +171,6 @@ public class OnOffEdgeTransPriorDistribution extends
   }
 
   @Override
-  public OnOffEdgeTransPriorProbabilityFunction
-      getProbabilityFunction() {
-    return new OnOffEdgeTransPriorProbabilityFunction(this);
-  }
-
-  @Override
   public int hashCode() {
     final int prime = 31;
     int result = 1;
@@ -237,6 +227,27 @@ public class OnOffEdgeTransPriorDistribution extends
         + this.getFreeMotionTransProbPrior().getParameters()
         + ", edgeMotionTransPrior="
         + this.getEdgeMotionTransProbPrior().getParameters() + "]";
+  }
+
+  @Override
+  public TransitionProbMatrix getMean() {
+    return new TransitionProbMatrix(this.edgeMotionTransProbPrior.getMean(), 
+        this.freeMotionTransProbPrior.getMean());
+  }
+
+  @Override
+  public Vector convertToVector() {
+    return null;
+  }
+
+  @Override
+  public void convertFromVector(Vector parameters) {
+  }
+
+  @Override
+  public OnOffEdgeTransPriorProbabilityFunction
+      getProbabilityFunction() {
+    return new OnOffEdgeTransPriorProbabilityFunction(this);
   }
 
 }

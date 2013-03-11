@@ -147,7 +147,7 @@ public class InferenceGraphEdge implements
   }
 
   public boolean isNullEdge() {
-    return this == InferenceGraphEdge.emptyEdge;
+    return this.geometry == null;
   }
 
   @Override

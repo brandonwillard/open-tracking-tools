@@ -89,9 +89,7 @@ public class OnOffEdgeTransitionEstimatorPredictor extends
 
   @Override
   public OnOffEdgeTransPriorDistribution createInitialLearnedObject() {
-    return new OnOffEdgeTransPriorDistribution(this.estimator.createInitialLearnedObject()
-            .getMean(), this.estimator.createInitialLearnedObject()
-            .getMean());
+    return null; 
   }
 
   @Override

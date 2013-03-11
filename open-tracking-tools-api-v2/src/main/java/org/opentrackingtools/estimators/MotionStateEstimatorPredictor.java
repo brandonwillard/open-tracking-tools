@@ -303,8 +303,8 @@ public class MotionStateEstimatorPredictor extends
     @Nonnull VehicleState<?> currentState, @Nonnull Random rng,
     @Nullable Double currentTimeDiff) {
 
-    this.graph = this.currentState.getGraph();
     this.currentState = currentState;
+    this.graph = currentState.getGraph();
     this.rng = rng;
 
     if (currentState.getParentState() != null) {

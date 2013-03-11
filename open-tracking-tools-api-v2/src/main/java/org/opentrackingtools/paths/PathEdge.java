@@ -176,7 +176,7 @@ public class PathEdge<E extends InferenceGraphEdge> extends
   }
 
   public boolean isNullEdge() {
-    return this.edge == null;
+    return this.edge == null || this.edge.isNullEdge();
   }
 
   public boolean isOnEdge(double distance) {
