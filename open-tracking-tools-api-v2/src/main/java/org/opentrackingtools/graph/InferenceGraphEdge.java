@@ -46,7 +46,7 @@ public class InferenceGraphEdge implements
     this.hasReverse = null;
   }
 
-  protected InferenceGraphEdge(@Nonnull Geometry geom,
+  public InferenceGraphEdge(@Nonnull Geometry geom,
     @Nonnull Object backingEdge, @Nonnull Integer edgeId,
     @Nonnull InferenceGraph graph) {
 

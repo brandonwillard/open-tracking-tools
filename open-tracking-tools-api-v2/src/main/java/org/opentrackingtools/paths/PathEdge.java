@@ -46,7 +46,7 @@ public class PathEdge<E extends InferenceGraphEdge> extends
   public int compareTo(PathEdge<E> o) {
     return ComparisonChain
         .start()
-        .compare(this.edge, o.getInferredEdge())
+        .compare(this.edge, o.getInferenceGraphEdge())
         .compare(this.isBackward(), o.isBackward(),
             Ordering.natural().nullsLast())
         .compare(this.distToStartOfEdge, o.getDistToStartOfEdge(),
@@ -143,7 +143,7 @@ public class PathEdge<E extends InferenceGraphEdge> extends
     return this.edge.getGeometry();
   }
 
-  public E getInferredEdge() {
+  public E getInferenceGraphEdge() {
     return this.edge;
   }
 

@@ -81,7 +81,7 @@ public class VehicleStatePLFilter<O extends GpsObservation> extends
                 .getProbabilityFunction()
                 .logEvaluate(
                     predictedPathStateDist.getPathState().getEdge()
-                        .getInferredEdge());
+                        .getInferenceGraphEdge());
         final VehicleState<O> predictedChildState =
             new VehicleState<O>(predictedState);
         predictedChildState
@@ -156,7 +156,7 @@ public class VehicleStatePLFilter<O extends GpsObservation> extends
           pathStateDist.getPathState());
 
       final InferenceGraphEdge graphEdge =
-          pathStateDist.getPathState().getEdge().getInferredEdge();
+          pathStateDist.getPathState().getEdge().getInferenceGraphEdge();
       final OnOffEdgeTransitionEstimatorPredictor edgeTransitionEstimatorPredictor =
           new OnOffEdgeTransitionEstimatorPredictor(updateadState,
               graphEdge);

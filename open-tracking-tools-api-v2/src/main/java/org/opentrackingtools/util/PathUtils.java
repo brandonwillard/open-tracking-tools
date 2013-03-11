@@ -1051,7 +1051,7 @@ public class PathUtils {
 
     if (Math.signum(mean.getElement(0)) != desiredDirection) {
       final double totalPosLength =
-          edge.getInferredEdge().getLength()
+          edge.getInferenceGraphEdge().getLength()
               + Math.abs(edge.getDistToStartOfEdge());
       double newPosLocation =
           totalPosLength - Math.abs(mean.getElement(0));

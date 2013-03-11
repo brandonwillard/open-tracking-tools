@@ -45,9 +45,9 @@ public class PathState extends AbstractVector implements
     }
   }
 
-  public PathState(Path path, PathEdge<?> pathEdge, Vector stateSample) {
+  public PathState(Path path, PathEdge<?> pathEdge, Vector motionState) {
     this.path = path;
-    this.globalState = stateSample;
+    this.globalState = motionState;
   }
 
   public PathState(PathState pathState) {

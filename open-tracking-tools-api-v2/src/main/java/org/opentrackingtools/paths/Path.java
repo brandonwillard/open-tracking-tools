@@ -60,12 +60,12 @@ public class Path extends AbstractCloneableSerializable implements
       if (!edge.isNullEdge()) {
         if (isBackward) {
           Preconditions.checkArgument(lastEdge == null
-              || lastEdge.getInferredEdge().getStartPoint()
-                  .equals(edge.getInferredEdge().getEndPoint()));
+              || lastEdge.getInferenceGraphEdge().getStartPoint()
+                  .equals(edge.getInferenceGraphEdge().getEndPoint()));
         } else {
           Preconditions.checkArgument(lastEdge == null
-              || lastEdge.getInferredEdge().getEndPoint()
-                  .equals(edge.getInferredEdge().getStartPoint()));
+              || lastEdge.getInferenceGraphEdge().getEndPoint()
+                  .equals(edge.getInferenceGraphEdge().getStartPoint()));
 
         }
 
@@ -82,7 +82,7 @@ public class Path extends AbstractCloneableSerializable implements
               coords.add(theseCoords[i]);
             }
           }
-          this.edgeIds.add(edge.getInferredEdge().getEdgeId());
+          this.edgeIds.add(edge.getInferenceGraphEdge().getEdgeId());
         }
       }
 
@@ -121,8 +121,8 @@ public class Path extends AbstractCloneableSerializable implements
       this.edges = Collections.singletonList(edge);
       this.totalPathDistance =
           (this.isBackward == Boolean.TRUE ? -1d : 1d)
-              * edge.getInferredEdge().getLength();
-      this.edgeIds.add(edge.getInferredEdge().getEdgeId());
+              * edge.getInferenceGraphEdge().getLength();
+      this.edgeIds.add(edge.getInferenceGraphEdge().getEdgeId());
       this.geometry =
           (this.isBackward == Boolean.TRUE) ? edge.getGeometry()
               .reverse() : edge.getGeometry();

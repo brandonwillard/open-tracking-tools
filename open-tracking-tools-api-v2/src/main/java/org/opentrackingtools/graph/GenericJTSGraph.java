@@ -353,7 +353,7 @@ public class GenericJTSGraph implements InferenceGraph {
 
     final InferenceGraphEdge currentEdge =
         fromState.getPathStateParam().getValue().getEdge()
-            .getInferredEdge();
+            .getInferenceGraphEdge();
 
     final Set<InferenceGraphEdge> startEdges = Sets.newHashSet();
 
