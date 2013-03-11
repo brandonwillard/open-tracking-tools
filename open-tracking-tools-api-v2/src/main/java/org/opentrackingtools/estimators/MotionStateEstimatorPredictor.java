@@ -377,7 +377,10 @@ public class MotionStateEstimatorPredictor extends
 
   @Override
   public MultivariateGaussian createInitialLearnedObject() {
-    return this.groundFilter.createInitialLearnedObject();
+    MultivariateGaussian initialMotionStateDist = this.groundFilter.createInitialLearnedObject();
+    initialMotionStateDist.getMean().setElement(0, this.currentState.getObservation().getProjectedPoint().getElement(0));
+    initialMotionStateDist.getMean().setElement(2, this.currentState.getObservation().getProjectedPoint().getElement(1));
+    return initialMotionStateDist;
   }
 
   @Override
@@ -527,18 +530,7 @@ public class MotionStateEstimatorPredictor extends
       projBelief =
           PathUtils.getGroundBeliefFromRoad(motionState, edge, true);
       if (!this.roadFilter.getMeasurementCovariance().isZero()) {
-        /*
-         * We need to project the road measurement error up into 4d space.
-         */
-        final MultivariateGaussian tmpMeasurementDist =
-            new MultivariateGaussian(VectorFactory.getDefault()
-                .createVector(2),
-                this.roadFilter.getMeasurementCovariance());
-        final MultivariateGaussian projMeasurementDist =
-            PathUtils.getGroundBeliefFromRoad(tmpMeasurementDist,
-                edge, false);
-        measurementCovariance.plusEquals(projMeasurementDist
-            .getCovariance());
+        measurementCovariance.plusEquals(this.groundFilter.getMeasurementCovariance());
       }
     } else {
       projBelief = motionState;

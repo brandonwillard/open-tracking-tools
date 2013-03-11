@@ -186,32 +186,36 @@ public class GenericJTSGraph implements InferenceGraph {
    * 
    * @param lines
    */
-  public GenericJTSGraph(Collection<LineString> lines) {
-    this.createGraphFromLineStrings(lines);
+  public GenericJTSGraph(Collection<LineString> lines, boolean transformShapesToEuclidean) {
+    this.createGraphFromLineStrings(lines, transformShapesToEuclidean);
   }
 
   protected void createGraphFromLineStrings(
-    Collection<LineString> lines) {
-    this.graphGenerator = new StrictLineStringGraphGenerator();
-    this.edgeIndex = new STRtree();
-    this.gpsEnv = new Envelope();
-    this.projEnv = new Envelope();
-    for (final LineString edge : lines) {
-      this.gpsEnv.expandToInclude(edge.getEnvelopeInternal());
-      final MathTransform transform =
-          GeoUtils.getTransform(edge.getCoordinate());
-      Geometry projectedEdge;
-      try {
-        projectedEdge = JTS.transform(edge, transform);
-        this.projEnv.expandToInclude(projectedEdge
-            .getEnvelopeInternal());
-        final ConstLineString constLine =
-            new ConstLineString((LineString) projectedEdge);
-        constLine.setUserData(edge);
-        this.graphGenerator.add(constLine);
-      } catch (final TransformException e) {
-        e.printStackTrace();
+    Collection<LineString> lines, boolean transformShapesToEuclidean) {
+    graphGenerator = new StrictLineStringGraphGenerator(); 
+    edgeIndex = new STRtree();
+    gpsEnv = new Envelope();
+    projEnv = new Envelope();
+    for (LineString edge : lines) {
+      gpsEnv.expandToInclude(edge.getEnvelopeInternal());
+      
+      Geometry projectedEdge; 
+      if (transformShapesToEuclidean) {
+        final MathTransform transform = GeoUtils.getTransform(edge.getCoordinate());
+        try {
+          projectedEdge = JTS.transform(edge, transform);
+        } catch (final TransformException e) {
+          e.printStackTrace();
+          continue;
+        }
+      } else {
+        projectedEdge = edge;
       }
+      
+      projEnv.expandToInclude(projectedEdge.getEnvelopeInternal());
+      final ConstLineString constLine = new ConstLineString((LineString)projectedEdge);
+      constLine.setUserData(edge);
+      graphGenerator.add(constLine);
     }
     /*
      * Initialize the id map and edge index.
@@ -227,22 +231,17 @@ public class GenericJTSGraph implements InferenceGraph {
      * have to keep our own map; the internal graph doesn't
      * do that).
      */
-    for (final Object obj : this.graphGenerator.getGraph().getEdges()) {
+    for (Object obj : graphGenerator.getGraph().getEdges()) {
       final BasicDirectedEdge edge = (BasicDirectedEdge) obj;
-      final InferenceGraphEdge infEdge =
-          this.getInferenceGraphEdge(edge);
-      final LineString lineString =
-          (LineString) infEdge.getGeometry();
-      for (final LineSegment line : GeoUtils
-          .getSubLineSegments(lineString)) {
-        final Pair<LineSegment, InferenceGraphEdge> lineEdgePair =
-            DefaultPair.create(line, infEdge);
-        this.edgeIndex.insert(new Envelope(line.p0, line.p1),
-            lineEdgePair);
+      InferenceGraphEdge infEdge = getInferenceGraphEdge(edge);
+      final LineString lineString = (LineString) infEdge.getGeometry();
+      for (LineSegment line : GeoUtils.getSubLineSegments(lineString)) {
+        LengthIndexedSubline subline = new LengthIndexedSubline(line, infEdge);
+        edgeIndex.insert(new Envelope(line.p0, line.p1), subline);
       }
-
+      
     }
-    this.edgeIndex.build();
+    edgeIndex.build();
   }
 
   @Override
@@ -392,7 +391,7 @@ public class GenericJTSGraph implements InferenceGraph {
     }
 
     final Set<Path> paths = Sets.newHashSet();
-    paths.add(new Path());
+    paths.add(Path.nullPath);
 
     if (endNodes.isEmpty()) {
       return paths;
@@ -401,7 +400,7 @@ public class GenericJTSGraph implements InferenceGraph {
     for (final InferenceGraphEdge startEdge : startEdges) {
 
       // TODO FIXME determine when/how backward movement fits in
-      paths.add(new Path(new PathEdge<InferenceGraphEdge>(startEdge,
+      paths.add(new Path(new PathEdge(startEdge,
           0d, false)));
 
       final DirectedEdge bStartEdge =
@@ -432,7 +431,7 @@ public class GenericJTSGraph implements InferenceGraph {
         final org.geotools.graph.path.Path path = aStarIter.getPath();
 
         if (path != null) {
-          final List<PathEdge<?>> pathEdges = Lists.newArrayList();
+          final List<PathEdge> pathEdges = Lists.newArrayList();
           double distToStart = 0d;
           final Iterator<?> iter = path.riterator();
           BasicDirectedNode prevNode =
@@ -445,7 +444,7 @@ public class GenericJTSGraph implements InferenceGraph {
 
             final InferenceGraphEdge infEdge =
                 this.getInferenceGraphEdge(edge);
-            pathEdges.add(new PathEdge<InferenceGraphEdge>(infEdge,
+            pathEdges.add(new PathEdge(infEdge,
                 distToStart, false));
             distToStart += infEdge.getLength();
 

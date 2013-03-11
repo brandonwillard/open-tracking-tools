@@ -68,15 +68,15 @@ public class SimulationTest {
           /*
            * Road only
            */
-        new VehicleStateInitialParameters(VectorFactory
-            .getDefault().createVector2D(100d, 100d), 20,
+        new VehicleStateInitialParameters(
+            null,
+            VectorFactory.getDefault().createVector2D(100d, 100d), 20,
             VectorFactory.getDefault().createVector1D(
                 6.25e-4), 30, VectorFactory.getDefault()
                 .createVector2D(6.25e-4, 6.25e-4), 20,
             VectorFactory.getDefault().createVector2D(1d,
                 Double.MAX_VALUE), VectorFactory.getDefault()
                 .createVector2D(Double.MAX_VALUE, 1d),
-            null, null,
             25, 15, 2159585l),
         Boolean.FALSE,
             126000
@@ -85,15 +85,15 @@ public class SimulationTest {
           /*
            * Road only
            */
-        new VehicleStateInitialParameters(VectorFactory
-            .getDefault().createVector2D(100d, 100d), 20,
+        new VehicleStateInitialParameters(
+            null,
+            VectorFactory.getDefault().createVector2D(100d, 100d), 20,
             VectorFactory.getDefault().createVector1D(
                 6.25e-4), 30, VectorFactory.getDefault()
                 .createVector2D(6.25e-4, 6.25e-4), 20,
             VectorFactory.getDefault().createVector2D(1d,
                 Double.MAX_VALUE), VectorFactory.getDefault()
                 .createVector2D(Double.MAX_VALUE, 1d),
-            null, null,    
             25, 15, 2159585l),
         Boolean.FALSE,
             126000
@@ -102,8 +102,9 @@ public class SimulationTest {
           /*
            * Ground only
            */
-        new VehicleStateInitialParameters(VectorFactory
-            .getDefault().createVector2D(100d, 100d), 20,
+        new VehicleStateInitialParameters(
+            null,
+            VectorFactory.getDefault().createVector2D(100d, 100d), 20,
             VectorFactory.getDefault().createVector1D(
                 6.25e-4), 30, VectorFactory.getDefault()
                 .createVector2D(6.25e-4, 6.25e-4), 20,
@@ -111,7 +112,6 @@ public class SimulationTest {
                 Double.MAX_VALUE, 1d), 
             VectorFactory.getDefault().createVector2D(
                 1d, Double.MAX_VALUE),
-            null, null,
             25, 10, 215955l),
         Boolean.FALSE,
             126000
@@ -120,8 +120,9 @@ public class SimulationTest {
           /*
            * Mixed 
            */
-        new VehicleStateInitialParameters(VectorFactory
-            .getDefault().createVector2D(100d, 100d), 20,
+        new VehicleStateInitialParameters(
+            null,
+            VectorFactory.getDefault().createVector2D(100d, 100d), 20,
             VectorFactory.getDefault().createVector1D(
                 6.25e-4), 30, VectorFactory.getDefault()
                 .createVector2D(6.25e-4, 6.25e-4), 20,
@@ -129,7 +130,6 @@ public class SimulationTest {
                 1d, 1d), 
             VectorFactory.getDefault().createVector2D(
                 1d, 1d),
-            null, null,
             25, 15, 21595857l), 
             Boolean.TRUE,
             46000
@@ -163,7 +163,7 @@ public class SimulationTest {
     movementZeroArray = null;
     
     final long approxRuns = sim.getSimParameters().getDuration()/
-        sim.getSimParameters().getFrequency();
+        Math.round(sim.getSimParameters().getFrequency());
     
     updateStats(vehicleState, obsErrorSS, movementSS, transitionsSS, 
         generalizeMoveDiff);
@@ -235,7 +235,7 @@ public class SimulationTest {
     }
     
     final long approxRuns = sim.getSimParameters().getDuration()/
-        sim.getSimParameters().getFrequency();
+        Math.round(sim.getSimParameters().getFrequency());
     if (movementSS.getCount() > 0) {//Math.min(approxRuns/16, 25)) {
       if (obsErrorZeroArray == null)
         obsErrorZeroArray = VectorFactory.getDefault()

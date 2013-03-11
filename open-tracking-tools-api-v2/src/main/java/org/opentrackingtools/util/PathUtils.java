@@ -265,7 +265,7 @@ public class PathUtils {
    */
   public static void
       convertToRoadBelief(MultivariateGaussian belief, Path path,
-        @Nullable PathEdge<?> pathEdge, boolean useAbsVelocity) {
+        @Nullable PathEdge pathEdge, boolean useAbsVelocity) {
 
     final MultivariateGaussian projBelief =
         PathUtils.getRoadBeliefFromGround(belief, path.getGeometry(),

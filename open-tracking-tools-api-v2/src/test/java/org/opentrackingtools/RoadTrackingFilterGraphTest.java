@@ -63,20 +63,24 @@ public class RoadTrackingFilterGraphTest {
         /*
          * Road only
          */
-        new VehicleStateInitialParameters(VectorFactory.getDefault()
+        new VehicleStateInitialParameters(
+            null,
+            VectorFactory.getDefault()
             .createVector2D(70d, 70d), 20, VectorFactory.getDefault()
             .createVector1D(6.25e-4), 20, VectorFactory.getDefault()
             .createVector2D(6.25e-4, 6.25e-4), 20, VectorFactory
             .getDefault().createVector2D(1d, Double.MAX_VALUE),
             VectorFactory.getDefault().createVector2D(
-                Double.MAX_VALUE, 1d), null, null, 25, 30, 2159585l),
-        new VehicleStateInitialParameters(VectorFactory.getDefault()
+                Double.MAX_VALUE, 1d), 25, 30, 2159585l),
+        new VehicleStateInitialParameters(
+            null,
+            VectorFactory.getDefault()
             .createVector2D(70d, 70d), 20, VectorFactory.getDefault()
             .createVector1D(6.25e-4), 20, VectorFactory.getDefault()
             .createVector2D(6.25e-4, 6.25e-4), 20, VectorFactory
             .getDefault().createVector2D(1d, Double.MAX_VALUE),
             VectorFactory.getDefault().createVector2D(
-                Double.MAX_VALUE, 1d), null, null, 25, 30, 2159585l),
+                Double.MAX_VALUE, 1d), 25, 30, 2159585l),
         Boolean.FALSE, 36000 }
     //        ,{
     //          /*
@@ -182,7 +186,7 @@ public class RoadTrackingFilterGraphTest {
 
     final long approxRuns =
         this.sim.getSimParameters().getDuration()
-            / this.sim.getSimParameters().getFrequency();
+            / Math.round(this.sim.getSimParameters().getFrequency());
 
     this.updateAndCheckStats(vehicleStateDist, trueVehicleState,
         obsErrorSS, stateErrorSS, obsCovErrorSS, onRoadCovErrorSS,
@@ -408,7 +412,7 @@ public class RoadTrackingFilterGraphTest {
 
     final long approxRuns =
         this.sim.getSimParameters().getDuration()
-            / this.sim.getSimParameters().getFrequency();
+            / Math.round(this.sim.getSimParameters().getFrequency());
     if (obsErrorSS.getCount() > Math.min(approxRuns / 16, 155)) {
 
       ArrayAsserts.assertArrayEquals(obsErrorSS.getMean()

@@ -123,7 +123,7 @@ public class PathStateEstimatorPredictor extends
         roadDistribution = prior;
       }
 
-      for (final PathEdge<?> edge : this.path.getPathEdges()) {
+      for (final PathEdge edge : this.path.getPathEdges()) {
         PathStateDistribution prediction = getPathEdgePredictive(roadDistribution, edge);
         distributions.add(prediction);
         weights.add(this.marginalPredictiveLogLikInternal(this.path,
@@ -232,7 +232,7 @@ public class PathStateEstimatorPredictor extends
    * @return
    */
   public double marginalPredictiveLogLikInternal(Path path,
-    MultivariateGaussian beliefPrediction, PathEdge<?> currentEdge) {
+    MultivariateGaussian beliefPrediction, PathEdge currentEdge) {
 
     final double direction = currentEdge.isBackward() ? -1d : 1d;
     final double thisStartDistance =

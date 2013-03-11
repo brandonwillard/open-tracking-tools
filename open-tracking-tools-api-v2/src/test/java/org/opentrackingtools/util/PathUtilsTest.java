@@ -61,7 +61,7 @@ public class PathUtilsTest {
                 })
             );
     
-    final PathEdge<?> pathEdge = Iterables.getLast(path.getPathEdges());
+    final PathEdge pathEdge = Iterables.getLast(path.getPathEdges());
     MultivariateGaussian projBelief = PathUtils.getRoadBeliefFromGround(belief, 
         path.getGeometry(), path.isBackward(), 
         pathEdge.isBackward() ? pathEdge.getGeometry().reverse() : pathEdge.getGeometry(), 

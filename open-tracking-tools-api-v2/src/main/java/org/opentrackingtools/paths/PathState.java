@@ -12,6 +12,7 @@ import java.util.Iterator;
 
 import org.apache.commons.lang3.builder.CompareToBuilder;
 import org.opentrackingtools.estimators.MotionStateEstimatorPredictor;
+import org.opentrackingtools.graph.InferenceGraphEdge;
 import org.opentrackingtools.util.PathUtils;
 
 import com.google.common.base.Preconditions;
@@ -22,15 +23,15 @@ public class PathState extends AbstractVector implements
 
   private static final long serialVersionUID = 2846671162796173049L;
 
-  protected Vector globalState;
-  protected Path path;
-  
-  protected PathEdge<?> edge = null;
+  protected Vector globalState = null;
+  protected Path path = null;
+  protected PathEdge edge = null;
   protected Vector groundState = null;
   protected Vector localState = null;
 
   public PathState(Path path, Vector state) {
     
+    Preconditions.checkArgument(path.isNullPath() || state.getDimensionality() == 2);
     Preconditions.checkArgument(!path.isNullPath() || state.getDimensionality() == 4);
     
     this.globalState = state;
@@ -43,11 +44,6 @@ public class PathState extends AbstractVector implements
       this.globalState.setElement(0,
           path.clampToPath(this.globalState.getElement(0)));
     }
-  }
-
-  public PathState(Path path, PathEdge<?> pathEdge, Vector motionState) {
-    this.path = path;
-    this.globalState = motionState;
   }
 
   public PathState(PathState pathState) {
@@ -185,10 +181,10 @@ public class PathState extends AbstractVector implements
     return this.globalState.getDimensionality();
   }
 
-  public PathEdge<?> getEdge() {
+  public PathEdge getEdge() {
 
     if (!this.isOnRoad()) {
-      return Iterables.getOnlyElement(this.path.getPathEdges());
+      return PathEdge.nullPathEdge;
     }
 
     if (this.edge == null) {

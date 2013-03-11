@@ -10,22 +10,23 @@ import com.google.common.collect.ComparisonChain;
 import com.google.common.collect.Ordering;
 import com.vividsolutions.jts.geom.Geometry;
 
-public class PathEdge<E extends InferenceGraphEdge> extends
-    AbstractCloneableSerializable implements Comparable<PathEdge<E>> {
+public class PathEdge extends
+    AbstractCloneableSerializable implements Comparable<PathEdge> {
 
   private static final long serialVersionUID = 2615199504616160384L;
 
-  protected Double distToStartOfEdge;
-  protected E edge;
-  protected Boolean isBackward;
+  protected Double distToStartOfEdge = null;
+  protected InferenceGraphEdge edge = null;
+  protected Boolean isBackward = null;
+  
+  public final static PathEdge nullPathEdge = new PathEdge();
 
-  public PathEdge() {
-    this.edge = null;
-    this.distToStartOfEdge = null;
-    this.isBackward = null;
+  protected PathEdge() {
+    this.edge = InferenceGraphEdge.nullGraphEdge;
   }
 
-  public PathEdge(E edge, Double distToStartOfEdge, Boolean isBackward) {
+  public PathEdge(InferenceGraphEdge edge, Double distToStartOfEdge, Boolean isBackward) {
+    Preconditions.checkArgument(!edge.isNullEdge());
     Preconditions.checkState((isBackward != Boolean.TRUE)
         || distToStartOfEdge <= 0d);
     this.edge = edge;
@@ -34,8 +35,8 @@ public class PathEdge<E extends InferenceGraphEdge> extends
   }
 
   @Override
-  public PathEdge<E> clone() {
-    final PathEdge<E> clone = (PathEdge<E>) super.clone();
+  public PathEdge clone() {
+    final PathEdge clone = (PathEdge) super.clone();
     clone.distToStartOfEdge = this.distToStartOfEdge;
     clone.edge = this.edge;
     clone.isBackward = this.isBackward;
@@ -43,7 +44,7 @@ public class PathEdge<E extends InferenceGraphEdge> extends
   }
 
   @Override
-  public int compareTo(PathEdge<E> o) {
+  public int compareTo(PathEdge o) {
     return ComparisonChain
         .start()
         .compare(this.edge, o.getInferenceGraphEdge())
@@ -64,7 +65,7 @@ public class PathEdge<E extends InferenceGraphEdge> extends
     if (this.getClass() != obj.getClass()) {
       return false;
     }
-    final PathEdge<E> other = (PathEdge<E>) obj;
+    final PathEdge other = (PathEdge) obj;
     if (this.distToStartOfEdge == null) {
       if (other.distToStartOfEdge != null) {
         return false;
@@ -143,7 +144,7 @@ public class PathEdge<E extends InferenceGraphEdge> extends
     return this.edge.getGeometry();
   }
 
-  public E getInferenceGraphEdge() {
+  public InferenceGraphEdge getInferenceGraphEdge() {
     return this.edge;
   }
 
@@ -176,7 +177,7 @@ public class PathEdge<E extends InferenceGraphEdge> extends
   }
 
   public boolean isNullEdge() {
-    return this.edge == null || this.edge.isNullEdge();
+    return this.equals(nullPathEdge);
   }
 
   public boolean isOnEdge(double distance) {

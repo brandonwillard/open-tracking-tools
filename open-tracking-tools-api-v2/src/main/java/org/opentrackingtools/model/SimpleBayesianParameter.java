@@ -25,9 +25,14 @@ public class SimpleBayesianParameter<ParameterType, ConditionalType extends Clos
     clone.conditional = ObjectUtil.cloneSmart(this.conditional);
     clone.prior = ObjectUtil.cloneSmart(this.prior);
     clone.value = ObjectUtil.cloneSmart(this.value);
+    clone.name = this.name;
     return clone;
   }
   
+  public void setName(String name) {
+    this.name = name;
+  }
+
   public SimpleBayesianParameter(SimpleBayesianParameter<ParameterType, ConditionalType, PriorType> other) {
     super();
     this.conditional = other.conditional;
@@ -51,6 +56,10 @@ public class SimpleBayesianParameter<ParameterType, ConditionalType extends Clos
   @Override
   public ConditionalType getConditionalDistribution() {
     return this.conditional;
+  }
+  
+  public ConditionalType setConditionalDistribution(ConditionalType conditional) {
+    return this.conditional = conditional;
   }
 
   @Override
@@ -80,6 +89,53 @@ public class SimpleBayesianParameter<ParameterType, ConditionalType extends Clos
   public void setParameterPrior(
     PriorType prior) {
     this.prior = prior;
+  }
+
+  @Override
+  public int hashCode() {
+    final int prime = 31;
+    int result = 1;
+    result =
+        prime * result
+            + ((conditional == null) ? 0 : conditional.hashCode());
+    result = prime * result + ((name == null) ? 0 : name.hashCode());
+    result =
+        prime * result + ((prior == null) ? 0 : prior.hashCode());
+    result =
+        prime * result + ((value == null) ? 0 : value.hashCode());
+    return result;
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj)
+      return true;
+    if (obj == null)
+      return false;
+    if (getClass() != obj.getClass())
+      return false;
+    SimpleBayesianParameter<?,?,?> other = (SimpleBayesianParameter<?,?,?> ) obj;
+    if (conditional == null) {
+      if (other.conditional != null)
+        return false;
+    } else if (!conditional.equals(other.conditional))
+      return false;
+    if (name == null) {
+      if (other.name != null)
+        return false;
+    } else if (!name.equals(other.name))
+      return false;
+    if (prior == null) {
+      if (other.prior != null)
+        return false;
+    } else if (!prior.equals(other.prior))
+      return false;
+    if (value == null) {
+      if (other.value != null)
+        return false;
+    } else if (!value.equals(other.value))
+      return false;
+    return true;
   }
 
 }

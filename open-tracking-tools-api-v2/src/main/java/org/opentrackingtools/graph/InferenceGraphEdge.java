@@ -5,6 +5,7 @@ import gov.sandia.cognition.math.matrix.VectorFactory;
 
 import javax.annotation.Nonnull;
 
+import com.google.common.base.Preconditions;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 
@@ -14,30 +15,17 @@ public class InferenceGraphEdge implements
   /*
    * This is the empty edge, which stands for free movement
    */
-  protected final static InferenceGraphEdge emptyEdge =
-      new InferenceGraphEdge();
-
-  public static InferenceGraphEdge getInferredEdge(
-    @Nonnull Geometry geom, @Nonnull Object backingEdge,
-    @Nonnull Integer edgeId, @Nonnull InferenceGraph graph) {
-    return new InferenceGraphEdge(geom, backingEdge, edgeId, graph);
-  }
-
-  public static InferenceGraphEdge getNullEdge() {
-    return InferenceGraphEdge.emptyEdge;
-  }
+  public final static InferenceGraphEdge nullGraphEdge = new InferenceGraphEdge();
 
   protected final Object backingEdge;
   protected final Integer edgeId;
   protected final Vector endPoint;
-
   protected final Geometry geometry;
-
   protected final Boolean hasReverse;
-
   protected final Vector startPoint;
+  
 
-  public InferenceGraphEdge() {
+  protected InferenceGraphEdge() {
     this.edgeId = null;
     this.endPoint = null;
     this.startPoint = null;
@@ -50,10 +38,10 @@ public class InferenceGraphEdge implements
     @Nonnull Object backingEdge, @Nonnull Integer edgeId,
     @Nonnull InferenceGraph graph) {
 
-    this.edgeId = edgeId;
-    this.backingEdge = backingEdge;
+    this.edgeId = Preconditions.checkNotNull(edgeId);
+    this.backingEdge = Preconditions.checkNotNull(backingEdge);
 
-    this.geometry = geom;
+    this.geometry = Preconditions.checkNotNull(geom);
 
     this.hasReverse = graph.edgeHasReverse(geom);
 
@@ -147,15 +135,15 @@ public class InferenceGraphEdge implements
   }
 
   public boolean isNullEdge() {
-    return this.geometry == null;
+    return this.equals(nullGraphEdge);
   }
 
   @Override
   public String toString() {
-    if (this == InferenceGraphEdge.emptyEdge) {
-      return "InferredEdge [null]";
+    if (this == InferenceGraphEdge.nullGraphEdge) {
+      return "InferenceGraphEdge [null]";
     } else {
-      return "InferredEdge [edgeId=" + this.edgeId + ", length="
+      return "InferenceGraphEdge [edgeId=" + this.edgeId + ", length="
           + this.getLength() + "]";
     }
   }

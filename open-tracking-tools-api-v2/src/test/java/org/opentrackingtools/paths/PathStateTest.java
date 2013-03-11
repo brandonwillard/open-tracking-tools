@@ -49,9 +49,9 @@ public class PathStateTest {
 
   @Test(expectedExceptions = IllegalArgumentException.class)
   public void testBadPathError() {
-    final List<PathEdge<InferenceGraphEdge>> edges2_rev =
-        Lists.newArrayList(new PathEdge<InferenceGraphEdge>(ie2_rev, 0d,
-            false), new PathEdge<InferenceGraphEdge>(ie3_rev,
+    final List<PathEdge> edges2_rev =
+        Lists.newArrayList(new PathEdge(ie2_rev, 0d,
+            false), new PathEdge(ie3_rev,
             ie2_rev.getLength(), false));
 
     new Path(edges2_rev, false);
@@ -590,7 +590,7 @@ public class PathStateTest {
             .getDenseDefault().createVector2D(5d, 1d));
     final PathState y =
         new PathState(
-            new Path(new PathEdge<InferenceGraphEdge>(
+            new Path(new PathEdge(
                 p1.getPathEdges().get(1).getInferenceGraphEdge(), 0d,
                 false)),
             VectorFactory.getDenseDefault().createVector2D(
@@ -620,7 +620,7 @@ public class PathStateTest {
             .getDenseDefault().createVector2D(5d, 1d));
     final PathState y =
         new PathState(
-            new Path(new PathEdge<InferenceGraphEdge>(
+            new Path(new PathEdge(
                 p1.getPathEdges().get(1).getInferenceGraphEdge(), 0d,
                 true)),
             VectorFactory.getDenseDefault().createVector2D(
@@ -658,7 +658,7 @@ public class PathStateTest {
         new PathState(p1, VectorFactory
             .getDenseDefault().createVector2D(5d, 1d));
     final PathState y =
-        new PathState(new Path(new PathEdge<InferenceGraphEdge>(ie3, 0d,
+        new PathState(new Path(new PathEdge(ie3, 0d,
                 false)), VectorFactory.getDenseDefault()
             .createVector2D(5d, 1d));
     final Vector diff = y.minus(x);
@@ -697,7 +697,7 @@ public class PathStateTest {
         new PathState(p1, VectorFactory
             .getDenseDefault().createVector2D(5d, 1d));
     final PathState y =
-        new PathState(new Path(new PathEdge<InferenceGraphEdge>(ie3_rev, 0d,
+        new PathState(new Path(new PathEdge(ie3_rev, 0d,
                 false)), VectorFactory.getDenseDefault()
             .createVector2D(5d, -1d));
     final Vector diff = y.minus(x);

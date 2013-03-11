@@ -67,7 +67,7 @@ public class TestUtils {
         stub(graph.edgeHasReverse(geom)).toReturn(false);
         
         final InferenceGraphEdge ie =
-            InferenceGraphEdge.getInferredEdge(geom, null, 1000 + i, graph);
+            new InferenceGraphEdge(geom, null, 1000 + i, graph);
         
         
         edges.add(ie);
@@ -79,11 +79,11 @@ public class TestUtils {
       Collections.reverse(edges);
     }
 
-    final List<PathEdge<?>> pathEdges = Lists.newArrayList();
+    final List<PathEdge> pathEdges = Lists.newArrayList();
     double distToStart = 0;
     for (final InferenceGraphEdge edge : edges) {
-      final PathEdge<?> pe =
-          new PathEdge<InferenceGraphEdge>(edge, (isBackward ? -1d : 1d)
+      final PathEdge pe =
+          new PathEdge(edge, (isBackward ? -1d : 1d)
               * distToStart, isBackward);
       distToStart += edge.getLength();
       pathEdges.add(pe);

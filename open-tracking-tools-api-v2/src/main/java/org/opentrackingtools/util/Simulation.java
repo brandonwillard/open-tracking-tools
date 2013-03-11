@@ -30,14 +30,14 @@ public class Simulation {
     protected final boolean canMoveBackward;
     protected final long duration;
     protected final Date endTime;
-    protected final long frequency;
+    protected final double frequency;
     protected final boolean performInference;
     protected final Coordinate startCoordinate;
     protected final Date startTime;
     protected final VehicleStateInitialParameters stateParams;
 
     public SimulationParameters(Coordinate startCoordinate,
-      Date startTime, long duration, long frequency,
+      Date startTime, long duration, double frequency,
       boolean performInference, boolean canMoveBackward,
       VehicleStateInitialParameters stateParams) {
       this.stateParams = stateParams;
@@ -52,53 +52,42 @@ public class Simulation {
 
     @Override
     public boolean equals(Object obj) {
-      if (this == obj) {
+      if (this == obj)
         return true;
-      }
-      if (obj == null) {
+      if (obj == null)
         return false;
-      }
-      if (this.getClass() != obj.getClass()) {
+      if (getClass() != obj.getClass())
         return false;
-      }
-      final SimulationParameters other = (SimulationParameters) obj;
-      if (this.duration != other.duration) {
+      SimulationParameters other = (SimulationParameters) obj;
+      if (canMoveBackward != other.canMoveBackward)
         return false;
-      }
-      if (this.endTime == null) {
-        if (other.endTime != null) {
+      if (duration != other.duration)
+        return false;
+      if (endTime == null) {
+        if (other.endTime != null)
           return false;
-        }
-      } else if (!this.endTime.equals(other.endTime)) {
+      } else if (!endTime.equals(other.endTime))
         return false;
-      }
-      if (this.frequency != other.frequency) {
+      if (Double.doubleToLongBits(frequency) != Double
+          .doubleToLongBits(other.frequency))
         return false;
-      }
-      if (this.performInference != other.performInference) {
+      if (performInference != other.performInference)
         return false;
-      }
-      if (this.startCoordinate == null) {
-        if (other.startCoordinate != null) {
+      if (startCoordinate == null) {
+        if (other.startCoordinate != null)
           return false;
-        }
-      } else if (!this.startCoordinate.equals(other.startCoordinate)) {
+      } else if (!startCoordinate.equals(other.startCoordinate))
         return false;
-      }
-      if (this.startTime == null) {
-        if (other.startTime != null) {
+      if (startTime == null) {
+        if (other.startTime != null)
           return false;
-        }
-      } else if (!this.startTime.equals(other.startTime)) {
+      } else if (!startTime.equals(other.startTime))
         return false;
-      }
-      if (this.stateParams == null) {
-        if (other.stateParams != null) {
+      if (stateParams == null) {
+        if (other.stateParams != null)
           return false;
-        }
-      } else if (!this.stateParams.equals(other.stateParams)) {
+      } else if (!stateParams.equals(other.stateParams))
         return false;
-      }
       return true;
     }
 
@@ -110,7 +99,7 @@ public class Simulation {
       return this.endTime;
     }
 
-    public long getFrequency() {
+    public double getFrequency() {
       return this.frequency;
     }
 
@@ -130,32 +119,26 @@ public class Simulation {
     public int hashCode() {
       final int prime = 31;
       int result = 1;
+      result = prime * result + (canMoveBackward ? 1231 : 1237);
+      result = prime * result + (int) (duration ^ (duration >>> 32));
       result =
           prime * result
-              + (int) (this.duration ^ (this.duration >>> 32));
+              + ((endTime == null) ? 0 : endTime.hashCode());
+      long temp;
+      temp = Double.doubleToLongBits(frequency);
+      result = prime * result + (int) (temp ^ (temp >>> 32));
+      result = prime * result + (performInference ? 1231 : 1237);
       result =
           prime
               * result
-              + ((this.endTime == null) ? 0 : this.endTime.hashCode());
+              + ((startCoordinate == null) ? 0 : startCoordinate
+                  .hashCode());
       result =
           prime * result
-              + (int) (this.frequency ^ (this.frequency >>> 32));
-      result = prime * result + (this.performInference ? 1231 : 1237);
+              + ((startTime == null) ? 0 : startTime.hashCode());
       result =
-          prime
-              * result
-              + ((this.startCoordinate == null) ? 0
-                  : this.startCoordinate.hashCode());
-      result =
-          prime
-              * result
-              + ((this.startTime == null) ? 0 : this.startTime
-                  .hashCode());
-      result =
-          prime
-              * result
-              + ((this.stateParams == null) ? 0 : this.stateParams
-                  .hashCode());
+          prime * result
+              + ((stateParams == null) ? 0 : stateParams.hashCode());
       return result;
     }
 
@@ -257,18 +240,8 @@ public class Simulation {
     return this.infParameters;
   }
 
-  public String getParticleFilterTypeName() {
-    return this.simParameters.getStateParams()
-        .getParticleFilterTypeName();
-  }
-
   public Random getRng() {
     return this.rng;
-  }
-
-  public String getRoadFilterTypeName() {
-    return this.simParameters.getStateParams()
-        .getRoadFilterTypeName();
   }
 
   public long getSeed() {
@@ -341,7 +314,7 @@ public class Simulation {
       throws NoninvertibleTransformException, TransformException {
     final long time =
         currentState.getObservation().getTimestamp().getTime()
-            + this.simParameters.getFrequency() * 1000;
+            + Math.round(this.simParameters.getFrequency()) * 1000;
 
     /*
      * TODO: set seed for debugging
@@ -349,7 +322,7 @@ public class Simulation {
     this.updater.seed = this.rng.nextLong();
 
     final VehicleState<GpsObservation> vehicleState =
-        this.sampleState(currentState, time);
+        this.sampleState(currentState, (long)time);
 
     Simulation._log.info("processed simulation observation : "
         + this.recordsProcessed + ", " + time);

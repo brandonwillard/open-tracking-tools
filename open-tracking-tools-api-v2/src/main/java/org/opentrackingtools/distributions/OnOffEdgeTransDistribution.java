@@ -12,6 +12,7 @@ import gov.sandia.cognition.util.AbstractCloneableSerializable;
 import gov.sandia.cognition.util.ObjectUtil;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
@@ -158,8 +159,6 @@ public class OnOffEdgeTransDistribution extends
 
   protected InferenceGraph graph;
 
-  protected InferenceGraphEdge nullGraphEdge = new InferenceGraphEdge();
-
   public OnOffEdgeTransDistribution(
     OnOffEdgeTransDistribution onOffEdgeTransProbsDistribution) {
     this.currentEdge = onOffEdgeTransProbsDistribution.currentEdge;
@@ -177,7 +176,7 @@ public class OnOffEdgeTransDistribution extends
     this.currentState = currentState;
     this.graph = currentState.getGraph();
     this.currentEdge = currentEdge;
-
+    
     /*
      * Start by setting the means.
      */
@@ -208,7 +207,6 @@ public class OnOffEdgeTransDistribution extends
         .toArray(), o.getFreeMotionTransProbs().getParameters()
         .toArray());
     comparator.append(this.currentEdge, o.currentEdge);
-
     return comparator.toComparison();
   }
 
@@ -250,6 +248,22 @@ public class OnOffEdgeTransDistribution extends
     }
     return true;
   }
+  
+  private void getEdgesForLength(InferenceGraphEdge startEdge, double lengthToTravel, Collection<InferenceGraphEdge> edges) {
+    if (startEdge.getLength() < lengthToTravel) {
+      edges.add(startEdge);
+    } else {
+      if (lengthToTravel > 0d) {
+        for (InferenceGraphEdge edge : this.graph.getOutgoingTransferableEdges(startEdge)) {
+          getEdgesForLength(edge, lengthToTravel - startEdge.getLength(), edges);
+        }
+      } else {
+        for (InferenceGraphEdge edge : this.graph.getIncomingTransferableEdges(startEdge)) {
+          getEdgesForLength(edge, lengthToTravel + startEdge.getLength(), edges);
+        }
+      }
+    }
+  }
 
   /**
    * Returns the set of possible transition edges given
@@ -258,6 +272,9 @@ public class OnOffEdgeTransDistribution extends
    * current state be before or past the current edge, in
    * which case the next edges are possible transitions.
    * Otherwise, only the current edge and off-road are possible. 
+   * An internal value of initial distance-along-path is kept in
+   * order to recompute the domain when applicable.
+   * 
    */
   @Override
   public Set<InferenceGraphEdge> getDomain() {
@@ -269,30 +286,16 @@ public class OnOffEdgeTransDistribution extends
             StatisticsUtil
                 .getLargeNormalCovRadius((DenseMatrix) 
                     currentState.getObservationCovarianceParam().getValue());
-        for (final InferenceGraphEdge edge : this.graph
-            .getNearbyEdges(currentLocation, radius)) {
+        for (final InferenceGraphEdge edge : this.graph.getNearbyEdges(currentLocation, radius)) {
           this.domain.add(edge);
         }
         // add the off-road possibility
         this.domain.add(this.currentEdge);
       } else {
-        PathState currentPathState = this.currentState.getPathStateParam().getValue();
-        Vector currentMotionState = this.currentState.getMotionStateParam().getParameterPrior()
-            .getMean();
-        assert (currentPathState.isOnRoad() && currentMotionState.getDimensionality() == 2);
-        final double direction = currentPathState.getPath().isBackward() ? -1d : 1d;
-        final double distMoved = direction * currentMotionState.getElement(0);
-        if (distMoved > this.currentEdge.getLength()) {
-          this.domain =
-              Sets.newHashSet(this.graph
-                  .getOutgoingTransferableEdges(this.currentEdge));
-        } else {
-          this.domain =
-              Sets.newHashSet(this.graph
-                  .getIncomingTransferableEdges(this.currentEdge));
-        }
+        Vector currentMotionState = this.currentState.getMotionStateParam().getParameterPrior() .getMean();
+        this.getEdgesForLength(currentEdge, currentMotionState.getElement(0), this.domain);
         // add the off-road possibility
-        this.domain.add(nullGraphEdge);
+        this.domain.add(InferenceGraphEdge.nullGraphEdge);
       }
     }
     return this.domain;
@@ -341,7 +344,7 @@ public class OnOffEdgeTransDistribution extends
   @Override
   public InferenceGraphEdge sample(Random random) {
 
-    final List<InferenceGraphEdge> tmpdomain =
+    final List<InferenceGraphEdge> tmpDomain =
         Lists.newArrayList(this.getDomain());
 
     if (this.currentEdge.isNullEdge()) {
@@ -349,18 +352,19 @@ public class OnOffEdgeTransDistribution extends
        * We're currently in free-motion. If there are transfer edges, then
        * sample from those.
        */
-      if (tmpdomain.isEmpty()) {
-        return nullGraphEdge;
+      if (tmpDomain.isEmpty()) {
+        return InferenceGraphEdge.nullGraphEdge;
       } else {
         final Vector sample =
             OnOffEdgeTransDistribution.checkedSample(
                 this.getFreeMotionTransProbs(), random);
 
-        if (sample.equals(OnOffEdgeTransDistribution.stateOffToOn)) {
-          tmpdomain.remove(nullGraphEdge);
-          return tmpdomain.get(random.nextInt(tmpdomain.size()));
+        if (sample.equals(OnOffEdgeTransDistribution.stateOffToOn)
+            && tmpDomain.size() > 0) {
+          tmpDomain.remove(InferenceGraphEdge.nullGraphEdge);
+          return tmpDomain.get(random.nextInt(tmpDomain.size()));
         } else {
-          return nullGraphEdge;
+          return InferenceGraphEdge.nullGraphEdge;
         }
       }
     } else {
@@ -369,16 +373,16 @@ public class OnOffEdgeTransDistribution extends
        * If the empty edge is contained in the support then we sample for that.
        */
       final Vector sample =
-          tmpdomain.contains(nullGraphEdge) ? OnOffEdgeTransDistribution
+          tmpDomain.contains(InferenceGraphEdge.nullGraphEdge) ? OnOffEdgeTransDistribution
               .checkedSample(this.getEdgeMotionTransProbs(), random)
               : OnOffEdgeTransDistribution.stateOnToOn;
 
       if (sample.equals(OnOffEdgeTransDistribution.stateOnToOff)
-          || tmpdomain.isEmpty()) {
-        return nullGraphEdge;
+          || tmpDomain.isEmpty()) {
+        return InferenceGraphEdge.nullGraphEdge;
       } else {
-        tmpdomain.remove(nullGraphEdge);
-        return tmpdomain.get(random.nextInt(tmpdomain.size()));
+        tmpDomain.remove(InferenceGraphEdge.nullGraphEdge);
+        return tmpDomain.get(random.nextInt(tmpDomain.size()));
       }
     }
   }
@@ -415,14 +419,14 @@ public class OnOffEdgeTransDistribution extends
     if (this.currentEdge.isNullEdge()) {
       if (stateOffToOff.dotProduct(this.freeMotionTransProbs.getMean())
           > stateOffToOn.dotProduct(this.freeMotionTransProbs.getMean())) {
-        return nullGraphEdge;
+        return InferenceGraphEdge.nullGraphEdge;
       } else {
         return Iterables.find(this.getDomain(), new Predicate<InferenceGraphEdge>() {
           @Override
           public boolean apply(InferenceGraphEdge input) {
             return !input.isNullEdge();
           }
-        }, nullGraphEdge);
+        }, InferenceGraphEdge.nullGraphEdge);
       }
     } else {
       if (stateOnToOn.dotProduct(this.edgeMotionTransProbs.getMean())
@@ -434,7 +438,7 @@ public class OnOffEdgeTransDistribution extends
           }
         }, this.currentEdge);
       } else {
-        return nullGraphEdge;
+        return InferenceGraphEdge.nullGraphEdge;
       }
     }
   }

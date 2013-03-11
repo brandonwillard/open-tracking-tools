@@ -86,6 +86,8 @@ public class PathStateDistribution extends
   protected PathState pathState;
 
   public PathStateDistribution(Path path, MultivariateGaussian dist) {
+    Preconditions.checkArgument(path.isNullPath() || dist.getInputDimensionality() == 2);
+    Preconditions.checkArgument(!path.isNullPath() || dist.getInputDimensionality() == 4);
     this.path = path;
     this.distribution = dist;
     this.pathState = new PathState(path, dist.getMean());

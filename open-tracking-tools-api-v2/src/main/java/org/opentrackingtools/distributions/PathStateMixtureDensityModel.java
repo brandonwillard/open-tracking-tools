@@ -201,15 +201,15 @@ public class PathStateMixtureDensityModel<DistributionType extends ClosedFormCom
   @Override
   public PathState getMean() {
 
-    final Map<PathEdge<?>, RingAccumulator<Vector>> edgeToMean = Maps.newHashMap();
-    final Map<PathEdge<?>, DataDistribution<Path>> edgeToPaths = Maps.newHashMap();
+    final Map<PathEdge, RingAccumulator<Vector>> edgeToMean = Maps.newHashMap();
+    final Map<PathEdge, DataDistribution<Path>> edgeToPaths = Maps.newHashMap();
     final int K = this.getDistributionCount();
-    final DefaultDataDistribution<PathEdge<?>> edgeDist =
-        new DefaultDataDistribution<PathEdge<?>>();
+    final DefaultDataDistribution<PathEdge> edgeDist =
+        new DefaultDataDistribution<PathEdge>();
     for (int k = 0; k < K; k++) {
       final double priorWeight = this.getPriorWeights()[k];
       final DistributionType dist = this.getDistributions().get(k);
-      PathEdge<?> edge = dist.getMean().getEdge();
+      PathEdge edge = dist.getMean().getEdge();
       edgeDist.increment(edge, priorWeight);
       
       Path path = dist.getMean().getPath();
@@ -229,7 +229,7 @@ public class PathStateMixtureDensityModel<DistributionType extends ClosedFormCom
       mean.accumulate(dist.getMean().scale(priorWeight));
     }
 
-    final PathEdge<?> bestEdge = edgeDist.getMaxValueKey();
+    final PathEdge bestEdge = edgeDist.getMaxValueKey();
     final Path bestPath = edgeToPaths.get(bestEdge).getMaxValueKey();
     final RingAccumulator<Vector> mean = edgeToMean.get(bestEdge);
     return new PathState(bestPath, mean.getMean());

@@ -38,15 +38,15 @@ public class PathTest {
   public void setUp() throws Exception {
 
     vehicleStateInitialParams =
-        new VehicleStateInitialParameters(VectorFactory
-            .getDefault().createVector2D(100d, 100d), 20,
+        new VehicleStateInitialParameters(
+            null,
+            VectorFactory.getDefault().createVector2D(100d, 100d), 20,
             VectorFactory.getDefault().createVector1D(
                 0.000625), 20, VectorFactory.getDefault()
                 .createVector2D(0.000625, 0.000625), 20,
             VectorFactory.getDefault().createVector2D(5d,
                 95d), VectorFactory.getDefault()
                 .createVector2D(95d, 5d),
-            null, null,
             25, 30, 0l);
 
     graph = mock(InferenceGraph.class);
