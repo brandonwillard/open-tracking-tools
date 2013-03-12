@@ -511,10 +511,19 @@ public class VehicleState<Observation extends GpsObservation> extends
         new VehicleState<O>(graph, obs, null, null, observationCovParam,
             onRoadCovParam, offRoadCovParam, null, null);
     
+    /*
+     * Now set the transition distribution, since it needed a vehicle state
+     * for construction.
+     */
     final OnOffEdgeTransDistribution initialTransDist =
         new OnOffEdgeTransDistribution(state, pathEdge.getInferenceGraphEdge(),
             initialPriorTransDist.getEdgeMotionTransProbPrior().getMean(), 
             initialPriorTransDist.getFreeMotionTransProbPrior().getMean());
+    final SimpleBayesianParameter<TransitionProbMatrix, OnOffEdgeTransDistribution, OnOffEdgeTransPriorDistribution> edgeTransitionParam =
+        SimpleBayesianParameter.create(transitionProbMatrix,
+            initialTransDist, initialPriorTransDist);
+    
+    state.setEdgeTransitionParam(edgeTransitionParam);
 
     /*
      * Now, handle the off and on road motion and path state creation 
@@ -546,12 +555,6 @@ public class VehicleState<Observation extends GpsObservation> extends
       
       state.setPathStateParam(pathStateParam);
   
-      final SimpleBayesianParameter<TransitionProbMatrix, OnOffEdgeTransDistribution, OnOffEdgeTransPriorDistribution> edgeTransitionParam =
-          SimpleBayesianParameter.create(transitionProbMatrix,
-              initialTransDist, initialPriorTransDist);
-      
-      state.setEdgeTransitionParam(edgeTransitionParam);
-      
     } else {
 
       final MotionStateEstimatorPredictor motionStateEstimatorPredictor =

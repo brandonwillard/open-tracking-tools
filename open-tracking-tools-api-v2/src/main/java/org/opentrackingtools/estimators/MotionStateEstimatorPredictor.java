@@ -525,13 +525,13 @@ public class MotionStateEstimatorPredictor extends
 
     final MultivariateGaussian projBelief;
     final Matrix measurementCovariance =
-        this.groundFilter.getMeasurementCovariance();
+        this.groundFilter.getMeasurementCovariance().clone();
     if (motionState.getInputDimensionality() == 2) {
       projBelief =
           PathUtils.getGroundBeliefFromRoad(motionState, edge, true);
-      if (!this.roadFilter.getMeasurementCovariance().isZero()) {
-        measurementCovariance.plusEquals(this.groundFilter.getMeasurementCovariance());
-      }
+//      if (!this.roadFilter.getMeasurementCovariance().isZero()) {
+//        measurementCovariance.plusEquals(this.groundFilter.getMeasurementCovariance());
+//      }
     } else {
       projBelief = motionState;
     }

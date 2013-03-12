@@ -251,7 +251,7 @@ public class OnOffEdgeTransDistribution extends
   }
   
   private void getEdgesForLength(InferenceGraphEdge startEdge, double lengthToTravel, Collection<InferenceGraphEdge> edges) {
-    if (startEdge.getLength() < lengthToTravel) {
+    if (startEdge.getLength() >= lengthToTravel) {
       edges.add(startEdge);
     } else {
       if (lengthToTravel > 0d) {
@@ -280,8 +280,8 @@ public class OnOffEdgeTransDistribution extends
   @Override
   public Set<InferenceGraphEdge> getDomain() {
     if (this.domain == null) {
+      this.domain = Sets.newHashSet();
       if (this.currentEdge.isNullEdge()) {
-        this.domain = Sets.newHashSet();
         final Vector currentLocation = this.currentState.getMeanLocation();
         final double radius =
             StatisticsUtil

@@ -29,6 +29,7 @@ import org.testng.AssertJUnit;
 import org.testng.annotations.Test;
 
 import com.beust.jcommander.internal.Lists;
+import com.google.common.base.Predicate;
 import com.google.common.collect.Iterables;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.LineString;
@@ -91,12 +92,21 @@ public class OnOffEdgeTransDistributionTest {
     currentState.getMotionStateParam().getParameterPrior().setMean(
         VectorFactory.getDefault().createVector2D(4d, 1d));
     
-    OnOffEdgeTransDistribution edgeTransDist = new OnOffEdgeTransDistribution(currentState, startEdge,
-        parameters.getOnTransitionProbsPrior(), parameters.getOffTransitionProbsPrior());
+    OnOffEdgeTransDistribution edgeTransDist = currentState.getEdgeTransitionParam().getConditionalDistribution();
     
     Set<InferenceGraphEdge> transitionSupport = edgeTransDist.getDomain();
     
     InferenceGraphEdge expectedEdge = Iterables.getOnlyElement(graph.getNearbyEdges(new Coordinate(1d,3d), 1d)).getParentEdge();
-    AssertJUnit.assertEquals(expectedEdge, Iterables.getOnlyElement(transitionSupport, null));
+    
+    /*
+     * Grab the only non-null edge.
+     */
+    InferenceGraphEdge actualEdge = Iterables.find(transitionSupport, new Predicate<InferenceGraphEdge>() {
+      @Override
+      public boolean apply(InferenceGraphEdge input) {
+        return !input.isNullEdge();
+      }
+    });
+    AssertJUnit.assertEquals(expectedEdge, actualEdge);
   }
 }
