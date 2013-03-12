@@ -34,6 +34,7 @@ import org.opentrackingtools.graph.edges.InferredEdge;
 import org.opentrackingtools.graph.edges.impl.SimpleInferredEdge;
 import org.opentrackingtools.graph.paths.InferredPath;
 import org.opentrackingtools.graph.paths.edges.PathEdge;
+import org.opentrackingtools.graph.paths.edges.impl.MtaPathEdge;
 import org.opentrackingtools.graph.paths.edges.impl.SimplePathEdge;
 import org.opentrackingtools.graph.paths.impl.SimpleInferredPath;
 import org.opentrackingtools.graph.paths.states.PathStateBelief;
@@ -59,11 +60,13 @@ import com.vividsolutions.jts.geom.CoordinateSequenceFilter;
 import com.vividsolutions.jts.geom.Envelope;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryComponentFilter;
+import com.vividsolutions.jts.geom.GeometryFactory;
 import com.vividsolutions.jts.geom.GeometryFilter;
 import com.vividsolutions.jts.geom.LineSegment;
 import com.vividsolutions.jts.geom.LineString;
 import com.vividsolutions.jts.geom.Point;
 import com.vividsolutions.jts.index.strtree.STRtree;
+import com.vividsolutions.jts.linearref.LinearLocation;
 
 public class GenericJTSGraph implements InferenceGraph {
 
@@ -132,6 +135,8 @@ public class GenericJTSGraph implements InferenceGraph {
   protected Envelope gpsEnv = null;
   protected Envelope projEnv = null;
   
+  protected static GeometryFactory geomFactory = JTSFactoryFinder.getGeometryFactory();
+  
   protected GenericJTSGraph() {
   }
   
@@ -141,27 +146,39 @@ public class GenericJTSGraph implements InferenceGraph {
    * @param lines
    */
   public GenericJTSGraph(Collection<LineString> lines) {
-    createGraphFromLineStrings(lines);
+    createGraphFromLineStrings(lines, true);
   }
   
-  protected void createGraphFromLineStrings(Collection<LineString> lines) {
+  public GenericJTSGraph(List<LineString> lines, boolean transformShapesToEuclidean) {
+    createGraphFromLineStrings(lines, transformShapesToEuclidean);
+  }
+
+  protected void createGraphFromLineStrings(Collection<LineString> lines, 
+      boolean transformShapesToEuclidean) {
     graphGenerator = new StrictLineStringGraphGenerator(); 
     edgeIndex = new STRtree();
     gpsEnv = new Envelope();
     projEnv = new Envelope();
     for (LineString edge : lines) {
       gpsEnv.expandToInclude(edge.getEnvelopeInternal());
-      final MathTransform transform = GeoUtils.getTransform(edge.getCoordinate());
+      
       Geometry projectedEdge; 
-      try {
-        projectedEdge = JTS.transform(edge, transform);
-        projEnv.expandToInclude(projectedEdge.getEnvelopeInternal());
-        final ConstLineString constLine = new ConstLineString((LineString)projectedEdge);
-        constLine.setUserData(edge);
-        graphGenerator.add(constLine);
-      } catch (final TransformException e) {
-        e.printStackTrace();
+      if (transformShapesToEuclidean) {
+        final MathTransform transform = GeoUtils.getTransform(edge.getCoordinate());
+        try {
+          projectedEdge = JTS.transform(edge, transform);
+        } catch (final TransformException e) {
+          e.printStackTrace();
+          continue;
+        }
+      } else {
+        projectedEdge = edge;
       }
+      
+      projEnv.expandToInclude(projectedEdge.getEnvelopeInternal());
+      final ConstLineString constLine = new ConstLineString((LineString)projectedEdge);
+      constLine.setUserData(edge);
+      graphGenerator.add(constLine);
     }
     /*
      * Initialize the id map and edge index.
@@ -182,8 +199,8 @@ public class GenericJTSGraph implements InferenceGraph {
       InferredEdge infEdge = getInferredEdge(edge);
       final LineString lineString = (LineString) infEdge.getGeometry();
       for (LineSegment line : GeoUtils.getSubLineSegments(lineString)) {
-        Pair<LineSegment, InferredEdge> lineEdgePair = DefaultPair.create(line, infEdge);
-        edgeIndex.insert(new Envelope(line.p0, line.p1), lineEdgePair);
+        LengthIndexedSubline subline = new LengthIndexedSubline(line, infEdge);
+        edgeIndex.insert(new Envelope(line.p0, line.p1), subline);
       }
       
     }
@@ -255,10 +272,13 @@ public class GenericJTSGraph implements InferenceGraph {
     
     InferredEdge currentEdge = fromState.getBelief().getEdge().getInferredEdge();
     
-    Set<InferredEdge> startEdges = Sets.newHashSet();
+    Set<LengthIndexedSubline> startEdges = Sets.newHashSet();
     
     if (!currentEdge.isNullEdge()) {
-      startEdges.add(currentEdge);
+      final Geometry geom = fromState.getBelief().getEdge().getGeometry();
+      final LineSegment subline = new LineSegment(geom.getCoordinates()[0],
+          geom.getCoordinates()[geom.getCoordinates().length-1]);
+      startEdges.add(new LengthIndexedSubline(subline, currentEdge));
     } else {
 
       final MultivariateGaussian obsBelief =
@@ -285,70 +305,67 @@ public class GenericJTSGraph implements InferenceGraph {
                     .getMovementFilter().getObsCovar()),
             MAX_OBS_SNAP_RADIUS);
 
-    final Set<Node> endNodes= Sets.newHashSet();
-    for (final InferredEdge edge: getNearbyEdges(toCoord,
-        obsStdDevDistance)) {
-      final DirectedEdge bEdge = ((DirectedEdge)edge.getBackingEdge());
-      endNodes.add(bEdge.getNodeA());
-      endNodes.add(bEdge.getNodeB());
-    }
+    final Collection<LengthIndexedSubline> endLines = getNearbyEdges(toCoord,
+        obsStdDevDistance);
 
     Set<InferredPath> paths = Sets.newHashSet();
     paths.add(getNullPath());
     
-    if (endNodes.isEmpty())
+    if (endLines.isEmpty())
       return paths;
     
     
-    for (InferredEdge startEdge : startEdges) {
-      
-      // TODO FIXME determine when/how backward movement fits in
-      paths.add(getInferredPath(getPathEdge(startEdge, 0, false)));
-      
-      final DirectedEdge bStartEdge = ((DirectedEdge)startEdge.getBackingEdge());
+    for (LengthIndexedSubline startEdge : startEdges) {
+      final DirectedEdge bStartEdge = ((DirectedEdge)startEdge.getParentEdge().getBackingEdge());
       final Node source = bStartEdge.getOutNode();
-        
       /*
        * Use this set to avoid recomputing subpaths of 
        * our current paths.
        */
       Set<Node> reachedEndNodes = Sets.newHashSet(source);
-      for (Node target : endNodes) {
+      for (LengthIndexedSubline endEdge : endLines) {
         
-        if (reachedEndNodes.contains(target))
-          continue;
-        
-        AStarFunctions afuncs = new VehicleStateAStarFunction(target, 
-            toCoord, obsStdDevDistance);
-        
-        CustomAStarShortestPathFinder aStarIter = new CustomAStarShortestPathFinder(
-            this.graphGenerator.getGraph(), source, target, afuncs);
-        aStarIter.calculate();
-        
-        Path path = aStarIter.getPath();
-        
-        if (path != null) {
-          List<PathEdge> pathEdges = Lists.newArrayList();
-          double distToStart = 0d;
-          Iterator<?> iter = path.riterator();
-          BasicDirectedNode prevNode = (BasicDirectedNode) bStartEdge.getInNode();
-          while (iter.hasNext()) {
-            BasicDirectedNode node = (BasicDirectedNode)iter.next();
-            Edge edge = Preconditions.checkNotNull(prevNode.getOutEdge(node));
-            
-            InferredEdge infEdge = getInferredEdge(edge);
-            pathEdges.add(getPathEdge(infEdge, distToStart, false));
-            distToStart += infEdge.getLength();
-            
-            reachedEndNodes.add(node);
-            prevNode = node;
-          }
-          if (!pathEdges.isEmpty())
-            paths.add(getInferredPath(pathEdges, false));
+        if (startEdge.getParentEdge().equals(endEdge.getParentEdge())) {
+          final Pair<List<PathEdge>, Double> currentEdgePathEdges = getPathEdges(
+              startEdge, endEdge, startEdge.getParentEdge(), 0d, false);
+          
+          final InferredPath pathFromStartEdge = getInferredPath(currentEdgePathEdges.getFirst(), false);
+          
+          Preconditions.checkState(SimpleInferredPath.biDirComp.compare(
+              startEdge.getLine().toGeometry(geomFactory).getCoordinates(),
+              Iterables.getFirst(pathFromStartEdge.getPathEdges(), null)
+              .getGeometry().getCoordinates()) == 0);
+          
+          paths.add(pathFromStartEdge);
         }
         
-        // TODO backward paths? 
+      
+        final DirectedEdge bEdge = ((DirectedEdge)endEdge.getParentEdge().getBackingEdge());
+        List<Node> endNodes = Lists.newArrayList();
+        endNodes.add(bEdge.getNodeA());
+        endNodes.add(bEdge.getNodeB());
+        for (Node target : endNodes) {
           
+          if (reachedEndNodes.contains(target))
+            continue;
+          
+          AStarFunctions afuncs = new VehicleStateAStarFunction(target, 
+              toCoord, obsStdDevDistance);
+          
+          CustomAStarShortestPathFinder aStarIter = new CustomAStarShortestPathFinder(
+              this.graphGenerator.getGraph(), source, target, afuncs);
+          aStarIter.calculate();
+          
+          Path path = aStarIter.getPath();
+          
+          if (path != null) {
+            final InferredPath newPath = getPathFromGraph(path, bStartEdge, 
+                startEdge, endEdge, reachedEndNodes);
+            if (newPath != null)
+              paths.add(newPath);
+          }
+          // TODO backward paths? 
+        }
       }
     }
     
@@ -377,6 +394,94 @@ public class GenericJTSGraph implements InferenceGraph {
     }
 
     return paths;
+  }
+
+  protected InferredPath getPathFromGraph(Path path, final DirectedEdge bStartEdge, 
+    LengthIndexedSubline startIdx, LengthIndexedSubline endIdx, Set<Node> reachedEndNodes) {
+    List<PathEdge> pathEdges = Lists.newArrayList();
+    double distToStart = 0d;
+    Iterator<?> iter = path.riterator();
+    BasicDirectedNode prevNode = (BasicDirectedNode) bStartEdge.getInNode();
+    while (iter.hasNext()) {
+      BasicDirectedNode node = (BasicDirectedNode)iter.next();
+      final Edge edge;
+      /*
+       * When starting off, make sure we use the correct edge,
+       * i.e. the start edge we passed in.
+       */
+      if (distToStart == 0d) {
+        edge = Iterables.find(prevNode.getOutEdges(node), new Predicate<Edge>() {
+          @Override
+          public boolean apply(Edge input) {
+            return ((Edge)input).equals(bStartEdge);
+          }
+        });
+      } else {
+        edge = prevNode.getOutEdge(node);
+      }
+      
+      final InferredEdge infEdge = getInferredEdge(edge);
+      final Pair<List<PathEdge>, Double> pathEdgePair = getPathEdges(startIdx, endIdx, infEdge, distToStart, false);
+      pathEdges.addAll(pathEdgePair.getFirst());
+      distToStart += pathEdgePair.getSecond();
+      
+      reachedEndNodes.add(node);
+      prevNode = node;
+    }
+    if (!pathEdges.isEmpty()) {
+      final InferredPath newPath = getInferredPath(pathEdges, false);
+      
+      Preconditions.checkState(SimpleInferredPath.biDirComp.compare(
+          new Coordinate[] {startIdx.getLine().p0, startIdx.getLine().p1},
+          Iterables.getFirst(newPath.getPathEdges(), null)
+          .getGeometry().getCoordinates()) == 0);
+      return newPath;
+    } else {
+      return null;
+    }
+  }
+
+  protected Pair<List<PathEdge>, Double> getPathEdges(
+      LengthIndexedSubline startEdge, LengthIndexedSubline endEdge,
+      InferredEdge infEdge, double distToStart, boolean isBackward) {
+    final List<PathEdge> edges = Lists.newArrayList();
+    LinearLocation startIdx = null;
+    LinearLocation endIdx = null;
+    
+    if (infEdge.equals(startEdge.getParentEdge()))
+      startIdx = startEdge.getStartIndex();
+    if (startIdx == null)
+      startIdx = infEdge.getLocationIndexedLine().getStartIndex();
+    
+    if (infEdge.equals(endEdge.getParentEdge())) {
+      if (startEdge.getEndIndex().compareTo(endEdge.getEndIndex()) > 0)
+        endIdx = startEdge.getEndIndex();
+      else
+        endIdx = endEdge.getEndIndex();
+    }
+    if (endIdx == null)
+      endIdx = infEdge.getLocationIndexedLine().getEndIndex();
+    
+    final LineString subline = (LineString) infEdge.getLocationIndexedLine().extractLine(startIdx, endIdx);
+    double distToStartSublines = distToStart;
+    for (LineSegment lineSeg : GeoUtils.getSubLineSegments(subline)) {
+      final Geometry line = lineSeg.toGeometry(geomFactory);
+      final PathEdge pathEdge = getPathEdge(infEdge, line, distToStartSublines, isBackward);
+      
+      edges.add(pathEdge);
+      distToStartSublines += lineSeg.getLength();
+    }
+    
+    if (infEdge.equals(startEdge.getParentEdge()))
+      Preconditions.checkState(SimpleInferredPath.biDirComp.compare(
+          new Coordinate[] {startEdge.getLine().p0, startEdge.getLine().p1},
+          Iterables.getFirst(edges, null).getGeometry().getCoordinates()) == 0);
+    
+    final double totalDist = distToStartSublines - distToStart;
+    Preconditions.checkState(!edges.isEmpty());
+    Preconditions.checkState(totalDist > 0d);
+    
+    return DefaultPair.create(edges, totalDist);
   }
 
   @Override
@@ -420,7 +525,7 @@ public class GenericJTSGraph implements InferenceGraph {
   }
 
   @Override
-  public Collection<InferredEdge> getNearbyEdges(
+  public Collection<LengthIndexedSubline> getNearbyEdges(
     DistributionWithMean<Vector> initialBelief,
     AbstractRoadTrackingFilter trackingFilter) {
     
@@ -439,21 +544,23 @@ public class GenericJTSGraph implements InferenceGraph {
   }
 
   @Override
-  public Collection<InferredEdge> getNearbyEdges(Vector projLocation,
+  public Collection<LengthIndexedSubline> getNearbyEdges(Vector projLocation,
     double radius) {
     Preconditions.checkArgument(projLocation.getDimensionality() == 2);
     return getNearbyEdges(GeoUtils.makeCoordinate(projLocation), radius);
   }
   
-  public Collection<InferredEdge> getNearbyEdges(Coordinate toCoord,
+  public Collection<LengthIndexedSubline> getNearbyEdges(Coordinate toCoord,
     double radius) {
     final Envelope toEnv = new Envelope(toCoord);
     toEnv.expandBy(radius);
-    final Set<InferredEdge> streetEdges = Sets.newHashSet();
+    final Set<LengthIndexedSubline> streetEdges = Sets.newHashSet();
     for (final Object obj : edgeIndex.query(toEnv)) {
-      final Pair<LineSegment, InferredEdge> lineEdgePair = (Pair<LineSegment, InferredEdge>) obj;
-      if (lineEdgePair.getFirst().distance(toCoord) < radius)
-        streetEdges.add(lineEdgePair.getSecond());
+      final LengthIndexedSubline subline = (LengthIndexedSubline) obj;
+      Preconditions.checkState(subline.getEndIndex().getSegmentIndex() 
+          - subline.getStartIndex().getSegmentIndex() == 1);
+      if (subline.getLine().distance(toCoord) < radius)
+        streetEdges.add(subline);
       else
         continue;
     }
@@ -511,8 +618,8 @@ public class GenericJTSGraph implements InferenceGraph {
   }
 
   @Override
-  public PathEdge getPathEdge(InferredEdge edge, double d, Boolean b) {
-    return SimplePathEdge.getEdge(edge, d, b);
+  public PathEdge getPathEdge(InferredEdge edge, Geometry line, double d, Boolean b) {
+    return SimplePathEdge.getEdge(edge, line, d, b);
   }
 
   @Override

@@ -21,6 +21,7 @@ import org.apache.commons.lang.builder.CompareToBuilder;
 import org.opentrackingtools.estimators.MotionStateEstimatorPredictor;
 import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.graph.InferenceGraphEdge;
+import org.opentrackingtools.graph.InferenceGraphSegment;
 import org.opentrackingtools.model.VehicleState;
 import org.opentrackingtools.paths.PathState;
 import org.opentrackingtools.util.StatisticsUtil;
@@ -286,8 +287,8 @@ public class OnOffEdgeTransDistribution extends
             StatisticsUtil
                 .getLargeNormalCovRadius((DenseMatrix) 
                     currentState.getObservationCovarianceParam().getValue());
-        for (final InferenceGraphEdge edge : this.graph.getNearbyEdges(currentLocation, radius)) {
-          this.domain.add(edge);
+        for (final InferenceGraphSegment line : this.graph.getNearbyEdges(currentLocation, radius)) {
+          this.domain.add(line.getParentEdge());
         }
         // add the off-road possibility
         this.domain.add(this.currentEdge);

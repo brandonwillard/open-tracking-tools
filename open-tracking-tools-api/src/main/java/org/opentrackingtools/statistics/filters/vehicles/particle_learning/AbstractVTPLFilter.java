@@ -15,7 +15,7 @@ import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.graph.paths.InferredPath;
 import org.opentrackingtools.graph.paths.edges.PathEdge;
 import org.opentrackingtools.graph.paths.edges.impl.EdgePredictiveResults;
-import org.opentrackingtools.graph.paths.impl.InferredPathPrediction;
+import org.opentrackingtools.graph.paths.impl.PathEdgeDistributionWrapper;
 import org.opentrackingtools.graph.paths.states.PathStateBelief;
 import org.opentrackingtools.impl.VehicleState;
 import org.opentrackingtools.impl.VehicleStateInitialParameters;
@@ -29,10 +29,12 @@ import org.opentrackingtools.statistics.impl.StatisticsUtil;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.HashMultimap;
+import com.google.common.collect.HashMultiset;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Multimap;
+import com.google.common.collect.Multiset.Entry;
 import com.google.common.collect.Sets;
 
 public abstract class AbstractVTPLFilter extends
@@ -54,22 +56,25 @@ public abstract class AbstractVTPLFilter extends
   protected void internalUpdate(
     DataDistribution<VehicleState> target, GpsObservation obs,
     double timeDiff) {
-    final Multimap<VehicleState, WrappedWeightedValue<InferredPathPrediction>> stateToPaths =
-        HashMultimap.create();
+    final Map<VehicleState, DefaultCountedDataDistribution<PathEdgeDistributionWrapper>> stateToPathDistributions =
+        Maps.newHashMap();
     final Set<InferredPath> evaluatedPaths =
         Sets.newHashSet();
-
+    
+    DefaultCountedDataDistribution<VehicleState> targetCountDist = 
+        (DefaultCountedDataDistribution<VehicleState>) target; 
+    
     /*
      * Resample based on predictive likelihood to get a smoothed sample
      */
     final DefaultCountedDataDistribution<VehicleState> resampleDist = 
         new DefaultCountedDataDistribution<VehicleState>(true);
     
-    for (final VehicleState state : target.getDomain()) {
+    for (final VehicleState state : targetCountDist.getDomain()) {
 
-      final int count =
-          ((DefaultCountedDataDistribution<VehicleState>) target)
-              .getCount(state);
+      final int count = targetCountDist.getCount(state);
+      
+      Preconditions.checkState(count > 0);
 
       final Collection<InferredPath> instStateTransitions =
           inferredGraph.getPaths(state, obs);
@@ -87,21 +92,14 @@ public abstract class AbstractVTPLFilter extends
       final Map<PathEdge, EdgePredictiveResults> edgeToPreBeliefAndLogLik =
           Maps.newHashMap();
 
-      final List<WrappedWeightedValue<InferredPathPrediction>> predictiveResults = 
-          Lists.newArrayList();
+      DefaultCountedDataDistribution<PathEdgeDistributionWrapper> pathPredictiveDistribution = 
+          new DefaultCountedDataDistribution<PathEdgeDistributionWrapper>(true);
       for (final InferredPath path : instStateTransitions) {
         
         if (isDebug)
           evaluatedPaths.add(path);
 
-//        if (state.getBelief().isOnRoad() && !path.isEmptyPath() 
-//            && !Iterables.getFirst(path.getEdges(), null)
-//            .getGeometry().equalsExact(
-//                state.getBelief().getEdge().getGeometry())) {
-//          continue;
-//        }
-
-        final InferredPathPrediction infPath =
+        final PathEdgeDistributionWrapper infPath =
             path.getPriorPredictionResults(this.inferredGraph, obs, state,
                 edgeToPreBeliefAndLogLik);
         
@@ -112,13 +110,17 @@ public abstract class AbstractVTPLFilter extends
 
           assert !Double.isNaN(totalLogLik);
 
-          predictiveResults.add(
-              new WrappedWeightedValue<InferredPathPrediction>(
-                      infPath, infPath.getTotalLogLikelihood()));
+          pathPredictiveDistribution.set(infPath, 
+              infPath.getTotalLogLikelihood());
         }
       }
-
-      stateToPaths.putAll(state, predictiveResults);
+      DefaultCountedDataDistribution<PathEdgeDistributionWrapper> currentPathsDist = stateToPathDistributions.get(state);
+      
+      if (currentPathsDist == null) {
+        stateToPathDistributions.put(state, pathPredictiveDistribution);
+      } else {
+        currentPathsDist.copyAll(pathPredictiveDistribution);
+      }
 
       resampleDist.increment(state, totalLogLik, count);
     }
@@ -127,80 +129,58 @@ public abstract class AbstractVTPLFilter extends
 
     Preconditions.checkState(!resampleDist.isEmpty());
     
-    // TODO low-variance sampling?
-    final ArrayList<? extends VehicleState> smoothedStates =
-        resampleDist.sample(rng, getNumParticles());
+    final HashMultiset<VehicleState> smoothedStates =
+        HashMultiset.create(resampleDist.sample(rng, getNumParticles()));
 
     if (isDebug)
       this.filterInfo.put(obs, new FilterInformation(
-          evaluatedPaths, resampleDist, stateToPaths));
+          evaluatedPaths, resampleDist));
 
-    final DataDistribution<VehicleState> posteriorDist =
+    final DefaultCountedDataDistribution<VehicleState> posteriorDist =
         new DefaultCountedDataDistribution<VehicleState>(true);
 
     /*
      * Propagate states
      */
-    for (final VehicleState state : smoothedStates) {
+    for (final Entry<VehicleState> state : smoothedStates.entrySet()) {
+      Preconditions.checkState(state.getCount() > 0);
+      for (int i = 0; i < state.getCount(); i++) {
+        /*
+         * TODO: debug seeding 
+         */
+        this.seed = rng.nextLong();
+  
+        EdgePredictiveResults edgePredResults = sampleEdge(stateToPathDistributions.get(state.getElement()));
         
-      /*
-       * TODO: debug seeding 
-       */
-      this.seed = rng.nextLong();
-
-      EdgePredictiveResults edgePredResults = sampleEdge(stateToPaths.get(state));
-      
-      final VehicleState newTransState =
-          propagateStates(state, obs, edgePredResults, stateToPaths.size());
-
-      ((DefaultCountedDataDistribution<VehicleState>) posteriorDist)
-          .increment(newTransState, 0d);
-
+        final VehicleState newTransState =
+            propagateStates(state.getElement(), obs, edgePredResults, stateToPathDistributions.size());
+  
+        posteriorDist.increment(newTransState, 0d, 1);
+      }
     }
 
-    target.clear();
-    ((DefaultCountedDataDistribution<VehicleState>) target)
-        .copyAll(posteriorDist);
+    targetCountDist.clear();
+    targetCountDist.copyAll(posteriorDist);
 
-    Preconditions.checkState(((DefaultCountedDataDistribution<VehicleState>) target)
-        .getTotalCount() == this.numParticles);
-
+    Preconditions.checkState(targetCountDist.getTotalCount() == this.numParticles);
   }
 
   protected EdgePredictiveResults sampleEdge(
-      Collection<WrappedWeightedValue<InferredPathPrediction>> weighedPaths) {
+      DefaultCountedDataDistribution<PathEdgeDistributionWrapper> inferredPathsDistribution) {
     
     final Random rng = getRandom();
     rng.setSeed(this.seed);
     
-    final PathEdge posteriorEdge;
-    final InferredPathPrediction sampledPathEntry;
-    final EdgePredictiveResults predictionResults;
     /*
-     * Sample a path
+     * Sample a path, then an edge.
      */
-    final DataDistribution<InferredPathPrediction> instStateDist =
-        StatisticsUtil.getLogNormalizedDistribution(Lists
-            .newArrayList(weighedPaths));
+    final PathEdgeDistributionWrapper sampledPath = inferredPathsDistribution.sample(rng);
 
-    sampledPathEntry = instStateDist.sample(rng);
-
-    if (sampledPathEntry.getWeightedPathEdges().size() > 1) {
-      /*
-       * TODO FIXME: cache the creation of these distributions
-       */
-      final DataDistribution<PathEdge> pathEdgeDist =
-          StatisticsUtil
-              .getLogNormalizedDistribution(sampledPathEntry
-                  .getWeightedPathEdges());
-      posteriorEdge = pathEdgeDist.sample(rng);
-
-    } else {
-      posteriorEdge =
-         Iterables.getOnlyElement(sampledPathEntry.getWeightedPathEdges()).getValue();
-    }
-    predictionResults = Preconditions.checkNotNull(
-        sampledPathEntry.getEdgeToPredictiveBelief().get(
+    final DataDistribution<PathEdge> pathEdgeDist = sampledPath.getPathEdgeDisribution();
+    final PathEdge posteriorEdge = pathEdgeDist.sample(rng);
+    
+    final EdgePredictiveResults predictionResults = Preconditions.checkNotNull(
+        sampledPath.getEdgeToPredictiveBelief().get(
             posteriorEdge));
 
     /*

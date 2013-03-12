@@ -366,6 +366,14 @@ public class DefaultCountedDataDistribution<KeyType>
     this.total = total;
   }
 
+  public DefaultCountedDataDistribution(
+      Map<KeyType, MutableDoubleCount> resultDist, boolean isLogScale) {
+    this(isLogScale);
+    for (java.util.Map.Entry<KeyType, MutableDoubleCount> entry : resultDist.entrySet()) {
+      this.increment(entry.getKey(), entry.getValue().doubleValue(), entry.getValue().getCount());
+    }
+  }
+
   @Override
   public void clear() {
     super.clear();

@@ -1,13 +1,25 @@
 package org.opentrackingtools.graph;
 
+import java.util.List;
+
 import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.math.matrix.VectorFactory;
 
 import javax.annotation.Nonnull;
 
+import org.opentrackingtools.util.GeoUtils;
+
+import com.beust.jcommander.internal.Lists;
 import com.google.common.base.Preconditions;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
+import com.vividsolutions.jts.geom.LineSegment;
+import com.vividsolutions.jts.geom.LineString;
+import com.vividsolutions.jts.index.strtree.SIRtree;
+import com.vividsolutions.jts.linearref.LengthIndexedLine;
+import com.vividsolutions.jts.linearref.LengthLocationMap;
+import com.vividsolutions.jts.linearref.LinearLocation;
+import com.vividsolutions.jts.linearref.LocationIndexedLine;
 
 public class InferenceGraphEdge implements
     Comparable<InferenceGraphEdge> {
@@ -23,9 +35,17 @@ public class InferenceGraphEdge implements
   protected final Geometry geometry;
   protected final Boolean hasReverse;
   protected final Vector startPoint;
+  protected final SIRtree lengthSegmentGraph;
+  protected final List<InferenceGraphSegment> graphSegments;
+  protected final LocationIndexedLine locationIndexedLine;
+  protected LengthLocationMap lengthLocationMap = null;
+
   
 
   protected InferenceGraphEdge() {
+    this.locationIndexedLine = null;
+    this.graphSegments = null;
+    this.lengthSegmentGraph = null;
     this.edgeId = null;
     this.endPoint = null;
     this.startPoint = null;
@@ -59,6 +79,18 @@ public class InferenceGraphEdge implements
         VectorFactory.getDefault().createVector2D(endPointCoord.x,
             endPointCoord.y);
 
+    this.locationIndexedLine = new LocationIndexedLine(this.geometry);
+    this.lengthSegmentGraph = new SIRtree();
+    this.graphSegments = Lists.newArrayList();
+    List<LineSegment> segments = GeoUtils.getSubLineSegments((LineString)this.geometry);
+    double currentDistance = 0d;
+    for (LineSegment segment : segments) {
+      InferenceGraphSegment infSegment = new InferenceGraphSegment(segment, this);
+      graphSegments.add(infSegment);
+      lengthSegmentGraph.insert(currentDistance, currentDistance + segment.getLength(), 
+          infSegment);
+    }
+    lengthSegmentGraph.build();
   }
 
   @Override
@@ -146,6 +178,28 @@ public class InferenceGraphEdge implements
       return "InferenceGraphEdge [edgeId=" + this.edgeId + ", length="
           + this.getLength() + "]";
     }
+  }
+
+  public LocationIndexedLine getLocationIndexedLine() {
+    return this.locationIndexedLine;
+  }
+
+  public LengthLocationMap getLengthLocationMap() {
+    if (this.lengthLocationMap == null)
+      this.lengthLocationMap = new LengthLocationMap(this.geometry);
+    return this.lengthLocationMap;
+  }
+  
+  public List<InferenceGraphSegment> getSegments() {
+    return this.graphSegments;
+  }
+
+  public List<InferenceGraphSegment> getSegments(double length) {
+    return this.lengthSegmentGraph.query(length);
+  }
+  
+  public List<InferenceGraphSegment> getSegments(double lengthStart, double lengthEnd) {
+    return this.lengthSegmentGraph.query(lengthStart, lengthEnd);
   }
 
 }

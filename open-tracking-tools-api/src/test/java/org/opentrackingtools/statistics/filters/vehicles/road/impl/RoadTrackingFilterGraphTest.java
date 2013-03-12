@@ -10,6 +10,7 @@ import org.apache.log4j.Logger;
 import org.geotools.factory.FactoryRegistryException;
 import org.geotools.referencing.operation.projection.ProjectionException;
 
+import java.io.FileWriter;
 import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
@@ -46,6 +47,9 @@ import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadT
 import org.opentrackingtools.util.TrueObservation;
 import org.opentrackingtools.GpsObservation;
 
+import au.com.bytecode.opencsv.CSVWriter;
+
+import com.beust.jcommander.internal.Lists;
 import com.google.common.base.Stopwatch;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.LineString;
@@ -57,6 +61,7 @@ public class RoadTrackingFilterGraphTest {
   private InferenceGraph graph;
   private Coordinate startCoord;
   private Matrix avgTransform;
+  private CSVWriter writer;
   private Simulation sim;
   private static final double[] sixteenZeros = VectorFactory.getDefault()
       .createVector(16).toArray() ;
@@ -149,8 +154,9 @@ public class RoadTrackingFilterGraphTest {
   @Test(dataProvider="initialStateData")
   public void runSimulation(VehicleStateInitialParameters simInitialParams,
     VehicleStateInitialParameters filterInitialParams,
-    boolean generalizeMoveDiff, long duration) throws NoninvertibleTransformException, TransformException, ClassNotFoundException, SecurityException, NoSuchMethodException, IllegalArgumentException, InstantiationException, IllegalAccessException, InvocationTargetException {
+    boolean generalizeMoveDiff, long duration) throws NoninvertibleTransformException, TransformException, ClassNotFoundException, SecurityException, NoSuchMethodException, IllegalArgumentException, InstantiationException, IllegalAccessException, InvocationTargetException, IOException {
     
+    writer = new CSVWriter(new FileWriter("road-tracking-test-results.csv"));
     SimulationParameters simParams = new SimulationParameters(
         startCoord, new Date(0l), duration, 
         simInitialParams.getInitialObsFreq(), false, false, 
@@ -261,11 +267,11 @@ public class RoadTrackingFilterGraphTest {
     SufficientStatistic obsCovErrorSS,
     SufficientStatistic onRoadCovErrorSS,
     SufficientStatistic offRoadCovErrorSS,
-    SufficientStatistic transitionsSS, boolean generalizeMoveDiff) {
+    SufficientStatistic transitionsSS, boolean generalizeMoveDiff) throws IOException {
     
     SufficientStatistic stateMeanStat = 
         new MultivariateGaussian.SufficientStatistic();
-    SufficientStatistic obsCovMeanStat = 
+    SufficientStatistic obsCovStat = 
         new MultivariateGaussian.SufficientStatistic();
     SufficientStatistic onRoadCovStat = 
         new MultivariateGaussian.SufficientStatistic();
@@ -298,7 +304,7 @@ public class RoadTrackingFilterGraphTest {
         hasPriorOnVariances = true;
         final Matrix obsCovMean = ((ErrorEstimatingRoadTrackingFilter) state.getMovementFilter())
           .getObsVariancePrior().getMean();
-        obsCovMeanStat.update(obsCovMean.convertToVector());
+        obsCovStat.update(obsCovMean.convertToVector());
         final Matrix onRoadCovMean = ((ErrorEstimatingRoadTrackingFilter) state.getMovementFilter())
           .getOnRoadStateVariancePrior().getMean();
         onRoadCovStat.update(onRoadCovMean.convertToVector());
@@ -306,7 +312,7 @@ public class RoadTrackingFilterGraphTest {
           .getOffRoadStateVariancePrior().getMean();
         offRoadCovStat.update(offRoadCovMean.convertToVector());
       } else {
-        obsCovMeanStat.update(state.getMovementFilter().getObsCovar()
+        obsCovStat.update(state.getMovementFilter().getObsCovar()
             .convertToVector());
         onRoadCovStat.update(state.getMovementFilter().getOnRoadStateTransCovar()
             .convertToVector());
@@ -343,14 +349,14 @@ public class RoadTrackingFilterGraphTest {
     final Vector onRoadCovError;
     final Vector offRoadCovError;
     if (hasPriorOnVariances) {
-      obsCovError = obsCovMeanStat.getMean().minus(
+      obsCovError = obsCovStat.getMean().minus(
           trueVehicleState.getMovementFilter().getObsCovar().convertToVector());
       onRoadCovError = onRoadCovStat.getMean().minus(
           trueVehicleState.getMovementFilter().getQr().convertToVector());
       offRoadCovError = offRoadCovStat.getMean().minus(
           trueVehicleState.getMovementFilter().getQg().convertToVector());
     } else {
-      obsCovError = obsCovMeanStat.getMean().minus(
+      obsCovError = obsCovStat.getMean().minus(
           trueVehicleState.getMovementFilter().getObsCovar().convertToVector());
       onRoadCovError = onRoadCovStat.getMean().minus(
           trueVehicleState.getMovementFilter().getOnRoadStateTransCovar().convertToVector());
@@ -361,7 +367,7 @@ public class RoadTrackingFilterGraphTest {
     log.debug("obsError=" + obsError);
     log.debug("stateError=" + stateError);
     if (hasPriorOnVariances) {
-      log.debug("obsCovMean=" + obsCovMeanStat.getMean());
+      log.debug("obsCovMean=" + obsCovStat.getMean());
       log.debug("onRoadCovMean=" + onRoadCovStat.getMean());
   //    log.debug("offRoadCovMean=" + offRoadCovStat.getMean());
     }
@@ -393,7 +399,9 @@ public class RoadTrackingFilterGraphTest {
     
     final long approxRuns = sim.getSimParameters().getDuration()/
         sim.getSimParameters().getFrequency();
-    if (obsErrorSS.getCount() > Math.min(approxRuns/16, 155)) {
+    if (obsErrorSS.getCount() > Math.min(approxRuns/16, 25)) {
+      
+      List<String> csvResults = Lists.newArrayList();
       
       ArrayAsserts.assertArrayEquals(
           obsErrorSS.getMean().getDimensionality() == 4 ?
@@ -407,6 +415,9 @@ public class RoadTrackingFilterGraphTest {
         stateErrorSS.getMean().toArray(), 
         5d * Math.sqrt(trueVehicleState.getMovementFilter()
             .getOnRoadStateTransCovar().normFrobenius()));
+      
+      csvResults.add(stateMeanStat.getMean().toString());
+      csvResults.add(stateMeanStat.getCovariance().convertToVector().toString());
       
       final Vector stateVelError = stateErrorSS.getMean().getDimensionality() == 4 ?
           AbstractRoadTrackingFilter.getVg().times(stateErrorSS.getMean())
@@ -426,15 +437,32 @@ public class RoadTrackingFilterGraphTest {
         stateVelError.toArray(),   4d * trueVelCovTol);
       
       ArrayAsserts.assertArrayEquals(hasPriorOnVariances ? oneZero : fourZeros,
-        onRoadCovErrorSS.getMean().toArray(), 
+        onRoadCovError.toArray(), 
         0.7d *
             trueVehicleState.getMovementFilter().getQr().normFrobenius());
       
+      csvResults.add(onRoadCovStat.getMean().toString());
+      csvResults.add(onRoadCovStat.getCovariance().convertToVector().toString());
+      
+      ArrayAsserts.assertArrayEquals(fourZeros,
+        obsCovError.toArray(), 
+        0.7d *
+            trueVehicleState.getMovementFilter().getObsCovar().normFrobenius());
+      
+      csvResults.add(obsCovStat.getMean().toString());
+      csvResults.add(obsCovStat.getCovariance().convertToVector().toString());
+      
       ArrayAsserts.assertArrayEquals(hasPriorOnVariances ? fourZeros : 
         sixteenZeros,
-        offRoadCovErrorSS.getMean().toArray(), 
+        offRoadCovError.toArray(), 
         0.7d *
             trueVehicleState.getMovementFilter().getQg().normFrobenius());
+      
+      csvResults.add(offRoadCovStat.getMean().toString());
+      csvResults.add(offRoadCovStat.getCovariance().convertToVector().toString());
+      
+      writer.writeNext(csvResults.toArray(new String[csvResults.size()]));
+      writer.flush();
     }
   }
 

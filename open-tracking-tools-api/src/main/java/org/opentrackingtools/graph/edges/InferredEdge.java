@@ -30,5 +30,9 @@ public interface InferredEdge extends Comparable<InferredEdge> {
   public abstract Object getBackingEdge();
 
   public abstract void update(MultivariateGaussian stateBelief);
+  
+  public abstract LocationIndexedLine getLocationIndexedLine();
+  
+  public abstract LengthIndexedLine getLengthIndexedLine();
 
 }

@@ -15,12 +15,14 @@ import java.util.Set;
 
 import javax.annotation.Nonnull;
 
+import org.geotools.geometry.jts.JTSFactoryFinder;
 import org.opentrackingtools.GpsObservation;
 import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.graph.edges.InferredEdge;
+import org.opentrackingtools.graph.impl.LengthIndexedSubline;
 import org.opentrackingtools.graph.paths.InferredPath;
 import org.opentrackingtools.graph.paths.edges.PathEdge;
-import org.opentrackingtools.graph.paths.impl.InferredPathPrediction;
+import org.opentrackingtools.graph.paths.impl.PathEdgeDistributionWrapper;
 import org.opentrackingtools.graph.paths.states.PathStateBelief;
 import org.opentrackingtools.impl.VehicleState;
 import org.opentrackingtools.impl.VehicleStateInitialParameters;
@@ -29,6 +31,7 @@ import org.opentrackingtools.statistics.distributions.impl.OnOffEdgeTransDistrib
 import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
 
 import com.google.common.collect.Sets;
+import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.linearref.LengthIndexedLine;
 
 public abstract class AbstractVTParticleFilterUpdater
@@ -113,7 +116,7 @@ public abstract class AbstractVTParticleFilterUpdater
           .copyArray(
               new double[] { xyPoint.getElement(0), 0d,
                   xyPoint.getElement(1), 0d }));
-      final Collection<InferredEdge> initialEdges =
+      final Collection<LengthIndexedSubline> initialEdges =
           inferenceGraph.getNearbyEdges(groundInitialBelief,
               tmpTrackingFilter);
 
@@ -121,15 +124,16 @@ public abstract class AbstractVTParticleFilterUpdater
           new DefaultDataDistribution<VehicleState>(
               numParticles);
 
-      final Set<InferredPathPrediction> evaluatedPaths =
+      final Set<PathEdgeDistributionWrapper> evaluatedPaths =
           Sets.newHashSet();
       if (!initialEdges.isEmpty()) {
-        for (final InferredEdge edge: initialEdges) {
+        for (final LengthIndexedSubline line: initialEdges) {
+          final Geometry edgeGeom = line.getLine().toGeometry(JTSFactoryFinder.getGeometryFactory());
           final PathEdge pathEdge =
-              this.inferenceGraph.getPathEdge(edge, 0d, false);
+              this.inferenceGraph.getPathEdge(line.getParentEdge(), edgeGeom, 0d, false);
           final InferredPath path =
               this.inferenceGraph.getInferredPath(pathEdge);
-          evaluatedPaths.add(new InferredPathPrediction(path,
+          evaluatedPaths.add(new PathEdgeDistributionWrapper(path,
               null, null, null, Double.NEGATIVE_INFINITY));
 
           /*
@@ -144,7 +148,7 @@ public abstract class AbstractVTParticleFilterUpdater
                   .createInitialLearnedObject();
 
           final double lengthLocation =
-              new LengthIndexedLine(edge.getGeometry())
+              new LengthIndexedLine(edgeGeom)
               .project(initialObservation.getObsProjected());
 
           final Vector stateSmpl =

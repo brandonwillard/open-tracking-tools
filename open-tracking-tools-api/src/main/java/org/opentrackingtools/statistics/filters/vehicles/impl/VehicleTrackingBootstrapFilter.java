@@ -130,7 +130,7 @@ public class VehicleTrackingBootstrapFilter extends
 
     if (this.isDebug)
       this.filterInfo.put(obs, new FilterInformation(
-          evaledPaths, prePosteriorDist, null));
+          evaledPaths, prePosteriorDist));
 
   }
 

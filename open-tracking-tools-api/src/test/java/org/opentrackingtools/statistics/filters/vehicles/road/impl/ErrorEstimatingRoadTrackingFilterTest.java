@@ -202,6 +202,7 @@ public class ErrorEstimatingRoadTrackingFilterTest {
         for (final PathEdge edge : subList) {
           PathEdge newEdge = SimplePathEdge.getEdge(
               edge.getInferredEdge(),
+              edge.getGeometry(),
               direction * (
                   lastEdge == null ? 0d : lastEdge.getLength() + lastEdge.getDistToStartOfEdge()),
               direction < 0d);

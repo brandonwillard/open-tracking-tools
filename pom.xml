@@ -110,20 +110,6 @@
     </pluginManagement>
   </build>
 
-  <distributionManagement>
-    <repository>
-      <id>${distribution_id}</id>
-      <name>${distribution_name}</name>
-      <url>${distribution_url}</url>
-    </repository>
-    <snapshotRepository>
-      <id>${snapshot_distribution_id}</id>
-      <name>${snapshot_distribution_name}</name>
-      <url>${snapshot_distribution_url}</url>
-      <uniqueVersion>false</uniqueVersion>
-    </snapshotRepository>
-  </distributionManagement>
-
   <repositories>
     <!-- Hack to force maven to check central first. Maven central is inherited from the superpom,
       but ends up at the end of the list. Though most of the time the artifact is in central, 
@@ -134,6 +120,16 @@
       <name>check central first to avoid a lot of not found warnings</name>
       <url>http://repo1.maven.org/maven2</url>
     </repository>    
+    <repository>
+      <id>openjump</id>
+      <name>OpenJUMP Maven 2 Repository</name>
+      <url>http://jump-pilot.svn.sourceforge.net/svnroot/jump-pilot/maven-repository/</url>
+    </repository>
+    <repository>
+      <id>refractions</id>
+      <name>Refractions Research Maven 2 Repository</name>
+      <url>http://lists.refractions.net/m2</url>
+    </repository>
     <repository>
         <id>download.java.net</id>
         <name>Java.net Repository for Maven</name>
@@ -163,8 +159,6 @@
       </snapshots>
       <url>http://repo.opengeo.org/</url>
     </repository>
-    
-    <!-- Repo for the development version of Sandia Cognitive Foundry -->
     <repository>
       <id>sonatype-nexus-releases</id>
       <name>Sonatype Nexus Releases</name>
@@ -173,7 +167,6 @@
         <enabled>true</enabled>
       </snapshots>
     </repository>
-    
   </repositories>
 
   <!-- define no dependencies in the top-level POM to minimize artifact size -->
@@ -247,16 +240,6 @@
         <artifactId>slf4j-log4j12</artifactId>
         <version>1.5.8</version>
       </dependency>
-<!--       <dependency> -->
-<!--         <groupId>org.opentrackingtools</groupId> -->
-<!--         <artifactId>open-tracking-tools-api</artifactId> -->
-<!--         <version>0.0.1-SNAPSHOT</version> -->
-<!--       </dependency> -->
-<!--       <dependency> -->
-<!--         <groupId>org.opentrackingtools</groupId> -->
-<!--         <artifactId>open-tracking-tools-otp</artifactId> -->
-<!--         <version>0.0.1-SNAPSHOT</version> -->
-<!--       </dependency> -->
       <dependency>
         <groupId>gov.sandia.foundry</groupId>
         <artifactId>gov-sandia-cognition-learning-core</artifactId>
@@ -282,6 +265,16 @@
         <artifactId>gt-grid</artifactId>
         <version>${geotools.version}</version>
       </dependency>
+      <dependency>
+        <groupId>com.vividsolutions</groupId>
+        <artifactId>jcs</artifactId>
+        <version>1.0.1</version>
+      </dependency>
+      <dependency>
+          <groupId>org.openjump</groupId>
+          <artifactId>openjump-api</artifactId>
+          <version>1.3.1</version>
+      </dependency>
     </dependencies>
   </dependencyManagement>
 
@@ -292,11 +285,5 @@
     <jersey.version>1.11</jersey.version>
     <spring.version>3.0.5.RELEASE</spring.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <distribution_id>opengeo</distribution_id>
-    <distribution_name>OpenGeo Maven Repository</distribution_name>
-    <distribution_url>dav:http://repo.opengeo.org</distribution_url>
-    <snapshot_distribution_id>opengeo</snapshot_distribution_id>
-    <snapshot_distribution_name>OpenGeo Maven Repository</snapshot_distribution_name>
-    <snapshot_distribution_url>dav:http://repo.opengeo.org</snapshot_distribution_url>
   </properties>
 </project>

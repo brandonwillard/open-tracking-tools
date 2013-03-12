@@ -19,12 +19,14 @@ import org.opentrackingtools.distributions.PathStateMixtureDensityModel;
 import org.opentrackingtools.estimators.MotionStateEstimatorPredictor;
 import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.graph.InferenceGraphEdge;
+import org.opentrackingtools.graph.InferenceGraphSegment;
 import org.opentrackingtools.model.GpsObservation;
 import org.opentrackingtools.model.SimpleBayesianParameter;
 import org.opentrackingtools.model.VehicleState;
 import org.opentrackingtools.paths.Path;
 import org.opentrackingtools.paths.PathEdge;
 import org.opentrackingtools.paths.PathState;
+import org.opentrackingtools.util.GeoUtils;
 import org.opentrackingtools.util.PathUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -101,13 +103,12 @@ public class VehicleTrackingBootstrapUpdater<O extends GpsObservation>
      */
     final VehicleState<O> nullState =
         VehicleState.constructInitialVehicleState(this.parameters, this.inferenceGraph, this.initialObservation, this.random,
-            InferenceGraphEdge.nullGraphEdge);
+            PathEdge.nullPathEdge);
     final MultivariateGaussian initialMotionStateDist =
         nullState.getMotionStateParam().getParameterPrior();
-    final Collection<InferenceGraphEdge> edges =
+    final Collection<InferenceGraphSegment> edges =
         this.inferenceGraph.getNearbyEdges(initialMotionStateDist,
             initialMotionStateDist.getCovariance());
-    edges.add(InferenceGraphEdge.nullGraphEdge);
 
     for (int i = 0; i < numParticles; i++) {
       /*
@@ -115,16 +116,27 @@ public class VehicleTrackingBootstrapUpdater<O extends GpsObservation>
        */
       final DataDistribution<VehicleState<O>> statesOnEdgeDistribution =
           new CountedDataDistribution<VehicleState<O>>(true);
+      
+      final double nullLogLikelihood =
+          nullState.getEdgeTransitionParam()
+              .getConditionalDistribution()
+              .getProbabilityFunction().logEvaluate(InferenceGraphEdge.nullGraphEdge)
+              + this.computeLogLikelihood(nullState,
+                  this.initialObservation);
 
-      for (final InferenceGraphEdge edge : edges) {
+      statesOnEdgeDistribution
+          .increment(nullState, nullLogLikelihood);
+
+      for (final InferenceGraphSegment line : edges) {
         
+        PathEdge startPathEdge = new PathEdge(line, false); 
         VehicleState<O> stateOnEdge = VehicleState.constructInitialVehicleState(
-            parameters, inferenceGraph, initialObservation, random, edge);
+            parameters, inferenceGraph, initialObservation, random, startPathEdge);
 
         final double logLikelihood =
             stateOnEdge.getEdgeTransitionParam()
                 .getConditionalDistribution()
-                .getProbabilityFunction().logEvaluate(edge)
+                .getProbabilityFunction().logEvaluate(startPathEdge.getInferenceGraphEdge())
                 + this.computeLogLikelihood(stateOnEdge,
                     this.initialObservation);
 
@@ -147,10 +159,17 @@ public class VehicleTrackingBootstrapUpdater<O extends GpsObservation>
         new MotionStateEstimatorPredictor(updatedState, this.random,
             (double) this.parameters.getInitialObsFreq());
 
+    /*
+     * Predict new location, i.e. project forward
+     */
     final MultivariateGaussian predictedMotionState =
         motionStatePredictor
             .createPredictiveDistribution(updatedState
                 .getMotionStateParam().getParameterPrior());
+    /*
+     * Add some transition error and set this as the
+     * new motion state for our new vehicle state.
+     */
     final Vector noisyPredictedState =
         motionStatePredictor.sampleStateTransDist(
             predictedMotionState.getMean(), this.random);
@@ -158,13 +177,18 @@ public class VehicleTrackingBootstrapUpdater<O extends GpsObservation>
     updatedState.getMotionStateParam().setParameterPrior(
         predictedMotionState);
 
-    final List<PathEdge> edges = Lists.newArrayList();
+    /*
+     * Initialize the first path edge, distance moved tally
+     * and edge transition distribution, from which we sample our
+     * edge movements. 
+     */
+    final List<InferenceGraphEdge> edges = Lists.newArrayList();
     final boolean isBackward =
         predictedMotionState.getInputDimensionality() == 4
             || predictedMotionState.getMean().getElement(0) >= 0d
             ? false : true;
-    PathEdge prevEdge =
-        updatedState.getPathStateParam().getValue().getEdge();
+    InferenceGraphEdge prevEdge =
+        updatedState.getPathStateParam().getValue().getEdge().getInferenceGraphEdge();
     double distance;
     if (!prevEdge.isNullEdge()) {
       distance = (isBackward ? 1d : -1d) * prevEdge.getLength();
@@ -174,6 +198,12 @@ public class VehicleTrackingBootstrapUpdater<O extends GpsObservation>
     final OnOffEdgeTransDistribution edgeTransDistribution =
         updatedState.getEdgeTransitionParam()
             .getConditionalDistribution();
+    InferenceGraphEdge newEdge = null;
+    /*
+     * Sample edges until we go off-road (which should only
+     * be in the beginning, see below), or until we sample
+     * the same edge twice (or the one we started on).
+     */
     do {
       /*
        * When we've already started an on-road path we don't 
@@ -183,28 +213,33 @@ public class VehicleTrackingBootstrapUpdater<O extends GpsObservation>
        */
       if (!edges.isEmpty() && !prevEdge.isNullEdge()) {
         edgeTransDistribution.getDomain().remove(
-            PathEdge.nullPathEdge);
+            InferenceGraphEdge.nullGraphEdge);
       }
-      final InferenceGraphEdge newEdge =
-          edgeTransDistribution.sample(this.random);
+      
+      newEdge = edgeTransDistribution.sample(this.random);
 
       if (!newEdge.isNullEdge()) {
-        final double newDistance = distance + prevEdge.getLength();
-        prevEdge = new PathEdge(newEdge, newDistance, isBackward);
+        distance += prevEdge.getLength();
+        prevEdge = newEdge;
       } else {
-        prevEdge = PathEdge.nullPathEdge;
+        prevEdge = InferenceGraphEdge.nullGraphEdge;
       }
       edges.add(prevEdge);
 
     } while (!prevEdge.isNullEdge()
-        && !prevEdge.isOnEdge(predictedMotionState.getMean()
-            .getElement(0)));
+        && !prevEdge.equals(newEdge));
 
     final Path newPath;
     if (Iterables.getFirst(edges, null).isNullEdge()) {
       newPath = Path.nullPath;
     } else {
-      newPath = new Path(edges, false);
+      List<PathEdge> pathEdges = Lists.newArrayList();
+      for (InferenceGraphEdge edge : edges) {
+        for (InferenceGraphSegment segment : edge.getSegments(distance)) {
+          pathEdges.add(new PathEdge(segment, false));
+        }
+      }
+      newPath = new Path(pathEdges, false);
     }
 
     final PathState newPathState =

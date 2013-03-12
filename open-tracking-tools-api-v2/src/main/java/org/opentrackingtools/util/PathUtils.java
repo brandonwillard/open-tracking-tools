@@ -269,8 +269,7 @@ public class PathUtils {
 
     final MultivariateGaussian projBelief =
         PathUtils.getRoadBeliefFromGround(belief, path.getGeometry(),
-            path.isBackward(), pathEdge.isBackward() ? pathEdge
-                .getGeometry().reverse() : pathEdge.getGeometry(),
+            path.isBackward(), pathEdge.getLine(),
             pathEdge.getDistToStartOfEdge(), useAbsVelocity);
 
     belief.setMean(projBelief.getMean());
@@ -303,8 +302,9 @@ public class PathUtils {
   public static MultivariateGaussian getGroundBeliefFromRoad(
     MultivariateGaussian motionState, InferenceGraphEdge edge,
     boolean useAbsVelocity) {
+    final Entry<LineSegment, Double> segmentAndStart = getSegmentAndDistanceToStart(edge.getGeometry(), 0);
     return PathUtils.getGroundBeliefFromRoad(motionState,
-        new PathEdge(edge, 0d, false), useAbsVelocity);
+        new PathEdge(edge, segmentAndStart.getKey(), segmentAndStart.getValue(), false), useAbsVelocity);
   }
 
   public static MultivariateGaussian
@@ -327,65 +327,11 @@ public class PathUtils {
    */
   public static PathEdgeProjection getGroundProjection(
     Vector locVelocity, PathEdge edge, boolean allowExtensions) {
-
-    final Geometry geom;
-    double distance =
-        MotionStateEstimatorPredictor.getOr().times(locVelocity)
-            .getElement(0);
-    if (edge.isBackward()) {
-      geom = edge.getGeometry().reverse();
-      distance *= -1d;
-    } else {
-      geom = edge.getGeometry();
-    }
-
-    final Entry<LineSegment, Double> segmentDist =
-        PathUtils.getSegmentAndDistanceToStart(geom, distance);
-
-    final double absTotalPathDistanceToStartOfSegment =
-        Math.abs(segmentDist.getValue())
-            + Math.abs(edge.getDistToStartOfEdge());
-
-    return PathUtils.posVelProjectionPair(segmentDist.getKey(),
-        absTotalPathDistanceToStartOfSegment);
+    
+    return PathUtils.posVelProjectionPair(edge.getLine(),
+        Math.abs(edge.getDistToStartOfEdge()));
   }
-
-  //  public static boolean isIsoMapping(@Nonnull Vector from,
-  //    @Nonnull Vector to, @Nonnull PathEdge pathEdge) {
-  //
-  //    /*
-  //     * XXX TODO FIXME: this is temporary!  we should be testing
-  //     * with full paths!!
-  //     */
-  //    final Vector adjFrom;
-  //    if (Math.abs(pathEdge.getDistToStartOfEdge()) > 0d) {
-  //      adjFrom = from.clone();
-  //      adjFrom.setElement(0,
-  //          adjFrom.getElement(0) - pathEdge.getDistToStartOfEdge());
-  //    } else {
-  //      adjFrom = from;
-  //    }
-  //
-  //    final boolean isBackward = pathEdge.isBackward();
-  //
-  //    final Vector inversion;
-  //    if (to.getDimensionality() == 2) {
-  //      inversion = getGroundStateFromRoad(to, pathEdge, true);
-  //    } else {
-  //
-  //      final Path invPath =
-  //          Path.getInferredPath(
-  //              Collections.singletonList(PathEdge.getEdge(
-  //                  pathEdge.getInferredEdge(), 0d, isBackward)),
-  //              isBackward);
-  //      inversion = invPath.getStateOnPath(to).getLocalState();
-  //    }
-  //    final boolean result =
-  //        inversion.equals(adjFrom,
-  //            PathStateEstimatorPredictor.getEdgeLengthErrorTolerance());
-  //    return result;
-  //  }
-
+  
   public static Vector getGroundStateFromRoad(Vector locVelocity,
     PathEdge edge, boolean useAbsVelocity) {
 
@@ -452,14 +398,13 @@ public class PathUtils {
 
   public static MultivariateGaussian getRoadBeliefFromGround(
     MultivariateGaussian belief, Geometry pathGeometry,
-    boolean pathIsBackwards, @Nullable Geometry edgeGeometry,
+    boolean pathIsBackwards, @Nullable LineSegment edgeSegment,
     double edgeDistanceToStartOnPath, boolean useAbsVelocity) {
 
     Preconditions.checkArgument(belief.getInputDimensionality() == 4);
 
     final PathEdgeProjection projPair =
-        PathUtils.getRoadProjection(belief.getMean(), pathGeometry,
-            pathIsBackwards, edgeGeometry, edgeDistanceToStartOnPath);
+        PathUtils.getRoadProjection(belief.getMean(), pathGeometry, edgeSegment, edgeDistanceToStartOnPath);
 
     if (projPair == null) {
       return null;
@@ -550,9 +495,9 @@ public class PathUtils {
       getRoadBeliefFromGround(MultivariateGaussian belief,
         PathEdge edge, boolean useAbsVelocity) {
     Preconditions.checkArgument(belief.getInputDimensionality() == 4);
+    final Geometry lineGeom = edge.getLine().toGeometry(JTSFactoryFinder.getGeometryFactory());
     final MultivariateGaussian tmpMg =
-        PathUtils.getRoadBeliefFromGround(belief, edge.isBackward()
-            ? edge.getGeometry().reverse() : edge.getGeometry(), edge
+        PathUtils.getRoadBeliefFromGround(belief, lineGeom, edge
             .isBackward(), null, 0, useAbsVelocity);
     tmpMg.getMean().setElement(0,
         tmpMg.getMean().getElement(0) + edge.getDistToStartOfEdge());
@@ -610,20 +555,15 @@ public class PathUtils {
    * @return
    */
   public static PathEdgeProjection getRoadProjection(
-    Vector locVelocity, Geometry pathGeometry,
-    boolean pathIsBackwards, Geometry edgeGeometry,
+    Vector locVelocity, Geometry pathGeometry, LineSegment edgeSegment,
     double edgeDistanceToStartOnPath) {
 
     Preconditions.checkArgument(locVelocity.getDimensionality() == 2
         || locVelocity.getDimensionality() == 4);
-    //    Preconditions.checkArgument(edgeGeometry == null
-    //        || pathGeometry.contains(edgeGeometry));
 
     if (locVelocity.getDimensionality() == 2) {
       return null;
     }
-
-    final Vector m = locVelocity.clone();
 
     /*
      * We snap to the line and find the segment of interest.
@@ -631,42 +571,21 @@ public class PathUtils {
      * to snap a location that is between the start of the edge 
      * for the distance threshold and the actual distance threshold.
      */
-    final LinearLocation lineLocation;
     final Coordinate currentPos =
         GeoUtils.makeCoordinate(MotionStateEstimatorPredictor.getOg()
-            .times(m));
+            .times(locVelocity));
     final double distanceToStartOfSegmentOnGeometry;
     final LineSegment pathLineSegment;
-    if (edgeGeometry != null) {
-      final Geometry edgeGeom = edgeGeometry;
-      //          pathIsBackwards ? edgeGeometry.reverse() : edgeGeometry;
-      final LocationIndexedLine locIndex =
-          new LocationIndexedLine(edgeGeom);
-      final LinearLocation tmpLocation = locIndex.project(currentPos);
-      final LengthIndexedLine tmpLengthIdx =
-          new LengthIndexedLine(edgeGeom);
-      final double lengthOnEdge =
-          tmpLengthIdx.indexOf(tmpLocation.getCoordinate(edgeGeom));
-
-      /*
-       * Due to some really weird behavior with indexAfter in JTS,
-       * we're doing this for the edge first, then computing the distance
-       * up to it on the path and using that with the full path geom.
-       */
-      pathLineSegment = tmpLocation.getSegment(edgeGeom);
-      final LengthIndexedLine lengthIndex =
-          new LengthIndexedLine(edgeGeom);
+    if (edgeSegment != null) {
+      final double lengthOnEdge = edgeSegment.segmentFraction(currentPos)
+          * edgeSegment.getLength();
       distanceToStartOfSegmentOnGeometry =
-          Math.abs(edgeDistanceToStartOnPath)
-              + lengthIndex.indexOf(pathLineSegment.p0);
-
-      lineLocation =
-          LengthLocationMap.getLocation(pathGeometry,
-              Math.abs(edgeDistanceToStartOnPath) + lengthOnEdge);
+          Math.abs(edgeDistanceToStartOnPath) + lengthOnEdge;
+      pathLineSegment =  edgeSegment;
     } else {
       final LocationIndexedLine locIndex =
           new LocationIndexedLine(pathGeometry);
-      lineLocation = locIndex.project(currentPos);
+      final LinearLocation lineLocation = locIndex.project(currentPos);
       /*
        * Get the segment we're projected onto, and the distance offset
        * of the path.
@@ -685,14 +604,13 @@ public class PathUtils {
 
   public static Vector getRoadStateFromGround(Vector state,
     Geometry pathGeometry, boolean pathIsBackwards,
-    @Nullable Geometry edgeGeometry,
+    @Nullable LineSegment edgeSegment,
     double edgeDistanceToStartOnPath, boolean useAbsVelocity) {
 
     Preconditions.checkArgument(state.getDimensionality() == 4);
 
     final PathEdgeProjection projPair =
-        PathUtils.getRoadProjection(state, pathGeometry,
-            pathIsBackwards, edgeGeometry, edgeDistanceToStartOnPath);
+        PathUtils.getRoadProjection(state, pathGeometry, edgeSegment, edgeDistanceToStartOnPath);
 
     if (projPair == null) {
       return null;
@@ -774,9 +692,9 @@ public class PathUtils {
   }
 
   public static Vector headToTailDiff(Vector toState,
-    boolean toStateIsBackward, Geometry toStartEdgeGeom,
+    boolean toStateIsBackward, LineSegment toStartEdgeGeom,
     Vector fromState, double fromStateDistToStart,
-    Geometry fromLastEdgeGeom) {
+    LineSegment fromLastEdgeGeom) {
 
     final double toStateSign = toStateIsBackward ? -1d : 1d;
 
@@ -793,10 +711,10 @@ public class PathUtils {
     final double toDist = Math.abs(toState.getElement(0));
     final double lengthDiff = toStateSign * (toDist - fromFlipDist);
 
-    final double toVel = toState.getElement(1);
+    final double toVel = toStateSign * toState.getElement(1);
 
     final double fromVel =
-        (fromLastEdgeGeom.equalsExact(toStartEdgeGeom) ? 1d : -1d)
+        (fromLastEdgeGeom.equals(toStartEdgeGeom) ? 1d : -1d)
             * fromState.getElement(1);
 
     final double velocityDiff = toVel - fromVel;
@@ -1114,18 +1032,12 @@ public class PathUtils {
           Iterables.getFirst(toPath.getPathEdges(), null);
       final PathEdge toLastEdge =
           Iterables.getLast(toPath.getPathEdges());
-      final Geometry toFirstActualGeom =
-          toPath.isBackward() ? toFirstEdge.getGeometry().reverse()
-              : toFirstEdge.getGeometry();
-      final Geometry toLastActualGeom;
+      final LineSegment toFirstActualGeom = toFirstEdge.getLine();
+      final LineSegment toLastActualGeom;
       if (toPath.getPathEdges().size() > 1) {
-        toLastActualGeom =
-            toPath.isBackward() ? toLastEdge.getGeometry().reverse()
-                : toLastEdge.getGeometry();
+        toLastActualGeom = toLastEdge.getLine();
       } else {
-        toLastActualGeom =
-            JTSFactoryFinder.getGeometryFactory().createLineString(
-                new Coordinate[0]);
+        toLastActualGeom = new LineSegment();
       }
 
       final PathEdge fromFirstEdge =
@@ -1134,19 +1046,13 @@ public class PathUtils {
       final PathEdge fromLastEdge =
           Iterables.getLast(fromState.getPath().getPathEdges(), null);
       final Path fromPath = fromState.getPath();
-      final Geometry fromFirstActualGeom =
-          fromPath.isBackward() ? fromFirstEdge.getGeometry()
-              .reverse() : fromFirstEdge.getGeometry();
+      final LineSegment fromFirstActualGeom = fromFirstEdge.getLine();
 
-      final Geometry fromLastActualGeom;
+      final LineSegment fromLastActualGeom;
       if (fromPath.getPathEdges().size() > 1) {
-        fromLastActualGeom =
-            fromPath.isBackward() ? fromLastEdge.getGeometry()
-                .reverse() : fromLastEdge.getGeometry();
+        fromLastActualGeom = fromLastEdge.getLine();
       } else {
-        fromLastActualGeom =
-            JTSFactoryFinder.getGeometryFactory().createLineString(
-                new Coordinate[0]);
+        fromLastActualGeom = new LineSegment();
       }
 
       final Vector result;
@@ -1158,22 +1064,24 @@ public class PathUtils {
           useRaw ? fromState.getMotionState() : fromState
               .getMotionState();
 
-      if (fromLastActualGeom.equalsExact(toFirstActualGeom)) {
+      if (fromLastActualGeom.equals(toFirstActualGeom)) {
         /*
          * Head-to-tail
          */
         result =
-            PathUtils.headToTailDiff(toStateVec, toPath.isBackward(),
-                toFirstEdge.getGeometry(), fromStateVec, fromState
-                    .getEdge().getDistToStartOfEdge(), fromLastEdge
-                    .getGeometry());
+            PathUtils.headToTailDiff(toStateVec, 
+                toPath.isBackward(),
+                toFirstEdge.getLine(), 
+                fromPath.isBackward() ? fromStateVec.scale(-1d) : fromStateVec, 
+                fromState.getEdge().getDistToStartOfEdge(), 
+                fromLastEdge.getLine());
 
         distanceMax =
             Math.abs(fromPath.getTotalPathDistance())
                 + Math.abs(toPath.getTotalPathDistance())
                 - fromLastActualGeom.getLength();
 
-      } else if (fromFirstActualGeom.equalsExact(toFirstActualGeom)) {
+      } else if (fromFirstActualGeom.equals(toFirstActualGeom)) {
         /*
          * Same start, same path-directions.
          */
@@ -1190,9 +1098,7 @@ public class PathUtils {
             Math.max(Math.abs(fromPath.getTotalPathDistance()),
                 Math.abs(toPath.getTotalPathDistance()));
 
-      } else if (PathUtils.biDirComp.compare(
-          fromLastActualGeom.getCoordinates(),
-          toFirstActualGeom.getCoordinates()) == 0) {
+      } else if (fromLastActualGeom.equalsTopo(toFirstActualGeom)) {
         /*
          * Head-to-tail, but in opposite path directions.
          */
@@ -1204,9 +1110,7 @@ public class PathUtils {
                 + Math.abs(toPath.getTotalPathDistance())
                 - fromLastActualGeom.getLength();
 
-      } else if (PathUtils.biDirComp.compare(
-          fromFirstActualGeom.getCoordinates(),
-          toFirstActualGeom.getCoordinates()) == 0) {
+      } else if (fromFirstActualGeom.equalsTopo(toFirstActualGeom)) {
         /*
          * Going in opposite path-directions from the same
          * starting location. 
@@ -1221,8 +1125,7 @@ public class PathUtils {
 
         final double toVel = toStateVec.getElement(1);
         final double fromVel =
-            (fromFirstEdge.getGeometry().equalsExact(
-                toFirstEdge.getGeometry()) ? 1d : -1d)
+            ((fromPath.isBackward() != toPath.isBackward()) ? 1d : -1d)
                 * fromStateVec.getElement(1);
         final double velDiff = toVel - fromVel;
 
@@ -1234,7 +1137,7 @@ public class PathUtils {
             Math.max(Math.abs(fromPath.getTotalPathDistance()),
                 Math.abs(toPath.getTotalPathDistance()));
 
-      } else if (fromFirstActualGeom.equalsExact(toLastActualGeom)) {
+      } else if (fromFirstActualGeom.equals(toLastActualGeom)) {
         /*
          * Head-to-tail, reversed from-to
          */

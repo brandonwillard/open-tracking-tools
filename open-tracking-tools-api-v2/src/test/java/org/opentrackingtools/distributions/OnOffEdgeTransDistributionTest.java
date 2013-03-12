@@ -19,10 +19,12 @@ import org.opengis.referencing.operation.MathTransformFactory;
 import org.opentrackingtools.VehicleStateInitialParameters;
 import org.opentrackingtools.graph.GenericJTSGraph;
 import org.opentrackingtools.graph.InferenceGraphEdge;
+import org.opentrackingtools.graph.InferenceGraphSegment;
 import org.opentrackingtools.model.GpsObservation;
 import org.opentrackingtools.model.ProjectedCoordinate;
 import org.opentrackingtools.model.SimpleBayesianParameter;
 import org.opentrackingtools.model.VehicleState;
+import org.opentrackingtools.paths.PathEdge;
 import org.testng.AssertJUnit;
 import org.testng.annotations.Test;
 
@@ -30,6 +32,7 @@ import com.beust.jcommander.internal.Lists;
 import com.google.common.collect.Iterables;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.LineString;
+import com.vividsolutions.jts.linearref.LengthLocationMap;
 
 public class OnOffEdgeTransDistributionTest {
 
@@ -62,8 +65,8 @@ public class OnOffEdgeTransDistributionTest {
            new Coordinate(1,2), 
            new Coordinate(1,3), 
         }));
-    GenericJTSGraph graph = new GenericJTSGraph(edges);
-    InferenceGraphEdge startEdge = Iterables.getOnlyElement(graph.getNearbyEdges(edges.get(0).getCoordinate(), 1d));
+    GenericJTSGraph graph = new GenericJTSGraph(edges, false);
+    InferenceGraphSegment startLine = Iterables.getOnlyElement(graph.getNearbyEdges(edges.get(0).getCoordinate(), 1d));
     
     GpsObservation obs = new GpsObservation("test", new Date(0l), edges.get(0).getCoordinate(), null, null, null, 0, null, 
         new ProjectedCoordinate(null, edges.get(0).getCoordinate(), null));
@@ -78,7 +81,9 @@ public class OnOffEdgeTransDistributionTest {
         VectorFactory.getDefault().createVector2D(10, 50), 
         VectorFactory.getDefault().createVector2D(50, 10), 0, 30, 0);
     
-    VehicleState<GpsObservation> currentState = VehicleState.constructInitialVehicleState(parameters, graph, obs, rng, startEdge);
+    InferenceGraphEdge startEdge = startLine.getParentEdge();
+    PathEdge startPathEdge = new PathEdge(startLine, false);
+    VehicleState<GpsObservation> currentState = VehicleState.constructInitialVehicleState(parameters, graph, obs, rng, startPathEdge);
     
     /*
      * Now we move our vehicle state forward, by hand
@@ -91,7 +96,7 @@ public class OnOffEdgeTransDistributionTest {
     
     Set<InferenceGraphEdge> transitionSupport = edgeTransDist.getDomain();
     
-    InferenceGraphEdge expectedEdge = Iterables.getOnlyElement(graph.getNearbyEdges(new Coordinate(1d,3d), 1d));
+    InferenceGraphEdge expectedEdge = Iterables.getOnlyElement(graph.getNearbyEdges(new Coordinate(1d,3d), 1d)).getParentEdge();
     AssertJUnit.assertEquals(expectedEdge, Iterables.getOnlyElement(transitionSupport, null));
   }
 }

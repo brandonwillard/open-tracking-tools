@@ -25,6 +25,8 @@ public class SimpleInferredEdge implements InferredEdge {
   protected final Object backingEdge;
   protected final Geometry geometry;
   protected final Boolean hasReverse;
+  protected final LengthIndexedLine lengthIndexedLine;
+  protected final LocationIndexedLine locationIndexedLine;
 
   /*
    * This is the empty edge, which stands for free movement
@@ -39,6 +41,8 @@ public class SimpleInferredEdge implements InferredEdge {
     this.backingEdge = null;
     this.geometry = null;
     this.hasReverse = null;
+    this.lengthIndexedLine = null;
+    this.locationIndexedLine = null;
   }
 
   public static SimpleInferredEdge getInferredEdge(@Nonnull Geometry geom,
@@ -69,7 +73,10 @@ public class SimpleInferredEdge implements InferredEdge {
     this.endPoint =
         VectorFactory.getDefault().createVector2D(
             endPointCoord.x, endPointCoord.y);
-
+    
+    this.lengthIndexedLine = new LengthIndexedLine(this.geometry);
+    
+    this.locationIndexedLine = new LocationIndexedLine(this.geometry);
   }
 
   @Override
@@ -195,6 +202,16 @@ public class SimpleInferredEdge implements InferredEdge {
 
   @Override
   public void update(MultivariateGaussian stateBelief) {
+  }
+
+  @Override
+  public LocationIndexedLine getLocationIndexedLine() {
+    return this.locationIndexedLine;
+  }
+
+  @Override
+  public LengthIndexedLine getLengthIndexedLine() {
+    return this.lengthIndexedLine;
   }
   
 }

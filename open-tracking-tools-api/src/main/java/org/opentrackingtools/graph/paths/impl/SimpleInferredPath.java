@@ -26,6 +26,7 @@ import org.opentrackingtools.graph.paths.util.PathUtils;
 import org.opentrackingtools.graph.paths.util.PathUtils.PathEdgeProjection;
 import org.opentrackingtools.impl.VehicleState;
 import org.opentrackingtools.impl.WrappedWeightedValue;
+import org.opentrackingtools.statistics.distributions.impl.DefaultCountedDataDistribution;
 import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
 
 import com.google.common.base.Preconditions;
@@ -83,7 +84,7 @@ public class SimpleInferredPath implements InferredPath {
     
     PathEdge lastEdge = null;
     //    double absTotalDistance = 0d;
-    final List<Coordinate> coords = Lists.newArrayList();
+    final CoordinateList coords = new CoordinateList();
     for (final PathEdge edge : edges) {
       this.normalEdges.add(edge.getInferredEdge());
       
@@ -91,14 +92,16 @@ public class SimpleInferredPath implements InferredPath {
         if (isBackward) {
           Preconditions
               .checkArgument(lastEdge == null
-                  || lastEdge
-                      .getInferredEdge()
-                      .getStartPoint()
-                      .equals(
-                          edge.getInferredEdge()
-                              .getEndPoint()));
+              || lastEdge.getInferredEdge().equals(edge.getInferredEdge()) 
+              || lastEdge
+                  .getInferredEdge()
+                  .getStartPoint()
+                  .equals(
+                      edge.getInferredEdge()
+                          .getEndPoint()));
         } else {
           Preconditions.checkArgument(lastEdge == null
+              || lastEdge.getInferredEdge().equals(edge.getInferredEdge()) 
               || lastEdge
                   .getInferredEdge()
                   .getEndPoint()
@@ -110,16 +113,8 @@ public class SimpleInferredPath implements InferredPath {
 
         final Geometry geom = edge.getGeometry();
         if (geom.getLength() > 1e-4) {
-          final Coordinate[] theseCoords =
-              isBackward ? geom.reverse().getCoordinates()
-                  : geom.getCoordinates();
-          final int startIdx = coords.size() == 0 ? 0 : 1;
-          for (int i = startIdx; i < theseCoords.length; i++) {
-            if (i == 0
-                || !theseCoords[i].equals(coords.get(coords
-                    .size() - 1)))
-              coords.add(theseCoords[i]);
-          }
+          final Coordinate[] theseCoords = geom.getCoordinates();
+          coords.add(theseCoords, false, !isBackward);
           edgeIds.add(edge.getInferredEdge().getEdgeId());
         }
       }
@@ -127,18 +122,16 @@ public class SimpleInferredPath implements InferredPath {
       lastEdge = edge;
     }
 
-    if (edges.size() > 1) {
+//    if (edges.size() > 1) {
+//    } else {
+//      final Geometry edgeGeom =
+//          Iterables.getOnlyElement(edges).getGeometry();
       this.geometry =
           JTSFactoryFinder.getGeometryFactory()
-              .createLineString(
-                  coords.toArray(new Coordinate[coords
-                      .size()]));
-    } else {
-      final Geometry edgeGeom =
-          Iterables.getOnlyElement(edges).getGeometry();
-      this.geometry =
-          isBackward ? edgeGeom.reverse() : edgeGeom;
-    }
+              .createLineString(coords.toCoordinateArray());
+//      this.geometry =
+//          isBackward ? edgeGeom.reverse() : edgeGeom;
+//    }
 
     final double direction = isBackward ? -1d : 1d;
     this.totalPathDistance =
@@ -162,7 +155,7 @@ public class SimpleInferredPath implements InferredPath {
     else
       this.totalPathDistance =
           (this.isBackward == Boolean.TRUE ? -1d : 1d)
-              * edge.getInferredEdge().getLength();
+              * edge.getLength();
     this.edgeIds.add(edge.getInferredEdge().getEdgeId());
     this.geometry =
         (this.isBackward == Boolean.TRUE)? edge.getGeometry().reverse()
@@ -284,7 +277,7 @@ public class SimpleInferredPath implements InferredPath {
    */
   @Override
   public
-      InferredPathPrediction
+      PathEdgeDistributionWrapper
       getPriorPredictionResults(
         InferenceGraph graph,
         GpsObservation obs,
@@ -309,30 +302,14 @@ public class SimpleInferredPath implements InferredPath {
     
     final PathStateBelief beliefPrediction =
               filter.predict(state.getBelief(), this);
-    
-    /*
-     * XXX: testing movement restrictions
-     */
-//    if (!state.getBelief().isOnRoad()
-//        && !this.isNullPath()) {
-//      /*
-//       * We just got on a road
-//       */
-//      final double direction = this.isBackward ? -1d : 1d;
-//      final boolean isCorrectDirection =  
-//          AbstractRoadTrackingFilter.getVr().times(
-//              beliefPrediction.getRawState()).getElement(0) * direction >= 0d;
-//              
-//      if (!isCorrectDirection)
-//        return null;
-//    }
 
     double pathLogLik = Double.NEGATIVE_INFINITY;
 
-    final List<WrappedWeightedValue<PathEdge>> weightedPathEdges =
-        Lists.newArrayList();
+//    final List<WrappedWeightedValue<PathEdge>> weightedPathEdges =
+//        Lists.newArrayList();
+    final DefaultCountedDataDistribution<PathEdge> pathEdgeDistribution =
+        new DefaultCountedDataDistribution<PathEdge>(true);
     final List<? extends PathEdge> edgesLocal = this.getPathEdges();
-    //Collections.singletonList(Iterables.getLast(this.getEdges()));
     for (final PathEdge edge : edgesLocal) {
 
       final EdgePredictiveResults edgeResults;
@@ -384,9 +361,7 @@ public class SimpleInferredPath implements InferredPath {
       if (edgeResults.getLocationPrediction() == null)
         continue;
 
-      weightedPathEdges
-          .add(new WrappedWeightedValue<PathEdge>(edge,
-              edgeResults.getTotalLogLik()));
+      pathEdgeDistribution.increment(edge, edgeResults.getTotalLogLik());
       pathLogLik =
           LogMath.add(pathLogLik,
               edgeResults.getTotalLogLik());
@@ -401,9 +376,9 @@ public class SimpleInferredPath implements InferredPath {
 
     assert !Double.isNaN(pathLogLik);
 
-    return new InferredPathPrediction(this,
+    return new PathEdgeDistributionWrapper(this,
         edgeToPreBeliefAndLogLik, filter,
-        weightedPathEdges, pathLogLik);
+        pathEdgeDistribution, pathLogLik);
   }
 
   @Override

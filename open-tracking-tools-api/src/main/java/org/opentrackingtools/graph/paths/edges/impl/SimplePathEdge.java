@@ -9,6 +9,7 @@ import gov.sandia.cognition.util.AbstractCloneableSerializable;
 import gov.sandia.cognition.util.CloneableSerializable;
 
 import org.opentrackingtools.GpsObservation;
+import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.graph.edges.InferredEdge;
 import org.opentrackingtools.graph.edges.impl.SimpleInferredEdge;
 import org.opentrackingtools.graph.paths.InferredPath;
@@ -30,20 +31,22 @@ public class SimplePathEdge extends AbstractCloneableSerializable implements Pat
   protected InferredEdge edge;
   protected Double distToStartOfEdge;
   protected Boolean isBackward;
+  protected Geometry line;
 
   protected final static SimplePathEdge nullPathEdge = new SimplePathEdge(
       SimpleInferredEdge.getNullEdge()); 
   
-  protected SimplePathEdge(InferredEdge edge) {
-    this.edge = edge;
+  protected SimplePathEdge(InferredEdge parentEdge) {
+    this.edge = parentEdge;
+    this.line = null;
     this.distToStartOfEdge = null;
     this.isBackward = null;
   }
 
-  protected SimplePathEdge(InferredEdge edge,
-    Double distToStartOfEdge, Boolean isBackward) {
+  protected SimplePathEdge(InferredEdge edge, Geometry line, Double distToStartOfEdge, Boolean isBackward) {
     Preconditions.checkState((isBackward != Boolean.TRUE)
         || distToStartOfEdge <= 0d);
+    this.line = line;
     this.edge = edge;
     this.distToStartOfEdge = distToStartOfEdge;
     this.isBackward = isBackward;
@@ -53,13 +56,15 @@ public class SimplePathEdge extends AbstractCloneableSerializable implements Pat
   public int compareTo(PathEdge o) {
     return ComparisonChain
         .start()
-        .compare(this.edge, o.getInferredEdge())
         .compare(this.isBackward(),
             o.isBackward(),
             Ordering.natural().nullsLast())
         .compare(this.distToStartOfEdge,
             o.getDistToStartOfEdge(),
-            Ordering.natural().nullsLast()).result();
+            Ordering.natural().nullsLast())
+        .compare(this.line, o.getGeometry())
+        .compare(this.edge, o.getInferredEdge())
+        .result();
   }
 
 
@@ -148,7 +153,7 @@ public class SimplePathEdge extends AbstractCloneableSerializable implements Pat
     final double thisStartDistance =
         Math.abs(this.getDistToStartOfEdge());
     final double thisEndDistance =
-        edge.getLength() + thisStartDistance;
+        line.getLength() + thisStartDistance;
     
     final Matrix Or = AbstractRoadTrackingFilter.getOr();
     
@@ -175,7 +180,7 @@ public class SimplePathEdge extends AbstractCloneableSerializable implements Pat
     final double var =
         Or.times(beliefPrediction.getCovariance())
             .times(Or.transpose()).getElement(0, 0)
-            + Math.pow(this.getInferredEdge().getLength(),
+            + Math.pow(this.getLength(),
                 2d) / 12d;
     final double mean =
         Or.times(beliefPrediction.getMean()).getElement(0);
@@ -184,7 +189,7 @@ public class SimplePathEdge extends AbstractCloneableSerializable implements Pat
     final double evalPoint =
         (this.getDistToStartOfEdge() + (this
             .getDistToStartOfEdge() + direction
-            * this.getInferredEdge().getLength())) / 2d;
+            * this.getLength())) / 2d;
 
     final double result =
         UnivariateGaussian.PDF.logEvaluate(evalPoint, mean, var);
@@ -208,7 +213,7 @@ public class SimplePathEdge extends AbstractCloneableSerializable implements Pat
         Or.times(beliefPrediction.getMean()).getElement(0);
     final double direction = this.isBackward ? -1d : 1d;
     final double distToEndOfEdge =
-        direction * this.getInferredEdge().getLength()
+        direction * this.getLength()
             + this.getDistToStartOfEdge();
     final double startDistance =
         direction > 0d ? this.getDistToStartOfEdge()
@@ -236,7 +241,7 @@ public class SimplePathEdge extends AbstractCloneableSerializable implements Pat
     final double startDistance =
         Math.abs(this.getDistToStartOfEdge());
     final double endDistance =
-        edge.getLength() + startDistance;
+        line.getLength() + startDistance;
 
     final double tt1 =
         UnivariateGaussian.PDF.logEvaluate(startDistance,
@@ -279,7 +284,7 @@ public class SimplePathEdge extends AbstractCloneableSerializable implements Pat
         Or.times(belief.getCovariance())
             .times(Or.transpose()).getElement(0, 0)
             // + 1d;
-            + Math.pow(this.getInferredEdge().getLength()
+            + Math.pow(this.getLength()
                 / Math.sqrt(12), 2);
     final Matrix W =
         belief.getCovariance().times(Or.transpose())
@@ -292,7 +297,7 @@ public class SimplePathEdge extends AbstractCloneableSerializable implements Pat
     final double mean =
         (this.getDistToStartOfEdge() + (this
             .getDistToStartOfEdge() + direction
-            * this.getInferredEdge().getLength())) / 2d;
+            * this.getLength())) / 2d;
 
     final Vector beliefMean = belief.getRawState();
     final double e =
@@ -330,18 +335,25 @@ public class SimplePathEdge extends AbstractCloneableSerializable implements Pat
         .equals(other.distToStartOfEdge)) {
       return false;
     }
-    if (edge == null) {
-      if (other.edge != null) {
-        return false;
-      }
-    } else if (!edge.equals(other.edge)) {
-      return false;
-    }
     if (isBackward == null) {
       if (other.isBackward != null) {
         return false;
       }
     } else if (!isBackward.equals(other.isBackward)) {
+      return false;
+    }
+    if (line == null) {
+      if (other.line != null) {
+        return false;
+      }
+    } else if (!line.equalsExact(other.line)) {
+      return false;
+    }
+    if (edge == null) {
+      if (other.edge != null) {
+        return false;
+      }
+    } else if (!edge.equals(other.edge)) {
       return false;
     }
     return true;
@@ -371,13 +383,13 @@ public class SimplePathEdge extends AbstractCloneableSerializable implements Pat
     final double posDistAdj =
         direction * distance - Math.abs(distToStartOfEdge);
     final double overEndDist =
-        posDistAdj - this.edge.getLength();
+        posDistAdj - this.line.getLength();
     if (overEndDist > 0d) {
       if (overEndDist > tolerance) {
         return null;
       } else {
         newState.setElement(0,
-            direction * this.edge.getLength()
+            direction * this.line.getLength()
                 + (relative ? 0d : distToStartOfEdge));
       }
     } else if (posDistAdj < 0d) {
@@ -408,7 +420,7 @@ public class SimplePathEdge extends AbstractCloneableSerializable implements Pat
    */
   @Override
   public Geometry getGeometry() {
-    return this.edge.getGeometry();
+    return this.line;
   }
 
   /* (non-Javadoc)
@@ -436,6 +448,9 @@ public class SimplePathEdge extends AbstractCloneableSerializable implements Pat
             * result
             + ((distToStartOfEdge == null) ? 0
                 : distToStartOfEdge.hashCode());
+    result =
+        prime * result
+            + ((line == null) ? 0 : line.hashCode());
     result =
         prime * result
             + ((edge == null) ? 0 : edge.hashCode());
@@ -474,7 +489,7 @@ public class SimplePathEdge extends AbstractCloneableSerializable implements Pat
     final double posDistOffset =
         direction * distance - posDistToStart;
 
-    if (posDistOffset - edge.getLength() > 1e-7d) {
+    if (posDistOffset - line.getLength() > 1e-7d) {
       return false;
     } else if (posDistOffset < 0d) {
       return false;
@@ -492,13 +507,13 @@ public class SimplePathEdge extends AbstractCloneableSerializable implements Pat
           distToStartOfEdge == 0d && this.isBackward ? -0d
               : distToStartOfEdge.longValue();
       return "PathEdge [edge=" + edge.getEdgeId() + " ("
-          + edge.getLength().longValue() + ")"
+          + line.getLength() + ")"
           + ", distToStart=" + distToStart + "]";
     }
   }
 
   public static SimplePathEdge getEdge(InferredEdge infEdge,
-    double distToStart, Boolean isBackward) {
+    Geometry line, double distToStart, Boolean isBackward) {
     Preconditions.checkArgument(isBackward != Boolean.TRUE
         || distToStart <= 0d);
 
@@ -506,7 +521,7 @@ public class SimplePathEdge extends AbstractCloneableSerializable implements Pat
     if (infEdge.isNullEdge() || isBackward == null) {
       edge = SimplePathEdge.getNullPathEdge();
     } else {
-      edge = new SimplePathEdge(infEdge, distToStart, isBackward);
+      edge = new SimplePathEdge(infEdge, line, distToStart, isBackward);
     }
     return edge;
   }
@@ -520,6 +535,7 @@ public class SimplePathEdge extends AbstractCloneableSerializable implements Pat
     SimplePathEdge clone = (SimplePathEdge) super.clone();
     clone.distToStartOfEdge = distToStartOfEdge;
     clone.edge = edge;
+    clone.line = line;
     clone.isBackward = isBackward;
     return clone;
   }

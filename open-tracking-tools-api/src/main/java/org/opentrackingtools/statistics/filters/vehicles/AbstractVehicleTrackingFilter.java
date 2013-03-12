@@ -76,7 +76,7 @@ public abstract class AbstractVehicleTrackingFilter extends
         evaledPaths.add(state.getBelief().getPath());
       }
       this.filterInfo.put(initialObservation,
-          new FilterInformation(evaledPaths, dist, null));
+          new FilterInformation(evaledPaths, dist));
     }
 
     this.prevTime =

@@ -248,7 +248,7 @@ public class RoadTrackingFilterGraphTest {
 
     final List<LineString> edges =
         TestUtils.createGridGraph(this.startCoord);
-    this.graph = new GenericJTSGraph(edges);
+    this.graph = new GenericJTSGraph(edges, true);
 
     this.avgTransform =
         MatrixFactory

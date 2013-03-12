@@ -19,6 +19,7 @@ import org.apache.commons.lang.NotImplementedException;
 import org.opentrackingtools.GpsObservation;
 import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.graph.edges.InferredEdge;
+import org.opentrackingtools.graph.impl.LengthIndexedSubline;
 import org.opentrackingtools.graph.paths.InferredPath;
 import org.opentrackingtools.graph.paths.edges.PathEdge;
 import org.opentrackingtools.graph.paths.states.PathStateBelief;
@@ -160,9 +161,9 @@ public class VehicleTrackingPathSamplerFilterUpdater extends
     AbstractRoadTrackingFilter movementFilter = currentState.getMovementFilter();
     
     PathEdge newEdge =
-        this.inferenceGraph.getPathEdge(currentStateBelief.getEdge()
-            .getInferredEdge(), 0d, currentStateBelief.getPath()
-            .isBackward());
+        this.inferenceGraph.getPathEdge(currentStateBelief.getEdge().getInferredEdge(), 
+            currentStateBelief.getEdge().getGeometry(), 0d, 
+            currentStateBelief.getPath().isBackward());
     PathEdge lastNewEdge = null;
     MultivariateGaussian newStateDist = currentStateBelief.getLocalStateBelief().clone();
 
@@ -189,9 +190,9 @@ public class VehicleTrackingPathSamplerFilterUpdater extends
             StatisticsUtil
                 .getLargeNormalCovRadius((DenseMatrix) movementFilter
                     .getObsCovar());
-        for (final InferredEdge edge : this.inferenceGraph
+        for (final LengthIndexedSubline edge : this.inferenceGraph
             .getNearbyEdges(projLocation, radius)) {
-          transferEdges.add(edge);
+          transferEdges.add(edge.getParentEdge());
         }
       } else {
         if (totalDistToTravel == null) {
@@ -336,7 +337,7 @@ public class VehicleTrackingPathSamplerFilterUpdater extends
            */
           final InferredPath edgePath =
               this.inferenceGraph.getInferredPath(this.inferenceGraph
-                  .getPathEdge(sampledEdge, 0d, 
+                  .getPathEdge(sampledEdge, sampledEdge.getGeometry(), 0d, 
                       currentStateBelief.getPath().isBackward()));
           newStateDist.setMean(
               edgePath.getStateOnPath(currentStateBelief)
@@ -367,11 +368,11 @@ public class VehicleTrackingPathSamplerFilterUpdater extends
          * Now that we know where we're going, set the directional edge
          */
         newEdge =
-            this.inferenceGraph.getPathEdge(sampledEdge, 0d,
+            this.inferenceGraph.getPathEdge(sampledEdge, sampledEdge.getGeometry(), 0d,
                 newLocation < 0d);
 
         final double L =
-            newEdge.getInferredEdge().getLength();
+            newEdge.getLength();
 
         /*
          * Adjust reference locations to be the same, wrt the new
@@ -408,21 +409,17 @@ public class VehicleTrackingPathSamplerFilterUpdater extends
             lastNewEdge == null
                 || lastNewEdge.isNullEdge() ? 0d
                 : direction
-                    * lastNewEdge.getInferredEdge()
-                        .getLength()
+                    * lastNewEdge.getLength()
                     + lastNewEdge.getDistToStartOfEdge();
 
         final PathEdge sampledPathEdge =
-            this.inferenceGraph.getPathEdge(sampledEdge,
+            this.inferenceGraph.getPathEdge(sampledEdge, sampledEdge.getGeometry(),
                 sampledPathEdgeDistToStart, direction < 0d);
 
         /*
          * Continue along edges
          */
-        distTraveled +=
-            direction
-                * sampledPathEdge.getInferredEdge()
-                    .getLength();
+        distTraveled += direction * sampledPathEdge.getLength();
         newEdge = sampledPathEdge;
       }
       lastNewEdge = newEdge;

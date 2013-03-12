@@ -1,7 +1,10 @@
 package org.opentrackingtools.graph.paths.states.impl;
 
 import gov.sandia.cognition.math.matrix.Matrix;
+import gov.sandia.cognition.math.matrix.MatrixFactory;
 import gov.sandia.cognition.math.matrix.Vector;
+import gov.sandia.cognition.math.matrix.mtj.DenseMatrix;
+import gov.sandia.cognition.math.matrix.mtj.decomposition.EigenDecompositionRightMTJ;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 import gov.sandia.cognition.util.ObjectUtil;
 
@@ -223,17 +226,17 @@ public class SimplePathStateBelief extends AbstractPathState implements PathStat
 
     final Matrix measurementCovariance =
         filter.getObsCovar();
-    final Matrix Q =
-        AbstractRoadTrackingFilter
-            .getOg()
-            .times(this.getGroundBelief().getCovariance())
-            .times(
-                AbstractRoadTrackingFilter.getOg()
-                    .transpose());
+    final Matrix Q = AbstractRoadTrackingFilter
+              .getOg()
+              .times(this.getGroundBelief().getCovariance())
+              .times(
+                  AbstractRoadTrackingFilter.getOg()
+                      .transpose());
     Q.plusEquals(measurementCovariance);
 
     final double result =
         SimplePathStateBelief.logLikelihood(obs, Q, this);
+    
     return result;
   }
 

@@ -32,6 +32,7 @@ import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Envelope;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryFactory;
+import com.vividsolutions.jts.geom.LineSegment;
 import com.vividsolutions.jts.geom.LineString;
 import com.vividsolutions.jts.geom.MultiLineString;
 
@@ -67,7 +68,7 @@ public class TestUtils {
         stub(graph.edgeHasReverse(geom)).toReturn(false);
         
         final InferenceGraphEdge ie =
-            new InferenceGraphEdge(geom, null, 1000 + i, graph);
+            new InferenceGraphEdge(geom, geom, 1000 + i, graph);
         
         
         edges.add(ie);
@@ -82,11 +83,20 @@ public class TestUtils {
     final List<PathEdge> pathEdges = Lists.newArrayList();
     double distToStart = 0;
     for (final InferenceGraphEdge edge : edges) {
-      final PathEdge pe =
-          new PathEdge(edge, (isBackward ? -1d : 1d)
-              * distToStart, isBackward);
-      distToStart += edge.getLength();
-      pathEdges.add(pe);
+      for (LineSegment segment : GeoUtils.getSubLineSegments((LineString)edge.getGeometry())) {
+        LineSegment actualSegment;
+        if (isBackward) {
+          actualSegment = new LineSegment(segment);
+          actualSegment.reverse();
+        } else {
+          actualSegment = segment;
+        }
+        final PathEdge pe =
+            new PathEdge(edge, actualSegment, (isBackward ? -1d : 1d)
+                * distToStart, isBackward);
+        distToStart += edge.getLength();
+        pathEdges.add(pe);
+      }
     }
 
     return new Path(pathEdges,

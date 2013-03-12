@@ -468,7 +468,7 @@ public class VehicleState<Observation extends GpsObservation> extends
    * @return
    */
   public static <O extends GpsObservation> VehicleState<O> constructInitialVehicleState(
-      VehicleStateInitialParameters parameters, InferenceGraph graph, O obs, Random rng, InferenceGraphEdge edge) {
+      VehicleStateInitialParameters parameters, InferenceGraph graph, O obs, Random rng, PathEdge pathEdge) {
     
     /*
      * Create parameters without path or motion state dependencies
@@ -512,14 +512,14 @@ public class VehicleState<Observation extends GpsObservation> extends
             onRoadCovParam, offRoadCovParam, null, null);
     
     final OnOffEdgeTransDistribution initialTransDist =
-        new OnOffEdgeTransDistribution(state, edge,
+        new OnOffEdgeTransDistribution(state, pathEdge.getInferenceGraphEdge(),
             initialPriorTransDist.getEdgeMotionTransProbPrior().getMean(), 
             initialPriorTransDist.getFreeMotionTransProbPrior().getMean());
 
     /*
      * Now, handle the off and on road motion and path state creation 
      */
-    if (edge.isNullEdge()) {
+    if (pathEdge.isNullEdge()) {
       final MotionStateEstimatorPredictor motionStateEstimatorPredictor =
           new MotionStateEstimatorPredictor(state, rng,
               (double) parameters.getInitialObsFreq());
@@ -562,13 +562,12 @@ public class VehicleState<Observation extends GpsObservation> extends
           motionStateEstimatorPredictor
               .createInitialLearnedObject();
 
-      final PathEdge pathEdge = new PathEdge(edge, 0d, false);
       final Path path = new Path(pathEdge);
       PathUtils.convertToRoadBelief(edgeMotionStateDist, path, pathEdge, true);
       
       final MultivariateGaussian initialObservationState =
           motionStateEstimatorPredictor.getObservationDistribution(
-              edgeMotionStateDist, edge);
+              edgeMotionStateDist, pathEdge.getInferenceGraphEdge());
 
       final SimpleBayesianParameter<Vector, MultivariateGaussian, MultivariateGaussian> motionStateParam =
           SimpleBayesianParameter.create(initialObservationState.getMean(),

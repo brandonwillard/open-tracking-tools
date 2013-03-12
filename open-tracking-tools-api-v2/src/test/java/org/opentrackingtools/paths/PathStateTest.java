@@ -21,25 +21,13 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
+import com.vividsolutions.jts.geom.LineSegment;
 
 public class PathStateTest {
 
-  private Path p1;
-  private Path p1_neg;
-  private Path p2;
-  private Path p2_neg;
-  private Path p2_rev;
-  
-  private InferenceGraphEdge ie2_rev;
-  private InferenceGraphEdge ie3_rev;
-  private InferenceGraphEdge ie3;
-  private InferenceGraphEdge ie2;
-  private InferenceGraphEdge ie1;
-  private InferenceGraphEdge ie1_rev;
-  
   private final double _numericError = 1e-4;
   
-  private InferenceGraph graph;
+  private InferenceGraph graph = mock(InferenceGraph.class);
 
   private Path makeTmpPath(boolean isBackward,
     Coordinate... coords) {
@@ -49,10 +37,21 @@ public class PathStateTest {
 
   @Test(expectedExceptions = IllegalArgumentException.class)
   public void testBadPathError() {
+    
+    Geometry e2 = JTSFactoryFinder.getGeometryFactory().createLineString(
+        new Coordinate[] { new Coordinate(0, 20), new Coordinate(0, 30) });
+    stub(graph.edgeHasReverse(e2)).toReturn(false);
+    final InferenceGraphEdge ie2_rev = new InferenceGraphEdge(e2.reverse(), e2.reverse(), -2, graph);
+    
+    Geometry e3 = JTSFactoryFinder.getGeometryFactory().createLineString(
+        new Coordinate[] { new Coordinate(0, 30), new Coordinate(0, 40) });
+    stub(graph.edgeHasReverse(e3)).toReturn(false);
+    final InferenceGraphEdge ie3_rev = new InferenceGraphEdge(e3.reverse(), e3.reverse(), -3, graph);
+    
     final List<PathEdge> edges2_rev =
-        Lists.newArrayList(new PathEdge(ie2_rev, 0d,
-            false), new PathEdge(ie3_rev,
-            ie2_rev.getLength(), false));
+        Lists.newArrayList(new PathEdge(ie2_rev, 
+            new LineSegment(e2.getCoordinates()[1], e2.getCoordinates()[0]), 0d, false), 
+            new PathEdge(ie3_rev, new LineSegment(e3.getCoordinates()[1], e3.getCoordinates()[0]), ie2_rev.getLength(), false));
 
     new Path(edges2_rev, false);
 
@@ -63,6 +62,8 @@ public class PathStateTest {
     /*
      * States on the same path.
      */
+    Path p1 = makeTmpPath(false, new Coordinate(0, 10),
+          new Coordinate(0, 20), new Coordinate(0, 30));
     final PathState x =
         new PathState(p1, VectorFactory
             .getDenseDefault().createVector2D(5d, 1d));
@@ -387,9 +388,13 @@ public class PathStateTest {
 
   @Test
   public void testDistanceBetween2() {
+    Path p1 = makeTmpPath(false, new Coordinate(0, 10),
+          new Coordinate(0, 20), new Coordinate(0, 30));
     final PathState x =
         new PathState(p1, VectorFactory
             .getDenseDefault().createVector2D(5d, 1d));
+    final Path p1_neg = makeTmpPath(true, new Coordinate(0, 10),
+          new Coordinate(0, 20), new Coordinate(0, 30));
     final PathState y =
         new PathState(
             p1_neg,
@@ -488,9 +493,13 @@ public class PathStateTest {
      * TODO: remove or make relevant again.
      * Same paths, different directions.
      */
+    Path p1 = makeTmpPath(false, new Coordinate(0, 10),
+          new Coordinate(0, 20), new Coordinate(0, 30));
     final PathState x =
         new PathState(p1, VectorFactory
             .getDenseDefault().createVector2D(5d, 1d));
+    final Path p1_neg = makeTmpPath(true, new Coordinate(0, 10),
+          new Coordinate(0, 20), new Coordinate(0, 30));
     final PathState y =
         new PathState(
             p1_neg,
@@ -504,9 +513,13 @@ public class PathStateTest {
     /*
      * Both paths are in the same direction, overlapping.
      */
+    Path p1 = makeTmpPath(false, new Coordinate(0, 10),
+          new Coordinate(0, 20), new Coordinate(0, 30));
     final PathState x =
         new PathState(p1, VectorFactory
             .getDenseDefault().createVector2D(12.5d, 1d));
+    final Path p2 = makeTmpPath(false, new Coordinate(0, 20),
+          new Coordinate(0, 30), new Coordinate(0, 40));
     final PathState y =
         new PathState(p2, VectorFactory
             .getDenseDefault().createVector2D(17.5d, -1d));
@@ -519,6 +532,9 @@ public class PathStateTest {
 
   @Test
   public void testDistanceBetween4() {
+    
+    Path p1 = makeTmpPath(false, new Coordinate(0, 10),
+          new Coordinate(0, 20), new Coordinate(0, 30));
     final PathState x =
         new PathState(p1, VectorFactory
             .getDenseDefault().createVector2D(12.5d, 1d));
@@ -545,6 +561,8 @@ public class PathStateTest {
                 new Coordinate(0, 20),
                 new Coordinate(0, 10)), VectorFactory
             .getDenseDefault().createVector2D(12.5d, 1d));
+    final Path p2 = makeTmpPath(false, new Coordinate(0, 20),
+          new Coordinate(0, 30), new Coordinate(0, 40));
     final PathState y2 =
         new PathState(p2, VectorFactory
             .getDenseDefault().createVector2D(17.5d, 1d));
@@ -585,14 +603,16 @@ public class PathStateTest {
      * Both paths are in the same direction, 
      * path2 is the second edge in path1.
      */
+    Path p1 = makeTmpPath(false, new Coordinate(0, 10),
+          new Coordinate(0, 20), new Coordinate(0, 30));
     final PathState x =
         new PathState(p1, VectorFactory
             .getDenseDefault().createVector2D(5d, 1d));
+    LineSegment segment = new LineSegment(p1.getPathEdges().get(1).getLine());
     final PathState y =
         new PathState(
             new Path(new PathEdge(
-                p1.getPathEdges().get(1).getInferenceGraphEdge(), 0d,
-                false)),
+                p1.getPathEdges().get(1).getInferenceGraphEdge(), segment, 0d, false)),
             VectorFactory.getDenseDefault().createVector2D(
                 5d, -1d));
     final Vector diff = y.minus(x);
@@ -615,14 +635,20 @@ public class PathStateTest {
      * Path2 is the second edge in path1, but
      * opposite direction.
      */
+    
+    Path p1 = makeTmpPath(false, new Coordinate(0, 10),
+          new Coordinate(0, 20), new Coordinate(0, 30));
     final PathState x =
         new PathState(p1, VectorFactory
             .getDenseDefault().createVector2D(5d, 1d));
+    LineSegment revSegment = new LineSegment(p1.getPathEdges().get(1).getLine());
+    revSegment.reverse();
     final PathState y =
         new PathState(
             new Path(new PathEdge(
-                p1.getPathEdges().get(1).getInferenceGraphEdge(), 0d,
-                true)),
+                p1.getPathEdges().get(1).getInferenceGraphEdge(), 
+                revSegment,
+                0d, true)),
             VectorFactory.getDenseDefault().createVector2D(
                 0d, -1d));
     final Vector diff = y.minus(x);
@@ -650,6 +676,13 @@ public class PathStateTest {
      * Test that edges touching the start or end, same direction, 
      * but not overlapping, are correctly assessed.
      */
+    Geometry e3 = JTSFactoryFinder.getGeometryFactory().createLineString(
+        new Coordinate[] { new Coordinate(0, 30), new Coordinate(0, 40) });
+    stub(graph.edgeHasReverse(e3)).toReturn(false);
+    final InferenceGraphEdge ie3 = new InferenceGraphEdge(e3, e3, 3, graph);
+    
+    Path p1 = makeTmpPath(false, new Coordinate(0, 10),
+          new Coordinate(0, 20), new Coordinate(0, 30));
 
     /*
      * Touches end
@@ -658,9 +691,10 @@ public class PathStateTest {
         new PathState(p1, VectorFactory
             .getDenseDefault().createVector2D(5d, 1d));
     final PathState y =
-        new PathState(new Path(new PathEdge(ie3, 0d,
-                false)), VectorFactory.getDenseDefault()
-            .createVector2D(5d, 1d));
+        new PathState(new Path(new PathEdge(ie3, 
+            new LineSegment(e3.getCoordinates()[0], e3.getCoordinates()[1])
+            , 0d, false)), 
+            VectorFactory.getDenseDefault().createVector2D(5d, 1d));
     final Vector diff = y.minus(x);
     AssertJUnit.assertEquals("distance", 20d, diff.getElement(0),
         _numericError);
@@ -689,6 +723,8 @@ public class PathStateTest {
      * get the same answer in reverse.
      * (Now commutative)
      */
+    Path p1 = makeTmpPath(false, new Coordinate(0, 10),
+          new Coordinate(0, 20), new Coordinate(0, 30));
 
     /*
      * Touches end
@@ -696,10 +732,15 @@ public class PathStateTest {
     final PathState x =
         new PathState(p1, VectorFactory
             .getDenseDefault().createVector2D(5d, 1d));
+    Geometry e3 = JTSFactoryFinder.getGeometryFactory().createLineString(
+        new Coordinate[] { new Coordinate(0, 30), new Coordinate(0, 40) });
+    stub(graph.edgeHasReverse(e3)).toReturn(false);
+    final InferenceGraphEdge ie3_rev = new InferenceGraphEdge(e3.reverse(), e3.reverse(), -3, graph);
+    final LineSegment segment = new LineSegment(ie3_rev.getGeometry().getCoordinates()[0], 
+        ie3_rev.getGeometry().getCoordinates()[1]);
     final PathState y =
-        new PathState(new Path(new PathEdge(ie3_rev, 0d,
-                false)), VectorFactory.getDenseDefault()
-            .createVector2D(5d, -1d));
+        new PathState(new Path(new PathEdge(ie3_rev, segment, 0d, false)), 
+            VectorFactory.getDenseDefault().createVector2D(5d, -1d));
     final Vector diff = y.minus(x);
     AssertJUnit.assertEquals("distance", -20d, diff.getElement(0),
         _numericError);
@@ -728,6 +769,9 @@ public class PathStateTest {
      * and opposite directions.
      */
 
+    Path p1 = makeTmpPath(false, new Coordinate(0, 10),
+          new Coordinate(0, 20), new Coordinate(0, 30));
+    
     final List<Coordinate> p1RevGeomCoords =
         Lists.newArrayList(p1.getGeometry().reverse()
             .getCoordinates());
@@ -876,47 +920,5 @@ public class PathStateTest {
 
     AssertJUnit.assertTrue(res7.getPath().equalsExact(p12));
     AssertJUnit.assertTrue(res7.isToIsReversed());
-  }
-
-  @BeforeMethod
-  public void testSetup() {
-    /*
-     * Create three stacked edges facing up the y-axis, spaced
-     * by 10 meters.
-     */
-    graph = mock(InferenceGraph.class);
-    
-    Geometry e1 = JTSFactoryFinder.getGeometryFactory().createLineString(
-        new Coordinate[] { new Coordinate(0, 10), new Coordinate(0, 20) });
-    stub(graph.edgeHasReverse(e1)).toReturn(false);
-    Geometry e2 = JTSFactoryFinder.getGeometryFactory().createLineString(
-        new Coordinate[] { new Coordinate(0, 20), new Coordinate(0, 30) });
-    stub(graph.edgeHasReverse(e2)).toReturn(false);
-    Geometry e3 = JTSFactoryFinder.getGeometryFactory().createLineString(
-        new Coordinate[] { new Coordinate(0, 30), new Coordinate(0, 40) });
-    stub(graph.edgeHasReverse(e3)).toReturn(false);
-    ie1 = new InferenceGraphEdge(e1, null, 1, graph);
-    ie2 = new InferenceGraphEdge(e2, null, 2, graph);
-    ie3 = new InferenceGraphEdge(e3, null, 3, graph);
-    ie1_rev = new InferenceGraphEdge(e1.reverse(), null, -1, graph);
-    ie2_rev = new InferenceGraphEdge(e2.reverse(), null, -2, graph);
-    ie3_rev = new InferenceGraphEdge(e3.reverse(), null, -3, graph);
-    
-    
-      p1 = makeTmpPath(false, new Coordinate(0, 10),
-            new Coordinate(0, 20), new Coordinate(0, 30));
-      
-      p2 = makeTmpPath(false, new Coordinate(0, 20),
-            new Coordinate(0, 30), new Coordinate(0, 40));
-      
-      p1_neg = makeTmpPath(true, new Coordinate(0, 10),
-            new Coordinate(0, 20), new Coordinate(0, 30));
-      
-      p2_neg = makeTmpPath(true, new Coordinate(0, 20),
-            new Coordinate(0, 30), new Coordinate(0, 40));
-      
-      p2_rev = makeTmpPath(false, new Coordinate(0, 40),
-            new Coordinate(0, 30), new Coordinate(0, 20));
-
   }
 }

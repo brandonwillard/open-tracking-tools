@@ -10,6 +10,7 @@ import org.opentrackingtools.model.GpsObservation;
 import org.opentrackingtools.model.VehicleState;
 import org.opentrackingtools.paths.Path;
 
+import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Envelope;
 import com.vividsolutions.jts.geom.Geometry;
 
@@ -24,11 +25,14 @@ public interface InferenceGraph {
 
   public Envelope getGPSGraphExtent();
 
-  public Collection<InferenceGraphEdge> getNearbyEdges(
+  public Collection<InferenceGraphSegment> getNearbyEdges(
     DistributionWithMean<Vector> tmpInitialBelief, Matrix covariance);
 
-  public Collection<InferenceGraphEdge> getNearbyEdges(
+  public Collection<InferenceGraphSegment> getNearbyEdges(
     Vector projLocation, double radius);
+  
+  public Collection<InferenceGraphSegment> getNearbyEdges(
+    Coordinate projLocation, double radius);
 
   public Collection<InferenceGraphEdge> getIncomingTransferableEdges(
     InferenceGraphEdge infEdge);
@@ -39,5 +43,7 @@ public interface InferenceGraph {
   public Envelope getProjGraphExtent();
 
   public boolean edgeHasReverse(Geometry edge);
+
+  public InferenceGraphEdge getInferenceGraphEdge(String id);
 
 }

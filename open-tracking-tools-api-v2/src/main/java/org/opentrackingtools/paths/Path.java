@@ -13,7 +13,10 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.vividsolutions.jts.geom.Coordinate;
+import com.vividsolutions.jts.geom.CoordinateArrays;
+import com.vividsolutions.jts.geom.CoordinateList;
 import com.vividsolutions.jts.geom.Geometry;
+import com.vividsolutions.jts.geom.LineSegment;
 import com.vividsolutions.jts.linearref.LengthIndexedLine;
 
 /**
@@ -26,6 +29,8 @@ import com.vividsolutions.jts.linearref.LengthIndexedLine;
 public class Path extends AbstractCloneableSerializable implements
     Comparable<Path> {
 
+  public static final CoordinateArrays.BidirectionalComparator biDirComp = new CoordinateArrays.BidirectionalComparator();
+  
   private static final long serialVersionUID = -113041668509555507L;
   
   public List<String> edgeIds = null;
@@ -57,10 +62,10 @@ public class Path extends AbstractCloneableSerializable implements
     this.edgeIds = Lists.newArrayList();
 
     PathEdge lastEdge = null;
-    final List<Coordinate> coords = Lists.newArrayList();
+    final CoordinateList coords = new CoordinateList();
     for (final PathEdge edge : edges) {
 
-      if (!edge.isNullEdge()) {
+      if (lastEdge != null && !edge.equals(lastEdge)) {
         if (isBackward) {
           Preconditions.checkArgument(lastEdge == null
               || lastEdge.getInferenceGraphEdge().getStartPoint()
@@ -69,38 +74,24 @@ public class Path extends AbstractCloneableSerializable implements
           Preconditions.checkArgument(lastEdge == null
               || lastEdge.getInferenceGraphEdge().getEndPoint()
                   .equals(edge.getInferenceGraphEdge().getStartPoint()));
-
+  
         }
+      }
 
-        final Geometry geom = edge.getGeometry();
-        if (geom.getLength() > 1e-4) {
-          final Coordinate[] theseCoords =
-              isBackward ? geom.reverse().getCoordinates() : geom
-                  .getCoordinates();
-          final int startIdx = coords.size() == 0 ? 0 : 1;
-          for (int i = startIdx; i < theseCoords.length; i++) {
-            if (i == 0
-                || !theseCoords[i]
-                    .equals(coords.get(coords.size() - 1))) {
-              coords.add(theseCoords[i]);
-            }
-          }
+      final LineSegment geom = edge.getLine();
+      if (geom.getLength() > 1e-4) {
+        coords.add(geom.p0, false);
+        coords.add(geom.p1, false);
+        if (!edge.equals(lastEdge))
           this.edgeIds.add(edge.getInferenceGraphEdge().getEdgeId());
-        }
       }
 
       lastEdge = edge;
     }
 
-    if (edges.size() > 1) {
-      this.geometry =
-          JTSFactoryFinder.getGeometryFactory().createLineString(
-              coords.toArray(new Coordinate[coords.size()]));
-    } else {
-      final Geometry edgeGeom =
-          Iterables.getOnlyElement(edges).getGeometry();
-      this.geometry = isBackward ? edgeGeom.reverse() : edgeGeom;
-    }
+    this.geometry = 
+        JTSFactoryFinder.getGeometryFactory().createLineString(
+            coords.toCoordinateArray());
 
     final double direction = isBackward ? -1d : 1d;
     this.totalPathDistance = direction * this.geometry.getLength();
@@ -121,9 +112,10 @@ public class Path extends AbstractCloneableSerializable implements
         (this.isBackward == Boolean.TRUE ? -1d : 1d)
             * edge.getInferenceGraphEdge().getLength();
     this.edgeIds = Lists.newArrayList(edge.getInferenceGraphEdge().getEdgeId());
-    this.geometry =
-        (this.isBackward == Boolean.TRUE) ? edge.getGeometry()
-            .reverse() : edge.getGeometry();
+    this.geometry = edge.line.toGeometry(JTSFactoryFinder.getGeometryFactory());
+    
+    if (this.isBackward == Boolean.TRUE)
+      this.geometry = this.geometry.reverse();
   }
 
   public double clampToPath(final double distance) {

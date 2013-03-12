@@ -94,7 +94,7 @@ public class AbstractRoadTrackingFilterTest {
         SimpleInferredEdge.getInferredEdge(edgeGeom, null, 680402, graph);
     stub(graph.edgeHasReverse(edgeGeom)).toReturn(false);
     final PathEdge pathEdge =
-        SimplePathEdge.getEdge(infEdge, -46d, true);
+        SimplePathEdge.getEdge(infEdge, edgeGeom, -46d, true);
 
     AssertJUnit.assertTrue(PathUtils.isIsoMapping(
         mean, projMean, pathEdge));

@@ -228,13 +228,11 @@ public class PathStateDistribution extends
         /*
          * Project covar to edge 
          */
-        final boolean pathIsBackward = path.isBackward();
         final PathEdgeProjection proj =
             PathUtils.getRoadProjection(stateBelief.
                 getMotionStateDistribution().getMean(), 
-                path.getGeometry(), pathIsBackward, pathIsBackward ? 
-                    onThisPath.getEdge().getGeometry().reverse() : onThisPath.getEdge().getGeometry(), 
-                    onThisPath.getEdge().getDistToStartOfEdge());
+                path.getGeometry(), onThisPath.getEdge().getLine(), 
+                onThisPath.getEdge().getDistToStartOfEdge());
         final Matrix C = stateBelief.getCovariance();
         covar =
             proj.getProjMatrix().transpose().times(C)
@@ -322,9 +320,7 @@ public class PathStateDistribution extends
          */
         PathEdgeProjection proj = 
             PathUtils.getRoadProjection(this.pathState.getGroundState(), 
-                path.getGeometry(), path.isBackward(), 
-                path.isBackward() ? onThisPath.getEdge().getGeometry().reverse()
-                    : onThisPath.getEdge().getGeometry(), 
+                path.getGeometry(), onThisPath.getEdge().getLine(), 
                 onThisPath.getEdge().getDistToStartOfEdge());
         final Matrix C = this.getCovariance();
         covar = proj.getProjMatrix().transpose().times(C)

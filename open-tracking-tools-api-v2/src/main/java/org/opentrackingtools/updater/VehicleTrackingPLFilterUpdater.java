@@ -25,6 +25,7 @@ import org.opentrackingtools.estimators.OnOffEdgeTransitionEstimatorPredictor;
 import org.opentrackingtools.estimators.PathStateEstimatorPredictor;
 import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.graph.InferenceGraphEdge;
+import org.opentrackingtools.graph.InferenceGraphSegment;
 import org.opentrackingtools.model.GpsObservation;
 import org.opentrackingtools.model.SimpleBayesianParameter;
 import org.opentrackingtools.model.VehicleState;
@@ -106,13 +107,12 @@ public class VehicleTrackingPLFilterUpdater<O extends GpsObservation>
      */
     final VehicleState<O> nullState =
         VehicleState.constructInitialVehicleState(this.parameters, this.inferenceGraph, this.initialObservation, this.random,
-            InferenceGraphEdge.nullGraphEdge);
+            PathEdge.nullPathEdge);
     final MultivariateGaussian initialMotionStateDist =
         nullState.getMotionStateParam().getParameterPrior();
-    final Collection<InferenceGraphEdge> edges =
+    final Collection<InferenceGraphSegment> edges =
         this.inferenceGraph.getNearbyEdges(initialMotionStateDist,
             initialMotionStateDist.getCovariance());
-    edges.add(InferenceGraphEdge.nullGraphEdge);
 
     for (int i = 0; i < numParticles; i++) {
       /*
@@ -120,16 +120,28 @@ public class VehicleTrackingPLFilterUpdater<O extends GpsObservation>
        */
       final DataDistribution<VehicleState<O>> statesOnEdgeDistribution =
           new CountedDataDistribution<VehicleState<O>>(true);
+      
+      final double nullLogLikelihood =
+          nullState.getEdgeTransitionParam()
+              .getConditionalDistribution()
+              .getProbabilityFunction().logEvaluate(InferenceGraphEdge.nullGraphEdge)
+              + this.computeLogLikelihood(nullState,
+                  this.initialObservation);
 
-      for (final InferenceGraphEdge edge : edges) {
+      statesOnEdgeDistribution
+          .increment(nullState, nullLogLikelihood);
+
+      for (final InferenceGraphSegment segment : edges) {
+        
+        final PathEdge pathEdge = new PathEdge(segment, false);
         
         VehicleState<O> stateOnEdge = VehicleState.constructInitialVehicleState(
-            parameters, inferenceGraph, initialObservation, random, edge);
+            parameters, inferenceGraph, initialObservation, random, pathEdge);
 
         final double logLikelihood =
             stateOnEdge.getEdgeTransitionParam()
                 .getConditionalDistribution()
-                .getProbabilityFunction().logEvaluate(edge)
+                .getProbabilityFunction().logEvaluate(pathEdge.getInferenceGraphEdge())
                 + this.computeLogLikelihood(stateOnEdge,
                     this.initialObservation);
 

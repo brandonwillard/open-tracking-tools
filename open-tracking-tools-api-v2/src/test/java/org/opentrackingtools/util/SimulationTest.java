@@ -51,7 +51,7 @@ public class SimulationTest {
     
     startCoord = new Coordinate(40.7549, -73.97749);
     
-    graph = new GenericJTSGraph(TestUtils.createGridGraph(startCoord));
+    graph = new GenericJTSGraph(TestUtils.createGridGraph(startCoord), true);
     
     avgTransform = MatrixFactory.getDefault().copyArray(
         new double[][] {
