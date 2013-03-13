@@ -31,7 +31,7 @@ public class PathEdge extends
   }
 
   @Nonnull
-  public PathEdge(InferenceGraphEdge edge, LineSegment line, Double distToStartOfEdge, Boolean isBackward) {
+  public PathEdge(InferenceGraphEdge edge, LineSegment line, double distToStartOfEdge, boolean isBackward) {
     Preconditions.checkArgument(!edge.isNullEdge());
     Preconditions.checkState((isBackward != Boolean.TRUE)
         || distToStartOfEdge <= 0d);
@@ -41,9 +41,10 @@ public class PathEdge extends
     this.isBackward = isBackward;
   }
 
-  public PathEdge(InferenceGraphSegment subLine, Boolean isBackward) {
+  public PathEdge(InferenceGraphSegment subLine, double startDistance, boolean isBackward) {
      this(subLine.getParentEdge(), 
          subLine.getLine(), 
+         startDistance +
          subLine.getParentEdge().getLengthLocationMap().getLength(subLine.getStartIndex()), 
          isBackward);
   }

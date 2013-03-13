@@ -37,8 +37,14 @@ import com.vividsolutions.jts.linearref.LengthLocationMap;
 
 public class OnOffEdgeTransDistributionTest {
 
+  /**
+   * Test that we get the correct edge for the motion state
+   * we provide.  In this case, the motion state says we're
+   * 4 meters away from our initial edge, so return the only
+   * edge that far away
+   */
   @Test
-  public void getDomain() {
+  public void getDomain1() {
     
     List<LineString> edges = Lists.newArrayList();
     edges.add(JTSFactoryFinder.getGeometryFactory().createLineString(
@@ -83,7 +89,7 @@ public class OnOffEdgeTransDistributionTest {
         VectorFactory.getDefault().createVector2D(50, 10), 0, 30, 0);
     
     InferenceGraphEdge startEdge = startLine.getParentEdge();
-    PathEdge startPathEdge = new PathEdge(startLine, false);
+    PathEdge startPathEdge = new PathEdge(startLine, 0d, false);
     VehicleState<GpsObservation> currentState = VehicleState.constructInitialVehicleState(parameters, graph, obs, rng, startPathEdge);
     
     /*
@@ -108,5 +114,148 @@ public class OnOffEdgeTransDistributionTest {
       }
     });
     AssertJUnit.assertEquals(expectedEdge, actualEdge);
+  }
+  
+  /**
+   * In this case, the motion state says we're 4 meters away from 
+   * our initial edge, however, there are no edges for that distance
+   * so we should return only off-road.
+   * 
+   */
+  @Test
+  public void getDomain2() {
+    
+    List<LineString> edges = Lists.newArrayList();
+    edges.add(JTSFactoryFinder.getGeometryFactory().createLineString(
+        new Coordinate[] {
+           new Coordinate(0,0), 
+           new Coordinate(1,0), 
+        }));
+    edges.add(JTSFactoryFinder.getGeometryFactory().createLineString(
+        new Coordinate[] {
+           new Coordinate(1,0), 
+           new Coordinate(1,1), 
+        }));
+    edges.add(JTSFactoryFinder.getGeometryFactory().createLineString(
+        new Coordinate[] {
+           new Coordinate(1,0), 
+           new Coordinate(1,-1), 
+        }));
+    edges.add(JTSFactoryFinder.getGeometryFactory().createLineString(
+        new Coordinate[] {
+           new Coordinate(1,1), 
+           new Coordinate(1,2), 
+        }));
+    GenericJTSGraph graph = new GenericJTSGraph(edges, false);
+    InferenceGraphSegment startLine = Iterables.getOnlyElement(graph.getNearbyEdges(edges.get(0).getCoordinate(), 1d));
+    
+    GpsObservation obs = new GpsObservation("test", new Date(0l), edges.get(0).getCoordinate(), null, null, null, 0, null, 
+        new ProjectedCoordinate(null, edges.get(0).getCoordinate(), null));
+    
+    Random rng = new Random(102343292l);
+    
+    VehicleStateInitialParameters parameters = new VehicleStateInitialParameters(
+        null,
+        VectorFactory.getDefault().createVector2D(100, 100), 0, 
+        VectorFactory.getDefault().createVector1D(6.25e-4), 0, 
+        VectorFactory.getDefault().createVector2D(6.25e-4, 6.25e-4), 0, 
+        VectorFactory.getDefault().createVector2D(10, 50), 
+        VectorFactory.getDefault().createVector2D(50, 10), 0, 30, 0);
+    
+    InferenceGraphEdge startEdge = startLine.getParentEdge();
+    PathEdge startPathEdge = new PathEdge(startLine, 0d, false);
+    VehicleState<GpsObservation> currentState = VehicleState.constructInitialVehicleState(parameters, graph, obs, rng, startPathEdge);
+    
+    /*
+     * Now we move our vehicle state forward, by hand
+     */
+    currentState.getMotionStateParam().getParameterPrior().setMean(
+        VectorFactory.getDefault().createVector2D(4d, 1d));
+    
+    OnOffEdgeTransDistribution edgeTransDist = currentState.getEdgeTransitionParam().getConditionalDistribution();
+    
+    Set<InferenceGraphEdge> transitionSupport = edgeTransDist.getDomain();
+    
+    /*
+     * We expect to have only the null edge.
+     */
+    InferenceGraphEdge actualEdge = Iterables.getOnlyElement(transitionSupport, null); 
+    AssertJUnit.assertEquals(InferenceGraphEdge.nullGraphEdge, actualEdge);
+  }
+  
+  /**
+   * In this case, our motion state starts us off in the middle
+   * of the edge and doesn't change, so we should get our initial
+   * edge back (along with the null-edge, naturally). 
+   */
+  @Test
+  public void getDomain3() {
+    
+    List<LineString> edges = Lists.newArrayList();
+    edges.add(JTSFactoryFinder.getGeometryFactory().createLineString(
+        new Coordinate[] {
+           new Coordinate(0,0), 
+           new Coordinate(1,0), 
+        }));
+    edges.add(JTSFactoryFinder.getGeometryFactory().createLineString(
+        new Coordinate[] {
+           new Coordinate(1,0), 
+           new Coordinate(1,1), 
+        }));
+    edges.add(JTSFactoryFinder.getGeometryFactory().createLineString(
+        new Coordinate[] {
+           new Coordinate(1,0), 
+           new Coordinate(1,-1), 
+        }));
+    edges.add(JTSFactoryFinder.getGeometryFactory().createLineString(
+        new Coordinate[] {
+           new Coordinate(1,1), 
+           new Coordinate(1,2), 
+        }));
+    edges.add(JTSFactoryFinder.getGeometryFactory().createLineString(
+        new Coordinate[] {
+           new Coordinate(1,2), 
+           new Coordinate(1,3), 
+        }));
+    GenericJTSGraph graph = new GenericJTSGraph(edges, false);
+    InferenceGraphSegment startLine = Iterables.getOnlyElement(graph.getNearbyEdges(edges.get(0).getCoordinate(), 1d));
+    
+    GpsObservation obs = new GpsObservation("test", new Date(0l), edges.get(0).getCoordinate(), null, null, null, 0, null, 
+        new ProjectedCoordinate(null, edges.get(0).getCoordinate(), null));
+    
+    Random rng = new Random(102343292l);
+    
+    VehicleStateInitialParameters parameters = new VehicleStateInitialParameters(
+        null,
+        VectorFactory.getDefault().createVector2D(100, 100), 0, 
+        VectorFactory.getDefault().createVector1D(6.25e-4), 0, 
+        VectorFactory.getDefault().createVector2D(6.25e-4, 6.25e-4), 0, 
+        VectorFactory.getDefault().createVector2D(10, 50), 
+        VectorFactory.getDefault().createVector2D(50, 10), 0, 30, 0);
+    
+    InferenceGraphEdge startEdge = startLine.getParentEdge();
+    PathEdge startPathEdge = new PathEdge(startLine, 0d, false);
+    VehicleState<GpsObservation> currentState = VehicleState.constructInitialVehicleState(parameters, graph, obs, rng, startPathEdge);
+    
+    /*
+     * Now we move our vehicle state forward, by hand
+     */
+    currentState.getMotionStateParam().getParameterPrior().setMean(
+        VectorFactory.getDefault().createVector2D(0.5d, 1d));
+    
+    OnOffEdgeTransDistribution edgeTransDist = currentState.getEdgeTransitionParam().getConditionalDistribution();
+    
+    Set<InferenceGraphEdge> transitionSupport = edgeTransDist.getDomain();
+    
+    /*
+     * Grab the only non-null edge.
+     */
+    InferenceGraphEdge actualEdge = Iterables.find(transitionSupport, new Predicate<InferenceGraphEdge>() {
+      @Override
+      public boolean apply(InferenceGraphEdge input) {
+        return !input.isNullEdge();
+      }
+    });
+    AssertJUnit.assertEquals(startEdge, actualEdge);
   }
 }

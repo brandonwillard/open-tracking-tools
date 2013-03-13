@@ -127,7 +127,7 @@ public class RoadTrackingFilterGraphTest {
     return this.sim.computeInitialState();
   }
 
-  @Test(dataProvider = "initialStateData")
+//  @Test(dataProvider = "initialStateData")
   public void runSimulation(
     VehicleStateInitialParameters simInitialParams,
     VehicleStateInitialParameters filterInitialParams,

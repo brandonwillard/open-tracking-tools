@@ -133,7 +133,7 @@ public class VehicleTrackingPLFilterUpdater<O extends GpsObservation>
 
       for (final InferenceGraphSegment segment : edges) {
         
-        final PathEdge pathEdge = new PathEdge(segment, false);
+        final PathEdge pathEdge = new PathEdge(segment, 0d, false);
         
         VehicleState<O> stateOnEdge = VehicleState.constructInitialVehicleState(
             parameters, inferenceGraph, initialObservation, random, pathEdge);

@@ -9,6 +9,8 @@ import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 
 import java.util.Map.Entry;
 
+import javax.annotation.Nonnegative;
+import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
 import org.apache.commons.lang3.ArrayUtils;
@@ -242,6 +244,16 @@ public class PathUtils {
 
     belief.setMean(projMean);
     belief.setCovariance(projCov);
+  }
+
+  public static void convertToRoadBelief(MultivariateGaussian belief,
+    InferenceGraphEdge graphEdge, boolean useAbsVelocity) {
+    final MultivariateGaussian projBelief =
+        PathUtils.getRoadBeliefFromGround(belief, graphEdge.getGeometry(),
+            false, null, 0d, useAbsVelocity);
+
+    belief.setMean(projBelief.getMean());
+    belief.setCovariance(projBelief.getCovariance());
   }
 
   public static void convertToRoadBelief(MultivariateGaussian belief,
@@ -555,15 +567,10 @@ public class PathUtils {
    * @return
    */
   public static PathEdgeProjection getRoadProjection(
-    Vector locVelocity, Geometry pathGeometry, LineSegment edgeSegment,
-    double edgeDistanceToStartOnPath) {
+    @Nonnull Vector locVelocity, @Nonnull Geometry pathGeometry, 
+    @Nullable LineSegment edgeSegment, double edgeDistanceToStartOnPath) {
 
-    Preconditions.checkArgument(locVelocity.getDimensionality() == 2
-        || locVelocity.getDimensionality() == 4);
-
-    if (locVelocity.getDimensionality() == 2) {
-      return null;
-    }
+    Preconditions.checkArgument(locVelocity.getDimensionality() == 4);
 
     /*
      * We snap to the line and find the segment of interest.
@@ -577,10 +584,8 @@ public class PathUtils {
     final double distanceToStartOfSegmentOnGeometry;
     final LineSegment pathLineSegment;
     if (edgeSegment != null) {
-      final double lengthOnEdge = edgeSegment.segmentFraction(currentPos)
-          * edgeSegment.getLength();
       distanceToStartOfSegmentOnGeometry =
-          Math.abs(edgeDistanceToStartOnPath) + lengthOnEdge;
+          Math.abs(edgeDistanceToStartOnPath);
       pathLineSegment =  edgeSegment;
     } else {
       final LocationIndexedLine locIndex =
