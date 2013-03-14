@@ -31,7 +31,7 @@ import org.opentrackingtools.estimators.MotionStateEstimatorPredictor;
 import org.opentrackingtools.graph.GenericJTSGraph;
 import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.model.GpsObservation;
-import org.opentrackingtools.model.VehicleState;
+import org.opentrackingtools.model.VehicleStateDistribution;
 import org.opentrackingtools.paths.PathState;
 import org.opentrackingtools.util.Simulation.SimulationParameters;
 
@@ -150,7 +150,7 @@ public class SimulationTest {
     
     long time = sim.getSimParameters().getStartTime().getTime();
     
-    VehicleState<GpsObservation> vehicleState = sim.computeInitialState();
+    VehicleStateDistribution<GpsObservation> vehicleState = sim.computeInitialState();
     
     final MultivariateGaussian.SufficientStatistic obsErrorSS =
         new MultivariateGaussian.SufficientStatistic();
@@ -193,7 +193,7 @@ public class SimulationTest {
   }
 
 
-  private void updateStats(VehicleState<GpsObservation> vehicleState,
+  private void updateStats(VehicleStateDistribution<GpsObservation> vehicleState,
     SufficientStatistic obsErrorSS, SufficientStatistic movementSS,
     SufficientStatistic transitionsSS, boolean generalizeMoveDiff) {
           
@@ -203,7 +203,7 @@ public class SimulationTest {
     
     System.out.println("obsError=" + obsErrorSS.getMean());
     
-    final VehicleState<GpsObservation> parentState = vehicleState.getParentState();
+    final VehicleStateDistribution<GpsObservation> parentState = vehicleState.getParentState();
     if (parentState != null) {
       final PathState sampledPathState = vehicleState.getPathStateParam().getValue();
       final PathState parentPathState = parentState.getPathStateParam().getValue();
@@ -262,7 +262,7 @@ public class SimulationTest {
     }
   }
 
-  private VehicleState<GpsObservation> resetState(VehicleState<GpsObservation> vehicleState) {
+  private VehicleStateDistribution<GpsObservation> resetState(VehicleStateDistribution<GpsObservation> vehicleState) {
     return sim.computeInitialState();
   }
   

@@ -16,13 +16,13 @@ import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.graph.InferenceGraphEdge;
 import org.opentrackingtools.model.GpsObservation;
 import org.opentrackingtools.model.SimpleBayesianParameter;
-import org.opentrackingtools.model.VehicleState;
-import org.opentrackingtools.updater.VehicleTrackingPLFilterUpdater;
+import org.opentrackingtools.model.VehicleStateDistribution;
+import org.opentrackingtools.updater.VehicleStatePLUpdater;
 
 import com.google.common.base.Preconditions;
 
 public class VehicleStatePLFilter<O extends GpsObservation> extends
-    AbstractParticleFilter<O, VehicleState<O>> {
+    AbstractParticleFilter<O, VehicleStateDistribution<O>> {
 
   private static final long serialVersionUID = -8257075186193062150L;
 
@@ -34,21 +34,21 @@ public class VehicleStatePLFilter<O extends GpsObservation> extends
     Random rng) {
     this.inferredGraph = inferredGraph;
     this.isDebug = isDebug;
-    this.setUpdater(new VehicleTrackingPLFilterUpdater<O>(obs,
+    this.setUpdater(new VehicleStatePLUpdater<O>(obs,
         inferredGraph, parameters, rng));
   }
 
   @Override
-  public void update(DataDistribution<VehicleState<O>> target, O obs) {
+  public void update(DataDistribution<VehicleStateDistribution<O>> target, O obs) {
 
     /*
      * Compute predictive distributions, and create a distribution out of those and
      * their likelihoods for the new observation.
      */
-    final CountedDataDistribution<VehicleState<O>> resampleDist =
-        new CountedDataDistribution<VehicleState<O>>(true);
+    final CountedDataDistribution<VehicleStateDistribution<O>> resampleDist =
+        new CountedDataDistribution<VehicleStateDistribution<O>>(true);
 
-    for (final VehicleState<O> state : target.getDomain()) {
+    for (final VehicleStateDistribution<O> state : target.getDomain()) {
 
       final int count;
       if (target instanceof CountedDataDistribution<?>) {
@@ -60,8 +60,8 @@ public class VehicleStatePLFilter<O extends GpsObservation> extends
 
       final double logCount = Math.log(count);
 
-      final VehicleState<O> predictedState =
-          new VehicleState<O>(state);
+      final VehicleStateDistribution<O> predictedState =
+          new VehicleStateDistribution<O>(state);
       predictedState.setObservation(obs);
       this.updater.update(predictedState);
 
@@ -82,8 +82,8 @@ public class VehicleStatePLFilter<O extends GpsObservation> extends
                 .logEvaluate(
                     predictedPathStateDist.getPathState().getEdge()
                         .getInferenceGraphEdge());
-        final VehicleState<O> predictedChildState =
-            new VehicleState<O>(predictedState);
+        final VehicleStateDistribution<O> predictedChildState =
+            new VehicleStateDistribution<O>(predictedState);
         predictedChildState
             .setPathStateParam(SimpleBayesianParameter.create(predictedPathStateDist.getPathState(),
                 predictedPathStateMixture, predictedPathStateDist));
@@ -115,7 +115,7 @@ public class VehicleStatePLFilter<O extends GpsObservation> extends
     /*
      * Resample the predictive distributions.  Now we're dealing with the "best" states.
      */
-    final ArrayList<VehicleState<O>> smoothedStates =
+    final ArrayList<VehicleStateDistribution<O>> smoothedStates =
         resampleDist.sample(rng, this.getNumParticles());
 
     target.clear();
@@ -123,9 +123,9 @@ public class VehicleStatePLFilter<O extends GpsObservation> extends
     /*
      * Propagate/smooth the best states. 
      */
-    for (final VehicleState<O> state : smoothedStates) {
+    for (final VehicleStateDistribution<O> state : smoothedStates) {
 
-      final VehicleState<O> updateadState = state.clone();
+      final VehicleStateDistribution<O> updateadState = state.clone();
       final PathStateDistribution pathStateDist =
           updateadState.getPathStateParam().getParameterPrior();
 

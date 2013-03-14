@@ -28,7 +28,7 @@ import org.opentrackingtools.graph.InferenceGraphEdge;
 import org.opentrackingtools.graph.InferenceGraphSegment;
 import org.opentrackingtools.model.GpsObservation;
 import org.opentrackingtools.model.SimpleBayesianParameter;
-import org.opentrackingtools.model.VehicleState;
+import org.opentrackingtools.model.VehicleStateDistribution;
 import org.opentrackingtools.paths.Path;
 import org.opentrackingtools.paths.PathEdge;
 import org.opentrackingtools.paths.PathState;
@@ -38,9 +38,9 @@ import org.opentrackingtools.util.model.TransitionProbMatrix;
 import com.beust.jcommander.internal.Lists;
 import com.google.common.primitives.Doubles;
 
-public class VehicleTrackingPLFilterUpdater<O extends GpsObservation>
+public class VehicleStatePLUpdater<O extends GpsObservation>
     extends AbstractCloneableSerializable implements
-    ParticleFilter.Updater<O, VehicleState<O>> {
+    ParticleFilter.Updater<O, VehicleStateDistribution<O>> {
 
   private static final long serialVersionUID = 7567157323292175525L;
 
@@ -54,7 +54,7 @@ public class VehicleTrackingPLFilterUpdater<O extends GpsObservation>
 
   public long seed;
 
-  public VehicleTrackingPLFilterUpdater(O obs,
+  public VehicleStatePLUpdater(O obs,
     InferenceGraph inferencedGraph,
     VehicleStateInitialParameters parameters, Random rng) {
 
@@ -70,9 +70,9 @@ public class VehicleTrackingPLFilterUpdater<O extends GpsObservation>
   }
 
   @Override
-  public VehicleTrackingPLFilterUpdater<O> clone() {
-    final VehicleTrackingPLFilterUpdater<O> clone =
-        (VehicleTrackingPLFilterUpdater<O>) super.clone();
+  public VehicleStatePLUpdater<O> clone() {
+    final VehicleStatePLUpdater<O> clone =
+        (VehicleStatePLUpdater<O>) super.clone();
     clone.seed = this.seed;
     clone.inferenceGraph = this.inferenceGraph;
     clone.initialObservation = this.initialObservation;
@@ -82,7 +82,7 @@ public class VehicleTrackingPLFilterUpdater<O extends GpsObservation>
   }
 
   @Override
-  public double computeLogLikelihood(VehicleState<O> particle,
+  public double computeLogLikelihood(VehicleStateDistribution<O> particle,
     O observation) {
     double logLikelihood = 0d;
     logLikelihood +=
@@ -96,17 +96,17 @@ public class VehicleTrackingPLFilterUpdater<O extends GpsObservation>
    * Create vehicle states from the nearby edges.
    */
   @Override
-  public DataDistribution<VehicleState<O>> createInitialParticles(
+  public DataDistribution<VehicleStateDistribution<O>> createInitialParticles(
     int numParticles) {
-    final DataDistribution<VehicleState<O>> retDist =
-        new CountedDataDistribution<VehicleState<O>>(true);
+    final DataDistribution<VehicleStateDistribution<O>> retDist =
+        new CountedDataDistribution<VehicleStateDistribution<O>>(true);
 
     /*
      * Start by creating an off-road vehicle state with which we can obtain the surrounding
      * edges.
      */
-    final VehicleState<O> nullState =
-        VehicleState.constructInitialVehicleState(this.parameters, this.inferenceGraph, this.initialObservation, this.random,
+    final VehicleStateDistribution<O> nullState =
+        VehicleStateDistribution.constructInitialVehicleState(this.parameters, this.inferenceGraph, this.initialObservation, this.random,
             PathEdge.nullPathEdge);
     final MultivariateGaussian initialMotionStateDist =
         nullState.getMotionStateParam().getParameterPrior();
@@ -118,8 +118,8 @@ public class VehicleTrackingPLFilterUpdater<O extends GpsObservation>
       /*
        * From the surrounding edges, we create states on those edges.
        */
-      final DataDistribution<VehicleState<O>> statesOnEdgeDistribution =
-          new CountedDataDistribution<VehicleState<O>>(true);
+      final DataDistribution<VehicleStateDistribution<O>> statesOnEdgeDistribution =
+          new CountedDataDistribution<VehicleStateDistribution<O>>(true);
       
       final double nullLogLikelihood =
           nullState.getEdgeTransitionParam()
@@ -135,7 +135,7 @@ public class VehicleTrackingPLFilterUpdater<O extends GpsObservation>
         
         final PathEdge pathEdge = new PathEdge(segment, 0d, false);
         
-        VehicleState<O> stateOnEdge = VehicleState.constructInitialVehicleState(
+        VehicleStateDistribution<O> stateOnEdge = VehicleStateDistribution.constructInitialVehicleState(
             parameters, inferenceGraph, initialObservation, random, pathEdge);
 
         final double logLikelihood =
@@ -184,8 +184,8 @@ public class VehicleTrackingPLFilterUpdater<O extends GpsObservation>
   }
 
   @Override
-  public VehicleState<O> update(VehicleState<O> state) {
-    final VehicleState<O> predictedState = new VehicleState<O>(state);
+  public VehicleStateDistribution<O> update(VehicleStateDistribution<O> state) {
+    final VehicleStateDistribution<O> predictedState = new VehicleStateDistribution<O>(state);
     final MultivariateGaussian priorMotionState =
         predictedState.getMotionStateParam().getParameterPrior();
 

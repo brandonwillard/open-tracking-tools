@@ -18,7 +18,7 @@ import javax.annotation.Nonnull;
 import org.opentrackingtools.distributions.PathStateDistribution;
 import org.opentrackingtools.distributions.PathStateMixtureDensityModel;
 import org.opentrackingtools.model.GpsObservation;
-import org.opentrackingtools.model.VehicleState;
+import org.opentrackingtools.model.VehicleStateDistribution;
 import org.opentrackingtools.paths.Path;
 import org.opentrackingtools.paths.PathEdge;
 import org.opentrackingtools.paths.PathState;
@@ -48,7 +48,7 @@ public class PathStateEstimatorPredictor extends
    * 
    */
   private static final long serialVersionUID = 4407545320542773361L;
-  protected VehicleState<? extends GpsObservation> currentState;
+  protected VehicleStateDistribution<? extends GpsObservation> currentState;
   protected Path path;
 
   /**
@@ -60,7 +60,7 @@ public class PathStateEstimatorPredictor extends
    * @param prevPathState
    */
   public PathStateEstimatorPredictor(
-    @Nonnull VehicleState<? extends GpsObservation> currentState,
+    @Nonnull VehicleStateDistribution<? extends GpsObservation> currentState,
     @Nonnull Path path) {
     this.path = path;
     this.currentState = currentState;

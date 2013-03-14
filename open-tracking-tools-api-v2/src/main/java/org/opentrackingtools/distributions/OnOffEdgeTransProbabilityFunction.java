@@ -10,7 +10,7 @@ import java.util.Set;
 
 import org.opentrackingtools.graph.InferenceGraphEdge;
 import org.opentrackingtools.model.GpsObservation;
-import org.opentrackingtools.model.VehicleState;
+import org.opentrackingtools.model.VehicleStateDistribution;
 
 public class OnOffEdgeTransProbabilityFunction extends
     AbstractCloneableSerializable implements
@@ -20,7 +20,7 @@ public class OnOffEdgeTransProbabilityFunction extends
    * 
    */
   private static final long serialVersionUID = 824339714203059115L;
-  protected VehicleState<? extends GpsObservation> currentState;
+  protected VehicleStateDistribution<? extends GpsObservation> currentState;
   protected OnOffEdgeTransDistribution distribution;
 
   public OnOffEdgeTransProbabilityFunction(
@@ -94,20 +94,20 @@ public class OnOffEdgeTransProbabilityFunction extends
             - totalProb;
       }
     } else {
-      if (this.distribution.currentEdge.isNullEdge()) {
+      
+      final InferenceGraphEdge currentEdge = this.distribution.currentEdge;
+      if (currentEdge.isNullEdge()) {
         return this.distribution
             .getFreeMotionTransProbs()
             .getProbabilityFunction()
             .logEvaluate(
-                OnOffEdgeTransDistribution.getTransitionType(
-                    this.distribution.currentEdge, to));
+                OnOffEdgeTransDistribution.getTransitionType(currentEdge, to));
       } else {
         return this.distribution
             .getEdgeMotionTransProbs()
             .getProbabilityFunction()
             .logEvaluate(
-                OnOffEdgeTransDistribution.getTransitionType(
-                    this.distribution.currentEdge, to));
+                OnOffEdgeTransDistribution.getTransitionType(currentEdge, to));
       }
     }
   }

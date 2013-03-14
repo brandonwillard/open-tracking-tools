@@ -194,8 +194,8 @@ public class InferenceGraphEdge implements
     return this.graphSegments;
   }
 
-  public List<InferenceGraphSegment> getSegments(double length) {
-    return this.lengthSegmentGraph.query(length);
+  public List<InferenceGraphSegment> getSegments(double upToLength) {
+    return this.lengthSegmentGraph.query(0d, upToLength);
   }
   
   public List<InferenceGraphSegment> getSegments(double lengthStart, double lengthEnd) {

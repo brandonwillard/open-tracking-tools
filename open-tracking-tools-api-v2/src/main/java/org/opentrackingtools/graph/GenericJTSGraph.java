@@ -28,7 +28,7 @@ import org.opengis.referencing.operation.MathTransform;
 import org.opengis.referencing.operation.TransformException;
 import org.opentrackingtools.estimators.MotionStateEstimatorPredictor;
 import org.opentrackingtools.model.GpsObservation;
-import org.opentrackingtools.model.VehicleState;
+import org.opentrackingtools.model.VehicleStateDistribution;
 import org.opentrackingtools.paths.Path;
 import org.opentrackingtools.paths.PathEdge;
 import org.opentrackingtools.util.GeoUtils;
@@ -355,7 +355,7 @@ public class GenericJTSGraph implements InferenceGraph {
   }
   
   @Override
-  public Set<Path> getPaths(final VehicleState<? extends GpsObservation> fromState,
+  public Set<Path> getPaths(final VehicleStateDistribution<? extends GpsObservation> fromState,
     final GpsObservation obs) {
     
     final Coordinate toCoord = obs.getObsProjected();

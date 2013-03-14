@@ -1,5 +1,6 @@
 package org.opentrackingtools.distributions;
 
+import gov.sandia.cognition.math.matrix.Matrix;
 import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.math.matrix.VectorFactory;
 import gov.sandia.cognition.math.matrix.mtj.DenseMatrix;
@@ -22,7 +23,8 @@ import org.opentrackingtools.estimators.MotionStateEstimatorPredictor;
 import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.graph.InferenceGraphEdge;
 import org.opentrackingtools.graph.InferenceGraphSegment;
-import org.opentrackingtools.model.VehicleState;
+import org.opentrackingtools.model.GpsObservation;
+import org.opentrackingtools.model.VehicleStateDistribution;
 import org.opentrackingtools.paths.PathState;
 import org.opentrackingtools.util.StatisticsUtil;
 import org.testng.collections.Sets;
@@ -138,10 +140,6 @@ public class OnOffEdgeTransDistribution extends
     }
   }
 
-  protected InferenceGraphEdge currentEdge;
-
-  protected VehicleState<?> currentState;
-
   protected Set<InferenceGraphEdge> domain = null;
 
   /*
@@ -159,30 +157,80 @@ public class OnOffEdgeTransDistribution extends
       new MultinomialDistribution(2, 1);
 
   protected InferenceGraph graph;
+  protected Vector motionState;
+  protected InferenceGraphEdge currentEdge;
+  protected Matrix obsCovariance;
+
+  public Vector getMotionState() {
+    return motionState;
+  }
+
+  public void setMotionState(Vector motionState) {
+    this.motionState = motionState;
+  }
+
+  public InferenceGraphEdge getCurrentEdge() {
+    return currentEdge;
+  }
+
+  public void setCurrentEdge(InferenceGraphEdge currentEdge) {
+    this.currentEdge = currentEdge;
+  }
 
   public OnOffEdgeTransDistribution(
     OnOffEdgeTransDistribution onOffEdgeTransProbsDistribution) {
+    this.motionState = onOffEdgeTransProbsDistribution.motionState;
     this.currentEdge = onOffEdgeTransProbsDistribution.currentEdge;
-    this.currentState = onOffEdgeTransProbsDistribution.currentState;
+    this.obsCovariance = onOffEdgeTransProbsDistribution.obsCovariance;
     this.edgeMotionTransProbs =
         onOffEdgeTransProbsDistribution.edgeMotionTransProbs;
     this.freeMotionTransProbs =
         onOffEdgeTransProbsDistribution.freeMotionTransProbs;
   }
 
-  public OnOffEdgeTransDistribution(VehicleState<?> currentState,
-    InferenceGraphEdge currentEdge, Vector edgeMotionProbs,
-    Vector freeMotionProbs) {
+  public Matrix getObsCovariance() {
+    return obsCovariance;
+  }
 
-    this.currentState = currentState;
-    this.graph = currentState.getGraph();
-    this.currentEdge = currentEdge;
+  public void setObsCovariance(Matrix obsCovariance) {
+    this.obsCovariance = obsCovariance;
+  }
+
+  public OnOffEdgeTransDistribution(InferenceGraph graph, PathState pathState, Matrix obsCovariance, 
+    Vector edgeMotionProbs, Vector freeMotionProbs) {
+
+    this.motionState = pathState.getMotionState();
+    this.currentEdge = pathState.getEdge().getInferenceGraphEdge();
+    this.obsCovariance = obsCovariance;
+    this.graph = graph;
     
     /*
      * Start by setting the means.
      */
     this.getFreeMotionTransProbs().setParameters(freeMotionProbs);
     this.getEdgeMotionTransProbs().setParameters(edgeMotionProbs);
+  }
+
+  public InferenceGraph getGraph() {
+    return graph;
+  }
+
+  public void setGraph(InferenceGraph graph) {
+    this.graph = graph;
+  }
+
+  public void setDomain(Set<InferenceGraphEdge> domain) {
+    this.domain = domain;
+  }
+
+  public void setEdgeMotionTransProbs(
+    MultinomialDistribution edgeMotionTransProbs) {
+    this.edgeMotionTransProbs = edgeMotionTransProbs;
+  }
+
+  public void setFreeMotionTransProbs(
+    MultinomialDistribution freeMotionTransProbs) {
+    this.freeMotionTransProbs = freeMotionTransProbs;
   }
 
   @Override
@@ -193,7 +241,10 @@ public class OnOffEdgeTransDistribution extends
         this.getEdgeMotionTransProbs().clone();
     transDist.freeMotionTransProbs =
         this.getFreeMotionTransProbs().clone();
-    transDist.currentEdge = ObjectUtil.cloneSmart(this.currentEdge);
+    transDist.motionState = this.motionState.clone();
+    transDist.currentEdge = this.currentEdge;
+    transDist.domain = ObjectUtil.cloneSmart(this.domain);
+    transDist.obsCovariance = this.obsCovariance.clone();
     transDist.graph = this.graph;
     return transDist;
   }
@@ -208,6 +259,8 @@ public class OnOffEdgeTransDistribution extends
         .toArray(), o.getFreeMotionTransProbs().getParameters()
         .toArray());
     comparator.append(this.currentEdge, o.currentEdge);
+    comparator.append(this.motionState, o.motionState);
+    comparator.append(this.obsCovariance, o.obsCovariance);
     return comparator.toComparison();
   }
 
@@ -240,11 +293,25 @@ public class OnOffEdgeTransDistribution extends
         .equals(other.getFreeMotionTransProbs().getParameters())) {
       return false;
     }
+    if (this.motionState == null) {
+      if (other.motionState != null) {
+        return false;
+      }
+    } else if (!this.motionState.equals(other.motionState)) {
+      return false;
+    }
     if (this.currentEdge == null) {
       if (other.currentEdge != null) {
         return false;
       }
     } else if (!this.currentEdge.equals(other.currentEdge)) {
+      return false;
+    }
+    if (this.obsCovariance == null) {
+      if (other.obsCovariance != null) {
+        return false;
+      }
+    } else if (!this.obsCovariance.equals(other.obsCovariance)) {
       return false;
     }
     return true;
@@ -281,20 +348,19 @@ public class OnOffEdgeTransDistribution extends
   public Set<InferenceGraphEdge> getDomain() {
     if (this.domain == null) {
       this.domain = Sets.newHashSet();
-      if (this.currentEdge.isNullEdge()) {
-        final Vector currentLocation = this.currentState.getMeanLocation();
+      if (currentEdge.isNullEdge()) {
+        final Vector currentLocation = MotionStateEstimatorPredictor.Og.times(
+            this.motionState);
         final double radius =
             StatisticsUtil
-                .getLargeNormalCovRadius((DenseMatrix) 
-                    currentState.getObservationCovarianceParam().getValue());
+                .getLargeNormalCovRadius((DenseMatrix) this.obsCovariance);
         for (final InferenceGraphSegment line : this.graph.getNearbyEdges(currentLocation, radius)) {
           this.domain.add(line.getParentEdge());
         }
         // add the off-road possibility
-        this.domain.add(this.currentEdge);
+        this.domain.add(currentEdge);
       } else {
-        Vector currentMotionState = this.currentState.getMotionStateParam().getParameterPrior() .getMean();
-        this.getEdgesForLength(currentEdge, currentMotionState.getElement(0), this.domain);
+        this.getEdgesForLength(currentEdge, this.motionState.getElement(0), this.domain);
         // add the off-road possibility
         this.domain.add(InferenceGraphEdge.nullGraphEdge);
       }
@@ -338,6 +404,16 @@ public class OnOffEdgeTransDistribution extends
         prime
             * result
             + ((this.currentEdge == null) ? 0 : this.currentEdge
+                .hashCode());
+    result =
+        prime
+            * result
+            + ((this.motionState == null) ? 0 : this.motionState
+                .hashCode());
+    result =
+        prime
+            * result
+            + ((this.obsCovariance == null) ? 0 : this.obsCovariance
                 .hashCode());
     return result;
   }
@@ -417,7 +493,7 @@ public class OnOffEdgeTransDistribution extends
 
   @Override
   public InferenceGraphEdge getMean() {
-    if (this.currentEdge.isNullEdge()) {
+    if (currentEdge.isNullEdge()) {
       if (stateOffToOff.dotProduct(this.freeMotionTransProbs.getMean())
           > stateOffToOn.dotProduct(this.freeMotionTransProbs.getMean())) {
         return InferenceGraphEdge.nullGraphEdge;
@@ -437,7 +513,7 @@ public class OnOffEdgeTransDistribution extends
           public boolean apply(InferenceGraphEdge input) {
             return !input.isNullEdge();
           }
-        }, this.currentEdge);
+        }, currentEdge);
       } else {
         return InferenceGraphEdge.nullGraphEdge;
       }

@@ -7,6 +7,7 @@ import gov.sandia.cognition.math.matrix.Vector2D;
 public class VehicleStateInitialParameters {
 
   protected final Vector initialMotionState;
+  
   protected final double initialObsFreq;
   protected final int numParticles;
   
@@ -42,6 +43,10 @@ public class VehicleStateInitialParameters {
     this.onTransitionProbsPrior = onProbs;
     this.seed = seed;
     this.initialObsFreq = initialObsFreq;
+  }
+  
+  public Vector getInitialMotionState() {
+    return initialMotionState;
   }
 
   @Override

@@ -15,9 +15,9 @@ import org.opentrackingtools.estimators.MotionStateEstimatorPredictor;
 import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.model.GpsObservation;
 import org.opentrackingtools.model.ProjectedCoordinate;
-import org.opentrackingtools.model.VehicleState;
+import org.opentrackingtools.model.VehicleStateDistribution;
 import org.opentrackingtools.paths.PathState;
-import org.opentrackingtools.updater.VehicleTrackingBootstrapUpdater;
+import org.opentrackingtools.updater.VehicleStateBootstrapUpdater;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -164,7 +164,7 @@ public class Simulation {
 
   private final String simulationName;
 
-  private final VehicleTrackingBootstrapUpdater<GpsObservation> updater;
+  private final VehicleStateBootstrapUpdater<GpsObservation> updater;
 
   public Simulation(String simulationName, InferenceGraph graph,
     SimulationParameters simParameters,
@@ -205,13 +205,13 @@ public class Simulation {
             null, null, 0, null, obsPoint);
 
     this.updater =
-        new VehicleTrackingBootstrapUpdater<GpsObservation>(
+        new VehicleStateBootstrapUpdater<GpsObservation>(
             initialObs, graph, this.simParameters.getStateParams(),
             this.rng);
     this.updater.setRandom(this.rng);
   }
 
-  public VehicleState<GpsObservation> computeInitialState() {
+  public VehicleStateDistribution<GpsObservation> computeInitialState() {
 
     /*
      * If the updater is null, then creation of the initial obs failed,
@@ -226,7 +226,7 @@ public class Simulation {
       return null;
     }
 
-    final VehicleState<GpsObservation> vehicleState =
+    final VehicleStateDistribution<GpsObservation> vehicleState =
         this.updater.createInitialParticles(1).getMaxValueKey();
 
     return vehicleState;
@@ -278,11 +278,11 @@ public class Simulation {
     return thisStateSample;
   }
 
-  private VehicleState<GpsObservation> sampleState(
-    VehicleState<GpsObservation> vehicleState, long time)
+  private VehicleStateDistribution<GpsObservation> sampleState(
+    VehicleStateDistribution<GpsObservation> vehicleState, long time)
       throws NoninvertibleTransformException, TransformException {
 
-    final VehicleState<GpsObservation> newState =
+    final VehicleStateDistribution<GpsObservation> newState =
         this.updater.update(vehicleState);
 
     final Matrix gCov =
@@ -309,8 +309,8 @@ public class Simulation {
     return newState;
   }
 
-  public VehicleState<GpsObservation> stepSimulation(
-    VehicleState<GpsObservation> currentState)
+  public VehicleStateDistribution<GpsObservation> stepSimulation(
+    VehicleStateDistribution<GpsObservation> currentState)
       throws NoninvertibleTransformException, TransformException {
     final long time =
         currentState.getObservation().getTimestamp().getTime()
@@ -321,7 +321,7 @@ public class Simulation {
      */
     this.updater.seed = this.rng.nextLong();
 
-    final VehicleState<GpsObservation> vehicleState =
+    final VehicleStateDistribution<GpsObservation> vehicleState =
         this.sampleState(currentState, (long)time);
 
     Simulation._log.info("processed simulation observation : "

@@ -2,6 +2,8 @@ package org.opentrackingtools.model;
 
 import java.util.Random;
 
+import org.apache.commons.lang3.builder.ToStringBuilder;
+
 import gov.sandia.cognition.statistics.ClosedFormDistribution;
 import gov.sandia.cognition.statistics.bayesian.BayesianParameter;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
@@ -136,6 +138,16 @@ public class SimpleBayesianParameter<ParameterType, ConditionalType extends Clos
     } else if (!value.equals(other.value))
       return false;
     return true;
+  }
+
+  @Override
+  public String toString() {
+    ToStringBuilder builder = new ToStringBuilder(this);
+    builder.append("value", value);
+    builder.append("conditional", conditional);
+    builder.append("prior", prior);
+    builder.append("name", name);
+    return builder.toString();
   }
 
 }

@@ -25,7 +25,7 @@ import org.opentrackingtools.distributions.PathStateDistribution;
 import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.graph.InferenceGraphEdge;
 import org.opentrackingtools.model.GpsObservation;
-import org.opentrackingtools.model.VehicleState;
+import org.opentrackingtools.model.VehicleStateDistribution;
 import org.opentrackingtools.util.PathUtils;
 import org.opentrackingtools.util.StatisticsUtil;
 import org.testng.internal.Nullable;
@@ -243,7 +243,7 @@ public class MotionStateEstimatorPredictor extends
     return MotionStateEstimatorPredictor.zeros2D;
   }
 
-  protected VehicleState<? extends GpsObservation> currentState;
+  protected VehicleStateDistribution<? extends GpsObservation> currentState;
 
   protected double currentTimeDiff = 0d;
 
@@ -300,7 +300,7 @@ public class MotionStateEstimatorPredictor extends
    * @param currentTimeDiff
    */
   public MotionStateEstimatorPredictor(
-    @Nonnull VehicleState<?> currentState, @Nonnull Random rng,
+    @Nonnull VehicleStateDistribution<?> currentState, @Nonnull Random rng,
     @Nullable Double currentTimeDiff) {
 
     this.currentState = currentState;

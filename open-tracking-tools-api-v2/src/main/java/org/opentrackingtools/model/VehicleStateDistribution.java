@@ -28,6 +28,8 @@ import org.opentrackingtools.paths.PathState;
 import org.opentrackingtools.util.PathUtils;
 import org.opentrackingtools.util.model.TransitionProbMatrix;
 
+import com.google.common.base.Preconditions;
+
 /**
  * This object represents a joint distribution over the basic components
  * of a vehicle state:
@@ -43,9 +45,9 @@ import org.opentrackingtools.util.model.TransitionProbMatrix;
  * @author bwillard
  * 
  */
-public class VehicleState<Observation extends GpsObservation> extends
+public class VehicleStateDistribution<Observation extends GpsObservation> extends
     AbstractCloneableSerializable implements
-    Comparable<VehicleState<Observation>> {
+    Comparable<VehicleStateDistribution<Observation>> {
 
   private static final long serialVersionUID = 3229140254421801273L;
 
@@ -60,12 +62,12 @@ public class VehicleState<Observation extends GpsObservation> extends
   }
 
   public static long getSerialversionuid() {
-    return VehicleState.serialVersionUID;
+    return VehicleStateDistribution.serialVersionUID;
   }
 
   private static int oneStateCompareTo(
-    VehicleState<? extends GpsObservation> t,
-    VehicleState<? extends GpsObservation> o) {
+    VehicleStateDistribution<? extends GpsObservation> t,
+    VehicleStateDistribution<? extends GpsObservation> o) {
     if (t == o) {
       return 0;
     }
@@ -102,10 +104,10 @@ public class VehicleState<Observation extends GpsObservation> extends
     if (thisObj.getClass() != obj.getClass()) {
       return false;
     }
-    final VehicleState<? extends GpsObservation> thisState =
-        (VehicleState<? extends GpsObservation>) thisObj;
-    final VehicleState<? extends GpsObservation> other =
-        (VehicleState<? extends GpsObservation>) obj;
+    final VehicleStateDistribution<? extends GpsObservation> thisState =
+        (VehicleStateDistribution<? extends GpsObservation>) thisObj;
+    final VehicleStateDistribution<? extends GpsObservation> other =
+        (VehicleStateDistribution<? extends GpsObservation>) obj;
     if (thisState.motionStateParam == null) {
       if (other.motionStateParam != null) {
         return false;
@@ -157,7 +159,7 @@ public class VehicleState<Observation extends GpsObservation> extends
   }
 
   protected static int oneStateHashCode(
-    VehicleState<? extends GpsObservation> state) {
+    VehicleStateDistribution<? extends GpsObservation> state) {
     final int prime = 31;
     int result = 1;
     result =
@@ -233,14 +235,14 @@ public class VehicleState<Observation extends GpsObservation> extends
    */
   protected SimpleBayesianParameter<Matrix, ?, ?> onRoadModelCovarianceParam;
 
-  protected VehicleState<Observation> parentState = null;
+  protected VehicleStateDistribution<Observation> parentState = null;
 
   /*-
    * These parameters are for the PathState  
    */
   protected SimpleBayesianParameter<PathState, PathStateMixtureDensityModel<PathStateDistribution>, PathStateDistribution> pathStateParam;
 
-  public VehicleState(
+  public VehicleStateDistribution(
     InferenceGraph inferredGraph,
     Observation observation,
     SimpleBayesianParameter<Vector, MultivariateGaussian, MultivariateGaussian> motionStateParam,
@@ -249,7 +251,7 @@ public class VehicleState<Observation extends GpsObservation> extends
     SimpleBayesianParameter<Matrix, ?, ?> onRoadModelCovParam,
     SimpleBayesianParameter<Matrix, ?, ?> offRoadModelCovParam,
     SimpleBayesianParameter<TransitionProbMatrix, OnOffEdgeTransDistribution, OnOffEdgeTransPriorDistribution> edgeTransitionDist,
-    VehicleState<Observation> parentState) {
+    VehicleStateDistribution<Observation> parentState) {
 
     this.graph = inferredGraph;
     this.observation = observation;
@@ -265,7 +267,7 @@ public class VehicleState<Observation extends GpsObservation> extends
     this.parentState = parentState;
   }
 
-  public VehicleState(VehicleState<Observation> other) {
+  public VehicleStateDistribution(VehicleStateDistribution<Observation> other) {
     this.graph = other.graph;
     this.observation = other.observation;
     this.parentState = other.parentState;
@@ -286,13 +288,13 @@ public class VehicleState<Observation extends GpsObservation> extends
   }
 
   @Override
-  public VehicleState<Observation> clone() {
-    return new VehicleState<Observation>(this);
+  public VehicleStateDistribution<Observation> clone() {
+    return new VehicleStateDistribution<Observation>(this);
   }
 
   @Override
-  public int compareTo(VehicleState<Observation> arg0) {
-    return VehicleState.oneStateCompareTo(this, arg0);
+  public int compareTo(VehicleStateDistribution<Observation> arg0) {
+    return VehicleStateDistribution.oneStateCompareTo(this, arg0);
   }
 
   @Override
@@ -300,17 +302,17 @@ public class VehicleState<Observation extends GpsObservation> extends
     /*
      * We do this to avoid evaluating every parent down the chain.
      */
-    if (!VehicleState.oneStateEquals(this, obj)) {
+    if (!VehicleStateDistribution.oneStateEquals(this, obj)) {
       return false;
     }
 
-    final VehicleState<Observation> other =
-        (VehicleState<Observation>) obj;
+    final VehicleStateDistribution<Observation> other =
+        (VehicleStateDistribution<Observation>) obj;
     if (this.parentState == null) {
       if (other.parentState != null) {
         return false;
       }
-    } else if (!VehicleState.oneStateEquals(this.parentState,
+    } else if (!VehicleStateDistribution.oneStateEquals(this.parentState,
         other.parentState)) {
       return false;
     }
@@ -367,7 +369,7 @@ public class VehicleState<Observation extends GpsObservation> extends
     return this.onRoadModelCovarianceParam;
   }
 
-  public VehicleState<Observation> getParentState() {
+  public VehicleStateDistribution<Observation> getParentState() {
     return this.parentState;
   }
 
@@ -387,11 +389,11 @@ public class VehicleState<Observation extends GpsObservation> extends
     } else {
       final int prime = 31;
       int result = 1;
-      result = prime * result + VehicleState.oneStateHashCode(this);
+      result = prime * result + VehicleStateDistribution.oneStateHashCode(this);
       if (this.parentState != null) {
         result =
             prime * result
-                + VehicleState.oneStateHashCode(this.parentState);
+                + VehicleStateDistribution.oneStateHashCode(this.parentState);
       }
       this.hash = result;
       return result;
@@ -441,7 +443,7 @@ public class VehicleState<Observation extends GpsObservation> extends
     this.onRoadModelCovarianceParam = onRoadModelCovarianceParam;
   }
 
-  public void setParentState(VehicleState<Observation> parentState) {
+  public void setParentState(VehicleStateDistribution<Observation> parentState) {
     this.parentState = parentState;
   }
 
@@ -467,7 +469,7 @@ public class VehicleState<Observation extends GpsObservation> extends
    * 
    * @return
    */
-  public static <O extends GpsObservation> VehicleState<O> constructInitialVehicleState(
+  public static <O extends GpsObservation> VehicleStateDistribution<O> constructInitialVehicleState(
       VehicleStateInitialParameters parameters, InferenceGraph graph, O obs, Random rng, PathEdge pathEdge) {
     
     /*
@@ -507,34 +509,24 @@ public class VehicleState<Observation extends GpsObservation> extends
      * Create incomplete state that is to be filled out depending
      * on the edge.
      */
-    final VehicleState<O> state =
-        new VehicleState<O>(graph, obs, null, null, observationCovParam,
+    final VehicleStateDistribution<O> state =
+        new VehicleStateDistribution<O>(graph, obs, null, null, observationCovParam,
             onRoadCovParam, offRoadCovParam, null, null);
     
-    /*
-     * Now set the transition distribution, since it needed a vehicle state
-     * for construction.
-     */
-    final OnOffEdgeTransDistribution initialTransDist =
-        new OnOffEdgeTransDistribution(state, pathEdge.getInferenceGraphEdge(),
-            initialPriorTransDist.getEdgeMotionTransProbPrior().getMean(), 
-            initialPriorTransDist.getFreeMotionTransProbPrior().getMean());
-    final SimpleBayesianParameter<TransitionProbMatrix, OnOffEdgeTransDistribution, OnOffEdgeTransPriorDistribution> edgeTransitionParam =
-        SimpleBayesianParameter.create(transitionProbMatrix,
-            initialTransDist, initialPriorTransDist);
-    
-    state.setEdgeTransitionParam(edgeTransitionParam);
+    final MotionStateEstimatorPredictor motionStateEstimatorPredictor =
+        new MotionStateEstimatorPredictor(state, rng,
+            (double) parameters.getInitialObsFreq());
+
+    final MultivariateGaussian initialMotionStateDist = motionStateEstimatorPredictor.createInitialLearnedObject();
+    if (parameters.getInitialMotionState() != null) {
+      Preconditions.checkArgument(parameters.getInitialMotionState().getDimensionality() == 4);
+      initialMotionStateDist.setMean(parameters.getInitialMotionState().clone());
+    }
 
     /*
      * Now, handle the off and on road motion and path state creation 
      */
     if (pathEdge.isNullEdge()) {
-      final MotionStateEstimatorPredictor motionStateEstimatorPredictor =
-          new MotionStateEstimatorPredictor(state, rng,
-              (double) parameters.getInitialObsFreq());
-  
-      final MultivariateGaussian initialMotionStateDist =
-          motionStateEstimatorPredictor.createInitialLearnedObject();
   
       final MultivariateGaussian initialObservationState =
           motionStateEstimatorPredictor.getObservationDistribution(
@@ -557,29 +549,21 @@ public class VehicleState<Observation extends GpsObservation> extends
   
     } else {
 
-      final MotionStateEstimatorPredictor motionStateEstimatorPredictor =
-          new MotionStateEstimatorPredictor(state, rng,
-              (double) parameters.getInitialObsFreq());
-
-      final MultivariateGaussian edgeMotionStateDist =
-          motionStateEstimatorPredictor
-              .createInitialLearnedObject();
-
       final Path path = new Path(pathEdge);
-      PathUtils.convertToRoadBelief(edgeMotionStateDist, path, pathEdge, true);
+      PathUtils.convertToRoadBelief(initialMotionStateDist, path, pathEdge, true);
       
       final MultivariateGaussian initialObservationState =
           motionStateEstimatorPredictor.getObservationDistribution(
-              edgeMotionStateDist, pathEdge.getInferenceGraphEdge());
+              initialMotionStateDist, pathEdge.getInferenceGraphEdge());
 
       final SimpleBayesianParameter<Vector, MultivariateGaussian, MultivariateGaussian> motionStateParam =
           SimpleBayesianParameter.create(initialObservationState.getMean(),
-              initialObservationState, edgeMotionStateDist);
+              initialObservationState, initialMotionStateDist);
 
       state.setMotionStateParam(motionStateParam);
       
       final PathStateDistribution initialPathStateDist =
-          new PathStateDistribution(path, edgeMotionStateDist);
+          new PathStateDistribution(path, initialMotionStateDist);
       final PathStateMixtureDensityModel<PathStateDistribution> pathStateMixture = 
           new PathStateMixtureDensityModel<PathStateDistribution>(Collections.singleton(initialPathStateDist));
       final SimpleBayesianParameter<PathState, PathStateMixtureDensityModel<PathStateDistribution>, PathStateDistribution> edgeStateParam =
@@ -588,6 +572,22 @@ public class VehicleState<Observation extends GpsObservation> extends
 
       state.setPathStateParam(edgeStateParam);
     }
+    
+    /*
+     * Now set the transition distribution, since it needed a path state
+     * for construction.
+     */
+    final OnOffEdgeTransDistribution initialTransDist =
+        new OnOffEdgeTransDistribution(graph, 
+            state.getPathStateParam().getValue(), 
+            state.getObservationCovarianceParam().getValue(), 
+            initialPriorTransDist.getEdgeMotionTransProbPrior().getMean(), 
+            initialPriorTransDist.getFreeMotionTransProbPrior().getMean());
+    final SimpleBayesianParameter<TransitionProbMatrix, OnOffEdgeTransDistribution, OnOffEdgeTransPriorDistribution> edgeTransitionParam =
+        SimpleBayesianParameter.create(transitionProbMatrix,
+            initialTransDist, initialPriorTransDist);
+    
+    state.setEdgeTransitionParam(edgeTransitionParam);
   
     return state;
   }

@@ -23,7 +23,7 @@ import org.opentrackingtools.graph.InferenceGraphSegment;
 import org.opentrackingtools.model.GpsObservation;
 import org.opentrackingtools.model.ProjectedCoordinate;
 import org.opentrackingtools.model.SimpleBayesianParameter;
-import org.opentrackingtools.model.VehicleState;
+import org.opentrackingtools.model.VehicleStateDistribution;
 import org.opentrackingtools.paths.PathEdge;
 import org.testng.AssertJUnit;
 import org.testng.annotations.Test;
@@ -90,15 +90,16 @@ public class OnOffEdgeTransDistributionTest {
     
     InferenceGraphEdge startEdge = startLine.getParentEdge();
     PathEdge startPathEdge = new PathEdge(startLine, 0d, false);
-    VehicleState<GpsObservation> currentState = VehicleState.constructInitialVehicleState(parameters, graph, obs, rng, startPathEdge);
+    VehicleStateDistribution<GpsObservation> currentState = 
+        VehicleStateDistribution.constructInitialVehicleState(parameters, graph, obs, rng, startPathEdge);
     
-    /*
-     * Now we move our vehicle state forward, by hand
-     */
-    currentState.getMotionStateParam().getParameterPrior().setMean(
-        VectorFactory.getDefault().createVector2D(4d, 1d));
     
     OnOffEdgeTransDistribution edgeTransDist = currentState.getEdgeTransitionParam().getConditionalDistribution();
+    
+    /*
+     * Now we move our path state forward, by hand
+     */
+    edgeTransDist.setMotionState(VectorFactory.getDefault().createVector2D(4d, 1d));
     
     Set<InferenceGraphEdge> transitionSupport = edgeTransDist.getDomain();
     
@@ -164,15 +165,14 @@ public class OnOffEdgeTransDistributionTest {
     
     InferenceGraphEdge startEdge = startLine.getParentEdge();
     PathEdge startPathEdge = new PathEdge(startLine, 0d, false);
-    VehicleState<GpsObservation> currentState = VehicleState.constructInitialVehicleState(parameters, graph, obs, rng, startPathEdge);
-    
-    /*
-     * Now we move our vehicle state forward, by hand
-     */
-    currentState.getMotionStateParam().getParameterPrior().setMean(
-        VectorFactory.getDefault().createVector2D(4d, 1d));
+    VehicleStateDistribution<GpsObservation> currentState = VehicleStateDistribution.constructInitialVehicleState(parameters, graph, obs, rng, startPathEdge);
     
     OnOffEdgeTransDistribution edgeTransDist = currentState.getEdgeTransitionParam().getConditionalDistribution();
+    
+    /*
+     * Now we move our path state forward, by hand
+     */
+    edgeTransDist.setMotionState(VectorFactory.getDefault().createVector2D(4d, 1d));
     
     Set<InferenceGraphEdge> transitionSupport = edgeTransDist.getDomain();
     
@@ -235,15 +235,14 @@ public class OnOffEdgeTransDistributionTest {
     
     InferenceGraphEdge startEdge = startLine.getParentEdge();
     PathEdge startPathEdge = new PathEdge(startLine, 0d, false);
-    VehicleState<GpsObservation> currentState = VehicleState.constructInitialVehicleState(parameters, graph, obs, rng, startPathEdge);
-    
-    /*
-     * Now we move our vehicle state forward, by hand
-     */
-    currentState.getMotionStateParam().getParameterPrior().setMean(
-        VectorFactory.getDefault().createVector2D(0.5d, 1d));
+    VehicleStateDistribution<GpsObservation> currentState = VehicleStateDistribution.constructInitialVehicleState(parameters, graph, obs, rng, startPathEdge);
     
     OnOffEdgeTransDistribution edgeTransDist = currentState.getEdgeTransitionParam().getConditionalDistribution();
+    
+    /*
+     * Now we move our path state forward, by hand
+     */
+    edgeTransDist.setMotionState(VectorFactory.getDefault().createVector2D(0.5d, 1d));
     
     Set<InferenceGraphEdge> transitionSupport = edgeTransDist.getDomain();
     

@@ -16,7 +16,7 @@ import java.util.Random;
 import org.opentrackingtools.distributions.OnOffEdgeTransDistribution;
 import org.opentrackingtools.distributions.OnOffEdgeTransPriorDistribution;
 import org.opentrackingtools.graph.InferenceGraphEdge;
-import org.opentrackingtools.model.VehicleState;
+import org.opentrackingtools.model.VehicleStateDistribution;
 import org.opentrackingtools.util.model.TransitionProbMatrix;
 
 public class OnOffEdgeTransitionEstimatorPredictor extends
@@ -54,13 +54,13 @@ public class OnOffEdgeTransitionEstimatorPredictor extends
 
   protected InferenceGraphEdge currentEdge;
 
-  protected VehicleState<?> currentState;
+  protected VehicleStateDistribution<?> currentState;
 
   MultinomialBayesianEstimator estimator;
   protected BayesianParameter<InferenceGraphEdge, OnOffEdgeTransDistribution, OnOffEdgeTransDistribution> fromParameter;
 
   public OnOffEdgeTransitionEstimatorPredictor(
-    VehicleState<?> currentState, InferenceGraphEdge currentEdge) {
+    VehicleStateDistribution<?> currentState, InferenceGraphEdge currentEdge) {
 
     this.currentState = currentState;
     this.currentEdge = currentEdge;

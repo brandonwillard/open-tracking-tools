@@ -7,7 +7,7 @@ import gov.sandia.cognition.statistics.DistributionWithMean;
 import java.util.Collection;
 
 import org.opentrackingtools.model.GpsObservation;
-import org.opentrackingtools.model.VehicleState;
+import org.opentrackingtools.model.VehicleStateDistribution;
 import org.opentrackingtools.paths.Path;
 
 import com.vividsolutions.jts.geom.Coordinate;
@@ -17,7 +17,7 @@ import com.vividsolutions.jts.geom.Geometry;
 public interface InferenceGraph {
 
   public Collection<Path> getPaths(
-    VehicleState<? extends GpsObservation> fromState,
+    VehicleStateDistribution<? extends GpsObservation> fromState,
     GpsObservation toCoord);
 
   public Collection<InferenceGraphEdge> getTopoEquivEdges(

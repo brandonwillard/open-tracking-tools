@@ -19,7 +19,7 @@ import org.opentrackingtools.distributions.AdjMultivariateGaussian;
 import org.opentrackingtools.estimators.MotionStateEstimatorPredictor;
 import org.opentrackingtools.graph.InferenceGraphEdge;
 import org.opentrackingtools.model.GpsObservation;
-import org.opentrackingtools.model.VehicleState;
+import org.opentrackingtools.model.VehicleStateDistribution;
 import org.opentrackingtools.paths.Path;
 import org.opentrackingtools.paths.PathEdge;
 import org.opentrackingtools.paths.PathState;
@@ -381,7 +381,7 @@ public class PathUtils {
   }
 
   public static Geometry getMovementPath(
-    VehicleState<? extends GpsObservation> state) {
+    VehicleStateDistribution<? extends GpsObservation> state) {
     if (state.getPathStateParam().getValue().getDimensionality() == 2
         && state.getParentState() != null) {
       final PathState pathState =

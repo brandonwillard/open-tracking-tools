@@ -31,7 +31,7 @@ import org.opentrackingtools.estimators.MotionStateEstimatorPredictor;
 import org.opentrackingtools.graph.GenericJTSGraph;
 import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.model.GpsObservation;
-import org.opentrackingtools.model.VehicleState;
+import org.opentrackingtools.model.VehicleStateDistribution;
 import org.opentrackingtools.paths.PathState;
 import org.opentrackingtools.util.Simulation;
 import org.opentrackingtools.util.TestUtils;
@@ -122,8 +122,8 @@ public class RoadTrackingFilterGraphTest {
 
   private Coordinate startCoord;
 
-  private VehicleState<GpsObservation> resetState(
-    VehicleState<GpsObservation> vehicleState) {
+  private VehicleStateDistribution<GpsObservation> resetState(
+    VehicleStateDistribution<GpsObservation> vehicleState) {
     return this.sim.computeInitialState();
   }
 
@@ -149,10 +149,10 @@ public class RoadTrackingFilterGraphTest {
 
     long time = this.sim.getSimParameters().getStartTime().getTime();
 
-    VehicleState<GpsObservation> trueVehicleState =
+    VehicleStateDistribution<GpsObservation> trueVehicleState =
         this.sim.computeInitialState();
 
-    final ParticleFilter<GpsObservation, VehicleState<GpsObservation>> filter =
+    final ParticleFilter<GpsObservation, VehicleStateDistribution<GpsObservation>> filter =
         new VehicleStatePLFilter<GpsObservation>(
             trueVehicleState.getObservation(), this.graph,
             filterInitialParams, null, null);
@@ -163,7 +163,7 @@ public class RoadTrackingFilterGraphTest {
       new Random();
     }
 
-    final DataDistribution<VehicleState<GpsObservation>> vehicleStateDist =
+    final DataDistribution<VehicleStateDistribution<GpsObservation>> vehicleStateDist =
         filter.getUpdater().createInitialParticles(
             filterInitialParams.getNumParticles());
 
@@ -259,8 +259,8 @@ public class RoadTrackingFilterGraphTest {
   }
 
   private void updateAndCheckStats(
-    DataDistribution<VehicleState<GpsObservation>> vehicleStateDist,
-    VehicleState<GpsObservation> trueVehicleState,
+    DataDistribution<VehicleStateDistribution<GpsObservation>> vehicleStateDist,
+    VehicleStateDistribution<GpsObservation> trueVehicleState,
     SufficientStatistic obsErrorSS, SufficientStatistic stateErrorSS,
     SufficientStatistic obsCovErrorSS,
     SufficientStatistic onRoadCovErrorSS,
@@ -282,7 +282,7 @@ public class RoadTrackingFilterGraphTest {
     int numOnTrueEdge = 0;
     final boolean hasPriorOnVariances = false;
 
-    for (final VehicleState<GpsObservation> state : vehicleStateDist
+    for (final VehicleStateDistribution<GpsObservation> state : vehicleStateDist
         .getDomain()) {
 
       AssertJUnit
@@ -316,7 +316,7 @@ public class RoadTrackingFilterGraphTest {
       offRoadCovStat.update(state.getOffRoadModelCovarianceParam()
           .getValue().convertToVector());
 
-      final VehicleState<GpsObservation> parentState =
+      final VehicleStateDistribution<GpsObservation> parentState =
           state.getParentState();
       if (parentState != null) {
 
