@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Random;
 
 import org.apache.commons.lang3.builder.CompareToBuilder;
+import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.opentrackingtools.estimators.MotionStateEstimatorPredictor;
 import org.opentrackingtools.paths.Path;
 import org.opentrackingtools.paths.PathState;
@@ -76,6 +77,14 @@ public class PathStateDistribution extends
   }
 
   private static final long serialVersionUID = -31238492416118648L;
+
+  @Override
+  public String toString() {
+    ToStringBuilder builder = new ToStringBuilder(this);
+    builder.append("distribution", distribution);
+    builder.append("path", path);
+    return builder.toString();
+  }
 
   protected MultivariateGaussian distribution;
 

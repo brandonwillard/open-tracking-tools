@@ -193,7 +193,7 @@ public class VehicleStatePLUpdater<O extends GpsObservation>
      * Predict/project the motion state forward.
      */
     final MotionStateEstimatorPredictor motionStateEstimatorPredictor =
-        new MotionStateEstimatorPredictor(state, this.random, null);
+        new MotionStateEstimatorPredictor(state, this.random, this.parameters.getInitialObsFreq());
 
     predictedState
         .setMotionStateEstimatorPredictor(motionStateEstimatorPredictor);
