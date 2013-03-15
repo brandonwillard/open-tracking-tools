@@ -164,6 +164,14 @@ public class Simulation {
 
   private final String simulationName;
 
+  public int getRecordsProcessed() {
+    return recordsProcessed;
+  }
+
+  public VehicleStateBootstrapUpdater<GpsObservation> getUpdater() {
+    return updater;
+  }
+
   private final VehicleStateBootstrapUpdater<GpsObservation> updater;
 
   public Simulation(String simulationName, InferenceGraph graph,

@@ -10,6 +10,7 @@ import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 import gov.sandia.cognition.util.ObjectUtil;
 
 import org.opentrackingtools.distributions.AdjMultivariateGaussian;
+import org.opentrackingtools.distributions.TruncatedRoadGaussian;
 import org.opentrackingtools.util.StatisticsUtil;
 
 /**
@@ -19,7 +20,7 @@ import org.opentrackingtools.util.StatisticsUtil;
  * @author bwillard
  * 
  */
-public class AdjKalmanFilter extends AbstractKalmanFilter {
+public class TruncatedRoadKalmanFilter extends AbstractKalmanFilter {
 
   /**
    * Default autonomous dimension, {@value} .
@@ -32,34 +33,8 @@ public class AdjKalmanFilter extends AbstractKalmanFilter {
    * Motion model of the underlying system.
    */
   protected LinearDynamicalSystem model;
-
-  /**
-   * Creates a new instance of KalmanFilter
-   */
-  public AdjKalmanFilter() {
-    this(AdjKalmanFilter.DEFAULT_DIMENSION);
-  }
-
-  /**
-   * Creates an autonomous, fully observable linear dynamical system with the
-   * given dimensionality
-   * 
-   * @param dim
-   *          Dimensionality of the LDS
-   */
-  public AdjKalmanFilter(int dim) {
-    // Autonomous Dynamical System:
-    // xn+1 = A*xn
-    // yn+1 = xn+1
-    // Also, we're using an identity for the model covariance and
-    // the measurement covariance
-    this(new LinearDynamicalSystem(MatrixFactory.getDefault()
-        .createIdentity(dim, dim), MatrixFactory.getDefault()
-        .createMatrix(dim, dim), MatrixFactory.getDefault()
-        .createIdentity(dim, dim)), MatrixFactory.getDefault()
-        .createIdentity(dim, dim), MatrixFactory.getDefault()
-        .createIdentity(dim, dim));
-  }
+  protected double upperVelocityLimit;
+  protected double lowerVelocityLimit;
 
   /**
    * Creates a new instance of LinearUpdater
@@ -71,17 +46,36 @@ public class AdjKalmanFilter extends AbstractKalmanFilter {
    * @param measurementCovariance
    *          Covariance associated with the measurements.
    */
-  public AdjKalmanFilter(LinearDynamicalSystem model,
-    Matrix modelCovariance, Matrix measurementCovariance) {
+  public TruncatedRoadKalmanFilter(LinearDynamicalSystem model,
+    Matrix modelCovariance, Matrix measurementCovariance, double upperVelocityLimit,
+    double lowerVelocityLimit) {
     super(VectorFactory.getDefault().createVector(
         model.getInputDimensionality()), modelCovariance,
         measurementCovariance);
     this.setModel(model);
+    this.upperVelocityLimit = upperVelocityLimit;
+    this.lowerVelocityLimit = lowerVelocityLimit;
+  }
+
+  public double getUpperVelocityLimit() {
+    return upperVelocityLimit;
+  }
+
+  public void setUpperVelocityLimit(double upperVelocityLimit) {
+    this.upperVelocityLimit = upperVelocityLimit;
+  }
+
+  public double getLowerVelocityLimit() {
+    return lowerVelocityLimit;
+  }
+
+  public void setLowerVelocityLimit(double lowerVelocityLimit) {
+    this.lowerVelocityLimit = lowerVelocityLimit;
   }
 
   @Override
-  public AdjKalmanFilter clone() {
-    final AdjKalmanFilter clone = (AdjKalmanFilter) super.clone();
+  public TruncatedRoadKalmanFilter clone() {
+    final TruncatedRoadKalmanFilter clone = (TruncatedRoadKalmanFilter) super.clone();
     clone.model = this.model.clone();
     clone.currentInput = this.currentInput.clone();
     clone.measurementCovariance = this.measurementCovariance.clone();
@@ -91,8 +85,8 @@ public class AdjKalmanFilter extends AbstractKalmanFilter {
 
   @Override
   public MultivariateGaussian createInitialLearnedObject() {
-    return new AdjMultivariateGaussian(this.model.getState(),
-        this.getModelCovariance());
+    return new TruncatedRoadGaussian(this.model.getState(),
+        this.getModelCovariance(), upperVelocityLimit, lowerVelocityLimit);
   }
 
   @Override
@@ -106,7 +100,7 @@ public class AdjKalmanFilter extends AbstractKalmanFilter {
     if (this.getClass() != obj.getClass()) {
       return false;
     }
-    final AdjKalmanFilter other = (AdjKalmanFilter) obj;
+    final TruncatedRoadKalmanFilter other = (TruncatedRoadKalmanFilter) obj;
     if (this.model == null) {
       if (other.model != null) {
         return false;

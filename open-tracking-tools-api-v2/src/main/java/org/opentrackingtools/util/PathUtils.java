@@ -16,6 +16,8 @@ import javax.annotation.Nullable;
 import org.apache.commons.lang3.ArrayUtils;
 import org.geotools.geometry.jts.JTSFactoryFinder;
 import org.opentrackingtools.distributions.AdjMultivariateGaussian;
+import org.opentrackingtools.distributions.PathStateDistribution;
+import org.opentrackingtools.distributions.TruncatedRoadGaussian;
 import org.opentrackingtools.estimators.MotionStateEstimatorPredictor;
 import org.opentrackingtools.graph.InferenceGraphEdge;
 import org.opentrackingtools.model.GpsObservation;
@@ -133,31 +135,24 @@ public class PathUtils {
    * @return
    */
   public static MultivariateGaussian checkAndGetConvertedBelief(
-    MultivariateGaussian belief, Path path) {
+    PathStateDistribution belief, Path destPath) {
 
     final MultivariateGaussian adjBelief;
-    if (path.isNullPath() && belief.getInputDimensionality() != 4) {
-
-      final double dist =
-          MotionStateEstimatorPredictor.getOr()
-              .times(belief.getMean()).getElement(0);
-      final PathEdge edge = path.getEdgeForDistance(dist, false);
-
+    if (destPath.isNullPath() && belief.getMean().getDimensionality() != 4) {
+      Preconditions.checkArgument(belief.getPathState().isOnRoad());
+      adjBelief = belief.getGroundBelief();
+    } else if (!destPath.isNullPath()
+        && belief.getMean().getDimensionality() != 2) {
+      Preconditions.checkArgument(!belief.getPathState().isOnRoad());
       adjBelief =
-          PathUtils.getGroundBeliefFromRoad(belief, edge, true);
-
-    } else if (!path.isNullPath()
-        && belief.getInputDimensionality() != 2) {
-
-      adjBelief =
-          PathUtils.getRoadBeliefFromGround(belief, path, true);
+          PathUtils.getRoadBeliefFromGround(belief.getGroundBelief(), destPath, true);
     } else {
-      if (!path.isNullPath()) {
-        Preconditions.checkState(path
+      if (!destPath.isNullPath()) {
+        Preconditions.checkState(destPath
             .isOnPath(MotionStateEstimatorPredictor.getOr()
                 .times(belief.getMean()).getElement(0)));
       }
-      adjBelief = belief;
+      adjBelief = belief.getMotionStateDistribution();
     }
 
     Preconditions
@@ -176,24 +171,18 @@ public class PathUtils {
    * @param path
    * @return
    */
-  public static Vector checkAndGetConvertedState(Vector state,
-    Path path) {
+  public static Vector checkAndGetConvertedState(PathState state,
+    Path destPath) {
 
     final Vector adjState;
-    if (path.isNullPath() && state.getDimensionality() != 4) {
-
-      final double dist =
-          MotionStateEstimatorPredictor.getOr().times(state)
-              .getElement(0);
-      final PathEdge edge = path.getEdgeForDistance(dist, false);
-
-      adjState = PathUtils.getGroundStateFromRoad(state, edge, true);
-
-    } else if (!path.isNullPath() && state.getDimensionality() != 2) {
-
-      adjState = PathUtils.getRoadStateFromGround(state, path, true);
+    if (destPath.isNullPath() && state.getDimensionality() != 4) {
+      Preconditions.checkArgument(!state.getPath().isNullPath());
+      adjState = state.getGroundState();
+    } else if (!destPath.isNullPath() && state.getDimensionality() != 2) {
+      Preconditions.checkArgument(state.getPath().isNullPath());
+      adjState = PathUtils.getRoadStateFromGround(state.getGroundState(), destPath, true);
     } else {
-      adjState = state;
+      adjState = state.getMotionState();
     }
 
     return adjState;
@@ -309,14 +298,6 @@ public class PathUtils {
     }
 
     return adjIndex;
-  }
-
-  public static MultivariateGaussian getGroundBeliefFromRoad(
-    MultivariateGaussian motionState, InferenceGraphEdge edge,
-    boolean useAbsVelocity) {
-    final Entry<LineSegment, Double> segmentAndStart = getSegmentAndDistanceToStart(edge.getGeometry(), 0);
-    return PathUtils.getGroundBeliefFromRoad(motionState,
-        new PathEdge(edge, segmentAndStart.getKey(), segmentAndStart.getValue(), false), useAbsVelocity);
   }
 
   public static MultivariateGaussian
@@ -536,8 +517,8 @@ public class PathUtils {
             .times(obsCov)
             .times(MotionStateEstimatorPredictor.getOg());
     final MultivariateGaussian obsProjBelief =
-        new AdjMultivariateGaussian(MotionStateEstimatorPredictor
-            .getOg().transpose().times(obs), obsCovExp);
+        new TruncatedRoadGaussian(MotionStateEstimatorPredictor
+            .getOg().transpose().times(obs), obsCovExp, Double.MAX_VALUE, 0d);
     PathUtils.convertToRoadBelief(obsProjBelief, path, edge, true);
 
     final Vector y =
@@ -547,7 +528,7 @@ public class PathUtils {
         MotionStateEstimatorPredictor.getOr()
             .times(obsProjBelief.getCovariance())
             .times(MotionStateEstimatorPredictor.getOr().transpose());
-    return new AdjMultivariateGaussian(y, Sigma);
+    return new TruncatedRoadGaussian(y, Sigma, Double.MAX_VALUE, 0d);
   }
 
   /**
@@ -1069,7 +1050,8 @@ public class PathUtils {
           useRaw ? fromState.getMotionState() : fromState
               .getMotionState();
 
-      if (fromLastActualGeom.equals(toFirstActualGeom)) {
+      if (fromLastActualGeom.equals(toFirstActualGeom)
+          && !fromLastActualGeom.equals(toLastActualGeom)) {
         /*
          * Head-to-tail
          */
@@ -1187,6 +1169,52 @@ public class PathUtils {
       return toState.getGroundState().minus(
           fromState.getGroundState());
     }
+  }
+
+  public static Vector getRoadStateFromGround(Vector localState,
+    PathEdge edge, boolean useAbsVelocity) {
+    
+    final PathEdgeProjection projPair = PathUtils.posVelProjectionPair(edge.getLine(), 
+        edge.getDistToFromStartOfGraphEdge());
+    if (projPair == null) {
+      return null;
+    }
+
+    final Vector projMean =
+        projPair.getProjMatrix().transpose()
+            .times(localState.minus(projPair.getOffset()));
+
+    /*
+     * When there is no exactly orthogonal line to the edge
+     * we must clip the result.
+     */
+    final Geometry segmentGeom = edge.getLine().toGeometry(
+        JTSFactoryFinder.getGeometryFactory());
+    final LengthIndexedLine lil = new LengthIndexedLine(segmentGeom);
+    final double clampedIndex =
+        lil.clampIndex(projMean.getElement(0));
+    projMean.setElement(0, clampedIndex);
+
+    if (edge.isBackward()) {
+      projMean.scaleEquals(-1d);
+    }
+
+    if (useAbsVelocity) {
+      final double absVelocity =
+          VectorFactory
+              .getDenseDefault()
+              .copyVector(
+                  MotionStateEstimatorPredictor.getVg().times(localState))
+              .norm2();
+      final double projVelocity =
+          Math.signum(projMean.getElement(1)) * absVelocity;
+      projMean.setElement(1, projVelocity);
+    }
+
+    assert LengthLocationMap.getLocation(segmentGeom,
+        projMean.getElement(0)) != null;
+
+    return projMean;
   }
 
 }

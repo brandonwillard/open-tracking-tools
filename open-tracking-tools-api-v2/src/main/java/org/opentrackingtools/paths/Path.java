@@ -110,9 +110,9 @@ public class Path extends AbstractCloneableSerializable implements
     this.edges = Collections.singletonList(edge);
     this.totalPathDistance =
         (this.isBackward == Boolean.TRUE ? -1d : 1d)
-            * edge.getInferenceGraphEdge().getLength();
+            * edge.getLength();
     this.edgeIds = Lists.newArrayList(edge.getInferenceGraphEdge().getEdgeId());
-    this.geometry = edge.line.toGeometry(JTSFactoryFinder.getGeometryFactory());
+    this.geometry = edge.segment.getLine().toGeometry(JTSFactoryFinder.getGeometryFactory());
     
     if (this.isBackward == Boolean.TRUE)
       this.geometry = this.geometry.reverse();

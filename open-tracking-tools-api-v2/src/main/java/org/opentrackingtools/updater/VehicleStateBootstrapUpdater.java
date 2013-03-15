@@ -2,6 +2,7 @@ package org.opentrackingtools.updater;
 
 import gov.sandia.cognition.math.matrix.MatrixFactory;
 import gov.sandia.cognition.math.matrix.Vector;
+import gov.sandia.cognition.math.matrix.VectorFactory;
 import gov.sandia.cognition.statistics.DataDistribution;
 import gov.sandia.cognition.statistics.bayesian.ParticleFilter.Updater;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
@@ -17,6 +18,7 @@ import org.opentrackingtools.distributions.CountedDataDistribution;
 import org.opentrackingtools.distributions.OnOffEdgeTransDistribution;
 import org.opentrackingtools.distributions.PathStateDistribution;
 import org.opentrackingtools.distributions.PathStateMixtureDensityModel;
+import org.opentrackingtools.distributions.TruncatedRoadGaussian;
 import org.opentrackingtools.estimators.MotionStateEstimatorPredictor;
 import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.graph.InferenceGraphEdge;
@@ -31,6 +33,8 @@ import org.opentrackingtools.util.GeoUtils;
 import org.opentrackingtools.util.PathUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import umontreal.iro.lecuyer.probdist.TruncatedDist;
 
 import com.google.common.base.Preconditions;
 import com.google.common.base.Predicate;
@@ -67,6 +71,19 @@ public class VehicleStateBootstrapUpdater<O extends GpsObservation>
   protected Random random;
 
   public long seed;
+
+  /*
+   * The error added during the last processed transition.  For debug, really.
+   */
+  protected Vector sampledTransitionError;
+
+  public Vector getSampledTransitionError() {
+    return sampledTransitionError;
+  }
+
+  public void setSampledTransitionError(Vector sampledTransitionError) {
+    this.sampledTransitionError = sampledTransitionError;
+  }
 
   public VehicleStateBootstrapUpdater(O obs,
     InferenceGraph inferredGraph,
@@ -232,7 +249,7 @@ public class VehicleStateBootstrapUpdater<O extends GpsObservation>
     /*
      * Predict new location, i.e. project forward
      */
-    final MultivariateGaussian predictedMotionState =
+    MultivariateGaussian predictedMotionState =
         motionStatePredictor
             .createPredictiveDistribution(updatedState
                 .getMotionStateParam().getParameterPrior());
@@ -246,10 +263,12 @@ public class VehicleStateBootstrapUpdater<O extends GpsObservation>
      * sampling states). 
      * 
      */
+    final Vector predictedMean = predictedMotionState.getMean().clone(); 
     final Vector noisyPredictedState =
-        motionStatePredictor.sampleStateTransDist(
-            predictedMotionState.getMean(), this.random);
+        motionStatePredictor.addStateTransitionError(
+            predictedMean, this.random);
     predictedMotionState.setMean(noisyPredictedState);
+    this.sampledTransitionError = predictedMotionState.getMean().minus(predictedMean);
     updatedState.getMotionStateParam().getParameterPrior().setMean(
         predictedMotionState.getMean());
     PathEdge startEdge = updatedState.getPathStateParam().getValue().getEdge();
@@ -270,7 +289,7 @@ public class VehicleStateBootstrapUpdater<O extends GpsObservation>
      * on-road edges exist at the new projected location.
      */
     if (startEdge.isNullEdge()) {
-      edgeTransDistribution.setMotionState(noisyPredictedState);
+      edgeTransDistribution.setMotionState(predictedMotionState.getMean());
     } 
     
     /*
@@ -285,8 +304,21 @@ public class VehicleStateBootstrapUpdater<O extends GpsObservation>
       if (!startEdge.isNullEdge()) {
         /*
          * Going off-road from on-road
+         * We have to re-project after converting to off-road.
          */
-        PathUtils.convertToGroundBelief(predictedMotionState, startEdge, false, true);
+        final MultivariateGaussian groundStateDist = new TruncatedRoadGaussian(
+            previousState.getPathStateParam().getValue().getGroundState(), 
+            MatrixFactory.getDefault().createMatrix(4, 4), 
+            Double.MAX_VALUE, 0d);
+        predictedMotionState = motionStatePredictor.createPredictiveDistribution(groundStateDist);
+        final Vector offRoadPredictedMean = predictedMotionState.getMean().clone();
+        final Vector offRoadNoisyPredictedState =
+            motionStatePredictor.addStateTransitionError(
+                offRoadPredictedMean, this.random);
+        predictedMotionState.setMean(offRoadNoisyPredictedState);
+        updatedState.getMotionStateParam().getParameterPrior().setMean(
+            predictedMotionState.getMean());
+        sampledTransitionError = offRoadNoisyPredictedState.minus(offRoadPredictedMean);
       }
       newPath = Path.nullPath;
     } else {
@@ -331,14 +363,20 @@ public class VehicleStateBootstrapUpdater<O extends GpsObservation>
     final PathState newPathState =
         new PathState(newPath, predictedMotionState.getMean());
 
-    MultivariateGaussian obsDist = motionStatePredictor.getObservationDistribution(predictedMotionState, 
-        newPathState.getEdge().getInferenceGraphEdge());
+    MultivariateGaussian obsDist = motionStatePredictor.getObservationDistribution(
+        predictedMotionState, newPathState.getEdge());
     updatedState.getMotionStateParam().setValue(obsDist.getMean());
     updatedState.getMotionStateParam().setConditionalDistribution(obsDist);
+    /*
+     * Important: we need the motion state prior to be relative to the edge it's
+     * on, otherwise, distance along path will add up indefinitely. 
+     */
     updatedState.getMotionStateParam().setParameterPrior(
-        new MultivariateGaussian(predictedMotionState.getMean(), 
-           newPathState.isOnRoad() ? updatedState.getOnRoadModelCovarianceParam().getValue()
-               : updatedState.getOffRoadModelCovarianceParam().getValue()));
+        new TruncatedRoadGaussian(newPathState.getLocalState(), 
+           newPathState.isOnRoad() ? motionStatePredictor.getRoadFilter().getModelCovariance() 
+               : motionStatePredictor.getGroundFilter().getModelCovariance(),
+               Double.MAX_VALUE, 0d)
+        );
     
     updatedState.getPathStateParam().setValue(newPathState);
     updatedState.setParentState(previousState);

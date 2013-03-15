@@ -41,7 +41,7 @@ public class TruncatedRoadGaussian extends AdjMultivariateGaussian {
 
   public TruncatedRoadGaussian(Vector mean, Matrix covariance,
     double velocityUpper, double velocityLower) {
-    super(mean, covariance);
+    super(mean.getDimensionality());
     Preconditions.checkArgument(velocityUpper > velocityLower);
     Preconditions.checkArgument(mean.getDimensionality() == 2
         || mean.getDimensionality() == 4);
@@ -49,7 +49,8 @@ public class TruncatedRoadGaussian extends AdjMultivariateGaussian {
         || covariance.getNumColumns() == 4);
     this.velocityUpper = velocityUpper;
     this.velocityLower = velocityLower;
-    this.setMean(this.truncateVector(this.getMean()));
+    this.setMean(mean);
+    this.setCovariance(covariance);
   }
 
   @Override

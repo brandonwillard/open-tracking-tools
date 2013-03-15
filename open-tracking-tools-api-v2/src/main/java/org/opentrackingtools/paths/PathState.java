@@ -33,6 +33,7 @@ public class PathState extends AbstractVector implements
     
     Preconditions.checkArgument(path.isNullPath() || state.getDimensionality() == 2);
     Preconditions.checkArgument(!path.isNullPath() || state.getDimensionality() == 4);
+    Preconditions.checkArgument(!(state instanceof PathState));
     
     this.globalState = state;
     this.path = path;
@@ -48,6 +49,7 @@ public class PathState extends AbstractVector implements
 
   public PathState(PathState pathState) {
     this.edge = pathState.edge;
+    
     this.globalState = pathState.globalState;
     this.groundState = pathState.groundState;
     this.localState = pathState.localState;
@@ -214,6 +216,7 @@ public class PathState extends AbstractVector implements
       this.groundState =
           PathUtils.getGroundStateFromRoad(this.globalState,
               this.getEdge(), true);
+      
     }
 
     return this.groundState;

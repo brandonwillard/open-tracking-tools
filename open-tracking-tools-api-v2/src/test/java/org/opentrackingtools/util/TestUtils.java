@@ -22,6 +22,7 @@ import org.opengis.referencing.NoSuchAuthorityCodeException;
 import org.opengis.referencing.crs.CoordinateReferenceSystem;
 import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.graph.InferenceGraphEdge;
+import org.opentrackingtools.graph.InferenceGraphSegment;
 import org.opentrackingtools.paths.Path;
 import org.opentrackingtools.paths.PathEdge;
 import org.opentrackingtools.util.GeoUtils;
@@ -83,16 +84,9 @@ public class TestUtils {
     final List<PathEdge> pathEdges = Lists.newArrayList();
     double distToStart = 0;
     for (final InferenceGraphEdge edge : edges) {
-      for (LineSegment segment : GeoUtils.getSubLineSegments((LineString)edge.getGeometry())) {
-        LineSegment actualSegment;
-        if (isBackward) {
-          actualSegment = new LineSegment(segment);
-          actualSegment.reverse();
-        } else {
-          actualSegment = segment;
-        }
+      for (InferenceGraphSegment segment :edge.getSegments()) {
         final PathEdge pe =
-            new PathEdge(edge, actualSegment, (isBackward ? -1d : 1d)
+            new PathEdge(segment, (isBackward ? -1d : 1d)
                 * distToStart, isBackward);
         distToStart += edge.getLength();
         pathEdges.add(pe);

@@ -457,7 +457,7 @@ public class VehicleStateDistribution<Observation extends GpsObservation> extend
   @Override
   public String toString() {
     final ToStringBuilder builder = new ToStringBuilder(this);
-    builder.append("belief", this.motionStateParam);
+    builder.append("pathState", this.pathStateParam);
     builder.append("observation", this.observation);
     return builder.toString();
   }
@@ -530,7 +530,7 @@ public class VehicleStateDistribution<Observation extends GpsObservation> extend
   
       final MultivariateGaussian initialObservationState =
           motionStateEstimatorPredictor.getObservationDistribution(
-              initialMotionStateDist, InferenceGraphEdge.nullGraphEdge);
+              initialMotionStateDist, PathEdge.nullPathEdge);
   
       final SimpleBayesianParameter<Vector, MultivariateGaussian, MultivariateGaussian> motionStateParam =
           SimpleBayesianParameter.create( initialObservationState.getMean(),
@@ -554,7 +554,7 @@ public class VehicleStateDistribution<Observation extends GpsObservation> extend
       
       final MultivariateGaussian initialObservationState =
           motionStateEstimatorPredictor.getObservationDistribution(
-              initialMotionStateDist, pathEdge.getInferenceGraphEdge());
+              initialMotionStateDist, pathEdge);
 
       final SimpleBayesianParameter<Vector, MultivariateGaussian, MultivariateGaussian> motionStateParam =
           SimpleBayesianParameter.create(initialObservationState.getMean(),

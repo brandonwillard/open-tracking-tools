@@ -76,7 +76,7 @@ public class PathTest {
             new Coordinate(10, -10), new Coordinate(10, 0),
             new Coordinate(0, 0));
 
-    PathUtils.checkAndGetConvertedBelief(currentBelief.getMotionStateDistribution(), newPath);
+    PathUtils.checkAndGetConvertedBelief(currentBelief, newPath);
 
   }
 

@@ -520,37 +520,29 @@ public class GenericJTSGraph implements InferenceGraph {
       InferenceGraphSegment startEdge, InferenceGraphSegment endEdge,
       InferenceGraphEdge infEdge, double distToStart, boolean isBackward) {
     final List<PathEdge> edges = Lists.newArrayList();
-    LinearLocation startIdx = null;
-    LinearLocation endIdx = null;
+    Double startIdx = null;
+    Double endIdx = null;
     
     if (infEdge.equals(startEdge.getParentEdge()))
-      startIdx = startEdge.getStartIndex();
+      startIdx = startEdge.getStartDistance();
     if (startIdx == null)
-      startIdx = infEdge.getLocationIndexedLine().getStartIndex();
+      startIdx = 0d;
     
     if (infEdge.equals(endEdge.getParentEdge())) {
       if (startEdge.getEndIndex().compareTo(endEdge.getEndIndex()) > 0)
-        endIdx = startEdge.getEndIndex();
+        endIdx = startEdge.getStartDistance() + startEdge.getLine().getLength(); 
       else
-        endIdx = endEdge.getEndIndex();
+        endIdx = endEdge.getStartDistance() + endEdge.getLine().getLength();
     }
     if (endIdx == null)
-      endIdx = infEdge.getLocationIndexedLine().getEndIndex();
+      endIdx = infEdge.getLength();
     
-    final LineString subline = (LineString) infEdge.getLocationIndexedLine().extractLine(startIdx, endIdx);
     double distToStartSublines = distToStart;
-    for (LineSegment lineSeg : GeoUtils.getSubLineSegments(subline)) {
-      LineSegment actualSegment;
-      if (isBackward) {
-        actualSegment = new LineSegment(lineSeg);
-        actualSegment.reverse();
-      } else {
-        actualSegment = lineSeg;
-      }
-      final PathEdge pathEdge = new PathEdge(infEdge, actualSegment, distToStartSublines, isBackward);
+    for (InferenceGraphSegment lineSeg : infEdge.getSegments(startIdx, endIdx)) {
+      final PathEdge pathEdge = new PathEdge(lineSeg, distToStartSublines, isBackward);
       
       edges.add(pathEdge);
-      distToStartSublines += lineSeg.getLength();
+      distToStartSublines += lineSeg.getLine().getLength();
     }
     
     final double totalDist = distToStartSublines - distToStart;

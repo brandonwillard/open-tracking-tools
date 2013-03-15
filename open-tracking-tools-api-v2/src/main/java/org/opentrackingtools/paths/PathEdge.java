@@ -22,6 +22,8 @@ public class PathEdge extends
   protected Double distToStartOfEdge = null;
   protected InferenceGraphEdge edge = null;
   protected Boolean isBackward = null;
+  protected InferenceGraphSegment segment = null;
+  protected Double distToFromStartOfGraphEdge = null;
   protected LineSegment line = null;
   
   public final static PathEdge nullPathEdge = new PathEdge();
@@ -30,23 +32,23 @@ public class PathEdge extends
     this.edge = InferenceGraphEdge.nullGraphEdge;
   }
 
-  @Nonnull
-  public PathEdge(InferenceGraphEdge edge, LineSegment line, double distToStartOfEdge, boolean isBackward) {
-    Preconditions.checkArgument(!edge.isNullEdge());
-    Preconditions.checkState((isBackward != Boolean.TRUE)
-        || distToStartOfEdge <= 0d);
-    this.line = line;
-    this.edge = edge;
-    this.distToStartOfEdge = distToStartOfEdge;
-    this.isBackward = isBackward;
+  public Double getDistToFromStartOfGraphEdge() {
+    return distToFromStartOfGraphEdge;
   }
 
-  public PathEdge(InferenceGraphSegment subLine, double startDistance, boolean isBackward) {
-     this(subLine.getParentEdge(), 
-         subLine.getLine(), 
-         startDistance +
-         subLine.getParentEdge().getLengthLocationMap().getLength(subLine.getStartIndex()), 
-         isBackward);
+  public PathEdge(InferenceGraphSegment segment, double startDistance, boolean isBackward) {
+    Preconditions.checkArgument(!segment.getParentEdge().isNullEdge());
+    Preconditions.checkState((isBackward != Boolean.TRUE)
+        || startDistance <= 0d);
+    this.segment = segment;
+    this.line = new LineSegment(segment.getLine());
+    if (isBackward)
+      this.line.reverse();
+    this.edge = segment.getParentEdge();
+    this.distToFromStartOfGraphEdge = segment.getParentEdge().getLengthLocationMap().getLength(
+        segment.getStartIndex());
+    this.distToStartOfEdge = this.distToFromStartOfGraphEdge + startDistance;
+    this.isBackward = isBackward;
   }
 
   @Override
@@ -55,7 +57,7 @@ public class PathEdge extends
     clone.distToStartOfEdge = this.distToStartOfEdge;
     clone.edge = this.edge;
     clone.isBackward = this.isBackward;
-    clone.line = this.line;
+    clone.segment = this.segment;
     return clone;
   }
 
@@ -64,7 +66,7 @@ public class PathEdge extends
     return ComparisonChain
         .start()
         .compare(this.edge, o.edge)
-        .compare(this.line, o.line)
+        .compare(this.segment, o.segment)
         .compare(this.isBackward(), o.isBackward,
             Ordering.natural().nullsLast())
         .compare(this.distToStartOfEdge, o.distToStartOfEdge,
@@ -91,11 +93,11 @@ public class PathEdge extends
         .equals(other.distToStartOfEdge)) {
       return false;
     }
-    if (this.line == null) {
-      if (other.line != null) {
+    if (this.segment == null) {
+      if (other.segment != null) {
         return false;
       }
-    } else if (!this.line.equals(other.line)) {
+    } else if (!this.segment.equals(other.segment)) {
       return false;
     }
     if (this.edge == null) {
@@ -164,6 +166,10 @@ public class PathEdge extends
     return this.distToStartOfEdge;
   }
 
+  public InferenceGraphSegment getSegment() {
+    return this.segment;
+  }
+  
   public LineSegment getLine() {
     return this.line;
   }
@@ -173,7 +179,7 @@ public class PathEdge extends
   }
 
   public double getLength() {
-    return this.line.getLength();
+    return this.segment.getLine().getLength();
   }
 
   @Override
@@ -190,7 +196,7 @@ public class PathEdge extends
             + ((this.edge == null) ? 0 : this.edge.hashCode());
     result =
         prime * result
-            + ((this.line == null) ? 0 : this.line.hashCode());
+            + ((this.segment == null) ? 0 : this.segment.hashCode());
     result =
         prime
             * result

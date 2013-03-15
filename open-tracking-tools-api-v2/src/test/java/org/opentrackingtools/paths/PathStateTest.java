@@ -49,9 +49,9 @@ public class PathStateTest {
     final InferenceGraphEdge ie3_rev = new InferenceGraphEdge(e3.reverse(), e3.reverse(), -3, graph);
     
     final List<PathEdge> edges2_rev =
-        Lists.newArrayList(new PathEdge(ie2_rev, 
-            new LineSegment(e2.getCoordinates()[1], e2.getCoordinates()[0]), 0d, false), 
-            new PathEdge(ie3_rev, new LineSegment(e3.getCoordinates()[1], e3.getCoordinates()[0]), ie2_rev.getLength(), false));
+        Lists.newArrayList(
+            new PathEdge(Iterables.getOnlyElement(ie2_rev.getSegments()), 0d, false), 
+            new PathEdge(Iterables.getOnlyElement(ie3_rev.getSegments()), ie2_rev.getLength(), false));
 
     new Path(edges2_rev, false);
 
@@ -608,11 +608,9 @@ public class PathStateTest {
     final PathState x =
         new PathState(p1, VectorFactory
             .getDenseDefault().createVector2D(5d, 1d));
-    LineSegment segment = new LineSegment(p1.getPathEdges().get(1).getLine());
     final PathState y =
         new PathState(
-            new Path(new PathEdge(
-                p1.getPathEdges().get(1).getInferenceGraphEdge(), segment, 0d, false)),
+            new Path(new PathEdge(p1.getPathEdges().get(1).getSegment(), 0d, false)),
             VectorFactory.getDenseDefault().createVector2D(
                 5d, -1d));
     final Vector diff = y.minus(x);
@@ -641,13 +639,9 @@ public class PathStateTest {
     final PathState x =
         new PathState(p1, VectorFactory
             .getDenseDefault().createVector2D(5d, 1d));
-    LineSegment revSegment = new LineSegment(p1.getPathEdges().get(1).getLine());
-    revSegment.reverse();
     final PathState y =
         new PathState(
-            new Path(new PathEdge(
-                p1.getPathEdges().get(1).getInferenceGraphEdge(), 
-                revSegment,
+            new Path(new PathEdge(p1.getPathEdges().get(1).getSegment(),
                 0d, true)),
             VectorFactory.getDenseDefault().createVector2D(
                 0d, -1d));
@@ -691,8 +685,7 @@ public class PathStateTest {
         new PathState(p1, VectorFactory
             .getDenseDefault().createVector2D(5d, 1d));
     final PathState y =
-        new PathState(new Path(new PathEdge(ie3, 
-            new LineSegment(e3.getCoordinates()[0], e3.getCoordinates()[1])
+        new PathState(new Path(new PathEdge(Iterables.getOnlyElement(ie3.getSegments())
             , 0d, false)), 
             VectorFactory.getDenseDefault().createVector2D(5d, 1d));
     final Vector diff = y.minus(x);
@@ -739,7 +732,7 @@ public class PathStateTest {
     final LineSegment segment = new LineSegment(ie3_rev.getGeometry().getCoordinates()[0], 
         ie3_rev.getGeometry().getCoordinates()[1]);
     final PathState y =
-        new PathState(new Path(new PathEdge(ie3_rev, segment, 0d, false)), 
+        new PathState(new Path(new PathEdge(Iterables.getOnlyElement(ie3_rev.getSegments()), 0d, false)), 
             VectorFactory.getDenseDefault().createVector2D(5d, -1d));
     final Vector diff = y.minus(x);
     AssertJUnit.assertEquals("distance", -20d, diff.getElement(0),
@@ -758,41 +751,30 @@ public class PathStateTest {
         _numericError);
   }
 
-  /**
-   * Deferring this test until we implement the functionality.
-   */
-  @Test(enabled = false)
+  @Test
   public void testDistanceBetween9() {
-    /*
-     * Test large overlaps (one edge
-     * covers two small edges), 
-     * and opposite directions.
-     */
 
-    Path p1 = makeTmpPath(false, new Coordinate(0, 10),
-          new Coordinate(0, 20), new Coordinate(0, 30));
+    Path toPath = makeTmpPath(false, 
+        new Coordinate(586311.9494330664, 4512151.757246521),
+        new Coordinate(586313.1113431666, 4512052.037593625), 
+        new Coordinate(586311.9494330664, 4512151.757246521),
+        new Coordinate(586313.1113431666, 4512052.037593625));
+    Path fromPath = toPath;
     
-    final List<Coordinate> p1RevGeomCoords =
-        Lists.newArrayList(p1.getGeometry().reverse()
-            .getCoordinates());
-    final Path pOther =
-        makeTmpPath(false,
-            Iterables.getFirst(p1RevGeomCoords, null),
-            Iterables.getLast(p1RevGeomCoords, null));
-    final PathState x =
-        new PathState(p1, VectorFactory
-            .getDenseDefault().createVector2D(5d, 1d));
-    final PathState y =
-        new PathState(pOther, VectorFactory
-            .getDenseDefault().createVector2D(5d, -1d));
-    final Vector diff = y.minus(x);
-    AssertJUnit.assertEquals("distance", -10d, diff.getElement(0),
+    final PathState toState =
+        new PathState(toPath, VectorFactory
+            .getDenseDefault().createVector2D(203.96780646837124, 8.65530011125422));
+    final PathState fromState =
+        new PathState(fromPath, VectorFactory
+            .getDenseDefault().createVector2D(203.96780646837124, 8.65530011125422));
+    final Vector diff = toState.minus(fromState);
+    AssertJUnit.assertEquals("distance", 0d, diff.getElement(0),
         _numericError);
     AssertJUnit.assertEquals("velocity", 0d, diff.getElement(1),
         _numericError);
 
-    final Vector diff2 = x.minus(y);
-    AssertJUnit.assertEquals("rev distance", -10d, diff2.getElement(0),
+    final Vector diff2 = fromState.minus(toState);
+    AssertJUnit.assertEquals("rev distance", 0d, diff2.getElement(0),
         _numericError);
     AssertJUnit.assertEquals("rev velocity", 0d, diff2.getElement(1),
         _numericError);

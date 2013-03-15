@@ -26,6 +26,7 @@ import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.graph.InferenceGraphEdge;
 import org.opentrackingtools.model.GpsObservation;
 import org.opentrackingtools.model.VehicleStateDistribution;
+import org.opentrackingtools.paths.PathEdge;
 import org.opentrackingtools.util.PathUtils;
 import org.opentrackingtools.util.StatisticsUtil;
 import org.testng.internal.Nullable;
@@ -330,11 +331,12 @@ public class MotionStateEstimatorPredictor extends
     this.roadModel = roadModel;
 
     this.roadFilter =
-        new AdjKalmanFilter(roadModel,
+        new TruncatedRoadKalmanFilter(roadModel,
             MotionStateEstimatorPredictor
                 .createStateCovarianceMatrix(currentTimeDiff,
                     currentState.getOnRoadModelCovarianceParam()
-                        .getValue(), true), this.roadMeasurementError);
+                        .getValue(), true), this.roadMeasurementError,
+                        Double.MAX_VALUE, 0d);
 
     /*
      * Create the ground-coordinates filter
@@ -351,12 +353,13 @@ public class MotionStateEstimatorPredictor extends
 
     this.groundModel = groundModel;
     this.groundFilter =
-        new AdjKalmanFilter(groundModel,
+        new TruncatedRoadKalmanFilter(groundModel,
             MotionStateEstimatorPredictor
                 .createStateCovarianceMatrix(currentTimeDiff,
                     currentState.getOffRoadModelCovarianceParam()
                         .getValue(), false), currentState
-                .getObservationCovarianceParam().getValue());
+                .getObservationCovarianceParam().getValue(),
+                Double.MAX_VALUE, 0d);
 
   }
 
@@ -505,10 +508,11 @@ public class MotionStateEstimatorPredictor extends
             MotionStateEstimatorPredictor.Og.transpose());
     Q.plusEquals(this.groundFilter.getMeasurementCovariance());
 
-    final MultivariateGaussian res =
-        new AdjMultivariateGaussian(
-            MotionStateEstimatorPredictor.Og.times(projBelief
-                .getMean()), Q);
+    final MultivariateGaussian res = 
+        this.groundFilter.createInitialLearnedObject();
+    res.setMean(MotionStateEstimatorPredictor.Og.times(projBelief
+                .getMean()));
+    res.setCovariance(Q);
     return res;
   }
 
@@ -521,7 +525,7 @@ public class MotionStateEstimatorPredictor extends
    * @return
    */
   public MultivariateGaussian getObservationDistribution(
-    MultivariateGaussian motionState, InferenceGraphEdge edge) {
+    MultivariateGaussian motionState, PathEdge edge) {
 
     final MultivariateGaussian projBelief;
     final Matrix measurementCovariance =
@@ -529,9 +533,6 @@ public class MotionStateEstimatorPredictor extends
     if (motionState.getInputDimensionality() == 2) {
       projBelief =
           PathUtils.getGroundBeliefFromRoad(motionState, edge, true);
-//      if (!this.roadFilter.getMeasurementCovariance().isZero()) {
-//        measurementCovariance.plusEquals(this.groundFilter.getMeasurementCovariance());
-//      }
     } else {
       projBelief = motionState;
     }
@@ -542,10 +543,10 @@ public class MotionStateEstimatorPredictor extends
             MotionStateEstimatorPredictor.Og.transpose());
     Q.plusEquals(measurementCovariance);
 
-    final MultivariateGaussian res =
-        new AdjMultivariateGaussian(
-            MotionStateEstimatorPredictor.Og.times(projBelief
-                .getMean()), Q);
+    final MultivariateGaussian res = this.groundFilter.createInitialLearnedObject();
+    res.setMean(MotionStateEstimatorPredictor.Og.times(projBelief
+                .getMean()));
+    res.setCovariance(Q);
 
     return res;
   }
@@ -580,7 +581,7 @@ public class MotionStateEstimatorPredictor extends
     return null;
   }
 
-  public Vector sampleStateTransDist(Vector state, Random rng) {
+  public Vector addStateTransitionError(Vector state, Random rng) {
     final int dim = state.getDimensionality();
     final Matrix cov =
         dim == 4 ? this.currentState.getOffRoadModelCovarianceParam()
