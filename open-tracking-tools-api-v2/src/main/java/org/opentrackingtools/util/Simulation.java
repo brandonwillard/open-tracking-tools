@@ -176,11 +176,7 @@ public class Simulation {
 
   public Simulation(String simulationName, InferenceGraph graph,
     SimulationParameters simParameters,
-    VehicleStateInitialParameters infParams)
-      throws SecurityException, IllegalArgumentException,
-      ClassNotFoundException, NoSuchMethodException,
-      InstantiationException, IllegalAccessException,
-      InvocationTargetException {
+    VehicleStateInitialParameters infParams) {
 
     this.simParameters = simParameters;
     this.infParameters = infParams;

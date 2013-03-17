@@ -65,7 +65,6 @@ public class GenericJTSGraphTest {
                 Double.MAX_VALUE), VectorFactory.getDefault()
                 .createVector2D(Double.MAX_VALUE, 1), 0, 4, 0);
 
-    startLine.getParentEdge();
     final PathEdge startPathEdge = new PathEdge(startLine, 0d, false);
     final VehicleStateDistribution<GpsObservation> currentState =
         VehicleStateDistribution.constructInitialVehicleState(

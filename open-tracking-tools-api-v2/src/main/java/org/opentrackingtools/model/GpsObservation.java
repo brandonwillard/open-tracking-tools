@@ -137,7 +137,7 @@ public class GpsObservation {
   @Override
   public String toString() {
     final StringBuilder builder = new StringBuilder();
-    builder.append("SimpleObservation [sourceId=")
+    builder.append("GpsObservation [sourceId=")
         .append(this.sourceId).append(", timestamp=")
         .append(this.timestamp).append(", coordsLatLon=")
         .append(this.coordsLatLon).append(", recordNumber=")

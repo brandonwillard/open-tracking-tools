@@ -71,7 +71,7 @@ public class PathUtilsTest {
         roadTo.toArray(), 
         projBelief.getMean().toArray(), 1e-1);
     
-    PathUtils.convertToGroundBelief(projBelief, pathEdge, false, true);
+    PathUtils.convertToGroundBelief(projBelief, pathEdge, false, false, true);
     
     ArrayAsserts.assertArrayEquals("convert back to ground", 
         groundTo.toArray(), 

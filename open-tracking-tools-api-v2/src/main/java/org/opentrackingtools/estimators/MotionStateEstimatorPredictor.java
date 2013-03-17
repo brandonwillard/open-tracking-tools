@@ -532,7 +532,7 @@ public class MotionStateEstimatorPredictor extends
         this.groundFilter.getMeasurementCovariance().clone();
     if (motionState.getInputDimensionality() == 2) {
       projBelief =
-          PathUtils.getGroundBeliefFromRoad(motionState, edge, true);
+          PathUtils.getGroundBeliefFromRoad(motionState, edge, false, true);
     } else {
       projBelief = motionState;
     }

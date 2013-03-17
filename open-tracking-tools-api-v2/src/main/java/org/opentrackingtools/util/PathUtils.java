@@ -190,7 +190,7 @@ public class PathUtils {
 
   public static void convertToGroundBelief(
     MultivariateGaussian belief, PathEdge edge,
-    boolean allowExtensions, boolean useAbsVelocity) {
+    boolean expandCovariance, boolean allowExtensions, boolean useAbsVelocity) {
 
     final PathEdgeProjection projPair =
         PathUtils.getGroundProjection(belief.getMean(), edge,
@@ -201,9 +201,18 @@ public class PathUtils {
     }
 
     final Matrix C = belief.getCovariance();
-    final Matrix projCov =
+    
+    
+    final Matrix projCov;
+    if (expandCovariance) {
+      projCov = MatrixFactory.getDefault().createMatrix(4, 4);
+      projCov.setSubMatrix(0, 0, belief.getCovariance());
+      projCov.setSubMatrix(2, 2, belief.getCovariance());
+    } else {
+      projCov =
         projPair.getProjMatrix().times(C)
             .times(projPair.getProjMatrix().transpose());
+    }
 
     assert StatisticsUtil.isPosSemiDefinite((DenseMatrix) projCov);
 
@@ -302,9 +311,9 @@ public class PathUtils {
 
   public static MultivariateGaussian
       getGroundBeliefFromRoad(MultivariateGaussian belief,
-        PathEdge edge, boolean useAbsVelocity) {
+        PathEdge edge, boolean expandCovariance, boolean useAbsVelocity) {
     final MultivariateGaussian newBelief = belief.clone();
-    PathUtils.convertToGroundBelief(newBelief, edge, useAbsVelocity,
+    PathUtils.convertToGroundBelief(newBelief, edge, expandCovariance, false,
         useAbsVelocity);
     return newBelief;
   }

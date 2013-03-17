@@ -341,7 +341,7 @@ public class VehicleStateBootstrapUpdater<O extends GpsObservation>
            * We couldn't find a path of the desired distance, so
            * we're going off-road, I guess.
            */
-          PathUtils.convertToGroundBelief(predictedMotionState, startEdge, false, true);
+          PathUtils.convertToGroundBelief(predictedMotionState, startEdge, true, false, true);
           newPath = Path.nullPath;
         } else {
           final GraphPath sampledGraphPath = paths.size() > 1 ? paths.get(this.random.nextInt(paths.size() - 1))

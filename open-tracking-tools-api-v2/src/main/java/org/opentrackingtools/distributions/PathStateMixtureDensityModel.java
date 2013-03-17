@@ -1,5 +1,6 @@
 package org.opentrackingtools.distributions;
 
+import gov.sandia.cognition.math.LogMath;
 import gov.sandia.cognition.math.RingAccumulator;
 import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.math.matrix.VectorFactory;
@@ -23,35 +24,32 @@ import org.opentrackingtools.paths.PathState;
 import com.beust.jcommander.internal.Maps;
 
 /**
- * Copy of MultivariateMixtureDensityModel for path states
+ * Copy of MultivariateMixtureDensityModel for path states.<br>
+ * Note: this takes log-scale weights! 
  */
-public class PathStateMixtureDensityModel<DistributionType extends ClosedFormComputableDistribution<PathState>>
-    extends LinearMixtureModel<PathState, DistributionType> implements
+public class PathStateMixtureDensityModel
+    extends LinearMixtureModel<PathState, PathStateDistribution> implements
     ClosedFormComputableDistribution<PathState> {
 
   /**
    * PDF of the MultivariateMixtureDensityModel
    * 
-   * @param <DistributionType>
+   * @param <PathStateDistribution>
    *          Type of Distribution in the mixture
    */
-  public static class PDF<DistributionType extends ClosedFormComputableDistribution<PathState>>
-      extends PathStateMixtureDensityModel<DistributionType>
+  public static class PDF
+      extends PathStateMixtureDensityModel
       implements ProbabilityDensityFunction<PathState> {
 
     private static final long serialVersionUID = -715039776358524176L;
 
-    public PDF(Collection<? extends DistributionType> distributions) {
-      super(distributions);
-    }
-
-    public PDF(Collection<? extends DistributionType> distributions,
+    public PDF(Collection<? extends PathStateDistribution> distributions,
       double[] priorWeights) {
       super(distributions, priorWeights);
     }
 
     public PDF(
-      PathStateMixtureDensityModel<? extends DistributionType> other) {
+      PathStateMixtureDensityModel other) {
       super(other);
     }
 
@@ -139,7 +137,7 @@ public class PathStateMixtureDensityModel<DistributionType extends ClosedFormCom
     }
 
     @Override
-    public PathStateMixtureDensityModel.PDF<DistributionType>
+    public PathStateMixtureDensityModel.PDF
         getProbabilityFunction() {
       return this;
     }
@@ -154,27 +152,34 @@ public class PathStateMixtureDensityModel<DistributionType extends ClosedFormCom
   private static final long serialVersionUID = 5143671580377145903L;
 
   public PathStateMixtureDensityModel(
-    Collection<? extends DistributionType> distributions) {
-    this(distributions, null);
-  }
-
-  public PathStateMixtureDensityModel(
-    Collection<? extends DistributionType> distributions,
+    Collection<? extends PathStateDistribution> distributions,
     double[] priorWeights) {
-    super(distributions, priorWeights);
+    super(distributions);
+    super.setPriorWeights(priorWeights);
+  }
+
+  @Override
+  public double getPriorWeightSum() {
+    if (priorWeights.length == 1)
+      return priorWeights[0];
+    double logSum = priorWeights[0];
+    for (int i = 1; i < priorWeights.length; i++) {
+      logSum = LogMath.add(logSum, priorWeights[i]);
+    }
+    return logSum;
   }
 
   public PathStateMixtureDensityModel(
-    PathStateMixtureDensityModel<? extends DistributionType> other) {
+    PathStateMixtureDensityModel other) {
     this(ObjectUtil.cloneSmartElementsAsArrayList(other
         .getDistributions()), ObjectUtil.deepCopy(other
         .getPriorWeights()));
   }
 
   @Override
-  public PathStateMixtureDensityModel<DistributionType> clone() {
-    final PathStateMixtureDensityModel<DistributionType> clone =
-        (PathStateMixtureDensityModel<DistributionType>) super
+  public PathStateMixtureDensityModel clone() {
+    final PathStateMixtureDensityModel clone =
+        (PathStateMixtureDensityModel) super
             .clone();
     return clone;
   }
@@ -208,7 +213,7 @@ public class PathStateMixtureDensityModel<DistributionType extends ClosedFormCom
         new DefaultDataDistribution<PathEdge>();
     for (int k = 0; k < K; k++) {
       final double priorWeight = this.getPriorWeights()[k];
-      final DistributionType dist = this.getDistributions().get(k);
+      final PathStateDistribution dist = this.getDistributions().get(k);
       PathEdge edge = dist.getMean().getEdge();
       edgeDist.increment(edge, priorWeight);
       
@@ -237,9 +242,9 @@ public class PathStateMixtureDensityModel<DistributionType extends ClosedFormCom
   }
 
   @Override
-  public PathStateMixtureDensityModel.PDF<DistributionType>
+  public PathStateMixtureDensityModel.PDF
       getProbabilityFunction() {
-    return new PathStateMixtureDensityModel.PDF<DistributionType>(
+    return new PathStateMixtureDensityModel.PDF(
         this);
   }
 

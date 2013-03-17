@@ -3,6 +3,7 @@ package org.opentrackingtools.model;
 import java.util.Random;
 
 import org.apache.commons.lang3.builder.ToStringBuilder;
+import org.apache.commons.lang3.builder.ToStringStyle;
 
 import gov.sandia.cognition.statistics.ClosedFormDistribution;
 import gov.sandia.cognition.statistics.bayesian.BayesianParameter;
@@ -142,7 +143,7 @@ public class SimpleBayesianParameter<ParameterType, ConditionalType extends Clos
 
   @Override
   public String toString() {
-    ToStringBuilder builder = new ToStringBuilder(this);
+    ToStringBuilder builder = new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE);
     builder.append("value", value);
     builder.append("conditional", conditional);
     builder.append("prior", prior);

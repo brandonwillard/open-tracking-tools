@@ -13,6 +13,7 @@ import gov.sandia.cognition.util.ObjectUtil;
 
 import org.apache.commons.lang.builder.CompareToBuilder;
 import org.apache.commons.lang3.builder.ToStringBuilder;
+import org.apache.commons.lang3.builder.ToStringStyle;
 import org.opentrackingtools.VehicleStateInitialParameters;
 import org.opentrackingtools.distributions.DeterministicDataDistribution;
 import org.opentrackingtools.distributions.OnOffEdgeTransDistribution;
@@ -240,13 +241,13 @@ public class VehicleStateDistribution<Observation extends GpsObservation> extend
   /*-
    * These parameters are for the PathState  
    */
-  protected SimpleBayesianParameter<PathState, PathStateMixtureDensityModel<PathStateDistribution>, PathStateDistribution> pathStateParam;
+  protected SimpleBayesianParameter<PathState, PathStateMixtureDensityModel, PathStateDistribution> pathStateParam;
 
   public VehicleStateDistribution(
     InferenceGraph inferredGraph,
     Observation observation,
     SimpleBayesianParameter<Vector, MultivariateGaussian, MultivariateGaussian> motionStateParam,
-    SimpleBayesianParameter<PathState, PathStateMixtureDensityModel<PathStateDistribution>, PathStateDistribution> pathStateParam,
+    SimpleBayesianParameter<PathState, PathStateMixtureDensityModel, PathStateDistribution> pathStateParam,
     SimpleBayesianParameter<Matrix, ?, ?> observationCovParam,
     SimpleBayesianParameter<Matrix, ?, ?> onRoadModelCovParam,
     SimpleBayesianParameter<Matrix, ?, ?> offRoadModelCovParam,
@@ -374,7 +375,7 @@ public class VehicleStateDistribution<Observation extends GpsObservation> extend
   }
 
   public
-      SimpleBayesianParameter<PathState, PathStateMixtureDensityModel<PathStateDistribution>, PathStateDistribution>
+      SimpleBayesianParameter<PathState, PathStateMixtureDensityModel, PathStateDistribution>
       getPathStateParam() {
     return this.pathStateParam;
   }
@@ -450,13 +451,13 @@ public class VehicleStateDistribution<Observation extends GpsObservation> extend
   public
       void
       setPathStateParam(
-        SimpleBayesianParameter<PathState, PathStateMixtureDensityModel<PathStateDistribution>, PathStateDistribution> pathStateParam) {
+        SimpleBayesianParameter<PathState, PathStateMixtureDensityModel, PathStateDistribution> pathStateParam) {
     this.pathStateParam = pathStateParam;
   }
 
   @Override
   public String toString() {
-    final ToStringBuilder builder = new ToStringBuilder(this);
+    final ToStringBuilder builder = new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE);
     builder.append("pathState", this.pathStateParam);
     builder.append("observation", this.observation);
     return builder.toString();
@@ -539,11 +540,11 @@ public class VehicleStateDistribution<Observation extends GpsObservation> extend
   
       final PathStateDistribution initialPathStateDist =
           new PathStateDistribution(Path.nullPath, initialMotionStateDist);
-      final SimpleBayesianParameter<PathState, PathStateMixtureDensityModel<PathStateDistribution>, PathStateDistribution> pathStateParam =
+      final SimpleBayesianParameter<PathState, PathStateMixtureDensityModel, PathStateDistribution> pathStateParam =
           SimpleBayesianParameter.create(
               initialPathStateDist.getPathState(),
-              new PathStateMixtureDensityModel<PathStateDistribution>(
-                  Collections.singleton(initialPathStateDist)), initialPathStateDist);
+              new PathStateMixtureDensityModel(
+                  Collections.singletonList(initialPathStateDist), new double[] {0d}), initialPathStateDist);
       
       state.setPathStateParam(pathStateParam);
   
@@ -564,9 +565,9 @@ public class VehicleStateDistribution<Observation extends GpsObservation> extend
       
       final PathStateDistribution initialPathStateDist =
           new PathStateDistribution(path, initialMotionStateDist);
-      final PathStateMixtureDensityModel<PathStateDistribution> pathStateMixture = 
-          new PathStateMixtureDensityModel<PathStateDistribution>(Collections.singleton(initialPathStateDist));
-      final SimpleBayesianParameter<PathState, PathStateMixtureDensityModel<PathStateDistribution>, PathStateDistribution> edgeStateParam =
+      final PathStateMixtureDensityModel pathStateMixture = 
+          new PathStateMixtureDensityModel(Collections.singleton(initialPathStateDist), new double[] {0d});
+      final SimpleBayesianParameter<PathState, PathStateMixtureDensityModel, PathStateDistribution> edgeStateParam =
           SimpleBayesianParameter.create(initialPathStateDist.getPathState(),
               pathStateMixture, initialPathStateDist);
 

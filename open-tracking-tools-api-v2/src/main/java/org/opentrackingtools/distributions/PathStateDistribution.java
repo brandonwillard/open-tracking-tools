@@ -14,6 +14,7 @@ import java.util.Random;
 
 import org.apache.commons.lang3.builder.CompareToBuilder;
 import org.apache.commons.lang3.builder.ToStringBuilder;
+import org.apache.commons.lang3.builder.ToStringStyle;
 import org.opentrackingtools.estimators.MotionStateEstimatorPredictor;
 import org.opentrackingtools.paths.Path;
 import org.opentrackingtools.paths.PathState;
@@ -80,7 +81,7 @@ public class PathStateDistribution extends
 
   @Override
   public String toString() {
-    ToStringBuilder builder = new ToStringBuilder(this);
+    ToStringBuilder builder = new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE);
     builder.append("distribution", distribution);
     builder.append("path", path);
     return builder.toString();
@@ -93,6 +94,8 @@ public class PathStateDistribution extends
   protected Path path;
 
   protected PathState pathState;
+
+  protected MultivariateGaussian localStateBelief = null;
 
   public PathStateDistribution(Path path, MultivariateGaussian dist) {
     Preconditions.checkArgument(path.isNullPath() || dist.getInputDimensionality() == 2);
@@ -108,6 +111,7 @@ public class PathStateDistribution extends
     this.path = pathStateDistribution.path;
     this.distribution = pathStateDistribution.distribution;
     this.groundBelief = pathStateDistribution.groundBelief;
+    this.localStateBelief = pathStateDistribution.localStateBelief;
   }
 
   @Override
@@ -118,6 +122,7 @@ public class PathStateDistribution extends
     clone.pathState = ObjectUtil.cloneSmart(this.pathState);
     clone.distribution = this.distribution.clone();
     clone.groundBelief = ObjectUtil.cloneSmart(this.groundBelief);
+    clone.localStateBelief = ObjectUtil.cloneSmart(this.localStateBelief);
     return clone;
   }
 
@@ -182,25 +187,28 @@ public class PathStateDistribution extends
     if (this.groundBelief == null) {
       this.groundBelief =
           PathUtils.getGroundBeliefFromRoad(this.distribution,
-              this.pathState.getEdge(), true);
+              this.pathState.getEdge(), false, true);
     }
 
     return this.groundBelief;
   }
 
   public MultivariateGaussian getLocalStateBelief() {
-    if (this.pathState.isOnRoad()) {
+    if (!this.pathState.isOnRoad()) {
       return this.distribution;
     } else {
-      final Vector mean =
-          Preconditions.checkNotNull(this.pathState.getEdge()
-              .getCheckedStateOnEdge(
-                  this.distribution.getMean(),
-                  MotionStateEstimatorPredictor
-                      .getEdgeLengthErrorTolerance(), true));
-      final MultivariateGaussian localStateBelief =
-          this.distribution.clone();
-      localStateBelief.setMean(mean);
+      if (this.localStateBelief == null) {
+        final Vector mean =
+            Preconditions.checkNotNull(this.pathState.getEdge()
+                .getCheckedStateOnEdge(
+                    this.distribution.getMean(),
+                    MotionStateEstimatorPredictor
+                        .getEdgeLengthErrorTolerance(), true));
+        final MultivariateGaussian localStateBelief =
+            this.distribution.clone();
+        localStateBelief.setMean(mean);
+        this.localStateBelief = localStateBelief;
+      }
       return localStateBelief;
     }
   }

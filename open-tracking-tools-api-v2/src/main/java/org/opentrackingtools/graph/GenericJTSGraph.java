@@ -354,6 +354,18 @@ public class GenericJTSGraph implements InferenceGraph {
     return result;
   }
   
+  /**
+   * Finds paths from the given vehicle state's current edge to the edges
+   * within a radius around the given observation.  When the given
+   * vehicle state is off-road, the edges surrounding the current state are
+   * taken as starting points.  Again a search radius is used, and in
+   * both cases, the radiuses are proportional to the square root of 
+   * Frobenius norms of the state and measurement errors of the given
+   * vehicle state. <br>
+   * Note: the null path, representing off-road travel to the observation 
+   * is always included in the results.
+   * 
+   */
   @Override
   public Set<Path> getPaths(final VehicleStateDistribution<? extends GpsObservation> fromState,
     final GpsObservation obs) {

@@ -57,7 +57,6 @@ public class OnOffEdgeTransitionEstimatorPredictor extends
   protected VehicleStateDistribution<?> currentState;
 
   MultinomialBayesianEstimator estimator;
-  protected BayesianParameter<InferenceGraphEdge, OnOffEdgeTransDistribution, OnOffEdgeTransDistribution> fromParameter;
 
   public OnOffEdgeTransitionEstimatorPredictor(
     VehicleStateDistribution<?> currentState, InferenceGraphEdge currentEdge) {
@@ -96,11 +95,6 @@ public class OnOffEdgeTransitionEstimatorPredictor extends
   public OnOffEdgeTransDistribution createPredictiveDistribution(
     OnOffEdgeTransPriorDistribution posterior) {
     return null;
-    //      if (fromParameter.getValue().isNullEdge()) {
-    //        estimator.createPredictiveDistribution(posterior.freeMotionTransProbPrior);
-    //      } else {
-    //        estimator.createPredictiveDistribution(posterior.edgeMotionTransProbPrior);
-    //      }
   }
 
   @Override
@@ -119,7 +113,7 @@ public class OnOffEdgeTransitionEstimatorPredictor extends
     InferenceGraphEdge toEdge) {
     final Vector transType =
         OnOffEdgeTransDistribution.getTransitionType(
-            this.fromParameter.getValue(), toEdge);
+            this.currentEdge, toEdge);
     if (this.currentEdge.isNullEdge()) {
       this.estimator.update(prior.getFreeMotionTransProbPrior(),
           transType);

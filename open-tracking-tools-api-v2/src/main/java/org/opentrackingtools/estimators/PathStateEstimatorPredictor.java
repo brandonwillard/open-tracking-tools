@@ -1,6 +1,8 @@
 package org.opentrackingtools.estimators;
 
 import gov.sandia.cognition.learning.algorithm.IncrementalLearner;
+import gov.sandia.cognition.math.LogMath;
+import gov.sandia.cognition.math.UnivariateStatisticsUtil;
 import gov.sandia.cognition.math.matrix.Matrix;
 import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.math.matrix.VectorFactory;
@@ -17,6 +19,7 @@ import javax.annotation.Nonnull;
 
 import org.opentrackingtools.distributions.PathStateDistribution;
 import org.opentrackingtools.distributions.PathStateMixtureDensityModel;
+import org.opentrackingtools.distributions.TruncatedRoadGaussian;
 import org.opentrackingtools.model.GpsObservation;
 import org.opentrackingtools.model.VehicleStateDistribution;
 import org.opentrackingtools.paths.Path;
@@ -82,7 +85,7 @@ public class PathStateEstimatorPredictor extends
    * @return
    */
   @Override
-  public PathStateMixtureDensityModel<PathStateDistribution>
+  public PathStateMixtureDensityModel
       createPredictiveDistribution(MultivariateGaussian prior) {
 
     final List<PathStateDistribution> distributions =
@@ -107,11 +110,11 @@ public class PathStateEstimatorPredictor extends
             this.currentState.getPathStateParam().getValue();
         groundDistribution =
             PathUtils.getGroundBeliefFromRoad(prior.clone(),
-                prevPathState.getEdge(), true);
+                prevPathState.getEdge(), true, true);
       }
       distributions.add(new PathStateDistribution(this.path,
           groundDistribution));
-      weights.add(1d);
+      weights.add(0d);
     } else {
       MultivariateGaussian roadDistribution;
       if (prior.getInputDimensionality() == 4) {
@@ -126,16 +129,18 @@ public class PathStateEstimatorPredictor extends
       for (final PathEdge edge : this.path.getPathEdges()) {
         PathStateDistribution prediction = getPathEdgePredictive(roadDistribution, edge);
         distributions.add(prediction);
-        weights.add(this.marginalPredictiveLogLikInternal(this.path,
-            prediction.getMotionStateDistribution(), edge));
+        weights.add(
+            this.path.getPathEdges().size() == 1 ? 0d :
+              this.marginalPredictiveLogLikInternal(this.path, roadDistribution, edge));
       }
     }
-    final PathStateMixtureDensityModel<PathStateDistribution> result =
-        new PathStateMixtureDensityModel<PathStateDistribution>(
-            distributions);
-    result.setDistributions((ArrayList) distributions);
-    result.setPriorWeights(Doubles.toArray(weights));
+    
+    final PathStateMixtureDensityModel result =
+        new PathStateMixtureDensityModel(distributions, Doubles.toArray(weights));
 
+    Preconditions.checkState(
+        Math.abs(Math.exp(result.getPriorWeightSum()) - 1d) < 1e-5);
+    
     return result;
   }
   
@@ -174,48 +179,10 @@ public class PathStateEstimatorPredictor extends
         .isPosSemiDefinite((gov.sandia.cognition.math.matrix.mtj.DenseMatrix) R);
 
     final PathStateDistribution prediction =
-        new PathStateDistribution(this.path,
-            new MultivariateGaussian(a, R));
+        new PathStateDistribution(this.path.getPathTo(edge),
+            new TruncatedRoadGaussian(a, R, Double.MAX_VALUE, 0d));
     
     return prediction;
-  }
-
-  /**
-   * 
-   * @param prior
-   * @param startPathState
-   * @return
-   */
-  private PathStateDistribution getPathStateDistributionFromGround(
-    MultivariateGaussian prior, PathState startPathState) {
-
-    Preconditions.checkArgument(prior.getInputDimensionality() == 4
-        && startPathState.isOnRoad());
-
-    final double direction =
-        (startPathState.getEdge().isBackward() ? -1d : 1d);
-    final double velocity =
-        direction
-            * VectorFactory
-                .getDenseDefault()
-                .copyVector(
-                    MotionStateEstimatorPredictor.getVg().times(
-                        prior.getMean())).norm2();
-
-    final double distanceMovedFromStartOfPath =
-        Math.signum(velocity)
-            * MotionStateEstimatorPredictor.Og.times(prior.getMean())
-                .euclideanDistance(
-                    MotionStateEstimatorPredictor.Og
-                        .times(startPathState.getGroundState()))
-            + startPathState.getEdge().getDistToStartOfEdge();
-
-    final MultivariateGaussian distribution =
-        new MultivariateGaussian(VectorFactory.getDefault()
-            .createVector2D(distanceMovedFromStartOfPath, velocity),
-            prior.getCovariance());
-
-    return new PathStateDistribution(this.path, distribution);
   }
 
   @Override
@@ -251,16 +218,23 @@ public class PathStateEstimatorPredictor extends
             * Or.times(beliefPrediction.getMean()).getElement(0);
 
     final double t1 =
-        UnivariateGaussian.CDF.evaluate(thisEndDistance, mean, var)
-            - UnivariateGaussian.CDF.evaluate(thisStartDistance,
-                mean, var);
+      LogMath.subtract(
+          StatisticsUtil.normalCdf(thisEndDistance, mean, Math.sqrt(var), true),
+          StatisticsUtil.normalCdf(thisStartDistance, mean, Math.sqrt(var), true));
+//        UnivariateGaussian.CDF.evaluate(thisEndDistance, mean, var)
+//            - UnivariateGaussian.CDF.evaluate(thisStartDistance,
+//                mean, var);
 
     final double Z =
-        UnivariateGaussian.CDF.evaluate(
-            Math.abs(path.getTotalPathDistance()), mean, var)
-            - UnivariateGaussian.CDF.evaluate(0, mean, var);
+      LogMath.subtract(
+          StatisticsUtil.normalCdf(Math.abs(path.getTotalPathDistance()), mean, Math.sqrt(var), true),
+          StatisticsUtil.normalCdf(0d, mean, Math.sqrt(var), true));
+//        UnivariateGaussian.CDF.evaluate(
+//            Math.abs(path.getTotalPathDistance()), mean, var)
+//            - UnivariateGaussian.CDF.evaluate(0, mean, var);
 
-    return Math.log(t1) - Math.log(Z);
+//    return Math.log(t1) - Math.log(Z);
+    return t1 - Z;
   }
 
   @Override
