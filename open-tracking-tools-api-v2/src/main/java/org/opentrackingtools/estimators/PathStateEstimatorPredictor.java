@@ -246,15 +246,18 @@ public class PathStateEstimatorPredictor extends
 
   @Override
   public void update(PathStateDistribution prior, Vector data) {
+    Preconditions.checkArgument(prior.getPathState().getPath().equals(this.path));
     if (prior.getPathState().isOnRoad()) {
       /*
        * Clamp the projected obs
        */
       if (!this.path.isOnPath(prior.getMean().getElement(0))) {
-        prior.getMean().setElement(
+        final Vector mean = prior.getMean().clone();
+        mean.setElement(
             0,
             prior.getPathState().getPath()
                 .clampToPath(prior.getMean().getElement(0)));
+        prior.setMean(mean);
       }
     }
   }

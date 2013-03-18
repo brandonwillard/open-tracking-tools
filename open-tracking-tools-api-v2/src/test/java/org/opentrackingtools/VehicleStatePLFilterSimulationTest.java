@@ -68,26 +68,47 @@ public class VehicleStatePLFilterSimulationTest {
   @DataProvider
   private static final Object[][] initialStateData() {
     return new Object[][] {
+//        {
+//            /*
+//             * Road only
+//             */
+//            new VehicleStateInitialParameters(null, VectorFactory
+//                .getDefault().createVector2D(70d, 70d), 20,
+//                VectorFactory.getDefault().createVector1D(6.25e-4),
+//                20, VectorFactory.getDefault().createVector2D(
+//                    6.25e-4, 6.25e-4), 20, VectorFactory.getDefault()
+//                    .createVector2D(1d, Double.MAX_VALUE),
+//                VectorFactory.getDefault().createVector2D(
+//                    Double.MAX_VALUE, 1d), 25, 30, 2159585l),
+//            new VehicleStateInitialParameters(null, VectorFactory
+//                .getDefault().createVector2D(70d, 70d), 20,
+//                VectorFactory.getDefault().createVector1D(6.25e-4),
+//                20, VectorFactory.getDefault().createVector2D(
+//                    6.25e-4, 6.25e-4), 20, VectorFactory.getDefault()
+//                    .createVector2D(1d, Double.MAX_VALUE),
+//                VectorFactory.getDefault().createVector2D(
+//                    Double.MAX_VALUE, 1d), 25, 30, 2159585l),
+//            Boolean.FALSE, 36000 },
         {
             /*
-             * Road only
+             * Ground only
              */
             new VehicleStateInitialParameters(null, VectorFactory
                 .getDefault().createVector2D(70d, 70d), 20,
                 VectorFactory.getDefault().createVector1D(6.25e-4),
                 20, VectorFactory.getDefault().createVector2D(
                     6.25e-4, 6.25e-4), 20, VectorFactory.getDefault()
-                    .createVector2D(1d, Double.MAX_VALUE),
+                    .createVector2D(Double.MAX_VALUE, 1d),
                 VectorFactory.getDefault().createVector2D(
-                    Double.MAX_VALUE, 1d), 25, 30, 2159585l),
+                    1d, Double.MAX_VALUE), 25, 30, 2159585l),
             new VehicleStateInitialParameters(null, VectorFactory
                 .getDefault().createVector2D(70d, 70d), 20,
                 VectorFactory.getDefault().createVector1D(6.25e-4),
                 20, VectorFactory.getDefault().createVector2D(
                     6.25e-4, 6.25e-4), 20, VectorFactory.getDefault()
-                    .createVector2D(1d, Double.MAX_VALUE),
-                VectorFactory.getDefault().createVector2D(
-                    Double.MAX_VALUE, 1d), 25, 30, 2159585l),
+                    .createVector2D(Double.MAX_VALUE, 1d),
+                VectorFactory.getDefault().createVector2D(1d,
+                    Double.MAX_VALUE), 25, 30, 2159585l),
             Boolean.FALSE, 36000 },
         {
             /*
@@ -108,7 +129,8 @@ public class VehicleStatePLFilterSimulationTest {
                     6.25e-4, 6.25e-4), 20, VectorFactory.getDefault()
                     .createVector2D(70d, 30d), VectorFactory
                     .getDefault().createVector2D(30d, 70d), 25, 30,
-                2159585l), Boolean.FALSE, 36000 } };
+                2159585l), Boolean.FALSE, 36000 } 
+        };
   }
 
   private Matrix avgTransform;
@@ -263,8 +285,6 @@ public class VehicleStatePLFilterSimulationTest {
         SufficientStatistic offRoadCovErrorSS,
         SufficientStatistic transitionsSS, boolean generalizeMoveDiff) {
 
-    final SufficientStatistic stateMeanStat =
-        new MultivariateGaussian.SufficientStatistic();
     final SufficientStatistic groundStateMeanStat =
         new MultivariateGaussian.SufficientStatistic();
     final SufficientStatistic obsCovMeanStat =
@@ -294,10 +314,11 @@ public class VehicleStatePLFilterSimulationTest {
           state.getPathStateParam().getValue();
       final PathState truePathState =
           state.getPathStateParam().getValue();
-      if (pathState.isOnRoad()
+      if ((pathState.isOnRoad()
           && truePathState.isOnRoad()
           && pathState.getPath().getGeometry()
-              .covers(truePathState.getPath().getGeometry())) {
+              .covers(truePathState.getPath().getGeometry()))
+              || (!pathState.isOnRoad() && !truePathState.isOnRoad())) {
         truePathsFound++;
       }
 
@@ -306,9 +327,7 @@ public class VehicleStatePLFilterSimulationTest {
         numOnTrueEdge++;
       }
 
-      state.getPathStateParam().getParameterPrior();
       groundStateMeanStat.update(pathState.getGroundState());
-      stateMeanStat.update(pathState.getMotionState());
 
       obsCovMeanStat.update(state.getObservationCovarianceParam()
           .getValue().convertToVector());
@@ -375,7 +394,6 @@ public class VehicleStatePLFilterSimulationTest {
                 .getValue().convertToVector());
 
     this.log.info("trueMotionState=" + truePathState.getMotionState());
-    this.log.info("avgMotionState=" + stateMeanStat.getMean());
     this.log.debug("obsError=" + obsError);
     this.log.debug("stateError=" + stateError);
 
@@ -417,40 +435,13 @@ public class VehicleStatePLFilterSimulationTest {
 
     if (obsErrorSS.getCount() > 1) {//Math.min(approxRuns / 16, 155)) {
 
-      ArrayAsserts.assertArrayEquals(obsErrorSS.getMean()
-          .getDimensionality() == 4
-          ? VehicleStatePLFilterSimulationTest.fourZeros
-          : VehicleStatePLFilterSimulationTest.twoZeros, obsErrorSS.getMean()
-          .toArray(), 3d * Math
-          .sqrt(trueVehicleState.getObservationCovarianceParam()
-              .getValue().normFrobenius()));
+      assertVectorWithCovarianceError(obsErrorSS.getMean(), trueVehicleState.getObservationCovarianceParam()
+              .getValue(), 5d);
 
-      final Matrix modelCovariance;
-      if (stateErrorSS.getMean().getDimensionality() == 4) {
-        final Matrix Qg =
-            trueVehicleState.getOffRoadModelCovarianceParam()
-                .getValue();
-        final Matrix factor =
-            MotionStateEstimatorPredictor.getCovarianceFactor(
-                this.sim.getSimParameters().getFrequency(), false);
-        modelCovariance = factor.times(Qg).times(factor.transpose());
-      } else {
-        final Matrix Qr =
-            trueVehicleState.getOnRoadModelCovarianceParam()
-                .getValue();
-        final Matrix factor =
-            MotionStateEstimatorPredictor.getCovarianceFactor(
-                this.sim.getSimParameters().getFrequency(), true);
-        modelCovariance = factor.times(Qr).times(factor.transpose());
-      }
+      final Matrix stateModelCovariance = createModelCovariance(trueVehicleState, stateErrorSS);
 
-      ArrayAsserts
-          .assertArrayEquals(stateErrorSS.getMean()
-              .getDimensionality() == 4
-              ? VehicleStatePLFilterSimulationTest.fourZeros
-              : VehicleStatePLFilterSimulationTest.twoZeros, stateErrorSS
-              .getMean().toArray(), 5d * Math.sqrt(modelCovariance
-              .normFrobenius()));
+      assertVectorWithCovarianceError(stateErrorSS.getMean(), 
+          stateModelCovariance, 5d);
 
       ArrayAsserts.assertArrayEquals(
           VehicleStatePLFilterSimulationTest.oneZero, onRoadCovErrorSS
@@ -463,6 +454,39 @@ public class VehicleStatePLFilterSimulationTest {
               .getMean().toArray(), 0.7d * trueVehicleState
               .getOffRoadModelCovarianceParam().getValue()
               .normFrobenius());
+    }
+  }
+
+  private Matrix createModelCovariance(
+    VehicleStateDistribution<GpsObservation> trueVehicleState,
+    SufficientStatistic stateErrorSS) {
+    final Matrix modelCovariance;
+    if (stateErrorSS.getMean().getDimensionality() == 4) {
+      final Matrix Qg =
+          trueVehicleState.getOffRoadModelCovarianceParam()
+              .getValue();
+      final Matrix factor =
+          MotionStateEstimatorPredictor.getCovarianceFactor(
+              this.sim.getSimParameters().getFrequency(), false);
+      modelCovariance = factor.times(Qg).times(factor.transpose());
+    } else {
+      final Matrix Qr =
+          trueVehicleState.getOnRoadModelCovarianceParam()
+              .getValue();
+      final Matrix factor =
+          MotionStateEstimatorPredictor.getCovarianceFactor(
+              this.sim.getSimParameters().getFrequency(), true);
+      modelCovariance = factor.times(Qr).times(factor.transpose());
+    }
+    return modelCovariance;
+  }
+
+  public static void assertVectorWithCovarianceError(Vector mean,
+    Matrix cov, double scale) {
+    for (int i = 0; i < mean.getDimensionality(); i++) {
+      final double error = mean.getElement(i);
+      final double stdDev = Math.sqrt(cov.getElement(i, i));
+      AssertJUnit.assertEquals(0d, error, scale * stdDev);
     }
   }
 

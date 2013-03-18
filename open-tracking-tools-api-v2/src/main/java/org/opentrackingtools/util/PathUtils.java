@@ -140,19 +140,19 @@ public class PathUtils {
     final MultivariateGaussian adjBelief;
     if (destPath.isNullPath() && belief.getMean().getDimensionality() != 4) {
       Preconditions.checkArgument(belief.getPathState().isOnRoad());
-      adjBelief = belief.getGroundBelief();
+      adjBelief = belief.getGroundDistribution();
     } else if (!destPath.isNullPath()
         && belief.getMean().getDimensionality() != 2) {
       Preconditions.checkArgument(!belief.getPathState().isOnRoad());
       adjBelief =
-          PathUtils.getRoadBeliefFromGround(belief.getGroundBelief(), destPath, true);
+          PathUtils.getRoadBeliefFromGround(belief.getGroundDistribution(), destPath, true);
     } else {
       if (!destPath.isNullPath()) {
         Preconditions.checkState(destPath
             .isOnPath(MotionStateEstimatorPredictor.getOr()
                 .times(belief.getMean()).getElement(0)));
       }
-      adjBelief = belief.getMotionStateDistribution();
+      adjBelief = belief.getMotionDistribution();
     }
 
     Preconditions

@@ -208,7 +208,7 @@ public class PathStateTest {
         startState.convertToPath(newPath);
 
     final PathState stateOnNewPath =
-        new PathState(newPath, result.globalState);
+        new PathState(newPath, result.motionState);
     final Vector difference =
         stateOnNewPath.minus(startState);
 
@@ -233,7 +233,7 @@ public class PathStateTest {
         startState.convertToPath(newPath);
 
     final PathState stateOnNewPath =
-        new PathState(newPath, result.globalState);
+        new PathState(newPath, result.motionState);
     final Vector difference =
         stateOnNewPath.minus(startState);
 
@@ -261,7 +261,7 @@ public class PathStateTest {
         startState.convertToPath(newPath);
 
     final PathState stateOnNewPath =
-        new PathState(newPath, result.globalState);
+        new PathState(newPath, result.motionState);
     final Vector difference =
         stateOnNewPath.minus(startState);
 

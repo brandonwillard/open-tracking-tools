@@ -206,6 +206,12 @@ public class VehicleStateBootstrapUpdater<O extends GpsObservation>
   }
 
   private List<GraphPath> getPathsUpToLength(GraphPath startGraph, double lengthToTravel) {
+    
+    /*
+     * This seems like too much to compute...
+     */
+    Preconditions.checkArgument(lengthToTravel < 1000d);
+    
     final InferenceGraphEdge startEdge = Iterables.getLast(startGraph.getEdges());
     if (startEdge.getLength() < lengthToTravel
         && lengthToTravel > 0d) {
@@ -372,7 +378,7 @@ public class VehicleStateBootstrapUpdater<O extends GpsObservation>
      * on, otherwise, distance along path will add up indefinitely. 
      */
     updatedState.getMotionStateParam().setParameterPrior(
-        new TruncatedRoadGaussian(newPathState.getLocalState(), 
+        new TruncatedRoadGaussian(newPathState.getEdgeState(), 
            newPathState.isOnRoad() ? motionStatePredictor.getRoadFilter().getModelCovariance() 
                : motionStatePredictor.getGroundFilter().getModelCovariance(),
                Double.MAX_VALUE, 0d)

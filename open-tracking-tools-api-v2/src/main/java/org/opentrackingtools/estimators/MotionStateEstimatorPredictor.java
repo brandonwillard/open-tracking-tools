@@ -500,7 +500,7 @@ public class MotionStateEstimatorPredictor extends
   public MultivariateGaussian getMeasurementBelief(
     final PathStateDistribution stateBelief) {
     final MultivariateGaussian projBelief =
-        stateBelief.getGroundBelief().clone();
+        stateBelief.getGroundDistribution().clone();
 
     final Matrix Q =
         MotionStateEstimatorPredictor.Og.times(

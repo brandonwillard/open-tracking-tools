@@ -21,13 +21,19 @@ public class SimpleBayesianParameter<ParameterType, ConditionalType extends Clos
   protected ParameterType value;
   protected String name = null;
   
+  /**
+   * Shallow clone.  Deep copies in here can be expensive.
+   */
   @Override
   public SimpleBayesianParameter<ParameterType, ConditionalType, PriorType> clone() {
     SimpleBayesianParameter<ParameterType, ConditionalType, PriorType> clone = 
         (SimpleBayesianParameter<ParameterType, ConditionalType, PriorType>) super.clone();
-    clone.conditional = ObjectUtil.cloneSmart(this.conditional);
-    clone.prior = ObjectUtil.cloneSmart(this.prior);
-    clone.value = ObjectUtil.cloneSmart(this.value);
+//    clone.conditional = ObjectUtil.cloneSmart(this.conditional);
+//    clone.prior = ObjectUtil.cloneSmart(this.prior);
+//    clone.value = ObjectUtil.cloneSmart(this.value);
+    clone.conditional = this.conditional;
+    clone.prior = this.prior;
+    clone.value = this.value;
     clone.name = this.name;
     return clone;
   }

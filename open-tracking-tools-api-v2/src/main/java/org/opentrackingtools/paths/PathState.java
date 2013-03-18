@@ -23,11 +23,11 @@ public class PathState extends AbstractVector implements
 
   private static final long serialVersionUID = 2846671162796173049L;
 
-  protected Vector globalState = null;
+  protected Vector motionState = null;
   protected Path path = null;
   protected PathEdge edge = null;
   protected Vector groundState = null;
-  protected Vector localState = null;
+  protected Vector edgeState = null;
 
   public PathState(Path path, Vector state) {
     
@@ -35,45 +35,45 @@ public class PathState extends AbstractVector implements
     Preconditions.checkArgument(!path.isNullPath() || state.getDimensionality() == 4);
     Preconditions.checkArgument(!(state instanceof PathState));
     
-    this.globalState = state;
+    this.motionState = state;
     this.path = path;
     
     /*
      * Now make sure the result is on this path.
      */
     if (!path.isNullPath()) {
-      this.globalState.setElement(0,
-          path.clampToPath(this.globalState.getElement(0)));
+      this.motionState.setElement(0,
+          path.clampToPath(this.motionState.getElement(0)));
     }
   }
 
   public PathState(PathState pathState) {
     this.edge = pathState.edge;
     
-    this.globalState = pathState.globalState;
+    this.motionState = pathState.motionState;
     this.groundState = pathState.groundState;
-    this.localState = pathState.localState;
+    this.edgeState = pathState.edgeState;
     this.path = pathState.path;
   }
 
   @Override
   public double angle(Vector other) {
-    return this.globalState.angle(other);
+    return this.motionState.angle(other);
   }
 
   @Override
   public void assertDimensionalityEquals(int otherDimensionality) {
-    this.globalState.assertDimensionalityEquals(otherDimensionality);
+    this.motionState.assertDimensionalityEquals(otherDimensionality);
   }
 
   @Override
   public void assertSameDimensionality(Vector other) {
-    this.globalState.assertSameDimensionality(other);
+    this.motionState.assertSameDimensionality(other);
   }
 
   @Override
   public boolean checkSameDimensionality(Vector other) {
-    return this.globalState.checkSameDimensionality(other);
+    return this.motionState.checkSameDimensionality(other);
   }
 
   @Override
@@ -86,8 +86,8 @@ public class PathState extends AbstractVector implements
      * of the path edges, then we need to find the new edge.
      */
     clone.edge = null;
-    clone.localState = ObjectUtil.cloneSmart(this.localState);
-    clone.globalState = ObjectUtil.cloneSmart(this.globalState);
+    clone.edgeState = ObjectUtil.cloneSmart(this.edgeState);
+    clone.motionState = ObjectUtil.cloneSmart(this.motionState);
     clone.groundState = ObjectUtil.cloneSmart(this.groundState);
     return clone;
   }
@@ -96,39 +96,39 @@ public class PathState extends AbstractVector implements
   public int compareTo(PathState o) {
     final CompareToBuilder comparator = new CompareToBuilder();
     comparator.append(this.path, o.getPath());
-    comparator.append(this.globalState, o.getMotionState());
+    comparator.append(this.motionState, o.getMotionState());
     return comparator.toComparison();
   }
 
   @Override
   public void convertFromVector(Vector parameters) {
-    this.globalState.convertFromVector(parameters);
+    this.motionState.convertFromVector(parameters);
   }
 
   @Override
   public Vector convertToVector() {
-    return this.globalState.convertToVector();
+    return this.motionState.convertToVector();
   }
 
   @Override
   public double cosine(Vector other) {
-    return this.globalState.cosine(other);
+    return this.motionState.cosine(other);
   }
 
   @Override
   public double dotProduct(Vector other) {
-    return this.globalState.dotProduct(other);
+    return this.motionState.dotProduct(other);
   }
 
   @Override
   public Vector dotTimes(Vector other) {
-    return this.globalState.dotTimes(other);
+    return this.motionState.dotTimes(other);
   }
 
   @Override
   public void dotTimesEquals(Vector other) {
     this.groundState = null;
-    this.globalState.dotTimesEquals(other);
+    this.motionState.dotTimesEquals(other);
   }
 
   @Override
@@ -165,22 +165,22 @@ public class PathState extends AbstractVector implements
 
   @Override
   public boolean equals(Vector other, double effectiveZero) {
-    return this.globalState.equals(other, effectiveZero);
+    return this.motionState.equals(other, effectiveZero);
   }
 
   @Override
   public double euclideanDistance(Vector other) {
-    return this.globalState.euclideanDistance(other);
+    return this.motionState.euclideanDistance(other);
   }
 
   @Override
   public double euclideanDistanceSquared(Vector other) {
-    return this.globalState.euclideanDistanceSquared(other);
+    return this.motionState.euclideanDistanceSquared(other);
   }
 
   @Override
   public int getDimensionality() {
-    return this.globalState.getDimensionality();
+    return this.motionState.getDimensionality();
   }
 
   public PathEdge getEdge() {
@@ -193,28 +193,28 @@ public class PathState extends AbstractVector implements
       Preconditions.checkState(!this.path.isNullPath());
       this.edge =
           this.path.getEdgeForDistance(
-              this.globalState.getElement(0), false);
+              this.motionState.getElement(0), false);
     }
     return Preconditions.checkNotNull(this.edge);
   }
 
   @Override
   public double getElement(int index) {
-    return this.globalState.getElement(index);
+    return this.motionState.getElement(index);
   }
 
   public Vector getMotionState() {
-    return this.globalState;
+    return this.motionState;
   }
 
   public Vector getGroundState() {
     if (!this.isOnRoad()) {
-      return this.globalState;
+      return this.motionState;
     }
 
     if (this.groundState == null) {
       this.groundState =
-          PathUtils.getGroundStateFromRoad(this.globalState,
+          PathUtils.getGroundStateFromRoad(this.motionState,
               this.getEdge(), true);
       
     }
@@ -222,20 +222,20 @@ public class PathState extends AbstractVector implements
     return this.groundState;
   }
 
-  public Vector getLocalState() {
-    if (this.localState != null) {
-      return this.localState;
+  public Vector getEdgeState() {
+    if (this.edgeState != null) {
+      return this.edgeState;
     }
     if (this.path.isNullPath()) {
-      this.localState = this.globalState;
+      this.edgeState = this.motionState;
     } else {
-      this.localState =
+      this.edgeState =
           this.getEdge().getCheckedStateOnEdge(
-              this.globalState,
+              this.motionState,
               MotionStateEstimatorPredictor
                   .getEdgeLengthErrorTolerance(), true);
     }
-    return this.localState;
+    return this.edgeState;
   }
 
   public Path getPath() {
@@ -284,7 +284,7 @@ public class PathState extends AbstractVector implements
 
     final Path newPath = this.path.getPathTo(this.getEdge());
 
-    return new PathState(newPath, this.globalState);
+    return new PathState(newPath, this.motionState);
   }
 
   @Override
@@ -308,27 +308,27 @@ public class PathState extends AbstractVector implements
 
   @Override
   public boolean isUnitVector() {
-    return this.globalState.isUnitVector();
+    return this.motionState.isUnitVector();
   }
 
   @Override
   public boolean isUnitVector(double tolerance) {
-    return this.globalState.isUnitVector(tolerance);
+    return this.motionState.isUnitVector(tolerance);
   }
 
   @Override
   public boolean isZero() {
-    return this.globalState.isZero();
+    return this.motionState.isZero();
   }
 
   @Override
   public boolean isZero(double effectiveZero) {
-    return this.globalState.isZero(effectiveZero);
+    return this.motionState.isZero(effectiveZero);
   }
 
   @Override
   public Iterator<VectorEntry> iterator() {
-    return this.globalState.iterator();
+    return this.motionState.iterator();
   }
 
   @Override
@@ -336,163 +336,170 @@ public class PathState extends AbstractVector implements
     if (other instanceof PathState)
       return PathUtils.stateDiff((PathState)other, this, false);
     else
-      return this.globalState.minus(other);
+      return this.motionState.minus(other);
   }
 
   @Override
   public void minusEquals(Vector other) {
     this.groundState = null;
-    this.globalState.minusEquals(other);
+    this.motionState.minusEquals(other);
   }
 
   @Override
   public Vector negative() {
-    return this.globalState.negative();
+    return this.motionState.negative();
   }
 
   @Override
   public void negativeEquals() {
     this.groundState = null;
-    this.globalState.negativeEquals();
+    this.motionState.negativeEquals();
   }
 
   @Override
   public double norm(double power) {
-    return this.globalState.norm(power);
+    return this.motionState.norm(power);
   }
 
   @Override
   public double norm1() {
-    return this.globalState.norm1();
+    return this.motionState.norm1();
   }
 
   @Override
   public double norm2() {
-    return this.globalState.norm2();
+    return this.motionState.norm2();
   }
 
   @Override
   public double norm2Squared() {
-    return this.globalState.norm2Squared();
+    return this.motionState.norm2Squared();
   }
 
   @Override
   public double normInfinity() {
-    return this.globalState.normInfinity();
+    return this.motionState.normInfinity();
   }
 
   @Override
   public Matrix outerProduct(Vector other) {
-    return this.globalState.outerProduct(other);
+    return this.motionState.outerProduct(other);
   }
 
   @Override
   public Vector plus(Vector other) {
-    return this.globalState.plus(other);
+    return this.motionState.plus(other);
   }
 
   @Override
   public void plusEquals(Vector other) {
     this.groundState = null;
-    this.globalState.plusEquals(other);
+    this.motionState.plusEquals(other);
   }
 
   @Override
   public Vector scale(double scaleFactor) {
-    return this.globalState.scale(scaleFactor);
+    return this.motionState.scale(scaleFactor);
   }
 
   @Override
   public Vector scaledMinus(double scaleFactor, Vector other) {
     this.groundState = null;
-    return this.globalState.scaledMinus(scaleFactor, other);
+    return this.motionState.scaledMinus(scaleFactor, other);
   }
 
   @Override
   public void scaledMinusEquals(double scaleFactor, Vector other) {
     this.groundState = null;
-    this.globalState.scaledMinusEquals(scaleFactor, other);
+    this.motionState.scaledMinusEquals(scaleFactor, other);
   }
 
   @Override
   public Vector scaledPlus(double scaleFactor, Vector other) {
     this.groundState = null;
-    return this.globalState.scaledPlus(scaleFactor, other);
+    return this.motionState.scaledPlus(scaleFactor, other);
   }
 
   @Override
   public void scaledPlusEquals(double scaleFactor, Vector other) {
     this.groundState = null;
-    this.globalState.scaledPlusEquals(scaleFactor, other);
+    this.motionState.scaledPlusEquals(scaleFactor, other);
   }
 
   @Override
   public void scaleEquals(double scaleFactor) {
     this.groundState = null;
-    this.globalState.scaleEquals(scaleFactor);
+    this.motionState.scaleEquals(scaleFactor);
   }
 
   @Override
   public void setElement(int index, double value) {
-    this.globalState.setElement(index, value);
+    this.motionState.setElement(index, value);
+    if (!this.path.isNullPath() && index == 0) {
+      this.edgeState = null; 
+    } else {
+      this.edgeState.setElement(index, value);
+    }
+    this.groundState = null;
+    
   }
 
   @Override
   public Vector stack(Vector other) {
-    return this.globalState.stack(other);
+    return this.motionState.stack(other);
   }
 
   @Override
   public Vector subVector(int minIndex, int maxIndex) {
-    return this.globalState.subVector(minIndex, maxIndex);
+    return this.motionState.subVector(minIndex, maxIndex);
   }
 
   @Override
   public double sum() {
-    return this.globalState.sum();
+    return this.motionState.sum();
   }
 
   @Override
   public Vector times(Matrix matrix) {
-    return this.globalState.times(matrix);
+    return this.motionState.times(matrix);
   }
 
   @Override
   public double[] toArray() {
-    return this.globalState.toArray();
+    return this.motionState.toArray();
   }
 
   @Override
   public String toString() {
     final StringBuilder builder = new StringBuilder();
     builder.append("PathState [path=").append(this.path)
-        .append(", state=").append(this.globalState).append("]");
+        .append(", state=").append(this.motionState).append("]");
     return builder.toString();
   }
 
   @Override
   public String toString(NumberFormat format) {
-    return this.globalState.toString(format);
+    return this.motionState.toString(format);
   }
 
   @Override
   public String toString(NumberFormat format, String delimiter) {
-    return this.globalState.toString(format, delimiter);
+    return this.motionState.toString(format, delimiter);
   }
 
   @Override
   public Vector unitVector() {
-    return this.globalState.unitVector();
+    return this.motionState.unitVector();
   }
 
   @Override
   public void unitVectorEquals() {
-    this.globalState.unitVectorEquals();
+    this.motionState.unitVectorEquals();
   }
 
   @Override
   public void zero() {
-    this.globalState.zero();
+    this.motionState.zero();
   }
 
   public PathState convertToPath(Path newPath) {

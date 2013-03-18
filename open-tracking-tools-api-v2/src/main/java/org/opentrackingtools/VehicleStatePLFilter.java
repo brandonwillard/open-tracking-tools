@@ -132,7 +132,7 @@ public class VehicleStatePLFilter<O extends GpsObservation> extends
             .setMotionStateParam(SimpleBayesianParameter.create(
                 measurementPredictionDist.getMean(),
                 measurementPredictionDist, 
-                predictedPathStateDist.getMotionStateDistribution()));
+                predictedPathStateDist.getMotionDistribution()));
 
         final double predictiveLogLikelihood =
             this.getUpdater().computeLogLikelihood(predictedChildState,
@@ -168,14 +168,14 @@ public class VehicleStatePLFilter<O extends GpsObservation> extends
 
       final VehicleStateDistribution<O> updatedState = state.clone();
       final PathStateDistribution pathStateDist =
-          updatedState.getPathStateParam().getParameterPrior();
+          updatedState.getPathStateParam().getParameterPrior().clone();
 
       /*
        * Update motion and path state by first updating the ground
        * coordinates, then reprojecting onto the edge.
        */
       final MultivariateGaussian updatedMotionState =
-          pathStateDist.getGroundBelief().clone();
+          pathStateDist.getGroundDistribution().clone();
       updatedState.getMotionStateEstimatorPredictor().update(
           updatedMotionState, obs.getProjectedPoint());
 
@@ -194,10 +194,10 @@ public class VehicleStatePLFilter<O extends GpsObservation> extends
       updatedState.getPathStateParam().setValue(
           pathStateDist.getPathState());
       updatedState.getPathStateParam().setParameterPrior(pathStateDist);
-      updatedState.getMotionStateParam().setParameterPrior(pathStateDist.getMotionStateDistribution());
+      updatedState.getMotionStateParam().setParameterPrior(pathStateDist.getMotionDistribution());
       MultivariateGaussian obsMotionDist =
         updatedState.getMotionStateEstimatorPredictor().getObservationDistribution(
-            pathStateDist.getMotionStateDistribution(), pathStateDist.getPathState().getEdge());
+            pathStateDist.getMotionDistribution(), pathStateDist.getPathState().getEdge());
       updatedState.getMotionStateParam().setConditionalDistribution(obsMotionDist);
       updatedState.getMotionStateParam().setValue(obsMotionDist.getMean());
 

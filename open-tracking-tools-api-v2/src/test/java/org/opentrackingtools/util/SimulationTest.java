@@ -215,7 +215,7 @@ public class SimulationTest {
       } else if (!sampledPathState.getPath().isNullPath() && parentPathState.getPath().isNullPath()) {
         priorState = new 
           TruncatedRoadGaussian(
-              parentPathState.getLocalState(), 
+              parentPathState.getEdgeState(), 
               MatrixFactory.getDefault().createMatrix(4, 4),
               Double.MAX_VALUE, 0d);
         predictedMotionStateDist = 
@@ -226,7 +226,7 @@ public class SimulationTest {
       } else {
         priorState = new 
           TruncatedRoadGaussian(
-              parentState.getPathStateParam().getValue().getLocalState(), 
+              parentState.getPathStateParam().getValue().getEdgeState(), 
               parentState.getMotionStateParam().getParameterPrior().getCovariance(),
               Double.MAX_VALUE, 0d);
         final Vector expectedError = this.sim.getUpdater().getSampledTransitionError();

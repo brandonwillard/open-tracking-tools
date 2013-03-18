@@ -229,13 +229,13 @@ public class VehicleStatePLUpdater<O extends GpsObservation>
          * Convert to off-road, then predict
          */
         priorMotionState = motionStateEstimatorPredictor
-                .createPredictiveDistribution(priorPathStateDist.getGroundBelief());
+                .createPredictiveDistribution(priorPathStateDist.getGroundDistribution());
       } else if (!path.isNullPath() && !priorPathStateDist.getPathState().isOnRoad()) {
         /*
          * Convert to on-road, then predict
          */
         priorMotionState = PathUtils.getRoadBeliefFromGround(
-            predictedState.getPathStateParam().getParameterPrior().getMotionStateDistribution(), 
+            predictedState.getPathStateParam().getParameterPrior().getMotionDistribution(), 
             Iterables.getFirst(path.getPathEdges(), null), true);
       } else {
         /*
@@ -245,7 +245,7 @@ public class VehicleStatePLUpdater<O extends GpsObservation>
          * update.
          */
         priorMotionState = 
-            predictedState.getPathStateParam().getParameterPrior().getLocalStateBelief();
+            predictedState.getPathStateParam().getParameterPrior().getEdgeDistribution();
       }
       final MultivariateGaussian priorPredictiveMotionState = motionStateEstimatorPredictor
                 .createPredictiveDistribution(priorMotionState);

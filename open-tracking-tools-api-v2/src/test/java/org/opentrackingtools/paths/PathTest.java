@@ -203,7 +203,7 @@ public class PathTest {
 
     final Vector groundLoc =
         MotionStateEstimatorPredictor.getOg().times(
-            currentBelief.getGroundBelief().getMean());
+            currentBelief.getGroundDistribution().getMean());
     AssertJUnit.assertEquals("initial state x", 10d,
         groundLoc.getElement(0), 0d);
     AssertJUnit.assertEquals("initial state y", 0d,
@@ -218,9 +218,9 @@ public class PathTest {
     final PathStateDistribution result = currentBelief.convertToPath(newPath);
 
     AssertJUnit.assertEquals("distance", -10d, result
-        .getMotionStateDistribution().getMean().getElement(0), 0d);
+        .getMotionDistribution().getMean().getElement(0), 0d);
     AssertJUnit.assertEquals("velocity", 5d / 30d, result
-        .getMotionStateDistribution().getMean().getElement(1), 0d);
+        .getMotionDistribution().getMean().getElement(1), 0d);
 
   }
 
@@ -243,7 +243,7 @@ public class PathTest {
 
     final Vector groundLoc =
         MotionStateEstimatorPredictor.getOg().times(
-            currentBelief.getGroundBelief().getMean());
+            currentBelief.getGroundDistribution().getMean());
     AssertJUnit.assertEquals("initial state x", 0d,
         groundLoc.getElement(0), 0d);
     AssertJUnit.assertEquals("initial state y", 0d,
@@ -283,7 +283,7 @@ public class PathTest {
 
     final Vector groundLoc =
         MotionStateEstimatorPredictor.getOg().times(
-            currentBelief.getGroundBelief().getMean());
+            currentBelief.getGroundDistribution().getMean());
     AssertJUnit.assertEquals("initial state x", 2.5d,
         groundLoc.getElement(0), 0d);
     AssertJUnit.assertEquals("initial state y", 0d,
@@ -473,8 +473,8 @@ public class PathTest {
     PathStateEstimatorPredictor pathStateEstimator = new PathStateEstimatorPredictor(null, newPath);
     
     final MultivariateGaussian result = pathStateEstimator.
-        getPathEdgePredictive(belief.getMotionStateDistribution(), Iterables.get(newPath.getPathEdges(), 1)).
-        getMotionStateDistribution();
+        getPathEdgePredictive(belief.getMotionDistribution(), Iterables.get(newPath.getPathEdges(), 1)).
+        getMotionDistribution();
 
     AssertJUnit.assertEquals("distance", -14d, result.getMean()
         .getElement(0), 1d);
