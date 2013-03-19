@@ -191,24 +191,10 @@ public class GenericJTSGraphTest {
     // Remove the null result from the null Path. We don't need it.
     pathLineStrings.remove(null);
     
-    // Copy the passed in LineString Set so we can modify it without messing up
-    // the data passed in.
-    Collection<LineString> lineStringsCopy = new HashSet<LineString>(lineStrings);
-    
-    // Filter the LineStrings we want to find
-    CollectionUtils.filter(lineStringsCopy, new Predicate() {
-      @Override
-      public boolean evaluate(Object arg0) {
-        LineString lineString = (LineString)arg0;
-        if (pathLineStrings.contains(lineString)) {
-          return false;
-        }
-        return true;
-      }
-    });
-    
-    // If all LineStrings were matched, lineStringsCopy should be empty
-    if (lineStringsCopy.isEmpty())
+    // If both sets are equivalent, the Paths contain all the expected LineStrings
+    // and no more (HashSet.equals() doesn't seem to work for this, so use containsAll
+    // in both directions)
+    if (pathLineStrings.containsAll(lineStrings) && lineStrings.containsAll(pathLineStrings))
       return true;
     return false;
   }
