@@ -10,7 +10,6 @@ import java.util.Random;
 import java.util.Set;
 
 import org.apache.commons.collections.CollectionUtils;
-import org.apache.commons.collections.Predicate;
 import org.apache.commons.collections.Transformer;
 import org.geotools.geometry.jts.JTSFactoryFinder;
 import org.opentrackingtools.VehicleStateInitialParameters;
@@ -189,7 +188,8 @@ public class GenericJTSGraphTest {
       }
     });
     // Remove the null result from the null Path. We don't need it.
-    pathLineStrings.remove(null);
+    if (pathLineStrings.contains(null))
+      pathLineStrings.remove(null);
     
     // If both sets are equivalent, the Paths contain all the expected LineStrings
     // and no more (HashSet.equals() doesn't seem to work for this, so use containsAll
