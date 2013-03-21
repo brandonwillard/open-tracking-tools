@@ -128,7 +128,7 @@ public class VehicleStateBootstrapUpdater<O extends GpsObservation>
      */
 
     final VehicleStateDistribution<O> nullState =
-        VehicleStateDistribution.constructInitialVehicleState(this.parameters, this.inferenceGraph, this.initialObservation, this.random,
+        VehicleStateDistribution.createInitialVehicleState(this.parameters, this.inferenceGraph, this.initialObservation, this.random,
             PathEdge.nullPathEdge);
     final MultivariateGaussian initialMotionStateDist =
         nullState.getMotionStateParam().getParameterPrior();
@@ -156,7 +156,7 @@ public class VehicleStateBootstrapUpdater<O extends GpsObservation>
       for (final InferenceGraphSegment line : edges) {
         
         PathEdge startPathEdge = new PathEdge(line, 0d, false); 
-        VehicleStateDistribution<O> stateOnEdge = VehicleStateDistribution.constructInitialVehicleState(
+        VehicleStateDistribution<O> stateOnEdge = VehicleStateDistribution.createInitialVehicleState(
             parameters, inferenceGraph, initialObservation, random, startPathEdge);
 
         final double logLikelihood =
@@ -314,8 +314,7 @@ public class VehicleStateBootstrapUpdater<O extends GpsObservation>
          */
         final MultivariateGaussian groundStateDist = new TruncatedRoadGaussian(
             previousState.getPathStateParam().getValue().getGroundState(), 
-            MatrixFactory.getDefault().createMatrix(4, 4), 
-            Double.MAX_VALUE, 0d);
+            MatrixFactory.getDefault().createMatrix(4, 4));
         predictedMotionState = motionStatePredictor.createPredictiveDistribution(groundStateDist);
         final Vector offRoadPredictedMean = predictedMotionState.getMean().clone();
         final Vector offRoadNoisyPredictedState =
@@ -380,8 +379,7 @@ public class VehicleStateBootstrapUpdater<O extends GpsObservation>
     updatedState.getMotionStateParam().setParameterPrior(
         new TruncatedRoadGaussian(newPathState.getEdgeState(), 
            newPathState.isOnRoad() ? motionStatePredictor.getRoadFilter().getModelCovariance() 
-               : motionStatePredictor.getGroundFilter().getModelCovariance(),
-               Double.MAX_VALUE, 0d)
+               : motionStatePredictor.getGroundFilter().getModelCovariance())
         );
     
     updatedState.getPathStateParam().setValue(newPathState);

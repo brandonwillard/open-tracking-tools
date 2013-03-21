@@ -1,22 +1,35 @@
 package org.opentrackingtools;
 
+import gov.sandia.cognition.math.LogMath;
+import gov.sandia.cognition.math.MutableDouble;
 import gov.sandia.cognition.math.matrix.Matrix;
 import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.math.matrix.VectorEntry;
+import gov.sandia.cognition.math.matrix.VectorFactory;
 import gov.sandia.cognition.statistics.DataDistribution;
+import gov.sandia.cognition.statistics.bayesian.AbstractKalmanFilter;
 import gov.sandia.cognition.statistics.bayesian.AbstractParticleFilter;
 import gov.sandia.cognition.statistics.bayesian.BayesianCredibleInterval;
+import gov.sandia.cognition.statistics.distribution.InverseWishartDistribution;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map.Entry;
 import java.util.Random;
 
 import org.opentrackingtools.distributions.CountedDataDistribution;
 import org.opentrackingtools.distributions.OnOffEdgeTransPriorDistribution;
 import org.opentrackingtools.distributions.PathStateDistribution;
 import org.opentrackingtools.distributions.PathStateMixtureDensityModel;
+import org.opentrackingtools.distributions.TruncatedRoadGaussian;
+import org.opentrackingtools.estimators.MotionStateEstimatorPredictor;
 import org.opentrackingtools.estimators.OnOffEdgeTransitionEstimatorPredictor;
 import org.opentrackingtools.estimators.PathStateEstimatorPredictor;
+import org.opentrackingtools.estimators.RoadMeasurementCovarianceEstimatorPredictor;
+import org.opentrackingtools.estimators.RoadModelCovarianceEstimatorPredictor;
 import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.graph.InferenceGraphEdge;
 import org.opentrackingtools.model.GpsObservation;
@@ -24,8 +37,11 @@ import org.opentrackingtools.model.SimpleBayesianParameter;
 import org.opentrackingtools.model.VehicleStateDistribution;
 import org.opentrackingtools.paths.PathState;
 import org.opentrackingtools.updater.VehicleStatePLUpdater;
+import org.opentrackingtools.util.PathUtils;
 import org.opentrackingtools.util.TrueObservation;
+import org.opentrackingtools.util.model.MutableDoubleCount;
 
+import com.beust.jcommander.internal.Lists;
 import com.google.common.base.Preconditions;
 
 public class VehicleStatePLFilter<O extends GpsObservation> extends
@@ -92,12 +108,19 @@ public class VehicleStatePLFilter<O extends GpsObservation> extends
       final double logCount = Math.log(count);
 
       VehicleStateDistribution<O> predictedState = new VehicleStateDistribution<O>(state);
+      predictedState.setParentState(state);
       predictedState.setObservation(obs);
       predictedState = this.updater.update(predictedState);
+      
+      final CountedDataDistribution<VehicleStateDistribution<O>> childDist =
+          new CountedDataDistribution<VehicleStateDistribution<O>>(true);
 
       final PathStateMixtureDensityModel predictedPathStateMixture =
           predictedState.getPathStateParam()
               .getConditionalDistribution();
+      
+      double particleLogLikTotal = Double.NEGATIVE_INFINITY;
+      
       for (int i = 0; i < predictedPathStateMixture
           .getDistributionCount(); i++) {
         final PathStateDistribution predictedPathStateDist =
@@ -126,7 +149,7 @@ public class VehicleStatePLFilter<O extends GpsObservation> extends
 
         final MultivariateGaussian measurementPredictionDist =
             predictedState.getMotionStateEstimatorPredictor()
-                .getMeasurementBelief(predictedPathStateDist);
+                .getMeasurementDistribution(predictedPathStateDist);
 
         predictedChildState
             .setMotionStateParam(SimpleBayesianParameter.create(
@@ -140,89 +163,217 @@ public class VehicleStatePLFilter<O extends GpsObservation> extends
         
         predictedChildState.setParentState(state);
 
-        resampleDist.increment(predictedChildState,
-            predictiveLogLikelihood + pathStateDistLogLikelihood
-                + edgeTransitionLogLikelihood + logCount);
+        /*
+         * Set these for debugging.
+         */
+        predictedChildState.setPredictiveLogLikelihood(predictiveLogLikelihood);
+        predictedChildState.setPathStateDistLogLikelihood(pathStateDistLogLikelihood);
+        predictedChildState.setEdgeTransitionLogLikelihood(edgeTransitionLogLikelihood);
+        
+        final double childLogLikTotal = predictiveLogLikelihood + pathStateDistLogLikelihood
+                + edgeTransitionLogLikelihood;
+        
+        particleLogLikTotal = LogMath.add(particleLogLikTotal, childLogLikTotal);
+        
+        childDist.increment(predictedChildState, childLogLikTotal);
       }
+      
+      predictedState.setTransitionStateDistribution(childDist);
+      
+      resampleDist.increment(predictedState, particleLogLikTotal + logCount);
+      
     }
-
-    final Random rng = this.getRandom();
 
     Preconditions.checkState(!resampleDist.isEmpty());
     
     if (this.isDebug)
       this.lastResampleDistribution = resampleDist;
-
+    
+    // TODO debug. remove.
+    if (obs instanceof TrueObservation) {
+      final VehicleStateDistribution<?> trueState = ((TrueObservation)obs).getTrueState();
+      if (!trueState.getPathStateParam().getValue().getEdge().
+          equals(resampleDist.getMaxValueKey().getTransitionStateDistribution().getMaxValueKey().
+              getPathStateParam().getValue().getEdge())) {
+        List<Entry<VehicleStateDistribution<O>, MutableDouble>> sortedDist = Lists.newArrayList(resampleDist.asMap().entrySet());
+        Collections.sort(sortedDist, 
+            new Comparator<Entry<VehicleStateDistribution<O>, MutableDouble>>() {
+              @Override
+              public int compare(
+                Entry<VehicleStateDistribution<O>, MutableDouble> o1,
+                Entry<VehicleStateDistribution<O>, MutableDouble> o2) {
+                final double adjValue1 = o1.getValue().getValue() + Math.log(((MutableDoubleCount)o1.getValue()).getCount());
+                final double adjValue2 = o2.getValue().getValue() + Math.log(((MutableDoubleCount)o2.getValue()).getCount());
+                return -Double.compare(adjValue1, adjValue2);
+              }
+            } 
+        );
+        for (Entry<VehicleStateDistribution<O>, MutableDouble>  entry : sortedDist) {
+          final VehicleStateDistribution<O> state = entry.getKey().getTransitionStateDistribution().getMaxValueKey();
+          final Vector distToTrueState = state.getPathStateParam().getParameterPrior().getGroundDistribution().
+              getMean().minus(trueState.getPathStateParam().getValue().getGroundState());
+          final int count = ((MutableDoubleCount)entry.getValue()).getCount();
+          final double adjValue = entry.getValue().getValue() + Math.log(count);
+          System.out.println(resampleDist.getLogFraction(entry.getKey()) + " [" + adjValue + "] (" + count + "),\n\t [" 
+            + distToTrueState + "]:\n\t" 
+            + state.getPathStateParam().getValue() + 
+            "\n\t pathStateLik=" + state.getPathStateDistLogLikelihood() +
+            "\n\t obsLik=" + state.getPredictiveLogLikelihood()
+          );
+        }
+        System.out.println(trueState.getPathStateParam().getValue());
+      }
+    }
+    
     /*
      * Resample the predictive distributions.  Now we're dealing with the "best" states.
      */
     final ArrayList<VehicleStateDistribution<O>> smoothedStates =
-        resampleDist.sample(rng, this.getNumParticles());
+        resampleDist.sample(this.random, this.getNumParticles());
 
-    target.clear();
-
+    List<VehicleStateDistribution<O>> updatedStates = Lists.newArrayList();
     /*
      * Propagate/smooth the best states. 
      */
     for (final VehicleStateDistribution<O> state : smoothedStates) {
-
-      final VehicleStateDistribution<O> updatedState = state.clone();
-      final PathStateDistribution pathStateDist =
-          updatedState.getPathStateParam().getParameterPrior().clone();
-
-      /*
-       * Update motion and path state by first updating the ground
-       * coordinates, then reprojecting onto the edge.
-       */
-      final MultivariateGaussian updatedMotionState =
-          pathStateDist.getGroundDistribution().clone();
-      updatedState.getMotionStateEstimatorPredictor().update(
-          updatedMotionState, obs.getProjectedPoint());
-
-      final PathStateEstimatorPredictor pathStateEstimator =
-          new PathStateEstimatorPredictor(state, pathStateDist
-              .getPathState().getPath());
-
-      pathStateDist.setGroundDistribution(updatedMotionState);
-
-      pathStateEstimator.update(pathStateDist,
-          obs.getProjectedPoint());
-
-      /*
-       * Update parameters
-       */
-      updatedState.getPathStateParam().setValue(
-          pathStateDist.getPathState());
-      updatedState.getPathStateParam().setParameterPrior(pathStateDist);
-      updatedState.getMotionStateParam().setParameterPrior(pathStateDist.getMotionDistribution());
-      MultivariateGaussian obsMotionDist =
-        updatedState.getMotionStateEstimatorPredictor().getObservationDistribution(
-            pathStateDist.getMotionDistribution(), pathStateDist.getPathState().getEdge());
-      updatedState.getMotionStateParam().setConditionalDistribution(obsMotionDist);
-      updatedState.getMotionStateParam().setValue(obsMotionDist.getMean());
-
-      final InferenceGraphEdge graphEdge =
-          updatedState.getParentState().getPathStateParam().getValue().getEdge().getInferenceGraphEdge();
-      final OnOffEdgeTransitionEstimatorPredictor edgeTransitionEstimatorPredictor =
-          new OnOffEdgeTransitionEstimatorPredictor(updatedState,
-              graphEdge);
-      
-      OnOffEdgeTransPriorDistribution prior = updatedState
-          .getEdgeTransitionParam().getParameterPrior();
-      edgeTransitionEstimatorPredictor.update(prior, graphEdge);
-      updatedState.getEdgeTransitionParam().getConditionalDistribution().
-        setFreeMotionTransProbs(prior.getFreeMotionTransProbPrior().getMean());
-      updatedState.getEdgeTransitionParam().getConditionalDistribution().
-        setEdgeMotionTransProbs(prior.getEdgeMotionTransProbPrior().getMean());
-      updatedState.getEdgeTransitionParam().setValue(prior.getMean());
-      
-      // TODO covariance updates
-
-      target.increment(updatedState, 0d);
+      final VehicleStateDistribution<O> sampledTransitionState = state.getTransitionStateDistribution().sample(
+          this.random);
+      VehicleStateDistribution<O> updatedState = internalUpdate(sampledTransitionState, obs);
+      updatedStates.add(updatedState);
     }
     
+    target.clear();
+    target.incrementAll(updatedStates);
+    
     Preconditions.checkState(target.getDomainSize() > 0);
+    if (target instanceof CountedDataDistribution<?>) {
+      Preconditions.checkState(((CountedDataDistribution<?>)target).getTotalCount() == this.numParticles);
+    }
 
+  }
+
+  private VehicleStateDistribution<O> internalUpdate(VehicleStateDistribution<O> state, O obs) {
+    final VehicleStateDistribution<O> updatedState = state.clone();
+    final PathStateDistribution priorPredictivePathStateDist =
+        updatedState.getPathStateParam().getParameterPrior().clone();
+
+    /*
+     * Update motion and path state by first updating the ground
+     * coordinates, then reprojecting onto the edge.
+     * Scratch that.
+     * For on-road, update by projecting the observation onto the path, then
+     * perform a 2d update.
+     */
+    final MultivariateGaussian updatedMotionState = priorPredictivePathStateDist.getMotionDistribution().clone();
+    if (priorPredictivePathStateDist.getPathState().isOnRoad()) {
+//      PathUtils.convertToGroundBelief(updatedMotionState, pathStateDist.getPathState().getEdge(), true, false, true);
+//      updatedState.getMotionStateEstimatorPredictor().update(
+//          updatedMotionState, obs.getProjectedPoint());
+      
+      AbstractKalmanFilter roadFilter = updatedState.getMotionStateEstimatorPredictor().getRoadFilter().clone();
+      
+      final MultivariateGaussian obsProj =
+          PathUtils.getRoadObservation(
+              obs.getProjectedPoint(), updatedState.getObservationCovarianceParam().getValue(), 
+              priorPredictivePathStateDist.getPathState().getPath(), priorPredictivePathStateDist.getPathState().getEdge());
+
+      roadFilter.setMeasurementCovariance(obsProj.getCovariance());
+      roadFilter.measure(updatedMotionState, obsProj.getMean());
+    } else {
+      updatedState.getMotionStateEstimatorPredictor().update(
+          updatedMotionState, obs.getProjectedPoint());
+    }
+
+    final PathStateDistribution posteriorPathStateDist = new PathStateDistribution(
+        priorPredictivePathStateDist.getPathState().getPath(), updatedMotionState);
+//    final PathStateEstimatorPredictor pathStateEstimator =
+//        new PathStateEstimatorPredictor(state, pathStateDist);
+//
+//    pathStateDist.setGroundDistribution(updatedMotionState);
+//
+//    pathStateEstimator.update(pathStateDist,
+//        obs.getProjectedPoint());
+
+    /*
+     * Update parameters
+     */
+    updatedState.getPathStateParam().setValue(
+        posteriorPathStateDist.getPathState());
+    updatedState.getPathStateParam().setParameterPrior(posteriorPathStateDist);
+    updatedState.getMotionStateParam().setParameterPrior(posteriorPathStateDist.getMotionDistribution());
+    MultivariateGaussian obsMotionDist =
+      updatedState.getMotionStateEstimatorPredictor().getObservationDistribution(
+          posteriorPathStateDist.getMotionDistribution(), posteriorPathStateDist.getPathState().getEdge());
+    updatedState.getMotionStateParam().setConditionalDistribution(obsMotionDist);
+    updatedState.getMotionStateParam().setValue(obsMotionDist.getMean());
+
+    final InferenceGraphEdge graphEdge =
+        updatedState.getParentState().getPathStateParam().getValue().getEdge().getInferenceGraphEdge();
+    final OnOffEdgeTransitionEstimatorPredictor edgeTransitionEstimatorPredictor =
+        new OnOffEdgeTransitionEstimatorPredictor(updatedState,
+            graphEdge);
+    
+    OnOffEdgeTransPriorDistribution prior = updatedState
+        .getEdgeTransitionParam().getParameterPrior();
+    edgeTransitionEstimatorPredictor.update(prior, graphEdge);
+    updatedState.getEdgeTransitionParam().getConditionalDistribution().
+      setFreeMotionTransProbs(prior.getFreeMotionTransProbPrior().getMean());
+    updatedState.getEdgeTransitionParam().getConditionalDistribution().
+      setEdgeMotionTransProbs(prior.getEdgeMotionTransProbPrior().getMean());
+    updatedState.getEdgeTransitionParam().setValue(prior.getMean());
+    
+    if (!(posteriorPathStateDist.getPathState().isOnRoad() &&
+          state.getOnRoadModelCovarianceParam().getParameterPrior().getDegreesOfFreedom()
+          >= Integer.MAX_VALUE-1)
+          && !(!posteriorPathStateDist.getPathState().isOnRoad() &&
+            state.getOffRoadModelCovarianceParam().getParameterPrior().getDegreesOfFreedom()
+            >= Integer.MAX_VALUE-1)) {
+      RoadModelCovarianceEstimatorPredictor modelCovarianceEstimator = new RoadModelCovarianceEstimatorPredictor(updatedState, 
+          state.getMotionStateEstimatorPredictor(), this.random);
+      
+      final InverseWishartDistribution currentModelCovDistribution = posteriorPathStateDist.getPathState().isOnRoad() ?
+          updatedState.getOnRoadModelCovarianceParam().getParameterPrior().clone() :
+            updatedState.getOffRoadModelCovarianceParam().getParameterPrior().clone();
+      modelCovarianceEstimator.update(currentModelCovDistribution, obs.getProjectedPoint());
+      
+      /*
+       * After updating the covariance priors, we need to sample our new covariance matrix.
+       * Also, note that we really have separate on/off covariances.  We could project
+       * back and forth, then we'd really only have one.
+       */
+      if (posteriorPathStateDist.getPathState().isOnRoad()) {
+        updatedState.getOnRoadModelCovarianceParam().setParameterPrior(currentModelCovDistribution);
+        final Matrix stateCovSample = currentModelCovDistribution.sample(this.random);
+        updatedState.getOnRoadModelCovarianceParam().setValue(stateCovSample);
+        updatedState.getOnRoadModelCovarianceParam().setConditionalDistribution(
+            new MultivariateGaussian(VectorFactory.getDefault().createVector1D(), 
+                stateCovSample));
+      } else {
+        updatedState.getOffRoadModelCovarianceParam().setParameterPrior(currentModelCovDistribution);
+        final Matrix stateCovSample = currentModelCovDistribution.sample(this.random);
+        updatedState.getOffRoadModelCovarianceParam().setValue(stateCovSample);
+        updatedState.getOffRoadModelCovarianceParam().setConditionalDistribution(
+            new MultivariateGaussian(VectorFactory.getDefault().createVector1D(), 
+                stateCovSample));
+      }
+      
+      Vector newObsStateSample = MotionStateEstimatorPredictor.getOg().times(
+        modelCovarianceEstimator.getNewPosteriorStateSample().getGroundDistribution().getMean());
+      RoadMeasurementCovarianceEstimatorPredictor measurementCovarianceEstimator = new RoadMeasurementCovarianceEstimatorPredictor(
+          updatedState, newObsStateSample);
+      final InverseWishartDistribution currentObsCovDistribution = updatedState.getObservationCovarianceParam()
+          .getParameterPrior().clone();
+      measurementCovarianceEstimator.update(currentObsCovDistribution, obs.getProjectedPoint());
+      
+      updatedState.getObservationCovarianceParam().setParameterPrior(currentObsCovDistribution);
+      final Matrix obsCovSample = currentObsCovDistribution.sample(this.random);
+      updatedState.getObservationCovarianceParam().setValue(obsCovSample);
+      updatedState.getObservationCovarianceParam().setConditionalDistribution(
+          new MultivariateGaussian(VectorFactory.getDefault().createVector1D(), 
+              obsCovSample));
+    }
+    
+    return updatedState;
   }
 
 }

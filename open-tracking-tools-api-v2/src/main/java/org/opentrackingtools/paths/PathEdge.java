@@ -116,6 +116,23 @@ public class PathEdge extends
     }
     return true;
   }
+  
+  public Vector clampToEdge(Vector state) {
+    Preconditions.checkState(!this.isNullEdge());
+    Preconditions.checkArgument(state.getDimensionality() == 2);
+    
+    final Vector newState = state.clone();
+    final double direction = this.isBackward ? -1d : 1d;
+    final double distance = direction * (newState.getElement(0)
+        - this.distToStartOfEdge);
+    
+    if ( distance < 0d) {
+      newState.setElement(0, this.distToStartOfEdge);
+    } else if (distance > this.line.getLength()) {
+      newState.setElement(0, this.distToStartOfEdge + direction * this.line.getLength());
+    }
+    return newState;
+  }
 
   /**
    * Returns a state on the edge that's been truncated within the given
@@ -138,12 +155,12 @@ public class PathEdge extends
     final double direction = this.isBackward ? -1d : 1d;
     final double posDistAdj =
         direction * distance - Math.abs(this.distToStartOfEdge);
-    final double overEndDist = posDistAdj - this.edge.getLength();
+    final double overEndDist = posDistAdj - this.getLength();
     if (overEndDist > 0d) {
       if (overEndDist > tolerance) {
         return null;
       } else {
-        newState.setElement(0, direction * this.edge.getLength()
+        newState.setElement(0, direction * this.getLength()
             + (relative ? 0d : this.distToStartOfEdge));
       }
     } else if (posDistAdj < 0d) {
@@ -219,7 +236,7 @@ public class PathEdge extends
     final double posDistOffset =
         direction * distance - posDistToStart;
 
-    if (posDistOffset - this.edge.getLength() > 1e-7d) {
+    if (posDistOffset - this.getLength() > 1e-7d) {
       return false;
     } else if (posDistOffset < 0d) {
       return false;
@@ -237,7 +254,7 @@ public class PathEdge extends
           this.distToStartOfEdge == 0d && this.isBackward ? -0d
               : this.distToStartOfEdge.longValue();
       return "PathEdge [edge=" + this.edge.getEdgeId() + " ("
-          + this.edge.getLength().longValue() + ")"
+          + this.getLength() + "/" + this.edge.getLength() + ")"
           + ", distToStart=" + distToStart + "]";
     }
   }

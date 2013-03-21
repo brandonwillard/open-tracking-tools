@@ -136,6 +136,19 @@ public class TestUtils {
       geoms.add(geom);
     }
     
+//    MCIndexNoder noder = new MCIndexNoder();
+//    noder.setSegmentIntersector(new IntersectionAdder(new RobustLineIntersector()));
+//    noder.computeNodes(geoms);  
+//    SegmentStringDissolver dissolver = new SegmentStringDissolver();
+//    dissolver.dissolve(noder.getNodedSubstrings());   
+//    
+//    for (Object obj : dissolver.getDissolved()) {
+//      LineString geom = (LineString)obj;
+//      if (geom.getLength() > 1e-5) {
+//        edges.add(geom);
+//        edges.add((LineString)geom.reverse());
+//      }
+//    }
     Geometry superGeom  = JTSFactoryFinder.getGeometryFactory().buildGeometry(geoms).union();
     
     for (int i = 0; i < ((MultiLineString)superGeom).getNumGeometries(); i++) {

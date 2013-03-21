@@ -27,7 +27,7 @@ public class Simulation {
 
   public static class SimulationParameters {
 
-    protected final boolean canMoveBackward;
+    protected final boolean projectCoords;
     protected final long duration;
     protected final Date endTime;
     protected final double frequency;
@@ -38,7 +38,7 @@ public class Simulation {
 
     public SimulationParameters(Coordinate startCoordinate,
       Date startTime, long duration, double frequency,
-      boolean performInference, boolean canMoveBackward,
+      boolean performInference, boolean projectCoords,
       VehicleStateInitialParameters stateParams) {
       this.stateParams = stateParams;
       this.performInference = performInference;
@@ -47,7 +47,7 @@ public class Simulation {
       this.startTime = startTime;
       this.endTime = new Date(startTime.getTime() + duration * 1000);
       this.duration = duration;
-      this.canMoveBackward = canMoveBackward;
+      this.projectCoords = projectCoords;
     }
 
     @Override
@@ -59,7 +59,7 @@ public class Simulation {
       if (getClass() != obj.getClass())
         return false;
       SimulationParameters other = (SimulationParameters) obj;
-      if (canMoveBackward != other.canMoveBackward)
+      if (projectCoords != other.projectCoords)
         return false;
       if (duration != other.duration)
         return false;
@@ -119,7 +119,7 @@ public class Simulation {
     public int hashCode() {
       final int prime = 31;
       int result = 1;
-      result = prime * result + (canMoveBackward ? 1231 : 1237);
+      result = prime * result + (projectCoords ? 1231 : 1237);
       result = prime * result + (int) (duration ^ (duration >>> 32));
       result =
           prime * result
@@ -142,8 +142,8 @@ public class Simulation {
       return result;
     }
 
-    public boolean isCanMoveBackward() {
-      return this.canMoveBackward;
+    public boolean projectCoords() {
+      return this.projectCoords;
     }
 
     public boolean isPerformInference() {
@@ -195,13 +195,17 @@ public class Simulation {
 
     final Coordinate startCoord;
     if (this.simParameters.getStartCoordinate() == null) {
-      startCoord = this.inferredGraph.getGPSGraphExtent().centre();
+      startCoord = this.simParameters.projectCoords ? 
+          this.inferredGraph.getGPSGraphExtent().centre() : 
+            this.inferredGraph.getProjGraphExtent().centre();
     } else {
       startCoord = this.simParameters.getStartCoordinate();
     }
 
     final ProjectedCoordinate obsPoint =
-        GeoUtils.convertToEuclidean(startCoord);
+        this.simParameters.projectCoords ? 
+        GeoUtils.convertToEuclidean(startCoord) : 
+          new ProjectedCoordinate(null, startCoord, startCoord);
 
     final GpsObservation initialObs =
         new GpsObservation(this.simulationName,
@@ -296,17 +300,22 @@ public class Simulation {
             .getValue(), gCov);
 
     final Coordinate obsCoord =
+        this.simParameters.projectCoords ? 
         GeoUtils.convertToLatLon(thisLoc, vehicleState
-            .getObservation().getObsProjected());
+            .getObservation().getObsProjected()) : GeoUtils.getCoordinates(thisLoc);
 
     final int thisRecNum =
         1 + vehicleState.getObservation().getRecordNumber();
+    
+    final ProjectedCoordinate newProjCoord = 
+        this.simParameters.projectCoords ?
+        new ProjectedCoordinate(GeoUtils.getTransform(obsCoord), GeoUtils.makeCoordinate(thisLoc), obsCoord) : 
+          new ProjectedCoordinate(null, obsCoord, obsCoord) ;
+                
     final GpsObservation thisObs =
         new GpsObservation(this.simulationName, new Date(time),
             obsCoord, null, null, null, thisRecNum,
-            vehicleState.getObservation(), new ProjectedCoordinate(
-                GeoUtils.getTransform(obsCoord),
-                GeoUtils.makeCoordinate(thisLoc), obsCoord));
+            vehicleState.getObservation(), newProjCoord);
 
     newState.setObservation(thisObs);
 

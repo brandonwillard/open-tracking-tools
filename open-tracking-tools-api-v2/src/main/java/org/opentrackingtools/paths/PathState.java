@@ -247,7 +247,7 @@ public class PathState extends AbstractVector implements
     final Path path = this.path;
     final Vector adjState;
     if (path.isNullPath()) {
-      adjState = currentState.getGroundState();
+      adjState = currentState.getGroundState().clone();
     } else {
 
       final PathState startState =

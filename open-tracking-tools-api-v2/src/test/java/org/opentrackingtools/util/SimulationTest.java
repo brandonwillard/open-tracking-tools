@@ -39,6 +39,7 @@ import org.opentrackingtools.model.VehicleStateDistribution;
 import org.opentrackingtools.paths.PathState;
 import org.opentrackingtools.util.Simulation.SimulationParameters;
 
+import com.google.common.collect.Ranges;
 import com.vividsolutions.jts.geom.Coordinate;
 
 public class SimulationTest {
@@ -65,6 +66,12 @@ public class SimulationTest {
             {1, 0, 1, 0},
             {0, 1, 0, 1}
         }).scale(1d/2d);
+    
+    /*
+     * Limit the maximum speed so that this doesn't take forever
+     * with crazy long graph searches.
+     */
+    TruncatedRoadGaussian.velocityRange = Ranges.closed(0d, 15d);
   }
   
   
@@ -77,7 +84,7 @@ public class SimulationTest {
            */
         new VehicleStateInitialParameters(
             null,
-            VectorFactory.getDefault().createVector2D(100d, 100d), 20,
+            VectorFactory.getDefault().createVector2D(60d, 60d), 20,
             VectorFactory.getDefault().createVector1D(
                 6.25e-4), 30, VectorFactory.getDefault()
                 .createVector2D(6.25e-4, 6.25e-4), 20,
@@ -94,7 +101,7 @@ public class SimulationTest {
            */
         new VehicleStateInitialParameters(
             null,
-            VectorFactory.getDefault().createVector2D(100d, 100d), 20,
+            VectorFactory.getDefault().createVector2D(60d, 60d), 20,
             VectorFactory.getDefault().createVector1D(
                 6.25e-4), 30, VectorFactory.getDefault()
                 .createVector2D(6.25e-4, 6.25e-4), 20,
@@ -112,7 +119,7 @@ public class SimulationTest {
            */
         new VehicleStateInitialParameters(
             null,
-            VectorFactory.getDefault().createVector2D(100d, 100d), 20,
+            VectorFactory.getDefault().createVector2D(60d, 60d), 20,
             VectorFactory.getDefault().createVector1D(
                 6.25e-4), 30, VectorFactory.getDefault()
                 .createVector2D(6.25e-4, 6.25e-4), 20,
@@ -199,14 +206,14 @@ public class SimulationTest {
     final VehicleStateDistribution<GpsObservation> parentState = vehicleState.getParentState();
     if (parentState != null) {
       final PathState sampledPathState = vehicleState.getPathStateParam().getValue();
+      _log.info(sampledPathState.toString());
       final PathState parentPathState = parentState.getPathStateParam().getValue();
       final MultivariateGaussian priorState;
       final MultivariateGaussian predictedMotionStateDist;
       if (sampledPathState.getPath().isNullPath() && !parentPathState.getPath().isNullPath()) {
         priorState = new 
           TruncatedRoadGaussian(parentPathState.getGroundState(),
-              MatrixFactory.getDefault().createMatrix(4, 4),
-              Double.MAX_VALUE, 0d);
+              MatrixFactory.getDefault().createMatrix(4, 4));
         final Vector expectedError = this.sim.getUpdater().getSampledTransitionError();
         predictedMotionStateDist = 
           motionStateEstimator.createPredictiveDistribution(priorState);
@@ -216,8 +223,7 @@ public class SimulationTest {
         priorState = new 
           TruncatedRoadGaussian(
               parentPathState.getEdgeState(), 
-              MatrixFactory.getDefault().createMatrix(4, 4),
-              Double.MAX_VALUE, 0d);
+              MatrixFactory.getDefault().createMatrix(4, 4));
         predictedMotionStateDist = 
           motionStateEstimator.createPredictiveDistribution(priorState);
         predictedMotionStateDist.getMean().plusEquals(this.sim.getUpdater().getSampledTransitionError());
@@ -227,8 +233,7 @@ public class SimulationTest {
         priorState = new 
           TruncatedRoadGaussian(
               parentState.getPathStateParam().getValue().getEdgeState(), 
-              parentState.getMotionStateParam().getParameterPrior().getCovariance(),
-              Double.MAX_VALUE, 0d);
+              parentState.getMotionStateParam().getParameterPrior().getCovariance());
         final Vector expectedError = this.sim.getUpdater().getSampledTransitionError();
         predictedMotionStateDist = 
           motionStateEstimator.createPredictiveDistribution(priorState);
@@ -276,7 +281,7 @@ public class SimulationTest {
           .toArray();
       
       ArrayAsserts.assertArrayEquals(obsErrorZeroArray,
-        obsErrorSS.getMean().toArray(), 5 * Math.sqrt(
+        obsErrorSS.getMean().toArray(), 2 * Math.sqrt(
             vehicleState.getObservationCovarianceParam().getValue().normFrobenius()));
     
       if (movementZeroArray == null)

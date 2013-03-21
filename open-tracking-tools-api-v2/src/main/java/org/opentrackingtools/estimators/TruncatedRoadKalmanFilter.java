@@ -33,8 +33,6 @@ public class TruncatedRoadKalmanFilter extends AbstractKalmanFilter {
    * Motion model of the underlying system.
    */
   protected LinearDynamicalSystem model;
-  protected double upperVelocityLimit;
-  protected double lowerVelocityLimit;
 
   /**
    * Creates a new instance of LinearUpdater
@@ -53,25 +51,8 @@ public class TruncatedRoadKalmanFilter extends AbstractKalmanFilter {
         model.getInputDimensionality()), modelCovariance,
         measurementCovariance);
     this.setModel(model);
-    this.upperVelocityLimit = upperVelocityLimit;
-    this.lowerVelocityLimit = lowerVelocityLimit;
   }
 
-  public double getUpperVelocityLimit() {
-    return upperVelocityLimit;
-  }
-
-  public void setUpperVelocityLimit(double upperVelocityLimit) {
-    this.upperVelocityLimit = upperVelocityLimit;
-  }
-
-  public double getLowerVelocityLimit() {
-    return lowerVelocityLimit;
-  }
-
-  public void setLowerVelocityLimit(double lowerVelocityLimit) {
-    this.lowerVelocityLimit = lowerVelocityLimit;
-  }
 
   @Override
   public TruncatedRoadKalmanFilter clone() {
@@ -86,7 +67,7 @@ public class TruncatedRoadKalmanFilter extends AbstractKalmanFilter {
   @Override
   public MultivariateGaussian createInitialLearnedObject() {
     return new TruncatedRoadGaussian(this.model.getState(),
-        this.getModelCovariance(), upperVelocityLimit, lowerVelocityLimit);
+        this.getModelCovariance());
   }
 
   @Override

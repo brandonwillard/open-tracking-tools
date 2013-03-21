@@ -189,6 +189,24 @@ public class Path extends AbstractCloneableSerializable implements
     return this.edges;
   }
 
+  public Path getPathFrom(PathEdge edge) {
+
+    final List<PathEdge> newEdges = Lists.newArrayList();
+    double distance = 0d; 
+    for (final PathEdge edge1 : this.getPathEdges()) {
+      if (edge1.getDistToStartOfEdge() >= edge.getDistToStartOfEdge()) {
+        newEdges.add(new PathEdge(edge1.getSegment(), 
+            distance, edge1.isBackward()));
+        distance += edge1.getLength();
+      }
+      
+    }
+
+    final Path newPath = new Path(newEdges, this.isBackward);
+
+    return newPath;
+  }
+  
   public Path getPathTo(PathEdge edge) {
 
     final List<PathEdge> newEdges = Lists.newArrayList();

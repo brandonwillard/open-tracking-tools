@@ -22,6 +22,7 @@ import javax.annotation.Nonnull;
 
 import org.opentrackingtools.distributions.AdjMultivariateGaussian;
 import org.opentrackingtools.distributions.PathStateDistribution;
+import org.opentrackingtools.distributions.TruncatedRoadGaussian;
 import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.graph.InferenceGraphEdge;
 import org.opentrackingtools.model.GpsObservation;
@@ -32,6 +33,7 @@ import org.opentrackingtools.util.StatisticsUtil;
 import org.testng.internal.Nullable;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.Ranges;
 
 /**
  * This class encapsulates the motion model, i.e. on/off-road position and
@@ -107,7 +109,7 @@ public class MotionStateEstimatorPredictor extends
     MotionStateEstimatorPredictor.Or.setElement(0, 0, 1);
   }
 
-  protected static Matrix createStateCovarianceMatrix(
+  public static Matrix createStateCovarianceMatrix(
     double timeDiff, Matrix Q, boolean isRoad) {
 
     final Matrix A_half =
@@ -489,33 +491,12 @@ public class MotionStateEstimatorPredictor extends
     return this.groundModel;
   }
 
-  /**
-   * This method gets the predictive/observation/measurement belief, i.e. the
-   * measurement model applied to the given state belief.
-   * 
-   * @param belief
-   * @param edge
-   * @return
-   */
-  public MultivariateGaussian getMeasurementBelief(
+
+  public MultivariateGaussian getMeasurementDistribution(
     final PathStateDistribution stateBelief) {
-    final MultivariateGaussian projBelief =
-        stateBelief.getGroundDistribution().clone();
-
-    final Matrix Q =
-        MotionStateEstimatorPredictor.Og.times(
-            projBelief.getCovariance()).times(
-            MotionStateEstimatorPredictor.Og.transpose());
-    Q.plusEquals(this.groundFilter.getMeasurementCovariance());
-
-    final MultivariateGaussian res = 
-        this.groundFilter.createInitialLearnedObject();
-    res.setMean(MotionStateEstimatorPredictor.Og.times(projBelief
-                .getMean()));
-    res.setCovariance(Q);
-    return res;
+    return getObservationDistribution(stateBelief.getGroundDistribution(), null);
   }
-
+  
   /**
    * Returns the distribution formed from the measurement equation, i.e. a
    * distribution in 2d location space.
@@ -525,12 +506,13 @@ public class MotionStateEstimatorPredictor extends
    * @return
    */
   public MultivariateGaussian getObservationDistribution(
-    MultivariateGaussian motionState, PathEdge edge) {
+    MultivariateGaussian motionState, @Nullable PathEdge edge) {
 
     final MultivariateGaussian projBelief;
     final Matrix measurementCovariance =
         this.groundFilter.getMeasurementCovariance().clone();
     if (motionState.getInputDimensionality() == 2) {
+      Preconditions.checkNotNull(edge);
       projBelief =
           PathUtils.getGroundBeliefFromRoad(motionState, edge, false, true);
     } else {
@@ -543,11 +525,8 @@ public class MotionStateEstimatorPredictor extends
             MotionStateEstimatorPredictor.Og.transpose());
     Q.plusEquals(measurementCovariance);
 
-    final MultivariateGaussian res = this.groundFilter.createInitialLearnedObject();
-    res.setMean(MotionStateEstimatorPredictor.Og.times(projBelief
-                .getMean()));
-    res.setCovariance(Q);
-
+    final MultivariateGaussian res = new MultivariateGaussian(MotionStateEstimatorPredictor.Og.times(projBelief
+                .getMean()), Q);
     return res;
   }
 
@@ -587,15 +566,22 @@ public class MotionStateEstimatorPredictor extends
         dim == 4 ? this.currentState.getOffRoadModelCovarianceParam()
             .getValue() : this.currentState
             .getOnRoadModelCovarianceParam().getValue();
+    final Vector stateSmpl;
+    if (dim == 4) {
+      final Matrix covSqrt = StatisticsUtil.getCholR(cov);
+      final Vector qSmpl = MultivariateGaussian.sample(VectorFactory.getDefault()
+              .createVector(cov.getNumColumns()), covSqrt, rng);
+      final Matrix covFactor = this.getCovarianceFactor(dim == 2);
+      final Vector error = covFactor.times(qSmpl);
+      stateSmpl = state.plus(error);
+    } else {
+      final TruncatedRoadGaussian tNorm = 
+          new TruncatedRoadGaussian(state, 
+              this.roadFilter.getModelCovariance(), 
+              Ranges.closed(state.getElement(0), Double.POSITIVE_INFINITY));
+      stateSmpl = tNorm.sample(rng);
+    }
 
-    final Matrix covSqrt = StatisticsUtil.getCholR(cov);
-    final Vector qSmpl =
-        MultivariateGaussian.sample(VectorFactory.getDefault()
-            .createVector(cov.getNumColumns()), covSqrt, rng);
-
-    final Matrix covFactor = this.getCovarianceFactor(dim == 2);
-    final Vector error = covFactor.times(qSmpl);
-    final Vector stateSmpl = state.plus(error);
     return stateSmpl;
   }
 

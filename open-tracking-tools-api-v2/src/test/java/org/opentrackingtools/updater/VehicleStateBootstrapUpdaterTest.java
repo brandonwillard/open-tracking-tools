@@ -64,15 +64,15 @@ public class VehicleStateBootstrapUpdaterTest {
     final VehicleStateInitialParameters parameters =
         new VehicleStateInitialParameters(VectorFactory.getDefault()
             .copyArray(new double[] { 0.4d, 1d / 40d, 0d, 0d }),
-            VectorFactory.getDefault().createVector2D(100d, 100d), 0,
-            VectorFactory.getDefault().createVector1D(0d), 0,
+            VectorFactory.getDefault().createVector2D(100d, 100d), Integer.MAX_VALUE,
+            VectorFactory.getDefault().createVector1D(0d), Integer.MAX_VALUE,
             /*
              * No error, so the bootstrap sampling doesn't affect the sampled
              * edge results.
              * Same with the transition prior probabilities: make sure it stays
              * on-road.
              */
-            VectorFactory.getDefault().createVector2D(0d, 0d), 0,
+            VectorFactory.getDefault().createVector2D(0d, 0d), Integer.MAX_VALUE,
             VectorFactory.getDefault().createVector2D(1,
                 Double.MAX_VALUE), VectorFactory.getDefault()
                 .createVector2D(Double.MAX_VALUE, 1), 0, 4, 0);
@@ -80,7 +80,7 @@ public class VehicleStateBootstrapUpdaterTest {
     startLine.getParentEdge();
     final PathEdge startPathEdge = new PathEdge(startLine, 0d, false);
     final VehicleStateDistribution<GpsObservation> currentState =
-        VehicleStateDistribution.constructInitialVehicleState(
+        VehicleStateDistribution.createInitialVehicleState(
             parameters, graph, obs, rng, startPathEdge);
 
     final VehicleStateBootstrapUpdater<GpsObservation> updater =
@@ -133,15 +133,15 @@ public class VehicleStateBootstrapUpdaterTest {
     final VehicleStateInitialParameters parameters =
         new VehicleStateInitialParameters(VectorFactory.getDefault()
             .copyArray(new double[] { 0d, 1d, 0d, 0d }),
-            VectorFactory.getDefault().createVector2D(100d, 100d), 0,
-            VectorFactory.getDefault().createVector1D(0d), 0,
+            VectorFactory.getDefault().createVector2D(100d, 100d), Integer.MAX_VALUE,
+            VectorFactory.getDefault().createVector1D(0d), Integer.MAX_VALUE,
             /*
              * No error, so the bootstrap sampling doesn't affect the sampled
              * edge results.
              * Same with the transition prior probabilities: make sure it stays
              * on-road.
              */
-            VectorFactory.getDefault().createVector2D(0d, 0d), 0,
+            VectorFactory.getDefault().createVector2D(0d, 0d), Integer.MAX_VALUE,
             VectorFactory.getDefault().createVector2D(1,
                 Double.MAX_VALUE), VectorFactory.getDefault()
                 .createVector2D(Double.MAX_VALUE, 1), 0, 4, 0);
@@ -149,7 +149,7 @@ public class VehicleStateBootstrapUpdaterTest {
     startLine.getParentEdge();
     final PathEdge startPathEdge = new PathEdge(startLine, 0d, false);
     final VehicleStateDistribution<GpsObservation> currentState =
-        VehicleStateDistribution.constructInitialVehicleState(
+        VehicleStateDistribution.createInitialVehicleState(
             parameters, graph, obs, rng, startPathEdge);
 
     final VehicleStateBootstrapUpdater<GpsObservation> updater =
@@ -204,15 +204,15 @@ public class VehicleStateBootstrapUpdaterTest {
     final VehicleStateInitialParameters parameters =
         new VehicleStateInitialParameters(VectorFactory.getDefault()
             .copyArray(new double[] { 0d, 1d, 0d, 0d }),
-            VectorFactory.getDefault().createVector2D(100d, 100d), 0,
-            VectorFactory.getDefault().createVector1D(0d), 0,
+            VectorFactory.getDefault().createVector2D(100d, 100d), Integer.MAX_VALUE,
+            VectorFactory.getDefault().createVector1D(0d), Integer.MAX_VALUE,
             /*
              * No error, so the bootstrap sampling doesn't affect the sampled
              * edge results.
              * Same with the transition prior probabilities: make sure it stays
              * on-road.
              */
-            VectorFactory.getDefault().createVector2D(0d, 0d), 0,
+            VectorFactory.getDefault().createVector2D(0d, 0d), Integer.MAX_VALUE,
             VectorFactory.getDefault().createVector2D(1,
                 Double.MAX_VALUE), VectorFactory.getDefault()
                 .createVector2D(Double.MAX_VALUE, 1), 0, 4, 0);
@@ -220,7 +220,7 @@ public class VehicleStateBootstrapUpdaterTest {
     startLine.getParentEdge();
     final PathEdge startPathEdge = new PathEdge(startLine, 0d, false);
     final VehicleStateDistribution<GpsObservation> currentState =
-        VehicleStateDistribution.constructInitialVehicleState(
+        VehicleStateDistribution.createInitialVehicleState(
             parameters, graph, obs, rng, startPathEdge);
 
     final VehicleStateBootstrapUpdater<GpsObservation> updater =
@@ -283,13 +283,13 @@ public class VehicleStateBootstrapUpdaterTest {
     final VehicleStateInitialParameters parameters =
         new VehicleStateInitialParameters(VectorFactory.getDefault()
             .copyArray(new double[] { 0d, 1d, 0d, 0d }),
-            VectorFactory.getDefault().createVector2D(100d, 100d), 0,
-            VectorFactory.getDefault().createVector1D(0d), 0,
+            VectorFactory.getDefault().createVector2D(100d, 100d), Integer.MAX_VALUE,
+            VectorFactory.getDefault().createVector1D(0d), Integer.MAX_VALUE,
             /*
              * No error, so the bootstrap sampling doesn't affect the sampled
              * edge results.
              */
-            VectorFactory.getDefault().createVector2D(0d, 0d), 0,
+            VectorFactory.getDefault().createVector2D(0d, 0d), Integer.MAX_VALUE,
             /*
              * Changed these transition probabilities so that they'll guarantee
              * an off-road sampled result within the updater.
@@ -300,7 +300,7 @@ public class VehicleStateBootstrapUpdaterTest {
 
     final PathEdge startPathEdge = new PathEdge(startLine, 0d, false);
     final VehicleStateDistribution<GpsObservation> currentState =
-        VehicleStateDistribution.constructInitialVehicleState(
+        VehicleStateDistribution.createInitialVehicleState(
             parameters, graph, obs, rng, startPathEdge);
 
     final VehicleStateBootstrapUpdater<GpsObservation> updater =
@@ -356,21 +356,21 @@ public class VehicleStateBootstrapUpdaterTest {
     final VehicleStateInitialParameters parameters =
         new VehicleStateInitialParameters(VectorFactory.getDefault()
             .copyArray(new double[] { 0d, 1d, 0d, 2d }),
-            VectorFactory.getDefault().createVector2D(0.2d, 0.2d), 0,
-            VectorFactory.getDefault().createVector1D(0d), 0,
+            VectorFactory.getDefault().createVector2D(0.2d, 0.2d), Integer.MAX_VALUE,
+            VectorFactory.getDefault().createVector1D(0d), Integer.MAX_VALUE,
             /*
              * No error, so the bootstrap sampling doesn't affect the sampled
              * edge results.
              * Same with the transition prior probabilities: make sure it stays
              * on-road.
              */
-            VectorFactory.getDefault().createVector2D(0d, 0d), 0,
+            VectorFactory.getDefault().createVector2D(0d, 0d), Integer.MAX_VALUE,
             VectorFactory.getDefault().createVector2D(1, Double.MAX_VALUE), 
             VectorFactory.getDefault().createVector2D(Double.MAX_VALUE, 1), 0, 1, 0);
 
     final PathEdge startPathEdge = PathEdge.nullPathEdge;
     final VehicleStateDistribution<GpsObservation> currentState =
-        VehicleStateDistribution.constructInitialVehicleState(
+        VehicleStateDistribution.createInitialVehicleState(
             parameters, graph, obs, rng, startPathEdge);
 
     final VehicleStateBootstrapUpdater<GpsObservation> updater =

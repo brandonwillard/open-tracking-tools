@@ -112,7 +112,7 @@ public class VehicleStatePLUpdater<O extends GpsObservation>
      * edges.
      */
     final VehicleStateDistribution<O> nullState =
-        VehicleStateDistribution.constructInitialVehicleState(this.parameters, this.inferenceGraph, this.initialObservation, this.random,
+        VehicleStateDistribution.createInitialVehicleState(this.parameters, this.inferenceGraph, this.initialObservation, this.random,
             PathEdge.nullPathEdge);
     final MultivariateGaussian initialMotionStateDist =
         nullState.getMotionStateParam().getParameterPrior();
@@ -141,7 +141,7 @@ public class VehicleStatePLUpdater<O extends GpsObservation>
         
         final PathEdge pathEdge = new PathEdge(segment, 0d, false);
         
-        VehicleStateDistribution<O> stateOnEdge = VehicleStateDistribution.constructInitialVehicleState(
+        VehicleStateDistribution<O> stateOnEdge = VehicleStateDistribution.createInitialVehicleState(
             parameters, inferenceGraph, initialObservation, random, pathEdge);
 
         final double logLikelihood =

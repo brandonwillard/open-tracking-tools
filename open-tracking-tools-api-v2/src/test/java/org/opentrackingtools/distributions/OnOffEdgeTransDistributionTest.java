@@ -91,7 +91,7 @@ public class OnOffEdgeTransDistributionTest {
     InferenceGraphEdge startEdge = startLine.getParentEdge();
     PathEdge startPathEdge = new PathEdge(startLine, 0d, false);
     VehicleStateDistribution<GpsObservation> currentState = 
-        VehicleStateDistribution.constructInitialVehicleState(parameters, graph, obs, rng, startPathEdge);
+        VehicleStateDistribution.createInitialVehicleState(parameters, graph, obs, rng, startPathEdge);
     
     
     OnOffEdgeTransDistribution edgeTransDist = currentState.getEdgeTransitionParam().getConditionalDistribution();
@@ -165,7 +165,7 @@ public class OnOffEdgeTransDistributionTest {
     
     InferenceGraphEdge startEdge = startLine.getParentEdge();
     PathEdge startPathEdge = new PathEdge(startLine, 0d, false);
-    VehicleStateDistribution<GpsObservation> currentState = VehicleStateDistribution.constructInitialVehicleState(parameters, graph, obs, rng, startPathEdge);
+    VehicleStateDistribution<GpsObservation> currentState = VehicleStateDistribution.createInitialVehicleState(parameters, graph, obs, rng, startPathEdge);
     
     OnOffEdgeTransDistribution edgeTransDist = currentState.getEdgeTransitionParam().getConditionalDistribution();
     
@@ -235,7 +235,7 @@ public class OnOffEdgeTransDistributionTest {
     
     InferenceGraphEdge startEdge = startLine.getParentEdge();
     PathEdge startPathEdge = new PathEdge(startLine, 0d, false);
-    VehicleStateDistribution<GpsObservation> currentState = VehicleStateDistribution.constructInitialVehicleState(parameters, graph, obs, rng, startPathEdge);
+    VehicleStateDistribution<GpsObservation> currentState = VehicleStateDistribution.createInitialVehicleState(parameters, graph, obs, rng, startPathEdge);
     
     OnOffEdgeTransDistribution edgeTransDist = currentState.getEdgeTransitionParam().getConditionalDistribution();
     

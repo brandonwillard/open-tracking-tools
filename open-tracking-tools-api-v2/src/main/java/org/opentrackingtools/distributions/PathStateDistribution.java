@@ -261,9 +261,8 @@ public class PathStateDistribution extends
         covar = stateBelief.getCovariance();
       }
     }
-    final PathStateDistribution newBelief = stateBelief.clone();
-    newBelief.motionDistribution.setMean(onThisPath.getMotionState());
-    newBelief.motionDistribution.setCovariance(covar);
+    final PathStateDistribution newBelief = new PathStateDistribution(path,
+        new TruncatedRoadGaussian(onThisPath.getMotionState().clone(), covar));
     return newBelief;
   }
 

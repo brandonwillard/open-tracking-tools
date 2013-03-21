@@ -1,5 +1,6 @@
 package org.opentrackingtools.util;
 
+import gov.sandia.cognition.math.Ring;
 import gov.sandia.cognition.math.matrix.Matrix;
 import gov.sandia.cognition.math.matrix.MatrixFactory;
 import gov.sandia.cognition.math.matrix.Vector;
@@ -48,10 +49,15 @@ public class PathUtils {
 
     private final Vector offset;
     private final Matrix projMatrix;
+    private Vector stateOnSegment;
 
     public PathEdgeProjection(Matrix projMatrix, Vector offset) {
       this.projMatrix = projMatrix;
       this.offset = offset;
+    }
+
+    public void setStateOnSegment(Vector stateOnSegment) {
+      this.stateOnSegment = stateOnSegment;
     }
 
     public Vector getOffset() {
@@ -66,6 +72,10 @@ public class PathUtils {
     public String toString() {
       return "PathEdgeProjection [projMatrix=" + this.projMatrix
           + ", offset=" + this.offset + "]";
+    }
+
+    public Vector getStateOnSegment() {
+      return stateOnSegment;
     }
 
   }
@@ -277,10 +287,11 @@ public class PathUtils {
       convertToRoadBelief(MultivariateGaussian belief, Path path,
         @Nullable PathEdge pathEdge, boolean useAbsVelocity) {
 
+    final LineSegment lineSegment = pathEdge != null ? pathEdge.getLine() : null;
+    final double distToStartOfEdge =pathEdge != null ? pathEdge.getDistToStartOfEdge() : 0d;
     final MultivariateGaussian projBelief =
         PathUtils.getRoadBeliefFromGround(belief, path.getGeometry(),
-            path.isBackward(), pathEdge.getLine(),
-            pathEdge.getDistToStartOfEdge(), useAbsVelocity);
+            path.isBackward(), lineSegment, distToStartOfEdge, useAbsVelocity);
 
     belief.setMean(projBelief.getMean());
     belief.setCovariance(projBelief.getCovariance());
@@ -411,6 +422,7 @@ public class PathUtils {
     if (projPair == null) {
       return null;
     }
+    
 
     final Matrix C = belief.getCovariance().clone();
     final Matrix projCov =
@@ -421,7 +433,7 @@ public class PathUtils {
 
     final Vector projMean =
         projPair.getProjMatrix().transpose()
-            .times(belief.getMean().minus(projPair.getOffset()));
+            .times(projPair.getStateOnSegment().minus(projPair.getOffset()));
 
     /*
      * When there is no exactly orthogonal line to the edge
@@ -527,7 +539,7 @@ public class PathUtils {
             .times(MotionStateEstimatorPredictor.getOg());
     final MultivariateGaussian obsProjBelief =
         new TruncatedRoadGaussian(MotionStateEstimatorPredictor
-            .getOg().transpose().times(obs), obsCovExp, Double.MAX_VALUE, 0d);
+            .getOg().transpose().times(obs), obsCovExp);
     PathUtils.convertToRoadBelief(obsProjBelief, path, edge, true);
 
     final Vector y =
@@ -537,7 +549,7 @@ public class PathUtils {
         MotionStateEstimatorPredictor.getOr()
             .times(obsProjBelief.getCovariance())
             .times(MotionStateEstimatorPredictor.getOr().transpose());
-    return new TruncatedRoadGaussian(y, Sigma, Double.MAX_VALUE, 0d);
+    return new MultivariateGaussian(y, Sigma);
   }
 
   /**
@@ -593,8 +605,22 @@ public class PathUtils {
           lengthIndex.indexOf(pathLineSegment.p0);
     }
 
-    return PathUtils.posVelProjectionPair(pathLineSegment,
+    /*
+     * Get position on line segment.  If we don't
+     * then the results will simply be wrong.
+     */
+    Coordinate pointOnLine = pathLineSegment.closestPoint(
+        new Coordinate(locVelocity.getElement(0), locVelocity.getElement(2)));
+    final Vector adjMean = locVelocity.clone();
+    adjMean.setElement(0, pointOnLine.x);
+    adjMean.setElement(2, pointOnLine.y);
+    
+    PathEdgeProjection result = PathUtils.posVelProjectionPair(pathLineSegment,
         distanceToStartOfSegmentOnGeometry);
+    
+    result.setStateOnSegment(adjMean);
+    
+    return result;
   }
 
   public static Vector getRoadStateFromGround(Vector state,

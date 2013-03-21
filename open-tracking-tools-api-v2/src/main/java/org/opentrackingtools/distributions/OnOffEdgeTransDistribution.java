@@ -14,6 +14,7 @@ import gov.sandia.cognition.util.ObjectUtil;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
@@ -422,7 +423,9 @@ public class OnOffEdgeTransDistribution extends
   public InferenceGraphEdge sample(Random random) {
 
     final List<InferenceGraphEdge> tmpDomain =
-        Lists.newArrayList(this.getDomain());
+        (this.getFreeMotionTransProbs().getMean().getElement(0) >= Double.MAX_VALUE
+          || this.getEdgeMotionTransProbs().getMean().getElement(1) >= Double.MAX_VALUE) ?
+            Collections.<InferenceGraphEdge>emptyList() : Lists.newArrayList(this.getDomain());
 
     if (this.currentEdge.isNullEdge()) {
       /*
@@ -437,7 +440,7 @@ public class OnOffEdgeTransDistribution extends
                 this.getFreeMotionTransProbs(), random);
 
         if (sample.equals(OnOffEdgeTransDistribution.stateOffToOn)
-            && tmpDomain.size() > 0) {
+            && tmpDomain.size() - 1 <= 0) {
           tmpDomain.remove(InferenceGraphEdge.nullGraphEdge);
           return tmpDomain.get(random.nextInt(tmpDomain.size()));
         } else {
@@ -455,7 +458,7 @@ public class OnOffEdgeTransDistribution extends
               : OnOffEdgeTransDistribution.stateOnToOn;
 
       if (sample.equals(OnOffEdgeTransDistribution.stateOnToOff)
-          || tmpDomain.isEmpty()) {
+          || tmpDomain.size() - 1 <= 0) {
         return InferenceGraphEdge.nullGraphEdge;
       } else {
         tmpDomain.remove(InferenceGraphEdge.nullGraphEdge);

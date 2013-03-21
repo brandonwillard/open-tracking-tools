@@ -156,19 +156,20 @@ public class GenericJTSGraph implements InferenceGraph {
   protected static final Logger log = LoggerFactory
       .getLogger(GenericJTSGraph.class);
 
-  protected static final double MAX_DISTANCE_SPEED = 53.6448; // ~120 mph
+  public static double MAX_DISTANCE_SPEED = 53.6448; // ~120 mph
 
   /*
    * Maximum radius we're willing to search around a given
    * observation when snapping (for path search destination edges)
    */
-  protected static final double MAX_OBS_SNAP_RADIUS = 200d;
+  public static double MAX_OBS_SNAP_RADIUS = 200d;
+  public static double MIN_OBS_SNAP_RADIUS = 10d;
 
   /*
    * Maximum radius we're willing to search around a given
    * state when snapping (for path search off -> on-road edges)
    */
-  protected static final double MAX_STATE_SNAP_RADIUS = 350d;
+  public static double MAX_STATE_SNAP_RADIUS = 350d;
 
   protected STRtree edgeIndex = null;
 
@@ -378,8 +379,7 @@ public class GenericJTSGraph implements InferenceGraph {
     Set<InferenceGraphSegment> startEdges = Sets.newHashSet();
     
     if (!currentEdge.isNullEdge()) {
-      final LineSegment subline = currrentPathEdge.getLine();
-      startEdges.add(new InferenceGraphSegment(subline, currentEdge));
+      startEdges.add(currrentPathEdge.getSegment());
     } else {
 
       final MultivariateGaussian obsBelief =
@@ -396,12 +396,11 @@ public class GenericJTSGraph implements InferenceGraph {
             fromState.getMeanLocation(), beliefDistance));
     }
 
-    final double obsStdDevDistance =
-        Math.min(
-            StatisticsUtil
+    final double obsCovStdDev = StatisticsUtil
                 .getLargeNormalCovRadius(
-                    (DenseMatrix) fromState.getObservationCovarianceParam().getValue()),
-            MAX_OBS_SNAP_RADIUS);
+                    (DenseMatrix) fromState.getObservationCovarianceParam().getValue());
+    final double obsStdDevDistance =
+        Math.max(MIN_OBS_SNAP_RADIUS, Math.min(obsCovStdDev, MAX_OBS_SNAP_RADIUS));
 
     final Collection<InferenceGraphSegment> endLines = getNearbyEdges(toCoord,
         obsStdDevDistance);

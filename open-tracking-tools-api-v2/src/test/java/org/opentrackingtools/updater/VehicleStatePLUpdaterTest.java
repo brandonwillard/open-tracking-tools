@@ -70,9 +70,9 @@ public class VehicleStatePLUpdaterTest {
     final VehicleStateInitialParameters parameters =
         new VehicleStateInitialParameters(VectorFactory.getDefault()
             .copyArray(new double[] { 0d, 1d, 0d, 0d }),
-            VectorFactory.getDefault().createVector2D(0.02d, 0.02d), 0,
-            VectorFactory.getDefault().createVector1D(1e-4d), 0,
-            VectorFactory.getDefault().createVector2D(1e-4d, 1e-4d), 0,
+            VectorFactory.getDefault().createVector2D(0.02d, 0.02d), Integer.MAX_VALUE,
+            VectorFactory.getDefault().createVector1D(1e-4d), Integer.MAX_VALUE,
+            VectorFactory.getDefault().createVector2D(1e-4d, 1e-4d), Integer.MAX_VALUE,
             VectorFactory.getDefault().createVector2D(1,
                 Double.MAX_VALUE), VectorFactory.getDefault()
                 .createVector2D(Double.MAX_VALUE, 1), 0, 4, 0);
@@ -80,7 +80,7 @@ public class VehicleStatePLUpdaterTest {
     startLine.getParentEdge();
     final PathEdge startPathEdge = new PathEdge(startLine, 0d, false);
     final VehicleStateDistribution<GpsObservation> currentState =
-        VehicleStateDistribution.constructInitialVehicleState(
+        VehicleStateDistribution.createInitialVehicleState(
             parameters, graph, obs, rng, startPathEdge);
 
     final VehicleStatePLUpdater<GpsObservation> updater =

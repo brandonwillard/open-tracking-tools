@@ -53,18 +53,28 @@ public class PathStateEstimatorPredictor extends
   private static final long serialVersionUID = 4407545320542773361L;
   protected VehicleStateDistribution<? extends GpsObservation> currentState;
   protected Path path;
+  protected PathStateDistribution priorPathStateDistribution;
 
   /**
    * This estimator takes as conditional parameters the current/previous vehicle
-   * state and a path.
+   * state and a path state distribution.
    * 
    * @param currentState
-   * @param path
+   * @param path state dist
    * @param prevPathState
    */
   public PathStateEstimatorPredictor(
     @Nonnull VehicleStateDistribution<? extends GpsObservation> currentState,
+    @Nonnull PathStateDistribution priorPathStateDistribution) {
+    this.priorPathStateDistribution = priorPathStateDistribution;
+    this.path = priorPathStateDistribution.getPathState().getPath();
+    this.currentState = currentState;
+  }
+  
+  public PathStateEstimatorPredictor(
+    @Nonnull VehicleStateDistribution<? extends GpsObservation> currentState,
     @Nonnull Path path) {
+    this.priorPathStateDistribution = null;
     this.path = path;
     this.currentState = currentState;
   }
@@ -161,9 +171,10 @@ public class PathStateEstimatorPredictor extends
     final Matrix W =
         roadDistribution.getCovariance().times(Or.transpose())
             .scale(1 / S);
-    final Matrix R =
+    final Matrix R = 
         roadDistribution.getCovariance().minus(
             W.times(W.transpose()).scale(S));
+      //roadDistribution.getCovariance();
 
     final double direction = edge.isBackward() ? -1d : 1d;
     final double mean =
@@ -173,14 +184,22 @@ public class PathStateEstimatorPredictor extends
 
     final Vector beliefMean = roadDistribution.getMean();
     final double e = mean - Or.times(beliefMean).getElement(0);
-    final Vector a = beliefMean.plus(W.getColumn(0).scale(e));
+    Vector a = beliefMean.plus(W.getColumn(0).scale(e));
+//    roadDistribution.getMean();
+    
+    /*
+     * Truncate our new mean so that it's forced onto the edge.
+     * Otherwise, it would be possible for a mixture element
+     * to not correspond to its edge.
+     */
+    a = edge.clampToEdge(a);
 
     assert StatisticsUtil
         .isPosSemiDefinite((gov.sandia.cognition.math.matrix.mtj.DenseMatrix) R);
 
     final PathStateDistribution prediction =
         new PathStateDistribution(this.path.getPathTo(edge),
-            new TruncatedRoadGaussian(a, R, Double.MAX_VALUE, 0d));
+            new TruncatedRoadGaussian(a, R));
     
     return prediction;
   }
@@ -245,19 +264,31 @@ public class PathStateEstimatorPredictor extends
   }
 
   @Override
-  public void update(PathStateDistribution prior, Vector data) {
-    Preconditions.checkArgument(prior.getPathState().getPath().equals(this.path));
-    if (prior.getPathState().isOnRoad()) {
+  public void update(PathStateDistribution posterior, Vector data) {
+    Preconditions.checkArgument(posterior.getPathState().getPath().equals(this.path));
+    if (posterior.getPathState().isOnRoad()) {
       /*
        * Clamp the projected obs
        */
-      if (!this.path.isOnPath(prior.getMean().getElement(0))) {
-        final Vector mean = prior.getMean().clone();
+      if (!this.path.isOnPath(posterior.getMean().getElement(0))) {
+        final Vector mean = posterior.getMean().clone();
         mean.setElement(
             0,
-            prior.getPathState().getPath()
-                .clampToPath(prior.getMean().getElement(0)));
-        prior.setMean(mean);
+            posterior.getPathState().getPath()
+                .clampToPath(posterior.getMean().getElement(0)));
+        posterior.setMean(mean);
+      }
+      
+      /*
+       * We don't want to move behind the current path state after an update, 
+       * since moving backward doesn't happen here.
+       */
+      PathStateDistribution currentPathDist = this.priorPathStateDistribution;
+      if (currentPathDist.getMotionDistribution().getMean().getElement(0) < 
+          posterior.getMean().getElement(0)) {
+        final Vector newMean = currentPathDist.getMotionDistribution().getMean().clone();
+        newMean.setElement(1, posterior.getMean().getElement(1));
+        posterior.setMean(newMean);
       }
     }
   }

@@ -13,6 +13,7 @@ import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian.SufficientStatistic;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Random;
@@ -23,12 +24,15 @@ import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.geotools.factory.FactoryRegistryException;
+import org.geotools.geometry.jts.JTSFactoryFinder;
 import org.geotools.referencing.operation.projection.ProjectionException;
 import org.opengis.referencing.FactoryException;
 import org.opengis.referencing.NoSuchAuthorityCodeException;
 import org.opengis.referencing.operation.NoninvertibleTransformException;
 import org.opengis.referencing.operation.TransformException;
+import org.opentrackingtools.distributions.CountedDataDistribution;
 import org.opentrackingtools.distributions.OnOffEdgeTransDistribution;
+import org.opentrackingtools.distributions.TruncatedRoadGaussian;
 import org.opentrackingtools.estimators.MotionStateEstimatorPredictor;
 import org.opentrackingtools.graph.GenericJTSGraph;
 import org.opentrackingtools.graph.InferenceGraph;
@@ -45,8 +49,10 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 import org.testng.internal.junit.ArrayAsserts;
 
+import com.beust.jcommander.internal.Lists;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
+import com.google.common.collect.Ranges;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.LineString;
 
@@ -63,78 +69,78 @@ public class VehicleStatePLFilterSimulationTest {
   static {
     BasicConfigurator.configure();
     ToStringBuilder.setDefaultStyle(ToStringStyle.SHORT_PREFIX_STYLE);
+    TruncatedRoadGaussian.velocityRange = Ranges.closed(0d, 20d);
   }
 
   @DataProvider
   private static final Object[][] initialStateData() {
     return new Object[][] {
+        {
+            /*
+             * Road only
+             */
+            new VehicleStateInitialParameters(null, VectorFactory
+                .getDefault().createVector2D(70d, 70d), 20,
+                VectorFactory.getDefault().createVector1D(6.25e-4), 20, 
+                VectorFactory.getDefault().createVector2D(6.25e-4, 6.25e-4), 20, 
+                VectorFactory.getDefault()
+                    .createVector2D(1d, Double.MAX_VALUE),
+                VectorFactory.getDefault().createVector2D(
+                    Double.MAX_VALUE, 1d), 25, 30, 2159585l),
+            new VehicleStateInitialParameters(null, VectorFactory
+                .getDefault().createVector2D(70d, 70d), 20,
+                VectorFactory.getDefault().createVector1D(6.25e-4), 20, 
+                VectorFactory.getDefault().createVector2D(6.25e-4, 6.25e-4), 20, 
+                VectorFactory.getDefault()
+                    .createVector2D(1d, Double.MAX_VALUE),
+                VectorFactory.getDefault().createVector2D(
+                    Double.MAX_VALUE, 1d), 25, 30, 2159585l),
+            Boolean.FALSE, 36000 },
 //        {
 //            /*
-//             * Road only
+//             * Ground only
 //             */
 //            new VehicleStateInitialParameters(null, VectorFactory
 //                .getDefault().createVector2D(70d, 70d), 20,
 //                VectorFactory.getDefault().createVector1D(6.25e-4),
 //                20, VectorFactory.getDefault().createVector2D(
 //                    6.25e-4, 6.25e-4), 20, VectorFactory.getDefault()
-//                    .createVector2D(1d, Double.MAX_VALUE),
+//                    .createVector2D(Double.MAX_VALUE, 1d),
 //                VectorFactory.getDefault().createVector2D(
-//                    Double.MAX_VALUE, 1d), 25, 30, 2159585l),
+//                    1d, Double.MAX_VALUE), 25, 30, 2159585l),
+//            new VehicleStateInitialParameters(null, VectorFactory
+//                .getDefault().createVector2D(70d, 70d), 20,
+//                VectorFactory.getDefault().createVector1D(6.25e-4), 20, 
+//                VectorFactory.getDefault().createVector2D(6.25e-4, 6.25e-4), 20, 
+//                VectorFactory.getDefault().createVector2D(Double.MAX_VALUE, 1d),
+//                VectorFactory.getDefault().createVector2D(1d, Double.MAX_VALUE), 
+//                25, 30, 2159585l),
+//            Boolean.FALSE, 36000 },
+//        {
+//            /*
+//             * Mixed 
+//             */
 //            new VehicleStateInitialParameters(null, VectorFactory
 //                .getDefault().createVector2D(70d, 70d), 20,
 //                VectorFactory.getDefault().createVector1D(6.25e-4),
 //                20, VectorFactory.getDefault().createVector2D(
 //                    6.25e-4, 6.25e-4), 20, VectorFactory.getDefault()
-//                    .createVector2D(1d, Double.MAX_VALUE),
-//                VectorFactory.getDefault().createVector2D(
-//                    Double.MAX_VALUE, 1d), 25, 30, 2159585l),
-//            Boolean.FALSE, 36000 },
-        {
-            /*
-             * Ground only
-             */
-            new VehicleStateInitialParameters(null, VectorFactory
-                .getDefault().createVector2D(70d, 70d), 20,
-                VectorFactory.getDefault().createVector1D(6.25e-4),
-                20, VectorFactory.getDefault().createVector2D(
-                    6.25e-4, 6.25e-4), 20, VectorFactory.getDefault()
-                    .createVector2D(Double.MAX_VALUE, 1d),
-                VectorFactory.getDefault().createVector2D(
-                    1d, Double.MAX_VALUE), 25, 30, 2159585l),
-            new VehicleStateInitialParameters(null, VectorFactory
-                .getDefault().createVector2D(70d, 70d), 20,
-                VectorFactory.getDefault().createVector1D(6.25e-4),
-                20, VectorFactory.getDefault().createVector2D(
-                    6.25e-4, 6.25e-4), 20, VectorFactory.getDefault()
-                    .createVector2D(Double.MAX_VALUE, 1d),
-                VectorFactory.getDefault().createVector2D(1d,
-                    Double.MAX_VALUE), 25, 30, 2159585l),
-            Boolean.FALSE, 36000 },
-        {
-            /*
-             * Mixed 
-             */
-            new VehicleStateInitialParameters(null, VectorFactory
-                .getDefault().createVector2D(70d, 70d), 20,
-                VectorFactory.getDefault().createVector1D(6.25e-4),
-                20, VectorFactory.getDefault().createVector2D(
-                    6.25e-4, 6.25e-4), 20, VectorFactory.getDefault()
-                    .createVector2D(0.5d, 0.5d), VectorFactory
-                    .getDefault().createVector2D(0.5d, 0.5d), 25, 30,
-                2159585l),
-            new VehicleStateInitialParameters(null, VectorFactory
-                .getDefault().createVector2D(70d, 70d), 20,
-                VectorFactory.getDefault().createVector1D(6.25e-4),
-                20, VectorFactory.getDefault().createVector2D(
-                    6.25e-4, 6.25e-4), 20, VectorFactory.getDefault()
-                    .createVector2D(70d, 30d), VectorFactory
-                    .getDefault().createVector2D(30d, 70d), 25, 30,
-                2159585l), Boolean.FALSE, 36000 } 
+//                    .createVector2D(0.5d, 0.5d), VectorFactory
+//                    .getDefault().createVector2D(0.5d, 0.5d), 25, 30,
+//                2159585l),
+//            new VehicleStateInitialParameters(null, VectorFactory
+//                .getDefault().createVector2D(70d, 70d), 20,
+//                VectorFactory.getDefault().createVector1D(6.25e-4),
+//                20, VectorFactory.getDefault().createVector2D(
+//                    6.25e-4, 6.25e-4), 20, VectorFactory.getDefault()
+//                    .createVector2D(70d, 30d), VectorFactory
+//                    .getDefault().createVector2D(30d, 70d), 25, 30,
+//                2159585l), Boolean.FALSE, 36000 } 
         };
   }
 
   private Matrix avgTransform;
-  private InferenceGraph graph;
+  private GenericJTSGraph graph;
   final Logger log = Logger.getLogger(VehicleStatePLFilterSimulationTest.class);
   private Simulation sim;
 
@@ -259,11 +265,35 @@ public class VehicleStatePLFilterSimulationTest {
 
     this.log.setLevel(Level.DEBUG);
 
-    this.startCoord = new Coordinate(40.7549, -73.97749);
+    this.startCoord = new Coordinate(0d, 0d);//new Coordinate(40.7549, -73.97749);
 
     final List<LineString> edges =
-        TestUtils.createGridGraph(this.startCoord);
-    this.graph = new GenericJTSGraph(edges, true);
+        Lists.newArrayList();
+//        TestUtils.createGridGraph(this.startCoord);
+    edges.add(JTSFactoryFinder.getGeometryFactory().createLineString(
+        new Coordinate[] {
+            new Coordinate(0d, 0d),
+            new Coordinate(100d , 0d)
+        }));
+    edges.add(JTSFactoryFinder.getGeometryFactory().createLineString(
+        new Coordinate[] {
+            new Coordinate(100d, 0d),
+            new Coordinate(100d , 100d)
+        }));
+    edges.add(JTSFactoryFinder.getGeometryFactory().createLineString(
+        new Coordinate[] {
+            new Coordinate(100d, 100d),
+            new Coordinate(0d, 100d)
+        }));
+    edges.add(JTSFactoryFinder.getGeometryFactory().createLineString(
+        new Coordinate[] {
+            new Coordinate(0d, 100d),
+            new Coordinate(0d, 0d)
+        }));
+    
+    
+    this.graph = new GenericJTSGraph(edges, false);
+    this.graph.MIN_OBS_SNAP_RADIUS = 25;
 
     this.avgTransform =
         MatrixFactory
@@ -301,6 +331,9 @@ public class VehicleStatePLFilterSimulationTest {
     final boolean hasPriorOnVariances = false;
 
     Preconditions.checkState(vehicleStateDist.getDomainSize() > 0);
+    
+    final Vector trueStateError = trueVehicleState.getObservation().getProjectedPoint().minus(
+       trueVehicleState.getMeanLocation());
 
     for (final VehicleStateDistribution<GpsObservation> state : vehicleStateDist
         .getDomain()) {
@@ -309,44 +342,27 @@ public class VehicleStatePLFilterSimulationTest {
           .assertEquals(
               new TrueObservation(trueVehicleState.getObservation(),
                   null), state.getObservation());
+      
+      final int stateCount;
+      if (vehicleStateDist instanceof CountedDataDistribution<?>) {
+        stateCount = ((CountedDataDistribution<VehicleStateDistribution<GpsObservation>>)vehicleStateDist).getCount(state);
+      } else {
+        stateCount = 1;
+      }
 
       final PathState pathState =
           state.getPathStateParam().getValue();
       final PathState truePathState =
           state.getPathStateParam().getValue();
-      if ((pathState.isOnRoad()
-          && truePathState.isOnRoad()
-          && pathState.getPath().getGeometry()
-              .covers(truePathState.getPath().getGeometry()))
-              || (!pathState.isOnRoad() && !truePathState.isOnRoad())) {
-        truePathsFound++;
-      }
-
-      if (pathState.getEdge().getInferenceGraphEdge()
-          .equals(truePathState.getEdge().getInferenceGraphEdge())) {
-        numOnTrueEdge++;
-      }
-
-      groundStateMeanStat.update(pathState.getGroundState());
-
-      obsCovMeanStat.update(state.getObservationCovarianceParam()
-          .getValue().convertToVector());
-      onRoadCovStat.update(state.getOnRoadModelCovarianceParam()
-          .getValue().convertToVector());
-      offRoadCovStat.update(state.getOffRoadModelCovarianceParam()
-          .getValue().convertToVector());
-
       final VehicleStateDistribution<GpsObservation> parentState =
           state.getParentState();
+      Vector transType = null; 
       if (parentState != null) {
-
         final PathState parentPathState =
             parentState.getPathStateParam().getValue();
-        Vector transType =
-            OnOffEdgeTransDistribution.getTransitionType(
+        transType = OnOffEdgeTransDistribution.getTransitionType(
                 parentPathState.getEdge().getInferenceGraphEdge(),
                 pathState.getEdge().getInferenceGraphEdge());
-
         if (parentPathState.isOnRoad()) {
           transType =
               transType.stack(MotionStateEstimatorPredictor.zeros2D);
@@ -354,8 +370,35 @@ public class VehicleStatePLFilterSimulationTest {
           transType =
               MotionStateEstimatorPredictor.zeros2D.stack(transType);
         }
-
-        transitionStat.update(transType);
+      }
+      
+      for (int i = 0; i < stateCount; i++) {
+        if ((pathState.isOnRoad()
+            && truePathState.isOnRoad()
+            && pathState.getPath().getGeometry()
+                .covers(truePathState.getPath().getGeometry()))
+                || (!pathState.isOnRoad() && !truePathState.isOnRoad())) {
+          truePathsFound++;
+        }
+  
+        if (pathState.getEdge().getInferenceGraphEdge()
+            .equals(truePathState.getEdge().getInferenceGraphEdge())) {
+          numOnTrueEdge++;
+        }
+        
+        groundStateMeanStat.update(pathState.getGroundState());
+  
+        Matrix obsCovMean = state.getObservationCovarianceParam().getParameterPrior().getMean();
+        obsCovMeanStat.update(obsCovMean.convertToVector());
+        
+        Matrix onRoadCovMean = state.getOnRoadModelCovarianceParam().getParameterPrior().getMean();
+        onRoadCovStat.update(onRoadCovMean.convertToVector());
+        
+        offRoadCovStat.update(state.getOffRoadModelCovarianceParam()
+            .getValue().convertToVector());
+  
+        if (transType != null)
+          transitionStat.update(transType);
       }
 
     }
@@ -442,6 +485,12 @@ public class VehicleStatePLFilterSimulationTest {
 
       assertVectorWithCovarianceError(stateErrorSS.getMean(), 
           stateModelCovariance, 5d);
+      
+      ArrayAsserts.assertArrayEquals(
+          VehicleStatePLFilterSimulationTest.fourZeros, obsCovErrorSS
+              .getMean().toArray(), 0.7d * trueVehicleState
+              .getObservationCovarianceParam().getValue()
+              .normFrobenius());
 
       ArrayAsserts.assertArrayEquals(
           VehicleStatePLFilterSimulationTest.oneZero, onRoadCovErrorSS

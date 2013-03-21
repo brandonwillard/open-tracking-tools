@@ -441,45 +441,4 @@ public class PathTest {
 
   }
 
-  @Test
-  public void testPrediction() {
-
-    final Matrix covar =
-        MatrixFactory.getDefault().copyArray(
-            new double[][] { new double[] { 126.56, 8.44 },
-                new double[] { 8.44, 0.56 } });
-    final MultivariateGaussian startBelief =
-        new AdjMultivariateGaussian(VectorFactory.getDefault()
-            .createVector2D(-10d, -5d / 30d), covar);
-
-    final Path newPath =
-        TestUtils.makeTmpPath(graph, true,
-            new Coordinate(20, -10),
-            new Coordinate(10, -10), new Coordinate(10, 0),
-            new Coordinate(0, 0));
-
-    Coordinate startCoord = new Coordinate(10, -5);
-    final ProjectedCoordinate obsPoint =
-        new ProjectedCoordinate(null, startCoord, startCoord);
-    final GpsObservation obs =
-        new GpsObservation("none", new Date(
-            System.currentTimeMillis()), startCoord, 
-            null, null, null,
-            0, null, obsPoint);
-
-    final PathStateDistribution belief =
-        new PathStateDistribution(newPath,
-            startBelief);
-    PathStateEstimatorPredictor pathStateEstimator = new PathStateEstimatorPredictor(null, newPath);
-    
-    final MultivariateGaussian result = pathStateEstimator.
-        getPathEdgePredictive(belief.getMotionDistribution(), Iterables.get(newPath.getPathEdges(), 1)).
-        getMotionDistribution();
-
-    AssertJUnit.assertEquals("distance", -14d, result.getMean()
-        .getElement(0), 1d);
-    AssertJUnit.assertTrue("velocity direction", startBelief.getMean()
-        .getElement(1) > result.getMean().getElement(1));
-  }
-
 }

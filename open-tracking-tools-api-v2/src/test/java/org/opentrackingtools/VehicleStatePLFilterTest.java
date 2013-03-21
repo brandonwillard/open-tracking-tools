@@ -64,9 +64,9 @@ public class VehicleStatePLFilterTest {
     final VehicleStateInitialParameters parameters =
         new VehicleStateInitialParameters(VectorFactory.getDefault()
             .copyArray(new double[] { 0d, 1d, 0d, 0d }),
-            VectorFactory.getDefault().createVector2D(0.02d, 0.02d), 0,
-            VectorFactory.getDefault().createVector1D(1e-4d), 0,
-            VectorFactory.getDefault().createVector2D(1e-4d, 1e-4d), 0,
+            VectorFactory.getDefault().createVector2D(0.02d, 0.02d), Integer.MAX_VALUE,
+            VectorFactory.getDefault().createVector1D(1e-4d), Integer.MAX_VALUE,
+            VectorFactory.getDefault().createVector2D(1e-4d, 1e-4d), Integer.MAX_VALUE,
             VectorFactory.getDefault().createVector2D(1,
                 Double.MAX_VALUE), VectorFactory.getDefault()
                 .createVector2D(Double.MAX_VALUE, 1), 1, 4, 0);
@@ -80,7 +80,7 @@ public class VehicleStatePLFilterTest {
             new ProjectedCoordinate(null, initialObsCoord, null));
 
     final VehicleStateDistribution<GpsObservation> currentState =
-        VehicleStateDistribution.constructInitialVehicleState(
+        VehicleStateDistribution.createInitialVehicleState(
             parameters, graph, initialObs, rng, startPathEdge);
 
     final VehicleStatePLFilter<GpsObservation> filter =
@@ -151,9 +151,9 @@ public class VehicleStatePLFilterTest {
     final VehicleStateInitialParameters parameters =
         new VehicleStateInitialParameters(VectorFactory.getDefault()
             .copyArray(new double[] { 0d, 1d, 0d, 0d }),
-            VectorFactory.getDefault().createVector2D(0.02d, 0.02d), 0,
-            VectorFactory.getDefault().createVector1D(1e-4d), 0,
-            VectorFactory.getDefault().createVector2D(1e-4d, 1e-4d), 0,
+            VectorFactory.getDefault().createVector2D(0.02d, 0.02d), Integer.MAX_VALUE,
+            VectorFactory.getDefault().createVector1D(1e-4d), Integer.MAX_VALUE,
+            VectorFactory.getDefault().createVector2D(1e-4d, 1e-4d), Integer.MAX_VALUE,
             VectorFactory.getDefault().createVector2D(1,
                 Double.MAX_VALUE), VectorFactory.getDefault()
                 .createVector2D(Double.MAX_VALUE, 1), 1, 4, 0);
@@ -164,7 +164,7 @@ public class VehicleStatePLFilterTest {
             new ProjectedCoordinate(null, initialObsCoord, null));
 
     final VehicleStateDistribution<GpsObservation> currentState =
-        VehicleStateDistribution.constructInitialVehicleState(
+        VehicleStateDistribution.createInitialVehicleState(
             parameters, graph, initialObs, rng, PathEdge.nullPathEdge);
 
     final VehicleStatePLFilter<GpsObservation> filter =
