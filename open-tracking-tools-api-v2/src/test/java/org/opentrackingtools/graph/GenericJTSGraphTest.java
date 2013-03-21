@@ -81,7 +81,7 @@ public class GenericJTSGraphTest {
     final PathEdge startPathEdge = new PathEdge(startLine, 0d, false);
     
     final VehicleStateDistribution<GpsObservation> currentState =
-        VehicleStateDistribution.constructInitialVehicleState(parameters, graph, obs, rng, startPathEdge);
+        VehicleStateDistribution.createInitialVehicleState(parameters, graph, obs, rng, startPathEdge);
     
     Set<Path> paths = graph.getPaths(currentState, obs);
     
@@ -166,7 +166,7 @@ public class GenericJTSGraphTest {
     final PathEdge startPathEdge = new PathEdge(startLine, 0d, false);
     
     final VehicleStateDistribution<GpsObservation> currentState =
-        VehicleStateDistribution.constructInitialVehicleState(parameters, graph, obs, rng, startPathEdge);
+        VehicleStateDistribution.createInitialVehicleState(parameters, graph, obs, rng, startPathEdge);
     
     Set<Path> paths = graph.getPaths(currentState, obs);
     
