@@ -2,20 +2,13 @@
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 	<artifactId>open-tracking-tools-api</artifactId>
-	<name>opentrackingtools</name>
+	<name>OpenTrackingTools API</name>
 
 	<parent>
 		<groupId>org.opentrackingtools</groupId>
 		<artifactId>opentrackingtools</artifactId>
 		<version>0.0.1-SNAPSHOT</version>
 	</parent>
-	<url>http://openplans.org/</url>
-
-	<scm>
-		<connection>scm:git:http://github.com/openplans/open-tracking-tools.git</connection>
-		<developerConnection>scm:git:ssh://git@github.com/openplans/open-tracking-tools.git</developerConnection>
-		<url>http://github.com/openplans/open-tracking-tools</url>
-	</scm>
 
 	<build>
 		<sourceDirectory>src/main/java</sourceDirectory>
@@ -23,116 +16,9 @@
 		<resources>
 			<resource>
 				<directory>src/main/resources</directory>
-				<!-- <filtering>true</filtering> -->
 			</resource>
 		</resources>
-
-		<pluginManagement>
-			<plugins>
-				<plugin>
-					<groupId>org.apache.maven.plugins</groupId>
-					<artifactId>maven-assembly-plugin</artifactId>
-					<version>2.2</version>
-				</plugin>
-				<plugin>
-					<groupId>org.apache.maven.plugins</groupId>
-					<artifactId>maven-compiler-plugin</artifactId>
-					<version>2.3.2</version>
-					<configuration>
-						<source>1.6</source>
-						<target>1.6</target>
-					</configuration>
-				</plugin>
-				<plugin>
-					<groupId>org.apache.maven.plugins</groupId>
-					<artifactId>maven-surefire-plugin</artifactId>
-					<configuration>
-						<argLine>-Xmx2G</argLine>
-						<disableXmlReport>false</disableXmlReport>
-					</configuration>
-				</plugin>
-				<plugin>
-					<groupId>org.apache.maven.plugins</groupId>
-					<artifactId>maven-jar-plugin</artifactId>
-					<version>2.2</version>
-				</plugin>
-				<plugin>
-					<groupId>org.apache.maven.plugins</groupId>
-					<artifactId>maven-install-plugin</artifactId>
-					<version>2.2</version>
-				</plugin>
-				<plugin>
-					<groupId>org.apache.maven.plugins</groupId>
-					<artifactId>maven-resources-plugin</artifactId>
-					<version>2.5</version>
-				</plugin>
-				<plugin>
-					<groupId>org.apache.maven.plugins</groupId>
-					<artifactId>maven-javadoc-plugin</artifactId>
-					<version>2.8.1</version>
-				</plugin>
-				<plugin>
-					<groupId>org.apache.maven.plugins</groupId>
-					<artifactId>maven-release-plugin</artifactId>
-					<version>2.2.2</version>
-					<configuration>
-						<!-- by default, release:prepare runs goals 'clean' and 'verify'. Javadoc 
-							generation in release:perform requires the new release versions of our artifacts 
-							to already be installed in the local repository. -->
-						<preparationGoals>clean install</preparationGoals>
-					</configuration>
-				</plugin>
-				<plugin>
-					<groupId>org.apache.maven.plugins</groupId>
-					<artifactId>maven-surefire-plugin</artifactId>
-					<version>2.12</version>
-				</plugin>
-			</plugins>
-		</pluginManagement>
 	</build>
-
-	<distributionManagement>
-		<repository>
-			<id>${distribution_id}</id>
-			<name>${distribution_name}</name>
-			<url>${distribution_url}</url>
-		</repository>
-		<snapshotRepository>
-			<id>${snapshot_distribution_id}</id>
-			<name>${snapshot_distribution_name}</name>
-			<url>${snapshot_distribution_url}</url>
-			<uniqueVersion>false</uniqueVersion>
-		</snapshotRepository>
-	</distributionManagement>
-
-	<repositories>
-		<repository>
-			<id>osgeo</id>
-			<name>Open Source Geospatial Foundation Repository</name>
-			<url>http://download.osgeo.org/webdav/geotools/</url>
-		</repository>
-		<repository>
-			<id>apache.snapshots</id>
-			<name>Apache Snapshot Repository</name>
-			<url>http://repository.apache.org/snapshots</url>
-			<releases>
-				<enabled>false</enabled>
-			</releases>
-		</repository>
-		<repository>
-			<id>java.net</id>
-			<name>java.net</name>
-			<url>http://download.java.net/</url>
-		</repository>
-		<repository>
-			<id>opengeo</id>
-			<name>OpenGeo Maven Repository</name>
-			<snapshots>
-				<enabled>true</enabled>
-			</snapshots>
-			<url>http://repo.opengeo.org/</url>
-		</repository>
-	</repositories>
 
 	<dependencies>
 		<dependency>
@@ -145,11 +31,6 @@
 			<groupId>ca.umontreal.iro</groupId>
 			<artifactId>ssj</artifactId>
 			<version>2.5</version>
-		</dependency>
-		<dependency>
-			<groupId>org.apache.mahout</groupId>
-			<artifactId>mahout-math</artifactId>
-			<version>0.8-SNAPSHOT</version>
 		</dependency>
 		<dependency>
 			<groupId>com.jhlabs</groupId>
@@ -184,6 +65,7 @@
 		<dependency>
 			<groupId>org.slf4j</groupId>
 			<artifactId>slf4j-log4j12</artifactId>
+	        <version>1.5.8</version>
 		</dependency>
 		<dependency>
 			<groupId>com.google.guava</groupId>
@@ -194,10 +76,6 @@
 			<groupId>net.sf.opencsv</groupId>
 			<artifactId>opencsv</artifactId>
 			<version>2.0</version>
-		</dependency>
-		<dependency>
-			<groupId>junit</groupId>
-			<artifactId>junit</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>org.codehaus.jackson</groupId>
@@ -217,30 +95,37 @@
 		<dependency>
 			<groupId>gov.sandia.foundry</groupId>
 			<artifactId>gov-sandia-cognition-common-core</artifactId>
+	        <version>${foundry.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>gov.sandia.foundry</groupId>
 			<artifactId>gov-sandia-cognition-learning-core</artifactId>
+	        <version>${foundry.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.geotools</groupId>
 			<artifactId>gt-geojson</artifactId>
+	        <version>${geotools.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.geotools</groupId>
 			<artifactId>gt-main</artifactId>
+	        <version>${geotools.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.geotools</groupId>
 			<artifactId>gt-epsg-hsql</artifactId>
+	        <version>${geotools.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.geotools</groupId>
 			<artifactId>gt-graph</artifactId>
+	        <version>${geotools.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.geotools</groupId>
 			<artifactId>gt-grid</artifactId>
+	        <version>${geotools.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework</groupId>
@@ -270,15 +155,18 @@
 		<dependency>
 			<groupId>commons-logging</groupId>
 			<artifactId>commons-logging</artifactId>
+	        <version>1.1.1</version>
 		</dependency>
 		<dependency>
 			<groupId>junit</groupId>
 			<artifactId>junit</artifactId>
+	        <version>4.8.1</version>
 			<scope>test</scope>
 		</dependency>
 		<dependency>
 			<groupId>com.vividsolutions</groupId>
 			<artifactId>jts</artifactId>
+	        <version>${jts.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>commons-collections</groupId>
@@ -286,15 +174,4 @@
 			<version>3.2</version>
 		</dependency>
 	</dependencies>
-
-	<properties>
-		<spring.version>3.0.5.RELEASE</spring.version>
-		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-		<distribution_id>opengeo</distribution_id>
-		<distribution_name>OpenGeo Maven Repository</distribution_name>
-		<distribution_url>dav:http://repo.opengeo.org</distribution_url>
-		<snapshot_distribution_id>opengeo</snapshot_distribution_id>
-		<snapshot_distribution_name>OpenGeo Maven Repository</snapshot_distribution_name>
-		<snapshot_distribution_url>dav:http://repo.opengeo.org</snapshot_distribution_url>
-	</properties>
 </project>

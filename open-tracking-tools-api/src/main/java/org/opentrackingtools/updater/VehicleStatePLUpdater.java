@@ -1,31 +1,20 @@
 package org.opentrackingtools.updater;
 
 import gov.sandia.cognition.math.LogMath;
-import gov.sandia.cognition.math.MathUtil;
-import gov.sandia.cognition.math.UnivariateStatisticsUtil;
-import gov.sandia.cognition.math.matrix.Matrix;
-import gov.sandia.cognition.math.matrix.MatrixFactory;
-import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.statistics.DataDistribution;
 import gov.sandia.cognition.statistics.bayesian.ParticleFilter;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 import gov.sandia.cognition.util.AbstractCloneableSerializable;
 
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 
-import org.apache.commons.math3.stat.StatUtils;
 import org.opentrackingtools.VehicleStateInitialParameters;
 import org.opentrackingtools.distributions.CountedDataDistribution;
-import org.opentrackingtools.distributions.DeterministicDataDistribution;
-import org.opentrackingtools.distributions.OnOffEdgeTransDistribution;
-import org.opentrackingtools.distributions.OnOffEdgeTransPriorDistribution;
 import org.opentrackingtools.distributions.PathStateDistribution;
 import org.opentrackingtools.distributions.PathStateMixtureDensityModel;
 import org.opentrackingtools.estimators.MotionStateEstimatorPredictor;
-import org.opentrackingtools.estimators.OnOffEdgeTransitionEstimatorPredictor;
 import org.opentrackingtools.estimators.PathStateEstimatorPredictor;
 import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.graph.InferenceGraphEdge;
@@ -35,9 +24,7 @@ import org.opentrackingtools.model.SimpleBayesianParameter;
 import org.opentrackingtools.model.VehicleStateDistribution;
 import org.opentrackingtools.paths.Path;
 import org.opentrackingtools.paths.PathEdge;
-import org.opentrackingtools.paths.PathState;
 import org.opentrackingtools.util.PathUtils;
-import org.opentrackingtools.util.model.TransitionProbMatrix;
 
 import com.beust.jcommander.internal.Lists;
 import com.google.common.base.Preconditions;
