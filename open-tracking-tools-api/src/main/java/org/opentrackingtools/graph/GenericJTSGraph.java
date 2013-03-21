@@ -500,7 +500,7 @@ public class GenericJTSGraph implements InferenceGraph {
        * i.e. the start edge we passed in.
        */
       if (distToStart == 0d) {
-        edge = Iterables.find(prevNode.getOutEdges(node), new Predicate<Edge>() {
+        edge = Iterables.find((List<Edge>)prevNode.getOutEdges(node), new Predicate<Edge>() {
           @Override
           public boolean apply(Edge input) {
             return ((Edge)input).equals(bStartEdge);
