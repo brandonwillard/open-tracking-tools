@@ -2,6 +2,7 @@
 .project
 .settings/
 target/
+test-output
 *.gz
 *.tex
 *.log
