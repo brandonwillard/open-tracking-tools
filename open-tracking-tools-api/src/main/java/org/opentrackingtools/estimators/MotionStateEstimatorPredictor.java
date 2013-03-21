@@ -9,8 +9,6 @@ import gov.sandia.cognition.math.matrix.mtj.DenseMatrix;
 import gov.sandia.cognition.math.signals.LinearDynamicalSystem;
 import gov.sandia.cognition.statistics.bayesian.AbstractKalmanFilter;
 import gov.sandia.cognition.statistics.bayesian.BayesianEstimatorPredictor;
-import gov.sandia.cognition.statistics.bayesian.BayesianParameter;
-import gov.sandia.cognition.statistics.bayesian.conjugate.MultivariateGaussianMeanBayesianEstimator;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 import gov.sandia.cognition.util.AbstractCloneableSerializable;
 import gov.sandia.cognition.util.ObjectUtil;
@@ -18,19 +16,14 @@ import gov.sandia.cognition.util.ObjectUtil;
 import java.util.Collection;
 import java.util.Random;
 
-import javax.annotation.Nonnull;
-
-import org.opentrackingtools.distributions.AdjMultivariateGaussian;
 import org.opentrackingtools.distributions.PathStateDistribution;
 import org.opentrackingtools.distributions.TruncatedRoadGaussian;
 import org.opentrackingtools.graph.InferenceGraph;
-import org.opentrackingtools.graph.InferenceGraphEdge;
 import org.opentrackingtools.model.GpsObservation;
 import org.opentrackingtools.model.VehicleStateDistribution;
 import org.opentrackingtools.paths.PathEdge;
 import org.opentrackingtools.util.PathUtils;
 import org.opentrackingtools.util.StatisticsUtil;
-import org.testng.internal.Nullable;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Ranges;
@@ -250,7 +243,6 @@ public class MotionStateEstimatorPredictor extends
 
   protected double currentTimeDiff = 0d;
 
-  @Nonnull
   protected transient InferenceGraph graph;
 
   /**
@@ -303,8 +295,8 @@ public class MotionStateEstimatorPredictor extends
    * @param currentTimeDiff
    */
   public MotionStateEstimatorPredictor(
-    @Nonnull VehicleStateDistribution<?> currentState, @Nonnull Random rng,
-    @Nullable Double currentTimeDiff) {
+    VehicleStateDistribution<?> currentState, Random rng,
+    Double currentTimeDiff) {
 
     this.currentState = currentState;
     this.graph = currentState.getGraph();
@@ -506,7 +498,7 @@ public class MotionStateEstimatorPredictor extends
    * @return
    */
   public MultivariateGaussian getObservationDistribution(
-    MultivariateGaussian motionState, @Nullable PathEdge edge) {
+    MultivariateGaussian motionState, PathEdge edge) {
 
     final MultivariateGaussian projBelief;
     final Matrix measurementCovariance =

@@ -172,7 +172,7 @@ public class Path extends AbstractCloneableSerializable implements
       }
     }
 
-    assert Preconditions.checkNotNull(null);
+//    assert Preconditions.checkNotNull(null);
 
     return null;
   }
