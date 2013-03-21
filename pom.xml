@@ -14,6 +14,17 @@
     <url>http://github.com/openplans/open-tracking-tools</url>
   </scm>
 
+  <distributionManagement>
+    <repository>
+      <id>releases-mvn-repo</id>
+      <url>http://build.staging.obanyc.com/archiva/repository/releases/</url>
+    </repository>
+    <snapshotRepository>
+      <id>snapshots-mvn-repo</id>
+      <url>http://build.staging.obanyc.com/archiva/repository/snapshots/</url>
+    </snapshotRepository>
+  </distributionManagement>
+
   <modules>
     <module>open-tracking-tools-api</module>
 <!--     <module>open-tracking-tools-otp</module> -->
