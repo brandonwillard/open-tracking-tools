@@ -180,9 +180,10 @@ public class VehicleStatePLFilterSimulationTest {
     }
 
     final ParticleFilter<GpsObservation, VehicleStateDistribution<GpsObservation>> filter =
-        new VehicleStatePLFilter<GpsObservation>(new TrueObservation(
+        new VehicleStatePLFilter<GpsObservation, GenericJTSGraph>(new TrueObservation(
             trueVehicleState.getObservation(), trueVehicleState),
-            this.graph, filterInitialParams, true, rng);
+            this.graph, new VehicleStateDistribution.VehicleStateDistributionFactory<GpsObservation, GenericJTSGraph>(), 
+            filterInitialParams, true, rng);
 
     final DataDistribution<VehicleStateDistribution<GpsObservation>> vehicleStateDist =
         filter.getUpdater().createInitialParticles(

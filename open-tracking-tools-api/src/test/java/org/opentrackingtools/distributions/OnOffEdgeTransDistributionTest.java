@@ -24,6 +24,7 @@ import org.opentrackingtools.model.GpsObservation;
 import org.opentrackingtools.model.ProjectedCoordinate;
 import org.opentrackingtools.model.SimpleBayesianParameter;
 import org.opentrackingtools.model.VehicleStateDistribution;
+import org.opentrackingtools.model.VehicleStateDistribution.VehicleStateDistributionFactory;
 import org.opentrackingtools.paths.PathEdge;
 import org.testng.AssertJUnit;
 import org.testng.annotations.Test;
@@ -90,8 +91,11 @@ public class OnOffEdgeTransDistributionTest {
     
     InferenceGraphEdge startEdge = startLine.getParentEdge();
     PathEdge startPathEdge = new PathEdge(startLine, 0d, false);
+    
+    VehicleStateDistributionFactory<GpsObservation, GenericJTSGraph> factory = 
+        new VehicleStateDistribution.VehicleStateDistributionFactory<GpsObservation, GenericJTSGraph>();
     VehicleStateDistribution<GpsObservation> currentState = 
-        VehicleStateDistribution.createInitialVehicleState(parameters, graph, obs, rng, startPathEdge);
+        factory.createInitialVehicleState(parameters, graph, obs, rng, startPathEdge);
     
     
     OnOffEdgeTransDistribution edgeTransDist = currentState.getEdgeTransitionParam().getConditionalDistribution();
@@ -165,7 +169,10 @@ public class OnOffEdgeTransDistributionTest {
     
     InferenceGraphEdge startEdge = startLine.getParentEdge();
     PathEdge startPathEdge = new PathEdge(startLine, 0d, false);
-    VehicleStateDistribution<GpsObservation> currentState = VehicleStateDistribution.createInitialVehicleState(parameters, graph, obs, rng, startPathEdge);
+    
+    VehicleStateDistributionFactory<GpsObservation, GenericJTSGraph> factory = 
+        new VehicleStateDistribution.VehicleStateDistributionFactory<GpsObservation, GenericJTSGraph>();
+    VehicleStateDistribution<GpsObservation> currentState = factory.createInitialVehicleState(parameters, graph, obs, rng, startPathEdge);
     
     OnOffEdgeTransDistribution edgeTransDist = currentState.getEdgeTransitionParam().getConditionalDistribution();
     
@@ -235,7 +242,10 @@ public class OnOffEdgeTransDistributionTest {
     
     InferenceGraphEdge startEdge = startLine.getParentEdge();
     PathEdge startPathEdge = new PathEdge(startLine, 0d, false);
-    VehicleStateDistribution<GpsObservation> currentState = VehicleStateDistribution.createInitialVehicleState(parameters, graph, obs, rng, startPathEdge);
+    
+    VehicleStateDistributionFactory<GpsObservation, GenericJTSGraph> factory = 
+        new VehicleStateDistribution.VehicleStateDistributionFactory<GpsObservation, GenericJTSGraph>();
+    VehicleStateDistribution<GpsObservation> currentState = factory.createInitialVehicleState(parameters, graph, obs, rng, startPathEdge);
     
     OnOffEdgeTransDistribution edgeTransDist = currentState.getEdgeTransitionParam().getConditionalDistribution();
     

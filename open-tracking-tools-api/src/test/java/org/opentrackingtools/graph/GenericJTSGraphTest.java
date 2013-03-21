@@ -16,6 +16,7 @@ import org.opentrackingtools.VehicleStateInitialParameters;
 import org.opentrackingtools.model.GpsObservation;
 import org.opentrackingtools.model.ProjectedCoordinate;
 import org.opentrackingtools.model.VehicleStateDistribution;
+import org.opentrackingtools.model.VehicleStateDistribution.VehicleStateDistributionFactory;
 import org.opentrackingtools.paths.Path;
 import org.opentrackingtools.paths.PathEdge;
 import org.testng.annotations.Test;
@@ -80,8 +81,10 @@ public class GenericJTSGraphTest {
 
     final PathEdge startPathEdge = new PathEdge(startLine, 0d, false);
     
+    VehicleStateDistributionFactory<GpsObservation, GenericJTSGraph> factory = 
+        new VehicleStateDistribution.VehicleStateDistributionFactory<GpsObservation, GenericJTSGraph>();
     final VehicleStateDistribution<GpsObservation> currentState =
-        VehicleStateDistribution.createInitialVehicleState(parameters, graph, obs, rng, startPathEdge);
+        factory.createInitialVehicleState(parameters, graph, obs, rng, startPathEdge);
     
     Set<Path> paths = graph.getPaths(currentState, obs);
     
@@ -165,8 +168,10 @@ public class GenericJTSGraphTest {
 
     final PathEdge startPathEdge = new PathEdge(startLine, 0d, false);
     
+    VehicleStateDistributionFactory<GpsObservation, GenericJTSGraph> factory = 
+        new VehicleStateDistribution.VehicleStateDistributionFactory<GpsObservation, GenericJTSGraph>();
     final VehicleStateDistribution<GpsObservation> currentState =
-        VehicleStateDistribution.createInitialVehicleState(parameters, graph, obs, rng, startPathEdge);
+        factory.createInitialVehicleState(parameters, graph, obs, rng, startPathEdge);
     
     Set<Path> paths = graph.getPaths(currentState, obs);
     

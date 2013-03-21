@@ -16,6 +16,7 @@ import org.opentrackingtools.graph.InferenceGraphSegment;
 import org.opentrackingtools.model.GpsObservation;
 import org.opentrackingtools.model.ProjectedCoordinate;
 import org.opentrackingtools.model.VehicleStateDistribution;
+import org.opentrackingtools.model.VehicleStateDistribution.VehicleStateDistributionFactory;
 import org.opentrackingtools.paths.PathEdge;
 import org.opentrackingtools.updater.VehicleStatePLUpdater;
 import org.testng.AssertJUnit;
@@ -79,13 +80,16 @@ public class VehicleStatePLFilterTest {
         new GpsObservation("test", new Date(0l), initialObsCoord, null, null, null, 0, null,
             new ProjectedCoordinate(null, initialObsCoord, null));
 
+    VehicleStateDistributionFactory<GpsObservation, GenericJTSGraph> factory = 
+        new VehicleStateDistribution.VehicleStateDistributionFactory<GpsObservation, GenericJTSGraph>();
     final VehicleStateDistribution<GpsObservation> currentState =
-        VehicleStateDistribution.createInitialVehicleState(
-            parameters, graph, initialObs, rng, startPathEdge);
+        factory.createInitialVehicleState(
+            parameters, graph, 
+            initialObs, rng, startPathEdge);
 
-    final VehicleStatePLFilter<GpsObservation> filter =
-        new VehicleStatePLFilter<GpsObservation>(initialObs, graph,
-            parameters, true, rng);
+    final VehicleStatePLFilter<GpsObservation, GenericJTSGraph> filter =
+        new VehicleStatePLFilter<GpsObservation, GenericJTSGraph>(initialObs, graph,
+            factory, parameters, true, rng);
 
     final Coordinate newObsCoord = new Coordinate(1, 3);
     final GpsObservation newObs =
@@ -163,13 +167,15 @@ public class VehicleStatePLFilterTest {
         new GpsObservation("test", new Date(0l), initialObsCoord, null, null, null, 0, null,
             new ProjectedCoordinate(null, initialObsCoord, null));
 
+    VehicleStateDistributionFactory<GpsObservation, GenericJTSGraph> factory = 
+        new VehicleStateDistribution.VehicleStateDistributionFactory<GpsObservation, GenericJTSGraph>();
     final VehicleStateDistribution<GpsObservation> currentState =
-        VehicleStateDistribution.createInitialVehicleState(
+        factory.createInitialVehicleState(
             parameters, graph, initialObs, rng, PathEdge.nullPathEdge);
 
-    final VehicleStatePLFilter<GpsObservation> filter =
-        new VehicleStatePLFilter<GpsObservation>(initialObs, graph,
-            parameters, true, rng);
+    final VehicleStatePLFilter<GpsObservation, GenericJTSGraph> filter =
+        new VehicleStatePLFilter<GpsObservation, GenericJTSGraph>(initialObs, graph,
+            factory, parameters, true, rng);
 
     final Coordinate newObsCoord = new Coordinate(1, 3);
     final GpsObservation newObs =

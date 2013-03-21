@@ -350,15 +350,7 @@ public class CountedDataDistribution<KeyType> extends
     this.incrementAll(data);
   }
 
-  /**
-   * Creates a new instance of
-   * 
-   * @param map
-   *          Backing Map that stores the data
-   * @param total
-   *          Sum of all values in the Map
-   */
-  protected CountedDataDistribution(
+  public CountedDataDistribution(
     final Map<KeyType, MutableDouble> map, final double total,
     boolean isLogScale) {
     super(map);

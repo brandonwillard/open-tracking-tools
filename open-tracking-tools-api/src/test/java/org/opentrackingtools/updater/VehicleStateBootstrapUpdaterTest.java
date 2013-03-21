@@ -15,6 +15,7 @@ import org.opentrackingtools.graph.InferenceGraphSegment;
 import org.opentrackingtools.model.GpsObservation;
 import org.opentrackingtools.model.ProjectedCoordinate;
 import org.opentrackingtools.model.VehicleStateDistribution;
+import org.opentrackingtools.model.VehicleStateDistribution.VehicleStateDistributionFactory;
 import org.opentrackingtools.paths.PathEdge;
 import org.testng.AssertJUnit;
 import org.testng.annotations.Test;
@@ -79,8 +80,11 @@ public class VehicleStateBootstrapUpdaterTest {
 
     startLine.getParentEdge();
     final PathEdge startPathEdge = new PathEdge(startLine, 0d, false);
+    
+    VehicleStateDistributionFactory<GpsObservation, GenericJTSGraph> factory = 
+        new VehicleStateDistribution.VehicleStateDistributionFactory<GpsObservation, GenericJTSGraph>();
     final VehicleStateDistribution<GpsObservation> currentState =
-        VehicleStateDistribution.createInitialVehicleState(
+        factory.createInitialVehicleState(
             parameters, graph, obs, rng, startPathEdge);
 
     final VehicleStateBootstrapUpdater<GpsObservation> updater =
@@ -148,8 +152,11 @@ public class VehicleStateBootstrapUpdaterTest {
 
     startLine.getParentEdge();
     final PathEdge startPathEdge = new PathEdge(startLine, 0d, false);
+    
+    VehicleStateDistributionFactory<GpsObservation, GenericJTSGraph> factory = 
+        new VehicleStateDistribution.VehicleStateDistributionFactory<GpsObservation, GenericJTSGraph>();
     final VehicleStateDistribution<GpsObservation> currentState =
-        VehicleStateDistribution.createInitialVehicleState(
+        factory.createInitialVehicleState(
             parameters, graph, obs, rng, startPathEdge);
 
     final VehicleStateBootstrapUpdater<GpsObservation> updater =
@@ -219,8 +226,11 @@ public class VehicleStateBootstrapUpdaterTest {
 
     startLine.getParentEdge();
     final PathEdge startPathEdge = new PathEdge(startLine, 0d, false);
+    
+    VehicleStateDistributionFactory<GpsObservation, GenericJTSGraph> factory = 
+        new VehicleStateDistribution.VehicleStateDistributionFactory<GpsObservation, GenericJTSGraph>();
     final VehicleStateDistribution<GpsObservation> currentState =
-        VehicleStateDistribution.createInitialVehicleState(
+        factory.createInitialVehicleState(
             parameters, graph, obs, rng, startPathEdge);
 
     final VehicleStateBootstrapUpdater<GpsObservation> updater =
@@ -299,8 +309,11 @@ public class VehicleStateBootstrapUpdaterTest {
                 .createVector2D(1, Double.MAX_VALUE), 0, 4, 0);
 
     final PathEdge startPathEdge = new PathEdge(startLine, 0d, false);
+    
+    VehicleStateDistributionFactory<GpsObservation, GenericJTSGraph> factory = 
+        new VehicleStateDistribution.VehicleStateDistributionFactory<GpsObservation, GenericJTSGraph>();
     final VehicleStateDistribution<GpsObservation> currentState =
-        VehicleStateDistribution.createInitialVehicleState(
+        factory.createInitialVehicleState(
             parameters, graph, obs, rng, startPathEdge);
 
     final VehicleStateBootstrapUpdater<GpsObservation> updater =
@@ -369,8 +382,11 @@ public class VehicleStateBootstrapUpdaterTest {
             VectorFactory.getDefault().createVector2D(Double.MAX_VALUE, 1), 0, 1, 0);
 
     final PathEdge startPathEdge = PathEdge.nullPathEdge;
+    
+    VehicleStateDistributionFactory<GpsObservation, GenericJTSGraph> factory = 
+        new VehicleStateDistribution.VehicleStateDistributionFactory<GpsObservation, GenericJTSGraph>();
     final VehicleStateDistribution<GpsObservation> currentState =
-        VehicleStateDistribution.createInitialVehicleState(
+        factory.createInitialVehicleState(
             parameters, graph, obs, rng, startPathEdge);
 
     final VehicleStateBootstrapUpdater<GpsObservation> updater =

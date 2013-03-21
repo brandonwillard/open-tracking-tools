@@ -33,6 +33,7 @@ import org.opentrackingtools.graph.InferenceGraphSegment;
 import org.opentrackingtools.model.GpsObservation;
 import org.opentrackingtools.model.SimpleBayesianParameter;
 import org.opentrackingtools.model.VehicleStateDistribution;
+import org.opentrackingtools.model.VehicleStateDistribution.VehicleStateDistributionFactory;
 import org.opentrackingtools.paths.Path;
 import org.opentrackingtools.paths.PathEdge;
 import org.opentrackingtools.paths.PathState;
@@ -44,13 +45,13 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.Iterables;
 import com.google.common.primitives.Doubles;
 
-public class VehicleStatePLUpdater<O extends GpsObservation>
+public class VehicleStatePLUpdater<O extends GpsObservation, G extends InferenceGraph>
     extends AbstractCloneableSerializable implements
     ParticleFilter.Updater<O, VehicleStateDistribution<O>> {
 
   private static final long serialVersionUID = 7567157323292175525L;
 
-  protected InferenceGraph inferenceGraph;
+  protected G inferenceGraph;
 
   protected O initialObservation;
 
@@ -60,10 +61,11 @@ public class VehicleStatePLUpdater<O extends GpsObservation>
 
   public long seed;
 
-  public VehicleStatePLUpdater(O obs,
-    InferenceGraph inferencedGraph,
-    VehicleStateInitialParameters parameters, Random rng) {
+  protected VehicleStateDistributionFactory<O, G> vehicleStateFactory;
 
+  public VehicleStatePLUpdater(O obs, G inferencedGraph, VehicleStateDistributionFactory<O,G> vehicleStateFactory,
+    VehicleStateInitialParameters parameters, Random rng) {
+    this.vehicleStateFactory = vehicleStateFactory;
     this.initialObservation = obs;
     this.inferenceGraph = inferencedGraph;
     if (rng == null) {
@@ -76,9 +78,9 @@ public class VehicleStatePLUpdater<O extends GpsObservation>
   }
 
   @Override
-  public VehicleStatePLUpdater<O> clone() {
-    final VehicleStatePLUpdater<O> clone =
-        (VehicleStatePLUpdater<O>) super.clone();
+  public VehicleStatePLUpdater<O, G> clone() {
+    final VehicleStatePLUpdater<O, G> clone =
+        (VehicleStatePLUpdater<O, G>) super.clone();
     clone.seed = this.seed;
     clone.inferenceGraph = this.inferenceGraph;
     clone.initialObservation = this.initialObservation;
@@ -112,7 +114,9 @@ public class VehicleStatePLUpdater<O extends GpsObservation>
      * edges.
      */
     final VehicleStateDistribution<O> nullState =
-        VehicleStateDistribution.createInitialVehicleState(this.parameters, this.inferenceGraph, this.initialObservation, this.random,
+        vehicleStateFactory.createInitialVehicleState(
+            this.parameters, this.inferenceGraph, 
+            this.initialObservation, this.random,
             PathEdge.nullPathEdge);
     final MultivariateGaussian initialMotionStateDist =
         nullState.getMotionStateParam().getParameterPrior();
@@ -141,7 +145,7 @@ public class VehicleStatePLUpdater<O extends GpsObservation>
         
         final PathEdge pathEdge = new PathEdge(segment, 0d, false);
         
-        VehicleStateDistribution<O> stateOnEdge = VehicleStateDistribution.createInitialVehicleState(
+        VehicleStateDistribution<O> stateOnEdge = vehicleStateFactory.createInitialVehicleState(
             parameters, inferenceGraph, initialObservation, random, pathEdge);
 
         final double logLikelihood =

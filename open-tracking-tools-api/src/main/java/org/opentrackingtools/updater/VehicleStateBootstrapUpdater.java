@@ -26,6 +26,7 @@ import org.opentrackingtools.graph.InferenceGraphSegment;
 import org.opentrackingtools.model.GpsObservation;
 import org.opentrackingtools.model.SimpleBayesianParameter;
 import org.opentrackingtools.model.VehicleStateDistribution;
+import org.opentrackingtools.model.VehicleStateDistribution.VehicleStateDistributionFactory;
 import org.opentrackingtools.paths.Path;
 import org.opentrackingtools.paths.PathEdge;
 import org.opentrackingtools.paths.PathState;
@@ -77,6 +78,8 @@ public class VehicleStateBootstrapUpdater<O extends GpsObservation>
    */
   protected Vector sampledTransitionError;
 
+  protected VehicleStateDistributionFactory<O, InferenceGraph> vehicleStateFactory;
+
   public Vector getSampledTransitionError() {
     return sampledTransitionError;
   }
@@ -96,6 +99,7 @@ public class VehicleStateBootstrapUpdater<O extends GpsObservation>
       this.random = rng;
     }
     this.parameters = parameters;
+    this.vehicleStateFactory = new VehicleStateDistribution.VehicleStateDistributionFactory<O, InferenceGraph>();
   }
 
   @Override
@@ -128,7 +132,7 @@ public class VehicleStateBootstrapUpdater<O extends GpsObservation>
      */
 
     final VehicleStateDistribution<O> nullState =
-        VehicleStateDistribution.createInitialVehicleState(this.parameters, this.inferenceGraph, this.initialObservation, this.random,
+        vehicleStateFactory.createInitialVehicleState(this.parameters, this.inferenceGraph, this.initialObservation, this.random,
             PathEdge.nullPathEdge);
     final MultivariateGaussian initialMotionStateDist =
         nullState.getMotionStateParam().getParameterPrior();
@@ -156,7 +160,7 @@ public class VehicleStateBootstrapUpdater<O extends GpsObservation>
       for (final InferenceGraphSegment line : edges) {
         
         PathEdge startPathEdge = new PathEdge(line, 0d, false); 
-        VehicleStateDistribution<O> stateOnEdge = VehicleStateDistribution.createInitialVehicleState(
+        VehicleStateDistribution<O> stateOnEdge = vehicleStateFactory.createInitialVehicleState(
             parameters, inferenceGraph, initialObservation, random, startPathEdge);
 
         final double logLikelihood =

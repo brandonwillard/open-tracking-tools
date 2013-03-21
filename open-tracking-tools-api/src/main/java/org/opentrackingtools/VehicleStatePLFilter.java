@@ -35,6 +35,7 @@ import org.opentrackingtools.graph.InferenceGraphEdge;
 import org.opentrackingtools.model.GpsObservation;
 import org.opentrackingtools.model.SimpleBayesianParameter;
 import org.opentrackingtools.model.VehicleStateDistribution;
+import org.opentrackingtools.model.VehicleStateDistribution.VehicleStateDistributionFactory;
 import org.opentrackingtools.paths.PathState;
 import org.opentrackingtools.updater.VehicleStatePLUpdater;
 import org.opentrackingtools.util.PathUtils;
@@ -44,12 +45,12 @@ import org.opentrackingtools.util.model.MutableDoubleCount;
 import com.beust.jcommander.internal.Lists;
 import com.google.common.base.Preconditions;
 
-public class VehicleStatePLFilter<O extends GpsObservation> extends
+public class VehicleStatePLFilter<O extends GpsObservation, G extends InferenceGraph> extends
     AbstractParticleFilter<O, VehicleStateDistribution<O>> {
 
   private static final long serialVersionUID = -8257075186193062150L;
 
-  protected final InferenceGraph inferredGraph;
+  protected final G inferredGraph;
   protected final Boolean isDebug;
 
   /*
@@ -57,6 +58,8 @@ public class VehicleStatePLFilter<O extends GpsObservation> extends
    * This distribution contains all the last evaluated transition states.
    */
   protected CountedDataDistribution<VehicleStateDistribution<O>> lastResampleDistribution;
+
+  protected VehicleStateDistributionFactory<O, G> vehicleStateFactory;
 
   public CountedDataDistribution<VehicleStateDistribution<O>>
       getLastResampleDistribution() {
@@ -74,13 +77,15 @@ public class VehicleStatePLFilter<O extends GpsObservation> extends
     return isDebug;
   }
 
-  public VehicleStatePLFilter(O obs, InferenceGraph inferredGraph,
+  public VehicleStatePLFilter(O obs, G inferredGraph, VehicleStateDistributionFactory<O,G> vehicleStateFactory,
     VehicleStateInitialParameters parameters, Boolean isDebug,
     Random rng) {
+    this.vehicleStateFactory = vehicleStateFactory;
     this.inferredGraph = inferredGraph;
     this.isDebug = isDebug;
-    this.setUpdater(new VehicleStatePLUpdater<O>(obs,
-        inferredGraph, parameters, rng));
+    this.setUpdater(new VehicleStatePLUpdater<O, G>(obs, inferredGraph, 
+        vehicleStateFactory,
+        parameters, rng));
     this.setNumParticles(parameters.getNumParticles());
     this.setRandom(rng);
   }
@@ -112,75 +117,10 @@ public class VehicleStatePLFilter<O extends GpsObservation> extends
       predictedState.setObservation(obs);
       predictedState = this.updater.update(predictedState);
       
-      final CountedDataDistribution<VehicleStateDistribution<O>> childDist =
-          new CountedDataDistribution<VehicleStateDistribution<O>>(true);
-
-      final PathStateMixtureDensityModel predictedPathStateMixture =
-          predictedState.getPathStateParam()
-              .getConditionalDistribution();
-      
-      double particleLogLikTotal = Double.NEGATIVE_INFINITY;
-      
-      for (int i = 0; i < predictedPathStateMixture
-          .getDistributionCount(); i++) {
-        final PathStateDistribution predictedPathStateDist =
-            predictedPathStateMixture.getDistributions().get(i);
-        final double pathStateDistLogLikelihood =
-            predictedPathStateMixture.getPriorWeights()[i];
-        final double edgeTransitionLogLikelihood =
-            predictedState
-                .getEdgeTransitionParam()
-                .getConditionalDistribution()
-                .getProbabilityFunction()
-                .logEvaluate(
-                    predictedPathStateDist.getPathState().getEdge()
-                        .getInferenceGraphEdge());
-        
-        /*
-         * Create a new vehicle state for this possible transition
-         * path state, and, since it starts as a copy of the original
-         * state, make sure we update the pertinent parameters.
-         */
-        final VehicleStateDistribution<O> predictedChildState =
-            new VehicleStateDistribution<O>(predictedState);
-        predictedChildState
-            .setPathStateParam(SimpleBayesianParameter.create(predictedPathStateDist.getPathState(),
-                predictedPathStateMixture, predictedPathStateDist));
-
-        final MultivariateGaussian measurementPredictionDist =
-            predictedState.getMotionStateEstimatorPredictor()
-                .getMeasurementDistribution(predictedPathStateDist);
-
-        predictedChildState
-            .setMotionStateParam(SimpleBayesianParameter.create(
-                measurementPredictionDist.getMean(),
-                measurementPredictionDist, 
-                predictedPathStateDist.getMotionDistribution()));
-
-        final double predictiveLogLikelihood =
-            this.getUpdater().computeLogLikelihood(predictedChildState,
-                obs);
-        
-        predictedChildState.setParentState(state);
-
-        /*
-         * Set these for debugging.
-         */
-        predictedChildState.setPredictiveLogLikelihood(predictiveLogLikelihood);
-        predictedChildState.setPathStateDistLogLikelihood(pathStateDistLogLikelihood);
-        predictedChildState.setEdgeTransitionLogLikelihood(edgeTransitionLogLikelihood);
-        
-        final double childLogLikTotal = predictiveLogLikelihood + pathStateDistLogLikelihood
-                + edgeTransitionLogLikelihood;
-        
-        particleLogLikTotal = LogMath.add(particleLogLikTotal, childLogLikTotal);
-        
-        childDist.increment(predictedChildState, childLogLikTotal);
-      }
-      
+      CountedDataDistribution<VehicleStateDistribution<O>> childDist = internalPriorPrediction(predictedState, obs);
       predictedState.setTransitionStateDistribution(childDist);
       
-      resampleDist.increment(predictedState, particleLogLikTotal + logCount);
+      resampleDist.increment(predictedState, childDist.getTotal() + logCount);
       
     }
 
@@ -252,7 +192,90 @@ public class VehicleStatePLFilter<O extends GpsObservation> extends
 
   }
 
-  private VehicleStateDistribution<O> internalUpdate(VehicleStateDistribution<O> state, O obs) {
+  /**
+   * This method takes a prior predictive vehicle state distribution and
+   * returns a distribution over its possible transition
+   * states, with prior predictive likelihood weights.
+   * 
+   * @param predictedState
+   * @param obs
+   * @return
+   */
+  protected CountedDataDistribution<VehicleStateDistribution<O>> internalPriorPrediction(
+      VehicleStateDistribution<O> predictedState, O obs) {
+    final CountedDataDistribution<VehicleStateDistribution<O>> childDist =
+        new CountedDataDistribution<VehicleStateDistribution<O>>(true);
+
+    final PathStateMixtureDensityModel predictedPathStateMixture =
+        predictedState.getPathStateParam()
+            .getConditionalDistribution();
+    
+    for (int i = 0; i < predictedPathStateMixture
+        .getDistributionCount(); i++) {
+      final PathStateDistribution predictedPathStateDist =
+          predictedPathStateMixture.getDistributions().get(i);
+      final double pathStateDistLogLikelihood =
+          predictedPathStateMixture.getPriorWeights()[i];
+      final double edgeTransitionLogLikelihood =
+          predictedState
+              .getEdgeTransitionParam()
+              .getConditionalDistribution()
+              .getProbabilityFunction()
+              .logEvaluate(
+                  predictedPathStateDist.getPathState().getEdge()
+                      .getInferenceGraphEdge());
+      
+      /*
+       * Create a new vehicle state for this possible transition
+       * path state, and, since it starts as a copy of the original
+       * state, make sure we update the pertinent parameters.
+       */
+      final VehicleStateDistribution<O> predictedChildState =
+          new VehicleStateDistribution<O>(predictedState);
+      predictedChildState
+          .setPathStateParam(SimpleBayesianParameter.create(predictedPathStateDist.getPathState(),
+              predictedPathStateMixture, predictedPathStateDist));
+
+      final MultivariateGaussian measurementPredictionDist =
+          predictedState.getMotionStateEstimatorPredictor()
+              .getMeasurementDistribution(predictedPathStateDist);
+
+      predictedChildState
+          .setMotionStateParam(SimpleBayesianParameter.create(
+              measurementPredictionDist.getMean(),
+              measurementPredictionDist, 
+              predictedPathStateDist.getMotionDistribution()));
+
+      final double predictiveLogLikelihood =
+          this.getUpdater().computeLogLikelihood(predictedChildState,
+              obs);
+      
+      predictedChildState.setParentState(predictedState.getParentState());
+
+      /*
+       * Set these for debugging.
+       */
+      predictedChildState.setPredictiveLogLikelihood(predictiveLogLikelihood);
+      predictedChildState.setPathStateDistLogLikelihood(pathStateDistLogLikelihood);
+      predictedChildState.setEdgeTransitionLogLikelihood(edgeTransitionLogLikelihood);
+      
+      final double childLogLikTotal = predictiveLogLikelihood + pathStateDistLogLikelihood
+              + edgeTransitionLogLikelihood;
+      
+      childDist.increment(predictedChildState, childLogLikTotal);
+    }
+    
+    return childDist;
+  }
+
+  /**
+   * This method performs the Bayes update for a single vehicle state.
+   * 
+   * @param state
+   * @param obs
+   * @return
+   */
+  protected VehicleStateDistribution<O> internalUpdate(VehicleStateDistribution<O> state, O obs) {
     final VehicleStateDistribution<O> updatedState = state.clone();
     final PathStateDistribution priorPredictivePathStateDist =
         updatedState.getPathStateParam().getParameterPrior().clone();

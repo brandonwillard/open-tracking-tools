@@ -5,14 +5,11 @@ import java.util.Random;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
 
-import gov.sandia.cognition.statistics.ClosedFormDistribution;
+import gov.sandia.cognition.statistics.Distribution;
 import gov.sandia.cognition.statistics.bayesian.BayesianParameter;
-import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 import gov.sandia.cognition.util.AbstractCloneableSerializable;
-import gov.sandia.cognition.util.CloneableSerializable;
-import gov.sandia.cognition.util.ObjectUtil;
 
-public class SimpleBayesianParameter<ParameterType, ConditionalType extends ClosedFormDistribution<?>, PriorType extends ClosedFormDistribution<ParameterType>>
+public class SimpleBayesianParameter<ParameterType, ConditionalType extends Distribution<?>, PriorType extends Distribution<ParameterType>>
   extends AbstractCloneableSerializable
   implements BayesianParameter<ParameterType, ConditionalType, PriorType> {
 
@@ -49,7 +46,7 @@ public class SimpleBayesianParameter<ParameterType, ConditionalType extends Clos
     this.value = other.value;
   }
   
-  public static <Par, C extends ClosedFormDistribution<?>, P extends ClosedFormDistribution<Par>> 
+  public static <Par, C extends Distribution<?>, P extends Distribution<Par>> 
     SimpleBayesianParameter<Par, C, P> create(Par value, C conditional, P prior) {
     return new SimpleBayesianParameter<Par, C, P>(conditional, prior, value);
   }

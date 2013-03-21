@@ -81,7 +81,7 @@ public class VehicleStateDistribution<Observation extends GpsObservation> extend
     return VehicleStateDistribution.serialVersionUID;
   }
 
-  private static int oneStateCompareTo(
+  protected static int oneStateCompareTo(
     VehicleStateDistribution<? extends GpsObservation> t,
     VehicleStateDistribution<? extends GpsObservation> o) {
     if (t == o) {
@@ -267,9 +267,9 @@ public class VehicleStateDistribution<Observation extends GpsObservation> extend
   /*
    * This holds the prior predictive transition states.
    */
-  protected CountedDataDistribution<VehicleStateDistribution<Observation>> transitionStateDistribution;
+  protected CountedDataDistribution<? extends VehicleStateDistribution<Observation>> transitionStateDistribution;
 
-  public CountedDataDistribution<VehicleStateDistribution<Observation>>
+  public CountedDataDistribution<? extends VehicleStateDistribution<Observation>>
       getTransitionStateDistribution() {
     return transitionStateDistribution;
   }
@@ -277,7 +277,7 @@ public class VehicleStateDistribution<Observation extends GpsObservation> extend
   public
       void
       setTransitionStateDistribution(
-        CountedDataDistribution<VehicleStateDistribution<Observation>> transitionStateDistribution) {
+        CountedDataDistribution<? extends VehicleStateDistribution<Observation>> transitionStateDistribution) {
     this.transitionStateDistribution = transitionStateDistribution;
   }
 
@@ -504,145 +504,147 @@ public class VehicleStateDistribution<Observation extends GpsObservation> extend
     return builder.toString();
   }
 
-  /**
-   * This is where an initial off-road state is constructed so that it can be
-   * used as a template for the prior initialization of parameters.
-   * @param parameters 
-   * 
-   * @return
-   */
-  public static <O extends GpsObservation> VehicleStateDistribution<O> createInitialVehicleState(
-      VehicleStateInitialParameters parameters, InferenceGraph graph, O obs, Random rng, PathEdge pathEdge) {
-    
-    /*
-     * Create parameters without path or motion state dependencies
+  public static class VehicleStateDistributionFactory<O extends GpsObservation, G extends InferenceGraph> {
+    /**
+     * This is where an initial off-road state is constructed so that it can be
+     * used as a template for the prior initialization of parameters.
+     * @param parameters 
+     * 
+     * @return
      */
-    final int obsInitialDof =
-        parameters.getObsCovDof() - parameters.getObsCov().getDimensionality() - 1;
-    final InverseWishartDistribution obsCovDistribution =
-        new InverseWishartDistribution(MatrixFactory
-            .getDefault().createDiagonal(parameters.getObsCov())
-            .scale(obsInitialDof), parameters.getObsCovDof());
-    final SimpleBayesianParameter<Matrix, MultivariateGaussian, InverseWishartDistribution> observationCovParam =
-        SimpleBayesianParameter.create(obsCovDistribution.getMean(), 
-            new MultivariateGaussian(VectorFactory.getDefault().createVector2D(), 
-                obsCovDistribution.getMean()), 
-           obsCovDistribution);
+    public VehicleStateDistribution<O> createInitialVehicleState(
+        VehicleStateInitialParameters parameters, G graph, O obs, Random rng, PathEdge pathEdge) {
 
-    final int onRoadInitialDof =
-        parameters.getOnRoadCovDof() - parameters.getOnRoadStateCov().getDimensionality() - 1;
-    final InverseWishartDistribution onRoadCovDistribution =
-        new InverseWishartDistribution(MatrixFactory
-            .getDefault().createDiagonal(parameters.getOnRoadStateCov())
-            .scale(onRoadInitialDof), parameters.getOnRoadCovDof());
-    final SimpleBayesianParameter<Matrix, MultivariateGaussian, InverseWishartDistribution> onRoadCovParam =
-        SimpleBayesianParameter.create(onRoadCovDistribution.getMean(),
-            new MultivariateGaussian(VectorFactory.getDefault().createVector1D(), 
-                onRoadCovDistribution.getMean()), onRoadCovDistribution);
+      /*
+       * Create parameters without path or motion state dependencies
+       */
+      final int obsInitialDof =
+          parameters.getObsCovDof() - parameters.getObsCov().getDimensionality() - 1;
+      final InverseWishartDistribution obsCovDistribution =
+          new InverseWishartDistribution(MatrixFactory
+              .getDefault().createDiagonal(parameters.getObsCov())
+              .scale(obsInitialDof), parameters.getObsCovDof());
+      final SimpleBayesianParameter<Matrix, MultivariateGaussian, InverseWishartDistribution> observationCovParam =
+          SimpleBayesianParameter.create(obsCovDistribution.getMean(), 
+              new MultivariateGaussian(VectorFactory.getDefault().createVector2D(), 
+                  obsCovDistribution.getMean()), 
+                  obsCovDistribution);
 
-    final int offRoadInitialDof =
-        parameters.getOffRoadCovDof() - parameters.getOffRoadStateCov().getDimensionality() - 1;
-    final InverseWishartDistribution offRoadCovDistribution =
-        new InverseWishartDistribution(MatrixFactory
-            .getDefault().createDiagonal(parameters.getOffRoadStateCov())
-            .scale(offRoadInitialDof), parameters.getOffRoadCovDof());
-    final SimpleBayesianParameter<Matrix, MultivariateGaussian, InverseWishartDistribution> offRoadCovParam =
-        SimpleBayesianParameter.create(offRoadCovDistribution.getMean(),
-            new MultivariateGaussian(VectorFactory.getDefault().createVector1D(), 
-                offRoadCovDistribution.getMean()), offRoadCovDistribution);
-    
-    final OnOffEdgeTransPriorDistribution initialPriorTransDist =
-        new OnOffEdgeTransPriorDistribution(parameters.getOnTransitionProbsPrior(), 
-            parameters.getOffTransitionProbsPrior());
-    final TransitionProbMatrix transitionProbMatrix = new TransitionProbMatrix(
-            initialPriorTransDist.getEdgeMotionTransProbPrior().getMean(), 
-            initialPriorTransDist.getFreeMotionTransProbPrior().getMean());
-    
-    /*
-     * Create incomplete state that is to be filled out depending
-     * on the edge.
-     */
-    final VehicleStateDistribution<O> state =
-        new VehicleStateDistribution<O>(graph, obs, null, null, observationCovParam,
-            onRoadCovParam, offRoadCovParam, null, null);
-    
-    final MotionStateEstimatorPredictor motionStateEstimatorPredictor =
-        new MotionStateEstimatorPredictor(state, rng,
-            (double) parameters.getInitialObsFreq());
+      final int onRoadInitialDof =
+          parameters.getOnRoadCovDof() - parameters.getOnRoadStateCov().getDimensionality() - 1;
+      final InverseWishartDistribution onRoadCovDistribution =
+          new InverseWishartDistribution(MatrixFactory
+              .getDefault().createDiagonal(parameters.getOnRoadStateCov())
+              .scale(onRoadInitialDof), parameters.getOnRoadCovDof());
+      final SimpleBayesianParameter<Matrix, MultivariateGaussian, InverseWishartDistribution> onRoadCovParam =
+          SimpleBayesianParameter.create(onRoadCovDistribution.getMean(),
+              new MultivariateGaussian(VectorFactory.getDefault().createVector1D(), 
+                  onRoadCovDistribution.getMean()), onRoadCovDistribution);
 
-    final MultivariateGaussian initialMotionStateDist = motionStateEstimatorPredictor.createInitialLearnedObject();
-    if (parameters.getInitialMotionState() != null) {
-      Preconditions.checkArgument(parameters.getInitialMotionState().getDimensionality() == 4);
-      initialMotionStateDist.setMean(parameters.getInitialMotionState().clone());
+      final int offRoadInitialDof =
+          parameters.getOffRoadCovDof() - parameters.getOffRoadStateCov().getDimensionality() - 1;
+      final InverseWishartDistribution offRoadCovDistribution =
+          new InverseWishartDistribution(MatrixFactory
+              .getDefault().createDiagonal(parameters.getOffRoadStateCov())
+              .scale(offRoadInitialDof), parameters.getOffRoadCovDof());
+      final SimpleBayesianParameter<Matrix, MultivariateGaussian, InverseWishartDistribution> offRoadCovParam =
+          SimpleBayesianParameter.create(offRoadCovDistribution.getMean(),
+              new MultivariateGaussian(VectorFactory.getDefault().createVector1D(), 
+                  offRoadCovDistribution.getMean()), offRoadCovDistribution);
+
+      final OnOffEdgeTransPriorDistribution initialPriorTransDist =
+          new OnOffEdgeTransPriorDistribution(parameters.getOnTransitionProbsPrior(), 
+              parameters.getOffTransitionProbsPrior());
+      final TransitionProbMatrix transitionProbMatrix = new TransitionProbMatrix(
+          initialPriorTransDist.getEdgeMotionTransProbPrior().getMean(), 
+          initialPriorTransDist.getFreeMotionTransProbPrior().getMean());
+
+      /*
+       * Create incomplete state that is to be filled out depending
+       * on the edge.
+       */
+      final VehicleStateDistribution<O> state =
+          new VehicleStateDistribution<O>(graph, obs, null, null, observationCovParam,
+              onRoadCovParam, offRoadCovParam, null, null);
+
+      final MotionStateEstimatorPredictor motionStateEstimatorPredictor =
+          new MotionStateEstimatorPredictor(state, rng,
+              (double) parameters.getInitialObsFreq());
+
+      final MultivariateGaussian initialMotionStateDist = motionStateEstimatorPredictor.createInitialLearnedObject();
+      if (parameters.getInitialMotionState() != null) {
+        Preconditions.checkArgument(parameters.getInitialMotionState().getDimensionality() == 4);
+        initialMotionStateDist.setMean(parameters.getInitialMotionState().clone());
+      }
+
+      /*
+       * Now, handle the off and on road motion and path state creation 
+       */
+      if (pathEdge.isNullEdge()) {
+
+        final MultivariateGaussian initialObservationState =
+            motionStateEstimatorPredictor.getObservationDistribution(
+                initialMotionStateDist, PathEdge.nullPathEdge);
+
+        final SimpleBayesianParameter<Vector, MultivariateGaussian, MultivariateGaussian> motionStateParam =
+            SimpleBayesianParameter.create( initialObservationState.getMean(),
+                initialObservationState, initialMotionStateDist);
+        state.setMotionStateParam(motionStateParam);
+
+        final PathStateDistribution initialPathStateDist =
+            new PathStateDistribution(Path.nullPath, initialMotionStateDist);
+        final SimpleBayesianParameter<PathState, PathStateMixtureDensityModel, PathStateDistribution> pathStateParam =
+            SimpleBayesianParameter.create(
+                initialPathStateDist.getPathState(),
+                new PathStateMixtureDensityModel(
+                    Collections.singletonList(initialPathStateDist), new double[] {0d}), initialPathStateDist);
+
+        state.setPathStateParam(pathStateParam);
+
+      } else {
+
+        final Path path = new Path(pathEdge);
+        PathUtils.convertToRoadBelief(initialMotionStateDist, path, pathEdge, true);
+
+        final MultivariateGaussian initialObservationState =
+            motionStateEstimatorPredictor.getObservationDistribution(
+                initialMotionStateDist, pathEdge);
+
+        final SimpleBayesianParameter<Vector, MultivariateGaussian, MultivariateGaussian> motionStateParam =
+            SimpleBayesianParameter.create(initialObservationState.getMean(),
+                initialObservationState, initialMotionStateDist);
+
+        state.setMotionStateParam(motionStateParam);
+
+        final PathStateDistribution initialPathStateDist =
+            new PathStateDistribution(path, initialMotionStateDist);
+        final PathStateMixtureDensityModel pathStateMixture = 
+            new PathStateMixtureDensityModel(Collections.singleton(initialPathStateDist), new double[] {0d});
+        final SimpleBayesianParameter<PathState, PathStateMixtureDensityModel, PathStateDistribution> edgeStateParam =
+            SimpleBayesianParameter.create(initialPathStateDist.getPathState(),
+                pathStateMixture, initialPathStateDist);
+
+        state.setPathStateParam(edgeStateParam);
+      }
+
+      /*
+       * Now set the transition distribution, since it needed a path state
+       * for construction.
+       */
+      final OnOffEdgeTransDistribution initialTransDist =
+          new OnOffEdgeTransDistribution(graph, 
+              state.getPathStateParam().getValue(), 
+              state.getObservationCovarianceParam().getValue(), 
+              initialPriorTransDist.getEdgeMotionTransProbPrior().getMean(), 
+              initialPriorTransDist.getFreeMotionTransProbPrior().getMean());
+      final SimpleBayesianParameter<TransitionProbMatrix, OnOffEdgeTransDistribution, OnOffEdgeTransPriorDistribution> edgeTransitionParam =
+          SimpleBayesianParameter.create(transitionProbMatrix,
+              initialTransDist, initialPriorTransDist);
+
+      state.setEdgeTransitionParam(edgeTransitionParam);
+
+      return state;
     }
-
-    /*
-     * Now, handle the off and on road motion and path state creation 
-     */
-    if (pathEdge.isNullEdge()) {
-  
-      final MultivariateGaussian initialObservationState =
-          motionStateEstimatorPredictor.getObservationDistribution(
-              initialMotionStateDist, PathEdge.nullPathEdge);
-  
-      final SimpleBayesianParameter<Vector, MultivariateGaussian, MultivariateGaussian> motionStateParam =
-          SimpleBayesianParameter.create( initialObservationState.getMean(),
-              initialObservationState, initialMotionStateDist);
-      state.setMotionStateParam(motionStateParam);
-  
-      final PathStateDistribution initialPathStateDist =
-          new PathStateDistribution(Path.nullPath, initialMotionStateDist);
-      final SimpleBayesianParameter<PathState, PathStateMixtureDensityModel, PathStateDistribution> pathStateParam =
-          SimpleBayesianParameter.create(
-              initialPathStateDist.getPathState(),
-              new PathStateMixtureDensityModel(
-                  Collections.singletonList(initialPathStateDist), new double[] {0d}), initialPathStateDist);
-      
-      state.setPathStateParam(pathStateParam);
-  
-    } else {
-
-      final Path path = new Path(pathEdge);
-      PathUtils.convertToRoadBelief(initialMotionStateDist, path, pathEdge, true);
-      
-      final MultivariateGaussian initialObservationState =
-          motionStateEstimatorPredictor.getObservationDistribution(
-              initialMotionStateDist, pathEdge);
-
-      final SimpleBayesianParameter<Vector, MultivariateGaussian, MultivariateGaussian> motionStateParam =
-          SimpleBayesianParameter.create(initialObservationState.getMean(),
-              initialObservationState, initialMotionStateDist);
-
-      state.setMotionStateParam(motionStateParam);
-      
-      final PathStateDistribution initialPathStateDist =
-          new PathStateDistribution(path, initialMotionStateDist);
-      final PathStateMixtureDensityModel pathStateMixture = 
-          new PathStateMixtureDensityModel(Collections.singleton(initialPathStateDist), new double[] {0d});
-      final SimpleBayesianParameter<PathState, PathStateMixtureDensityModel, PathStateDistribution> edgeStateParam =
-          SimpleBayesianParameter.create(initialPathStateDist.getPathState(),
-              pathStateMixture, initialPathStateDist);
-
-      state.setPathStateParam(edgeStateParam);
-    }
-    
-    /*
-     * Now set the transition distribution, since it needed a path state
-     * for construction.
-     */
-    final OnOffEdgeTransDistribution initialTransDist =
-        new OnOffEdgeTransDistribution(graph, 
-            state.getPathStateParam().getValue(), 
-            state.getObservationCovarianceParam().getValue(), 
-            initialPriorTransDist.getEdgeMotionTransProbPrior().getMean(), 
-            initialPriorTransDist.getFreeMotionTransProbPrior().getMean());
-    final SimpleBayesianParameter<TransitionProbMatrix, OnOffEdgeTransDistribution, OnOffEdgeTransPriorDistribution> edgeTransitionParam =
-        SimpleBayesianParameter.create(transitionProbMatrix,
-            initialTransDist, initialPriorTransDist);
-    
-    state.setEdgeTransitionParam(edgeTransitionParam);
-  
-    return state;
   }
 
   public void setPredictiveLogLikelihood(

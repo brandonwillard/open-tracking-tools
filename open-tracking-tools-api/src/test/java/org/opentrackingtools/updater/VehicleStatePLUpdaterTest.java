@@ -22,6 +22,7 @@ import org.opentrackingtools.graph.InferenceGraphSegment;
 import org.opentrackingtools.model.GpsObservation;
 import org.opentrackingtools.model.ProjectedCoordinate;
 import org.opentrackingtools.model.VehicleStateDistribution;
+import org.opentrackingtools.model.VehicleStateDistribution.VehicleStateDistributionFactory;
 import org.opentrackingtools.paths.PathEdge;
 import org.testng.AssertJUnit;
 import org.testng.annotations.Test;
@@ -79,12 +80,15 @@ public class VehicleStatePLUpdaterTest {
 
     startLine.getParentEdge();
     final PathEdge startPathEdge = new PathEdge(startLine, 0d, false);
+    
+    VehicleStateDistributionFactory<GpsObservation, GenericJTSGraph> factory = 
+        new VehicleStateDistribution.VehicleStateDistributionFactory<GpsObservation, GenericJTSGraph>();
     final VehicleStateDistribution<GpsObservation> currentState =
-        VehicleStateDistribution.createInitialVehicleState(
+        factory.createInitialVehicleState(
             parameters, graph, obs, rng, startPathEdge);
 
-    final VehicleStatePLUpdater<GpsObservation> updater =
-        new VehicleStatePLUpdater<GpsObservation>(obs, graph,
+    final VehicleStatePLUpdater<GpsObservation, GenericJTSGraph> updater =
+        new VehicleStatePLUpdater<GpsObservation, GenericJTSGraph>(obs, graph, factory,
             parameters, rng);
 
     final VehicleStateDistribution<GpsObservation> newState =
