@@ -486,6 +486,7 @@ public class GenericJTSGraph implements InferenceGraph {
     return paths;
   }
 
+  @SuppressWarnings("unchecked")
   protected Path getPathFromGraph(org.geotools.graph.path.Path path, final DirectedEdge bStartEdge, 
     InferenceGraphSegment startIdx, InferenceGraphSegment endIdx, Set<Node> reachedEndNodes) {
     List<PathEdge> pathEdges = Lists.newArrayList();
