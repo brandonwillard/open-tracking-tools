@@ -3,6 +3,7 @@ package org.opentrackingtools.util;
 import org.opengis.referencing.operation.MathTransform;
 import org.opengis.referencing.operation.NoninvertibleTransformException;
 import org.opengis.referencing.operation.TransformException;
+import org.opentrackingtools.util.GeoUtils;
 import org.testng.AssertJUnit;
 import org.testng.annotations.Test;
 import org.testng.annotations.DataProvider;

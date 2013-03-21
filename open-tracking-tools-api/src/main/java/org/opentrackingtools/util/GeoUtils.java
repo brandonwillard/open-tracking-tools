@@ -3,8 +3,9 @@ package org.opentrackingtools.util;
 import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.math.matrix.VectorFactory;
 
+import java.util.List;
+
 import org.geotools.geometry.jts.JTS;
-import org.geotools.geometry.jts.JTSFactoryFinder;
 import org.geotools.referencing.CRS;
 import org.opengis.referencing.FactoryException;
 import org.opengis.referencing.NoSuchIdentifierException;
@@ -14,16 +15,13 @@ import org.opengis.referencing.crs.GeographicCRS;
 import org.opengis.referencing.operation.MathTransform;
 import org.opengis.referencing.operation.NoninvertibleTransformException;
 import org.opengis.referencing.operation.TransformException;
-import org.opentrackingtools.util.geom.ProjectedCoordinate;
-
-import java.util.List;
+import org.opentrackingtools.model.ProjectedCoordinate;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.CoordinateFilter;
 import com.vividsolutions.jts.geom.Geometry;
-import com.vividsolutions.jts.geom.GeometryFactory;
 import com.vividsolutions.jts.geom.LineSegment;
 import com.vividsolutions.jts.geom.LineString;
 
@@ -31,11 +29,10 @@ public class GeoUtils {
 
   public static ProjectedCoordinate convertToEuclidean(
     Coordinate latlon) {
-    final MathTransform transform = getTransform(latlon);
+    final MathTransform transform = GeoUtils.getTransform(latlon);
     final Coordinate to = new Coordinate();
     try {
-      JTS.transform(latlon, to,
-          transform);
+      JTS.transform(latlon, to, transform);
     } catch (final TransformException e) {
       e.printStackTrace();
     }
@@ -43,35 +40,36 @@ public class GeoUtils {
     return new ProjectedCoordinate(transform, to, latlon);
   }
 
-  public static ProjectedCoordinate convertToEuclidean(
-    Vector vec) {
-    return convertToEuclidean(new Coordinate(
-        vec.getElement(0), vec.getElement(1)));
+  public static ProjectedCoordinate convertToEuclidean(Vector vec) {
+    return GeoUtils.convertToEuclidean(new Coordinate(vec
+        .getElement(0), vec.getElement(1)));
   }
 
-  public static Coordinate convertToLatLon(
-    MathTransform transform, Coordinate xy) throws NoninvertibleTransformException, TransformException {
+  public static Coordinate convertToLatLon(MathTransform transform,
+    Coordinate xy) throws NoninvertibleTransformException,
+      TransformException {
     final Coordinate to = new Coordinate();
     JTS.transform(xy, to, transform.inverse());
     return new Coordinate(to.x, to.y);
   }
 
   public static Coordinate convertToLatLon(Vector vec,
-    MathTransform transform) throws NoninvertibleTransformException, TransformException {
+    MathTransform transform) throws NoninvertibleTransformException,
+      TransformException {
     final Coordinate point =
         new Coordinate(vec.getElement(0), vec.getElement(1));
-    return convertToLatLon(transform, point);
+    return GeoUtils.convertToLatLon(transform, point);
   }
 
   public static Coordinate convertToLatLon(Vector vec,
-    ProjectedCoordinate projCoord) throws NoninvertibleTransformException, TransformException {
+    ProjectedCoordinate projCoord)
+      throws NoninvertibleTransformException, TransformException {
     final Coordinate point =
         new Coordinate(vec.getElement(0), vec.getElement(1));
-    return convertToLatLon(projCoord.getTransform(), point);
+    return GeoUtils.convertToLatLon(projCoord.getTransform(), point);
   }
 
-  public static Coordinate getCoordinates(
-    Vector meanLocation) {
+  public static Coordinate getCoordinates(Vector meanLocation) {
     return new Coordinate(meanLocation.getElement(0),
         meanLocation.getElement(1));
   }
@@ -81,8 +79,7 @@ public class GeoUtils {
    * http://gis.stackexchange.com/questions/28986/geotoolkit-conversion-from
    * -lat-long-to-utm
    */
-  public static int
-      getEPSGCodefromUTS(Coordinate refLatLon) {
+  public static int getEPSGCodefromUTS(Coordinate refLatLon) {
     // define base EPSG code value of all UTM zones;
     int epsg_code = 32600;
     // add 100 for all zones in southern hemisphere
@@ -90,7 +87,7 @@ public class GeoUtils {
       epsg_code += 100;
     }
     // finally, add zone number to code
-    epsg_code += getUTMZoneForLongitude(refLatLon.y);
+    epsg_code += GeoUtils.getUTMZoneForLongitude(refLatLon.y);
 
     return epsg_code;
   }
@@ -98,46 +95,43 @@ public class GeoUtils {
   public static Vector getEuclideanVectorFromLatLon(
     Coordinate coordinate) {
     final Coordinate resCoord =
-        convertToEuclidean(coordinate);
-    return VectorFactory.getDefault().createVector2D(
-        resCoord.x, resCoord.y);
+        GeoUtils.convertToEuclidean(coordinate);
+    return VectorFactory.getDefault().createVector2D(resCoord.x,
+        resCoord.y);
   }
 
-  public static double getMetersInAngleDegrees(
-    double distance) {
+  public static double getMetersInAngleDegrees(double distance) {
     return distance / (Math.PI / 180d) / 6378137d;
   }
 
-  public static MathTransform getTransform(
-    Coordinate refLatLon) {
-    //    MathTransformFactory mtFactory = ReferencingFactoryFinder.getMathTransformFactory(null);
-    //    ReferencingFactoryContainer factories = new ReferencingFactoryContainer(null);
+  public static List<LineSegment> getSubLineSegments(
+    LineString lineString) {
+    Preconditions.checkArgument(lineString.getNumPoints() > 1);
+    final List<LineSegment> results = Lists.newArrayList();
+
+    Coordinate prevCoord = lineString.getCoordinateN(0);
+    for (int i = 1; i < lineString.getNumPoints(); ++i) {
+      final Coordinate nextCoord = lineString.getCoordinateN(i);
+      if (!nextCoord.equals2D(prevCoord)) {
+        results.add(new LineSegment(prevCoord, nextCoord));
+        prevCoord = nextCoord;
+      }
+    }
+    return results;
+  }
+
+  public static MathTransform getTransform(Coordinate refLatLon) {
 
     try {
       final CRSAuthorityFactory crsAuthorityFactory =
           CRS.getAuthorityFactory(false);
-      
+
       final GeographicCRS geoCRS =
           crsAuthorityFactory.createGeographicCRS("EPSG:4326");
-//        org.geotools.referencing.crs.DefaultGeographicCRS.WGS84;
 
       final CoordinateReferenceSystem dataCRS =
-          crsAuthorityFactory
-              .createCoordinateReferenceSystem("EPSG:"
-                  + getEPSGCodefromUTS(refLatLon));
-
-      //      parameters = mtFactory.getDefaultParameters("Transverse_Mercator");
-      //
-      //      final double zoneNumber = zone;
-      //      final double utmZoneCenterLongitude = (zoneNumber - 1) * 6 - 180 + 3; // +3 puts origin
-      //      parameters.parameter("central_meridian").setValue(utmZoneCenterLongitude);
-      //      parameters.parameter("latitude_of_origin").setValue(0.0);
-      //      parameters.parameter("scale_factor").setValue(0.9996);
-      //      parameters.parameter("false_easting").setValue(500000.0);
-      //      parameters.parameter("false_northing").setValue(0.0);
-      //  
-      //      Map properties = Collections.singletonMap("name", "WGS 84 / UTM Zone " + zoneNumber);
-      //      ProjectedCRS projCRS = factories.createProjectedCRS(properties, geoCRS, null, parameters, cartCS);
+          crsAuthorityFactory.createCoordinateReferenceSystem("EPSG:"
+              + GeoUtils.getEPSGCodefromUTS(refLatLon));
 
       final MathTransform transform =
           CRS.findMathTransform(geoCRS, dataCRS);
@@ -151,15 +145,6 @@ public class GeoUtils {
     }
 
     return null;
-    //    String[] spec = new String[6];
-    //    spec[0] = "+proj=utm";
-    //    spec[1] = "+zone=" + zone;
-    //    spec[2] = "+ellps=clrk66";
-    //    spec[3] = "+units=m";
-    //    spec[4] = "+datum=NAD83";
-    //    spec[5] = "+no_defs";
-    //    Projection projection = ProjectionFactory.fromPROJ4Specification(spec);
-    //    return projection;
   }
 
   /*
@@ -167,20 +152,22 @@ public class GeoUtils {
    */
   public static int getUTMZoneForLongitude(double lon) {
 
-    if (lon < -180 || lon > 180)
+    if (lon < -180 || lon > 180) {
       throw new IllegalArgumentException(
           "Coordinates not within UTM zone limits");
+    }
 
     int lonZone = (int) ((lon + 180) / 6);
 
-    if (lonZone == 60)
+    if (lonZone == 60) {
       lonZone--;
+    }
     return lonZone + 1;
   }
 
   public static Vector getVector(Coordinate coord) {
-    return VectorFactory.getDefault().createVector2D(
-        coord.x, coord.y);
+    return VectorFactory.getDefault()
+        .createVector2D(coord.x, coord.y);
   }
 
   /**
@@ -190,9 +177,9 @@ public class GeoUtils {
    * @param projection
    * @return
    */
+  // TODO FIXME XXX: what about when the geoms cross zones?
   public static Geometry invertGeom(Geometry orig,
     final MathTransform projection) {
-    // TODO FIXME XXX: what about when the geoms cross zones?
     final Geometry geom = (Geometry) orig.clone();
     geom.apply(new CoordinateFilter() {
       @Override
@@ -200,9 +187,9 @@ public class GeoUtils {
         final Coordinate to = new Coordinate();
         try {
           JTS.transform(coord, to, projection.inverse());
-        } catch (NoninvertibleTransformException e) {
+        } catch (final NoninvertibleTransformException e) {
           e.printStackTrace();
-        } catch (TransformException e) {
+        } catch (final TransformException e) {
           e.printStackTrace();
         }
         coord.setCoordinate(to);
@@ -213,8 +200,7 @@ public class GeoUtils {
   }
 
   public static Coordinate makeCoordinate(Vector vec) {
-    return new Coordinate(vec.getElement(0),
-        vec.getElement(1));
+    return new Coordinate(vec.getElement(0), vec.getElement(1));
   }
 
   /**
@@ -224,8 +210,8 @@ public class GeoUtils {
    * @return
    */
 
+  // TODO FIXME XXX: what about when the geoms cross zones?
   public static Geometry projectLonLatGeom(Geometry orig) {
-    // TODO FIXME XXX: what about when the geoms cross zones?
     final Geometry geom = (Geometry) orig.clone();
     geom.apply(new CoordinateFilter() {
       @Override
@@ -239,24 +225,4 @@ public class GeoUtils {
     geom.geometryChanged();
     return geom;
   }
-
-  public static List<LineSegment> getSubLineSegments(LineString lineString) {
-    Preconditions.checkArgument(lineString.getNumPoints() > 1);
-    final List<LineSegment> results = Lists.newArrayList();
-    
-    Coordinate prevCoord = lineString.getCoordinateN(0);
-    for (int i = 1; i < lineString.getNumPoints(); ++i) {
-      final Coordinate nextCoord = lineString.getCoordinateN(i);
-      if (!nextCoord.equals2D(prevCoord)) {
-        results.add(new LineSegment(prevCoord, nextCoord));
-        prevCoord = nextCoord;
-      }
-    }
-    return results;
-  }
-
-//  public static Coordinate reverseCoordinates(
-//    Coordinate startCoord) {
-//    return new Coordinate(startCoord.y, startCoord.x);
-//  }
 }

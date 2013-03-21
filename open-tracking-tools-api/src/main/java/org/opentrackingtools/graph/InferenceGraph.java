@@ -1,68 +1,49 @@
 package org.opentrackingtools.graph;
 
+import gov.sandia.cognition.math.matrix.Matrix;
 import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.statistics.DistributionWithMean;
 
 import java.util.Collection;
-import java.util.List;
 
-import org.opentrackingtools.GpsObservation;
-import org.opentrackingtools.graph.edges.InferredEdge;
-import org.opentrackingtools.graph.impl.LengthIndexedSubline;
-import org.opentrackingtools.graph.paths.InferredPath;
-import org.opentrackingtools.graph.paths.edges.PathEdge;
-import org.opentrackingtools.graph.paths.states.PathStateBelief;
-import org.opentrackingtools.impl.VehicleState;
-import org.opentrackingtools.statistics.distributions.impl.OnOffEdgeTransDistribution;
-import org.opentrackingtools.statistics.filters.vehicles.road.impl.AbstractRoadTrackingFilter;
+import org.opentrackingtools.model.GpsObservation;
+import org.opentrackingtools.model.VehicleStateDistribution;
+import org.opentrackingtools.paths.Path;
 
+import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Envelope;
 import com.vividsolutions.jts.geom.Geometry;
 
 public interface InferenceGraph {
 
-  public abstract Collection<InferredPath> getPaths(VehicleState fromState,
+  public Collection<Path> getPaths(
+    VehicleStateDistribution<? extends GpsObservation> fromState,
     GpsObservation toCoord);
 
-  public abstract Collection<InferredEdge> getTopoEquivEdges(
-    InferredEdge edge);
+  public Collection<InferenceGraphEdge> getTopoEquivEdges(
+    InferenceGraphEdge edge);
 
-  public abstract Envelope getGPSGraphExtent();
+  public Envelope getGPSGraphExtent();
 
-  public abstract Collection<LengthIndexedSubline> getNearbyEdges(
-    DistributionWithMean<Vector> tmpInitialBelief,
-    AbstractRoadTrackingFilter tmpTrackingFilter);
+  public Collection<InferenceGraphSegment> getNearbyEdges(
+    DistributionWithMean<Vector> tmpInitialBelief, Matrix covariance);
 
-  public abstract Collection<LengthIndexedSubline> getNearbyEdges(Vector projLocation,
-    double radius);
-
-  public abstract InferredEdge getNullInferredEdge();
-  public abstract InferredPath getNullPath();
-  public abstract PathEdge getNullPathEdge();
-
-  public abstract Collection<InferredEdge>
-      getIncomingTransferableEdges(InferredEdge infEdge);
+  public Collection<InferenceGraphSegment> getNearbyEdges(
+    Vector projLocation, double radius);
   
-  public abstract Collection<InferredEdge>
-      getOutgoingTransferableEdges(InferredEdge infEdge);
+  public Collection<InferenceGraphSegment> getNearbyEdges(
+    Coordinate projLocation, double radius);
 
-  public abstract Envelope getProjGraphExtent();
+  public Collection<InferenceGraphEdge> getIncomingTransferableEdges(
+    InferenceGraphEdge infEdge);
 
-  public abstract InferredPath getInferredPath(PathEdge pathEdge);
+  public Collection<InferenceGraphEdge> getOutgoingTransferableEdges(
+    InferenceGraphEdge infEdge);
 
-  public abstract InferredPath getInferredPath(
-    List<PathEdge> currentPath, Boolean b);
+  public Envelope getProjGraphExtent();
 
-  public abstract boolean edgeHasReverse(Geometry edge);
-  
-  public abstract InferredEdge getInferredEdge(String id);
+  public boolean edgeHasReverse(Geometry edge);
 
-  public abstract VehicleState createVehicleState(
-      GpsObservation obs,
-      AbstractRoadTrackingFilter trackingFilter,
-      PathStateBelief pathStateBelief, OnOffEdgeTransDistribution edgeTransDist,
-      VehicleState parent);
-
-  public abstract PathEdge getPathEdge(InferredEdge edge, Geometry line, double d, Boolean b);
+  public InferenceGraphEdge getInferenceGraphEdge(String id);
 
 }

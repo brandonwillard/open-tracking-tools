@@ -566,6 +566,10 @@ public class MotionStateEstimatorPredictor extends
         dim == 4 ? this.currentState.getOffRoadModelCovarianceParam()
             .getValue() : this.currentState
             .getOnRoadModelCovarianceParam().getValue();
+            
+    if (cov.isZero())
+      return state;
+    
     final Vector stateSmpl;
     if (dim == 4) {
       final Matrix covSqrt = StatisticsUtil.getCholR(cov);

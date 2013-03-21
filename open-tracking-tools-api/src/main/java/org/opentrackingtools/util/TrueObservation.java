@@ -1,14 +1,14 @@
 package org.opentrackingtools.util;
 
-import org.opentrackingtools.GpsObservation;
-import org.opentrackingtools.impl.SimpleObservation;
-import org.opentrackingtools.impl.VehicleState;
+import org.opentrackingtools.model.GpsObservation;
+import org.opentrackingtools.model.VehicleStateDistribution;
 
-public class TrueObservation extends SimpleObservation {
 
-  final private VehicleState trueState;
+public class TrueObservation extends GpsObservation {
 
-  public TrueObservation(GpsObservation obs, VehicleState trueState) {
+  final private VehicleStateDistribution<GpsObservation> trueState;
+
+  public TrueObservation(GpsObservation obs, VehicleStateDistribution<GpsObservation> trueState) {
     super(obs.getSourceId(), obs.getTimestamp(), 
         obs.getObsCoordsLatLon(), obs.getVelocity(), obs.getHeading(), 
         obs.getAccuracy(), obs.getRecordNumber(), obs.getPreviousObservation(), 
@@ -16,7 +16,7 @@ public class TrueObservation extends SimpleObservation {
     this.trueState = trueState;
   }
 
-  public VehicleState getTrueState() {
+  public VehicleStateDistribution<GpsObservation> getTrueState() {
     return trueState;
   }
 
