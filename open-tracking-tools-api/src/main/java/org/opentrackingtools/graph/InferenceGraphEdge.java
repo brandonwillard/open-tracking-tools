@@ -1,5 +1,7 @@
 package org.opentrackingtools.graph;
 
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 
 import gov.sandia.cognition.math.matrix.Vector;
@@ -195,11 +197,17 @@ public class InferenceGraphEdge implements
   }
 
   public List<InferenceGraphSegment> getSegments(double upToLength) {
-    return this.lengthSegmentGraph.query(0d, upToLength);
+    return this.getSegments(0d, upToLength);
   }
   
   public List<InferenceGraphSegment> getSegments(double lengthStart, double lengthEnd) {
-    return this.lengthSegmentGraph.query(lengthStart, lengthEnd);
+    List<InferenceGraphSegment> results = Lists.newArrayList();
+    for (InferenceGraphSegment segment : this.graphSegments) {
+      if (segment.startDistance >= lengthStart && segment.startDistance + segment.line.getLength() <= lengthEnd) {
+        results.add(segment);
+      }
+    }
+    return results;
   }
 
 }

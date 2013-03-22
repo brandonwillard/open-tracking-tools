@@ -112,7 +112,7 @@ public class VehicleStatePLFilter<O extends GpsObservation, G extends InferenceG
 
       final double logCount = Math.log(count);
 
-      VehicleStateDistribution<O> predictedState = new VehicleStateDistribution<O>(state);
+      VehicleStateDistribution<O> predictedState = state.clone();
       predictedState.setParentState(state);
       predictedState.setObservation(obs);
       predictedState = this.updater.update(predictedState);
@@ -230,8 +230,8 @@ public class VehicleStatePLFilter<O extends GpsObservation, G extends InferenceG
        * path state, and, since it starts as a copy of the original
        * state, make sure we update the pertinent parameters.
        */
-      final VehicleStateDistribution<O> predictedChildState =
-          new VehicleStateDistribution<O>(predictedState);
+      final VehicleStateDistribution<O> predictedChildState = predictedState.clone();
+      
       predictedChildState
           .setPathStateParam(SimpleBayesianParameter.create(predictedPathStateDist.getPathState(),
               predictedPathStateMixture, predictedPathStateDist));

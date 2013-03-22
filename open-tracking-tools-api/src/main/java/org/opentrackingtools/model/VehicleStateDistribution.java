@@ -331,7 +331,29 @@ public class VehicleStateDistribution<Observation extends GpsObservation> extend
 
   @Override
   public VehicleStateDistribution<Observation> clone() {
-    return new VehicleStateDistribution<Observation>(this);
+    VehicleStateDistribution<Observation> clone = (VehicleStateDistribution<Observation>) super.clone();
+    clone.graph = this.graph;
+    clone.observation = this.observation;
+    clone.parentState = this.parentState;
+    clone.motionStateEstimatorPredictor = this.motionStateEstimatorPredictor;
+    
+    clone.motionStateParam =
+        ObjectUtil.cloneSmart(this.motionStateParam);
+    clone.pathStateParam =
+        ObjectUtil.cloneSmart(this.pathStateParam);
+    clone.observationCovarianceParam =
+        ObjectUtil.cloneSmart(this.observationCovarianceParam);
+    clone.onRoadModelCovarianceParam =
+        ObjectUtil.cloneSmart(this.onRoadModelCovarianceParam);
+    clone.offRoadModelCovarianceParam =
+        ObjectUtil.cloneSmart(this.offRoadModelCovarianceParam);
+    clone.edgeTransitionParam =
+        ObjectUtil.cloneSmart(this.edgeTransitionParam);
+    clone.edgeTransitionLogLikelihood = this.edgeTransitionLogLikelihood;
+    clone.pathStateDistLogLikelihood = this.pathStateDistLogLikelihood;
+    clone.predictiveLogLikelihood = this.predictiveLogLikelihood;
+    
+    return clone;
   }
 
   @Override
@@ -505,6 +527,7 @@ public class VehicleStateDistribution<Observation extends GpsObservation> extend
   }
 
   public static class VehicleStateDistributionFactory<O extends GpsObservation, G extends InferenceGraph> {
+    
     /**
      * This is where an initial off-road state is constructed so that it can be
      * used as a template for the prior initialization of parameters.

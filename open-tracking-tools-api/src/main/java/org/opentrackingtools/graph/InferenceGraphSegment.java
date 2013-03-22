@@ -44,8 +44,9 @@ public class InferenceGraphSegment implements Comparable<InferenceGraphSegment> 
   public int compareTo(InferenceGraphSegment o) {
     return ComparisonChain
         .start()
-        .compare(this.line, o.line)
-        .compare(this.parentEdge, o.parentEdge).result();
+        .compare(this.startDistance, o.startDistance)
+        .compare(this.parentEdge, o.parentEdge)
+        .result();
   }
 
 }

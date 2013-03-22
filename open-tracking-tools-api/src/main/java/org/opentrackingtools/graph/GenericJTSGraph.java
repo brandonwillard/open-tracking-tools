@@ -513,6 +513,8 @@ public class GenericJTSGraph implements InferenceGraph {
       
       final InferenceGraphEdge infEdge = getInferenceGraphEdge(edge);
       final Pair<List<PathEdge>, Double> pathEdgePair = getPathEdges(startIdx, endIdx, infEdge, distToStart, false);
+      Preconditions.checkState(pathEdges.isEmpty() || Iterables.getLast(pathEdges).getLine().p1.equals(
+          Iterables.getFirst(pathEdgePair.getFirst(), null).getLine().p0));
       pathEdges.addAll(pathEdgePair.getFirst());
       distToStart += pathEdgePair.getSecond();
       
@@ -541,20 +543,23 @@ public class GenericJTSGraph implements InferenceGraph {
       startIdx = 0d;
     
     if (infEdge.equals(endEdge.getParentEdge())) {
-      if (startEdge.getEndIndex().compareTo(endEdge.getEndIndex()) > 0)
+      if (infEdge.equals(startEdge.getParentEdge()) &&
+          startEdge.getEndIndex().compareTo(endEdge.getEndIndex()) > 0)
         endIdx = startEdge.getStartDistance() + startEdge.getLine().getLength(); 
       else
         endIdx = endEdge.getStartDistance() + endEdge.getLine().getLength();
     }
     if (endIdx == null)
-      endIdx = infEdge.getLength();
+      endIdx = infEdge.getLength() + 1d;
     
+    InferenceGraphSegment prevLineSeg = null;
     double distToStartSublines = distToStart;
     for (InferenceGraphSegment lineSeg : infEdge.getSegments(startIdx, endIdx)) {
       final PathEdge pathEdge = new PathEdge(lineSeg, distToStartSublines, isBackward);
       
       edges.add(pathEdge);
       distToStartSublines += lineSeg.getLine().getLength();
+      Preconditions.checkState(prevLineSeg == null || lineSeg.line.p0.equals(prevLineSeg.line.p1));
     }
     
     final double totalDist = distToStartSublines - distToStart;

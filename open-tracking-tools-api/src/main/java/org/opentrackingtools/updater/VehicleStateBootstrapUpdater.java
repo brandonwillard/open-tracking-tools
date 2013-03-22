@@ -250,8 +250,7 @@ public class VehicleStateBootstrapUpdater<O extends GpsObservation>
   @Override
   public VehicleStateDistribution<O> update(VehicleStateDistribution<O> previousState) {
 
-    final VehicleStateDistribution<O> updatedState =
-        new VehicleStateDistribution<O>(previousState);
+    final VehicleStateDistribution<O> updatedState = previousState.clone();
     final MotionStateEstimatorPredictor motionStatePredictor =
         new MotionStateEstimatorPredictor(updatedState, this.random,
             (double) this.parameters.getInitialObsFreq());

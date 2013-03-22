@@ -47,7 +47,7 @@ public class PathEdge extends
     this.edge = segment.getParentEdge();
     this.distToFromStartOfGraphEdge = segment.getParentEdge().getLengthLocationMap().getLength(
         segment.getStartIndex());
-    this.distToStartOfEdge = this.distToFromStartOfGraphEdge + startDistance;
+    this.distToStartOfEdge = startDistance;
     this.isBackward = isBackward;
   }
 

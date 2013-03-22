@@ -68,12 +68,12 @@ public class Path extends AbstractCloneableSerializable implements
       if (lastEdge != null && !edge.equals(lastEdge)) {
         if (isBackward) {
           Preconditions.checkArgument(lastEdge == null
-              || lastEdge.getInferenceGraphEdge().getStartPoint()
-                  .equals(edge.getInferenceGraphEdge().getEndPoint()));
+              || lastEdge.line.p0
+                  .equals(edge.line.p1));
         } else {
           Preconditions.checkArgument(lastEdge == null
-              || lastEdge.getInferenceGraphEdge().getEndPoint()
-                  .equals(edge.getInferenceGraphEdge().getStartPoint()));
+              || lastEdge.line.p1
+                  .equals(edge.line.p0));
   
         }
       }

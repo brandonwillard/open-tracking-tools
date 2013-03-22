@@ -57,7 +57,7 @@ public class VehicleStateBootstrapFilter<O extends GpsObservation> extends
       }
       totalCount += count;
       for (int i = 0; i < count; i++) {
-        final VehicleStateDistribution<O> predictedState = new VehicleStateDistribution<O>(entry.getKey());
+        final VehicleStateDistribution<O> predictedState = entry.getKey().clone();
         predictedState.setObservation(obs);
         this.updater.update(predictedState);
 

@@ -183,7 +183,7 @@ public class VehicleStatePLUpdater<O extends GpsObservation, G extends Inference
 
   @Override
   public VehicleStateDistribution<O> update(VehicleStateDistribution<O> state) {
-    final VehicleStateDistribution<O> predictedState = new VehicleStateDistribution<O>(state);
+    final VehicleStateDistribution<O> predictedState = state.clone();
     
     /*
      * Predict/project the motion state forward.
