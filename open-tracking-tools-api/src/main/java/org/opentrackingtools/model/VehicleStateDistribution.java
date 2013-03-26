@@ -263,11 +263,13 @@ public class VehicleStateDistribution<Observation extends GpsObservation> extend
   protected double predictiveLogLikelihood;
   protected double pathStateDistLogLikelihood;
   protected double edgeTransitionLogLikelihood;
+  protected VehicleStateDistribution<Observation> priorPredictiveState;
 
   /*
-   * This holds the prior predictive transition states.
+   * This holds the prior predictive transition states.  Again, debug.
    */
   protected CountedDataDistribution<? extends VehicleStateDistribution<Observation>> transitionStateDistribution;
+
 
   public CountedDataDistribution<? extends VehicleStateDistribution<Observation>>
       getTransitionStateDistribution() {
@@ -509,6 +511,10 @@ public class VehicleStateDistribution<Observation extends GpsObservation> extend
   
   public void setParentState(VehicleStateDistribution<Observation> parentState) {
     this.parentState = parentState;
+  }
+  
+  public void setPriorPredictiveState(VehicleStateDistribution<Observation> priorPredState) {
+    this.priorPredictiveState = priorPredState;
   }
 
   public

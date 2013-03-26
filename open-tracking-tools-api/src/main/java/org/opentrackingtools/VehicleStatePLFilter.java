@@ -179,6 +179,8 @@ public class VehicleStatePLFilter<O extends GpsObservation, G extends InferenceG
       final VehicleStateDistribution<O> sampledTransitionState = state.getTransitionStateDistribution().sample(
           this.random);
       VehicleStateDistribution<O> updatedState = internalUpdate(sampledTransitionState, obs);
+      updatedState.setTransitionStateDistribution(sampledTransitionState.getTransitionStateDistribution());
+      updatedState.setPriorPredictiveState(sampledTransitionState);
       updatedStates.add(updatedState);
     }
     

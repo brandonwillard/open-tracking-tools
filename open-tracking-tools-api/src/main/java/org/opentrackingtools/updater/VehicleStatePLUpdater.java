@@ -270,18 +270,21 @@ public class VehicleStatePLUpdater<O extends GpsObservation, G extends Inference
     /*
      * Normalize over on/off-road and edge count
      */
-    if (numberOfNonZeroPaths > 1) {
+    if (numberOfNonZeroPaths > 0 || numberOfOffRoadPaths > 0) {
       for (int i = 0; i < weights.length; i++) {
         /*
-         * We need to normalize on-road path weights by the number
-         * of edges, otherwise, the number of edges we evaluate will 
-         * simply increase the probability of being on a path, which
-         * is nonsense.
+         * Normalized within categories (off and on-road)
          */
         if (distributions.get(i).getPathState().isOnRoad()) {
-          weights[i] -= Math.log(numberOfNonZeroPaths - 1);
+          weights[i] -= Math.log(numberOfNonZeroPaths);
+        } else {
+          weights[i] -= Math.log(numberOfOffRoadPaths);
         }
-        weights[i] -= Math.log(numberOfOffRoadPaths);
+        /*
+         * Normalize over categories
+         */
+        if (numberOfOffRoadPaths > 0)
+          weights[i] -= Math.log(2);
       }
     }
     
