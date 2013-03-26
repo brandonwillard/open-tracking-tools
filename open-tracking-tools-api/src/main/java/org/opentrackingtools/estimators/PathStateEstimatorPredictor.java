@@ -159,7 +159,7 @@ public class PathStateEstimatorPredictor extends
     final PathStateMixtureDensityModel result =
         new PathStateMixtureDensityModel(distributions, Doubles.toArray(weights));
 
-    Preconditions.checkState(
+    Preconditions.checkState(result.getDistributionCount() == 0 ||
         Math.abs(Math.exp(result.getPriorWeightSum()) - 1d) < 1e-5);
     
     return result;

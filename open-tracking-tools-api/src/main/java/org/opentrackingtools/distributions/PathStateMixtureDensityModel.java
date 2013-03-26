@@ -160,6 +160,8 @@ public class PathStateMixtureDensityModel
 
   @Override
   public double getPriorWeightSum() {
+    if (priorWeights.length <= 0) 
+      return Double.NEGATIVE_INFINITY;
     if (priorWeights.length == 1)
       return priorWeights[0];
     double logSum = priorWeights[0];
