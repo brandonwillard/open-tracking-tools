@@ -201,6 +201,8 @@ public class VehicleStatePLUpdater<O extends GpsObservation, G extends Inference
 
     final List<PathStateDistribution> distributions =
         Lists.newArrayList();
+    int numberOfNonZeroPaths = 0;
+    int numberOfOffRoadPaths = 0;
     double[] weights = new double[] {};
     double weightsSum = Double.NEGATIVE_INFINITY;
     for (final Path path : paths) {
@@ -245,16 +247,30 @@ public class VehicleStatePLUpdater<O extends GpsObservation, G extends Inference
           pathStateEstimatorPredictor
               .createPredictiveDistribution(priorPredictiveMotionState);
       
-      weightsSum = LogMath.add(weightsSum, pathStateDist.getPriorWeightSum());
-      distributions.addAll(pathStateDist.getDistributions());
-      weights =
-          Doubles.concat(weights, pathStateDist.getPriorWeights());
+      /*
+       * We only consider non-zero predictive results, naturally.
+       * Also, a path can be rejected due to direction,
+       * so we must expect this.
+       */
+      if (pathStateDist.getDistributionCount() > 0) {
+        final double mixtureLikelihood = pathStateDist.getPriorWeightSum();
+        if (priorPredictiveMotionState.getInputDimensionality() == 4) {
+          numberOfOffRoadPaths++;
+        } else if (mixtureLikelihood > Double.NEGATIVE_INFINITY){
+          numberOfNonZeroPaths++;
+        }
+        
+        weightsSum = LogMath.add(weightsSum, mixtureLikelihood);
+        distributions.addAll(pathStateDist.getDistributions());
+        weights =
+            Doubles.concat(weights, pathStateDist.getPriorWeights());
+      }
     }
     
     /*
      * Normalize over on/off-road and edge count
      */
-    if (paths.size() > 1) {
+    if (numberOfNonZeroPaths > 1) {
       for (int i = 0; i < weights.length; i++) {
         /*
          * We need to normalize on-road path weights by the number
@@ -263,9 +279,9 @@ public class VehicleStatePLUpdater<O extends GpsObservation, G extends Inference
          * is nonsense.
          */
         if (distributions.get(i).getPathState().isOnRoad()) {
-          weights[i] -= Math.log(paths.size() - 1);
+          weights[i] -= Math.log(numberOfNonZeroPaths - 1);
         }
-        weights[i] -= Math.log(2);
+        weights[i] -= Math.log(numberOfOffRoadPaths);
       }
     }
     

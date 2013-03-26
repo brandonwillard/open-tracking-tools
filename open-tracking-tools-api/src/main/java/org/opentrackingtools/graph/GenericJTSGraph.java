@@ -9,6 +9,7 @@ import gov.sandia.cognition.util.DefaultPair;
 import gov.sandia.cognition.util.Pair;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -18,6 +19,7 @@ import org.geotools.geometry.jts.JTS;
 import org.geotools.geometry.jts.JTSFactoryFinder;
 import org.geotools.graph.build.line.DirectedLineStringGraphGenerator;
 import org.geotools.graph.structure.DirectedEdge;
+import org.geotools.graph.structure.DirectedNode;
 import org.geotools.graph.structure.Edge;
 import org.geotools.graph.structure.Node;
 import org.geotools.graph.structure.basic.BasicDirectedEdge;
@@ -371,6 +373,9 @@ public class GenericJTSGraph implements InferenceGraph {
   public Set<Path> getPaths(final VehicleStateDistribution<? extends GpsObservation> fromState,
     final GpsObservation obs) {
     
+    Set<Path> paths = Sets.newHashSet();
+    paths.add(Path.nullPath);
+    
     final Coordinate toCoord = obs.getObsProjected();
     
     PathEdge currrentPathEdge = fromState.getPathStateParam().getValue().getEdge();
@@ -392,8 +397,17 @@ public class GenericJTSGraph implements InferenceGraph {
                       .getCovariance()),
               MAX_STATE_SNAP_RADIUS);
 
-      startEdges.addAll(getNearbyEdges(
-            fromState.getMeanLocation(), beliefDistance));
+//      startEdges.addAll(getNearbyEdges(
+//            fromState.getMeanLocation(), beliefDistance));
+      /*
+       * We're short-circuiting the "off->on then move along"
+       * path finding.  It causes problems. 
+       */
+      for (InferenceGraphSegment segment : getNearbyEdges(fromState.getMeanLocation(), beliefDistance)) {
+        final Path path = new Path(Collections.singletonList(new PathEdge(segment, 0d, false)), false);
+        paths.add(path);
+      }
+      return paths;
     }
 
     final double obsCovStdDev = StatisticsUtil
@@ -405,9 +419,6 @@ public class GenericJTSGraph implements InferenceGraph {
     final Collection<InferenceGraphSegment> endLines = getNearbyEdges(toCoord,
         obsStdDevDistance);
 
-    Set<Path> paths = Sets.newHashSet();
-    paths.add(Path.nullPath);
-    
     if (endLines.isEmpty())
       return paths;
     
@@ -423,10 +434,16 @@ public class GenericJTSGraph implements InferenceGraph {
       for (InferenceGraphSegment endEdge : endLines) {
         
         if (startEdge.getParentEdge().equals(endEdge.getParentEdge())) {
-          final Pair<List<PathEdge>, Double> currentEdgePathEdges = getPathEdges(
-              startEdge, endEdge, startEdge.getParentEdge(), 0d, false);
-          final Path pathFromStartEdge = new Path(currentEdgePathEdges.getFirst(), false);
+          final List<PathEdge> currentEdgePathEdges = Lists.newArrayList(); 
+          double distance = 0d;
+          for (InferenceGraphSegment segment : startEdge.getParentEdge()
+              .getSegments(startEdge.startDistance, Double.POSITIVE_INFINITY)) {
+            currentEdgePathEdges.add(new PathEdge(segment, distance, false));
+            distance += segment.getLine().getLength();
+          }
+          final Path pathFromStartEdge = new Path(currentEdgePathEdges, false);
           paths.add(pathFromStartEdge);
+          continue;
         }
         
       
@@ -488,38 +505,36 @@ public class GenericJTSGraph implements InferenceGraph {
 
   @SuppressWarnings("unchecked")
   protected Path getPathFromGraph(org.geotools.graph.path.Path path, final DirectedEdge bStartEdge, 
-    InferenceGraphSegment startIdx, InferenceGraphSegment endIdx, Set<Node> reachedEndNodes) {
+    InferenceGraphSegment startSegment, InferenceGraphSegment endSegment, Set<Node> reachedEndNodes) {
     List<PathEdge> pathEdges = Lists.newArrayList();
-    double distToStart = 0d;
-    Iterator<?> iter = path.riterator();
-    BasicDirectedNode prevNode = (BasicDirectedNode) bStartEdge.getInNode();
-    while (iter.hasNext()) {
-      BasicDirectedNode node = (BasicDirectedNode)iter.next();
-      final Edge edge;
-      /*
-       * When starting off, make sure we use the correct edge,
-       * i.e. the start edge we passed in.
-       */
-      if (distToStart == 0d) {
-        edge = Iterables.find((List<Edge>)prevNode.getOutEdges(node), new Predicate<Edge>() {
-          @Override
-          public boolean apply(Edge input) {
-            return ((Edge)input).equals(bStartEdge);
-          }
-        });
-      } else {
-        edge = prevNode.getOutEdge(node);
+    
+    /*
+     * Get only the segments forward from the current segment on the current edge
+     */
+    double distance = 0d;
+    for (InferenceGraphSegment segment : startSegment.getParentEdge().getSegments(
+        startSegment.startDistance, Double.POSITIVE_INFINITY)) {
+      pathEdges.add(new PathEdge(segment, distance, false));
+      distance += segment.getLine().getLength();
+    }
+    
+    Iterator<DirectedNode> rNodes = path.riterator();
+    DirectedNode prevNode = rNodes.next();
+    while(rNodes.hasNext()) {
+      DirectedNode node = rNodes.next();
+      Edge outEdge = prevNode.getOutEdge(node);
+      if (outEdge == null) 
+        return null;
+      final InferenceGraphEdge infEdge = this.getInferenceGraphEdge(outEdge);
+      for (InferenceGraphSegment segment : infEdge.getSegments()) {
+        
+        Preconditions.checkState(segment.line.p0.equals(
+            Iterables.getLast(pathEdges).getLine().p1));
+        
+        pathEdges.add(new PathEdge(segment, distance, false));
+        distance += segment.getLine().getLength();
       }
-      
-      final InferenceGraphEdge infEdge = getInferenceGraphEdge(edge);
-      final Pair<List<PathEdge>, Double> pathEdgePair = getPathEdges(startIdx, endIdx, infEdge, distToStart, false);
-      Preconditions.checkState(pathEdges.isEmpty() || Iterables.getLast(pathEdges).getLine().p1.equals(
-          Iterables.getFirst(pathEdgePair.getFirst(), null).getLine().p0));
-      pathEdges.addAll(pathEdgePair.getFirst());
-      distToStart += pathEdgePair.getSecond();
-      
       reachedEndNodes.add(node);
-      prevNode = node;
     }
     if (!pathEdges.isEmpty()) {
       final Path newPath = new Path(pathEdges, false);
@@ -530,45 +545,6 @@ public class GenericJTSGraph implements InferenceGraph {
   }
 
   
-  protected Pair<List<PathEdge>, Double> getPathEdges(
-      InferenceGraphSegment startEdge, InferenceGraphSegment endEdge,
-      InferenceGraphEdge infEdge, double distToStart, boolean isBackward) {
-    final List<PathEdge> edges = Lists.newArrayList();
-    Double startIdx = null;
-    Double endIdx = null;
-    
-    if (infEdge.equals(startEdge.getParentEdge()))
-      startIdx = startEdge.getStartDistance();
-    if (startIdx == null)
-      startIdx = 0d;
-    
-    if (infEdge.equals(endEdge.getParentEdge())) {
-      if (infEdge.equals(startEdge.getParentEdge()) &&
-          startEdge.getEndIndex().compareTo(endEdge.getEndIndex()) > 0)
-        endIdx = startEdge.getStartDistance() + startEdge.getLine().getLength(); 
-      else
-        endIdx = endEdge.getStartDistance() + endEdge.getLine().getLength();
-    }
-    if (endIdx == null)
-      endIdx = infEdge.getLength() + 1d;
-    
-    InferenceGraphSegment prevLineSeg = null;
-    double distToStartSublines = distToStart;
-    for (InferenceGraphSegment lineSeg : infEdge.getSegments(startIdx, endIdx)) {
-      final PathEdge pathEdge = new PathEdge(lineSeg, distToStartSublines, isBackward);
-      
-      edges.add(pathEdge);
-      distToStartSublines += lineSeg.getLine().getLength();
-      Preconditions.checkState(prevLineSeg == null || lineSeg.line.p0.equals(prevLineSeg.line.p1));
-    }
-    
-    final double totalDist = distToStartSublines - distToStart;
-    Preconditions.checkState(!edges.isEmpty());
-    Preconditions.checkState(totalDist > 0d);
-    
-    return DefaultPair.create(edges, totalDist);
-  }
-
   @Override
   public Envelope getProjGraphExtent() {
     return this.projEnv;

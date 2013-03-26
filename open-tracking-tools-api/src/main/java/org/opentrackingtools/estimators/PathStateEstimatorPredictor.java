@@ -130,18 +130,29 @@ public class PathStateEstimatorPredictor extends
       if (prior.getInputDimensionality() == 4) {
         roadDistribution =
             PathUtils.getRoadBeliefFromGround(prior,
-                Iterables.getFirst(this.path.getPathEdges(), null),
+                Iterables.getOnlyElement(this.path.getPathEdges()),
                 true);
+        /*
+         * If we're going on-road, then no need to do the rest.
+         * Also, don't consider moving backward (remember, half-normal 
+         * velocities).
+         */
+        if (roadDistribution.getMean().getElement(1) > 0d) {
+          distributions.add(new PathStateDistribution(this.path,
+              roadDistribution));
+          weights.add(0d);
+        }
       } else {
         roadDistribution = prior;
-      }
-
-      for (final PathEdge edge : this.path.getPathEdges()) {
-        PathStateDistribution prediction = getPathEdgePredictive(roadDistribution, edge);
-        distributions.add(prediction);
-        weights.add(
-            this.path.getPathEdges().size() == 1 ? 0d :
-              this.marginalPredictiveLogLikInternal(this.path, roadDistribution, edge));
+        for (final PathEdge edge : this.path.getPathEdges()) {
+          PathStateDistribution prediction = getPathEdgePredictive(roadDistribution, edge);
+          if (prediction == null)
+            break;
+          distributions.add(prediction);
+          weights.add(
+              this.path.getPathEdges().size() == 1 ? 0d :
+                this.marginalPredictiveLogLikInternal(this.path, roadDistribution, edge));
+        }
       }
     }
     
@@ -186,6 +197,9 @@ public class PathStateEstimatorPredictor extends
     final double e = mean - Or.times(beliefMean).getElement(0);
     Vector a = beliefMean.plus(W.getColumn(0).scale(e));
 //    roadDistribution.getMean();
+    
+    if (a.getElement(1) < 0d)
+      return null;
     
     /*
      * Truncate our new mean so that it's forced onto the edge.
