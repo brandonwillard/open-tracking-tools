@@ -1,5 +1,6 @@
 package org.opentrackingtools.graph;
 
+import gov.sandia.cognition.math.UnivariateStatisticsUtil;
 import gov.sandia.cognition.math.matrix.Matrix;
 import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.math.matrix.mtj.DenseMatrix;
@@ -44,6 +45,7 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
+import com.google.common.primitives.Doubles;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Envelope;
 import com.vividsolutions.jts.geom.Geometry;
@@ -115,29 +117,28 @@ public class GenericJTSGraph implements InferenceGraph {
       final BasicDirectedNode dn1 = (BasicDirectedNode) n1.getNode();
       final BasicDirectedNode dn2 = (BasicDirectedNode) n2.getNode();
 
-      final Edge edgeBetween = dn1.getOutEdge(dn2);
+      /*
+       * TODO are we handling multiple edges correctly?
+       */
+      final List<Edge> edgesBetween = dn1.getOutEdges(dn2);
+      
       /*
        * Make sure this direction is traversable
        */
-      if (edgeBetween == null) {
+      if (edgesBetween.isEmpty()) {
         return Double.POSITIVE_INFINITY;
       }
 
       /*
-       * If these are the first nodes, then make sure
-       * they travel the direction of the edge
-       */
-      //      if (n1.getParent() == null) {
-      //        if (!edgeBetween.equals(startEdge))
-      //          return Double.POSITIVE_INFINITY;
-      //      }
-
-      /*
        * TODO
-       * Compute distance past projected value
+       * Compute distance past projected value?
        */
+      double[] lengths = new double[edgesBetween.size()];
+      for (int i = 0; i < lengths.length; i++) {
+        lengths[i] = ((LineString)edgesBetween.get(i).getObject()).getLength();
+      }
 
-      return 0d;
+      return Doubles.min(lengths);
     }
 
     @Override
@@ -522,9 +523,7 @@ public class GenericJTSGraph implements InferenceGraph {
     DirectedNode prevNode = rNodes.next();
     while(rNodes.hasNext()) {
       DirectedNode node = rNodes.next();
-      Edge outEdge = prevNode.getOutEdge(node);
-      if (outEdge == null) 
-        return null;
+      Edge outEdge = Preconditions.checkNotNull(prevNode.getOutEdge(node));
       final InferenceGraphEdge infEdge = this.getInferenceGraphEdge(outEdge);
       for (InferenceGraphSegment segment : infEdge.getSegments()) {
         
@@ -535,6 +534,7 @@ public class GenericJTSGraph implements InferenceGraph {
         distance += segment.getLine().getLength();
       }
       reachedEndNodes.add(node);
+      prevNode = node;
     }
     if (!pathEdges.isEmpty()) {
       final Path newPath = new Path(pathEdges, false);

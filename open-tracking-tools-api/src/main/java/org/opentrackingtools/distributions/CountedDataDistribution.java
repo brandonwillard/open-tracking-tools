@@ -503,6 +503,16 @@ public class CountedDataDistribution<KeyType> extends
     return this.increment(key, value, 1);
   }
 
+  /**
+   * Increments by amount value and sets the extra info of count.<br>
+   * Note: count does not factor into the value amount, and thus weight
+   * of the key.
+   * 
+   * @param key
+   * @param value
+   * @param count
+   * @return
+   */
   public double increment(KeyType key, final double value, int count) {
     // TODO FIXME terrible hack!
     final MutableDoubleCount entry =
@@ -648,6 +658,41 @@ public class CountedDataDistribution<KeyType> extends
           identity) == 0);
       entry.set(identity, count);
     }
+  }
+
+  @Override
+  public double increment(KeyType key) {
+    return this.increment(key, isLogScale ? 0d : 1d);
+  }
+
+  @Override
+  public void incrementAll(Iterable<? extends KeyType> keys) {
+    super.incrementAll(keys);
+  }
+
+  @Override
+  public void incrementAll(ScalarMap<? extends KeyType> other) {
+    super.incrementAll(other);
+  }
+
+  @Override
+  public double decrement(KeyType key) {
+    return this.decrement(key, isLogScale ? 0d : 1d);
+  }
+
+  @Override
+  public double decrement(KeyType key, double value) {
+    return super.decrement(key, value);
+  }
+
+  @Override
+  public void decrementAll(Iterable<? extends KeyType> keys) {
+    super.decrementAll(keys);
+  }
+
+  @Override
+  public void decrementAll(ScalarMap<? extends KeyType> other) {
+    super.decrementAll(other);
   }
 
 }
