@@ -2,6 +2,7 @@ package org.opentrackingtools.graph;
 
 import gov.sandia.cognition.math.matrix.VectorFactory;
 
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Date;
 import java.util.HashSet;
@@ -23,12 +24,50 @@ import org.testng.annotations.Test;
 
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
+import com.vividsolutions.jts.algorithm.RobustLineIntersector;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.LineString;
+import com.vividsolutions.jts.noding.IntersectionAdder;
+import com.vividsolutions.jts.noding.MCIndexNoder;
+import com.vividsolutions.jts.noding.NodedSegmentString;
 
 public class GenericJTSGraphTest {
 
-  @Test
+//  @Test
+  public void testNoding() {
+    
+    final List<NodedSegmentString> graphEdges = Lists.newArrayList();
+    graphEdges.add(new NodedSegmentString(new Coordinate[] { 
+        new Coordinate(0, 0), 
+        new Coordinate(2, 0)}, "1"));
+    graphEdges.add(new NodedSegmentString(new Coordinate[] { 
+        new Coordinate(1, 0), 
+        new Coordinate(2, 0)}, "2"));
+    graphEdges.add(new NodedSegmentString(new Coordinate[] { 
+        new Coordinate(2, 0), 
+        new Coordinate(1, 0)}, "3"));
+    graphEdges.add(new NodedSegmentString(new Coordinate[] { 
+        new Coordinate(2, 0), 
+        new Coordinate(0, 0)}, "4"));
+    graphEdges.add(new NodedSegmentString(new Coordinate[] { 
+        new Coordinate(1, -1), 
+        new Coordinate(1, 1)}, "5"));
+    
+    final MCIndexNoder noder = new MCIndexNoder();
+    noder.setSegmentIntersector(new IntersectionAdder(
+        new RobustLineIntersector()));
+    noder.computeNodes(graphEdges);
+    
+    for (Object obj : noder.getNodedSubstrings()) {
+      NodedSegmentString nss = (NodedSegmentString) obj;
+      System.out.println(Arrays.deepToString(nss.getCoordinates()) + ", " + nss.getData());
+      
+    }
+
+    System.out.println("done");
+  }
+  
+//  @Test
   public void getPaths1() {
     
     final List<LineString> graphEdges = Lists.newArrayList();
@@ -72,9 +111,9 @@ public class GenericJTSGraphTest {
 
     final VehicleStateInitialParameters parameters = new VehicleStateInitialParameters(
         VectorFactory.getDefault().copyArray(new double[] { 0d, 1d, 0d, 0d }), 
-        VectorFactory.getDefault().createVector2D(1d, 1d), 0, 
-        VectorFactory.getDefault().createVector1D(1e-4d), 0, 
-        VectorFactory.getDefault().createVector2D(1e-4d, 1e-4d), 0, 
+        VectorFactory.getDefault().createVector2D(1d, 1d), Integer.MAX_VALUE, 
+        VectorFactory.getDefault().createVector1D(1e-4d), Integer.MAX_VALUE, 
+        VectorFactory.getDefault().createVector2D(1e-4d, 1e-4d), Integer.MAX_VALUE, 
         VectorFactory.getDefault().createVector2D(1,Double.MAX_VALUE), 
         VectorFactory.getDefault().createVector2D(Double.MAX_VALUE, 1), 
         0, 2, 0);
@@ -91,7 +130,7 @@ public class GenericJTSGraphTest {
     assert(pathsContainLineStrings(paths, lineStringsToFind));
   }
   
-  @Test
+//  @Test
   public void getPaths2() {
     
     final List<LineString> graphEdges = Lists.newArrayList();
@@ -159,9 +198,9 @@ public class GenericJTSGraphTest {
 
     final VehicleStateInitialParameters parameters = new VehicleStateInitialParameters(
         VectorFactory.getDefault().copyArray(new double[] { 0d, 1d, 0d, 0d }), 
-        VectorFactory.getDefault().createVector2D(0.5d, 0.5d), 0, 
-        VectorFactory.getDefault().createVector1D(1e-4d), 0, 
-        VectorFactory.getDefault().createVector2D(1e-4d, 1e-4d), 0, 
+        VectorFactory.getDefault().createVector2D(0.5d, 0.5d), Integer.MAX_VALUE, 
+        VectorFactory.getDefault().createVector1D(1e-4d), Integer.MAX_VALUE, 
+        VectorFactory.getDefault().createVector2D(1e-4d, 1e-4d), Integer.MAX_VALUE, 
         VectorFactory.getDefault().createVector2D(1,Double.MAX_VALUE), 
         VectorFactory.getDefault().createVector2D(Double.MAX_VALUE, 1), 
         0, 2, 0);

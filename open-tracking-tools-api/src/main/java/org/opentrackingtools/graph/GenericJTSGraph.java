@@ -388,11 +388,13 @@ public class GenericJTSGraph implements InferenceGraph {
       startEdges.add(currrentPathEdge.getSegment());
     } else {
 
+      MotionStateEstimatorPredictor motionEstimator = 
+          Preconditions.checkNotNull(fromState.getMotionStateEstimatorPredictor());
       MultivariateGaussian projectedDist = 
-          fromState.getMotionStateEstimatorPredictor().createPredictiveDistribution(
+          motionEstimator.createPredictiveDistribution(
             fromState.getMotionStateParam().getParameterPrior());
       MultivariateGaussian obsDist = 
-          fromState.getMotionStateEstimatorPredictor().getObservationDistribution(projectedDist,
+          motionEstimator.getObservationDistribution(projectedDist,
           PathEdge.nullPathEdge);
       final double beliefDistance =
           Math.min(
