@@ -200,11 +200,21 @@ public class InferenceGraphEdge implements
     return this.getSegments(0d, upToLength);
   }
   
+  /**
+   * Get segments with distances that overlap the given interval (inclusive).
+   * @param lengthStart
+   * @param lengthEnd
+   * @return
+   */
   public List<InferenceGraphSegment> getSegments(double lengthStart, double lengthEnd) {
+    Preconditions.checkState(lengthStart <= lengthEnd);
     List<InferenceGraphSegment> results = Lists.newArrayList();
     for (InferenceGraphSegment segment : this.graphSegments) {
-      if (segment.startDistance >= lengthStart && segment.startDistance + segment.line.getLength() <= lengthEnd) {
+      if (segment.startDistance >= lengthStart) {
         results.add(segment);
+      }
+      if (segment.startDistance + segment.line.getLength() > lengthEnd) {
+        break;
       }
     }
     return results;

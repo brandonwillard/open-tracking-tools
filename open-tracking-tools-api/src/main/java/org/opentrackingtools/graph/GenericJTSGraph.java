@@ -388,23 +388,24 @@ public class GenericJTSGraph implements InferenceGraph {
       startEdges.add(currrentPathEdge.getSegment());
     } else {
 
-      final MultivariateGaussian obsBelief =
-          fromState.getMotionStateParam().getConditionalDistribution();
-
+      MultivariateGaussian projectedDist = 
+          fromState.getMotionStateEstimatorPredictor().createPredictiveDistribution(
+            fromState.getMotionStateParam().getParameterPrior());
+      MultivariateGaussian obsDist = 
+          fromState.getMotionStateEstimatorPredictor().getObservationDistribution(projectedDist,
+          PathEdge.nullPathEdge);
       final double beliefDistance =
           Math.min(
               StatisticsUtil
-                  .getLargeNormalCovRadius((DenseMatrix) obsBelief
+                  .getLargeNormalCovRadius((DenseMatrix) obsDist
                       .getCovariance()),
               MAX_STATE_SNAP_RADIUS);
 
-//      startEdges.addAll(getNearbyEdges(
-//            fromState.getMeanLocation(), beliefDistance));
       /*
        * We're short-circuiting the "off->on then move along"
        * path finding.  It causes problems. 
        */
-      for (InferenceGraphSegment segment : getNearbyEdges(fromState.getMeanLocation(), beliefDistance)) {
+      for (InferenceGraphSegment segment : getNearbyEdges(obsDist.getMean(), beliefDistance)) {
         final Path path = new Path(Collections.singletonList(new PathEdge(segment, 0d, false)), false);
         paths.add(path);
       }

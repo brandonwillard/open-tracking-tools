@@ -66,16 +66,10 @@ public class Path extends AbstractCloneableSerializable implements
     for (final PathEdge edge : edges) {
 
       if (lastEdge != null && !edge.equals(lastEdge)) {
-        if (isBackward) {
-          Preconditions.checkArgument(lastEdge == null
-              || lastEdge.line.p0
-                  .equals(edge.line.p1));
-        } else {
-          Preconditions.checkArgument(lastEdge == null
-              || lastEdge.line.p1
-                  .equals(edge.line.p0));
+        Preconditions.checkArgument(lastEdge == null
+            || lastEdge.line.p1
+                .equals(edge.line.p0));
   
-        }
       }
 
       final LineSegment geom = edge.getLine();

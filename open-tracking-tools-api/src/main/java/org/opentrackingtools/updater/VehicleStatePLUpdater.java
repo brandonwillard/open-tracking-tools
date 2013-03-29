@@ -221,8 +221,7 @@ public class VehicleStatePLUpdater<O extends GpsObservation, G extends Inference
         /*
          * Convert to off-road, then predict
          */
-        priorMotionState = motionStateEstimatorPredictor
-                .createPredictiveDistribution(priorPathStateDist.getGroundDistribution());
+        priorMotionState = priorPathStateDist.getGroundDistribution();
       } else if (!path.isNullPath() && !priorPathStateDist.getPathState().isOnRoad()) {
         /*
          * Convert to on-road, then predict
@@ -230,6 +229,11 @@ public class VehicleStatePLUpdater<O extends GpsObservation, G extends Inference
         priorMotionState = PathUtils.getRoadBeliefFromGround(
             predictedState.getPathStateParam().getParameterPrior().getMotionDistribution(), 
             Iterables.getFirst(path.getPathEdges(), null), true);
+        /*
+         * Not allowing backward movement...
+         */
+        if (priorMotionState.getMean().getElement(1) <= 0d)
+          continue;
       } else {
         /*
          * Stay on or off-road, but notice that we use the "local" state (the distance

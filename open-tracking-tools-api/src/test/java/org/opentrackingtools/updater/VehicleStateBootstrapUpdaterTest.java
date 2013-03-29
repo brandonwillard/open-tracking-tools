@@ -369,7 +369,7 @@ public class VehicleStateBootstrapUpdaterTest {
     final VehicleStateInitialParameters parameters =
         new VehicleStateInitialParameters(VectorFactory.getDefault()
             .copyArray(new double[] { 0d, 1d, 0d, 2d }),
-            VectorFactory.getDefault().createVector2D(0.2d, 0.2d), Integer.MAX_VALUE,
+            VectorFactory.getDefault().createVector2D(0.1d, 0.1d), Integer.MAX_VALUE,
             VectorFactory.getDefault().createVector1D(0d), Integer.MAX_VALUE,
             /*
              * No error, so the bootstrap sampling doesn't affect the sampled
@@ -401,9 +401,10 @@ public class VehicleStateBootstrapUpdaterTest {
             graph.getNearbyEdges(new Coordinate(1d, 2d), 0.5d))
             .getParentEdge();
 
-    AssertJUnit.assertEquals(expectedEdge, newState
+    final InferenceGraphEdge actualEdge = newState
         .getPathStateParam().getValue().getEdge()
-        .getInferenceGraphEdge());
+        .getInferenceGraphEdge();
+    AssertJUnit.assertEquals(expectedEdge, actualEdge);
 
     final Vector expectedMotionState =
         VectorFactory.getDefault().copyArray(

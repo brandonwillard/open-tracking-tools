@@ -440,7 +440,7 @@ public class OnOffEdgeTransDistribution extends
                 this.getFreeMotionTransProbs(), random);
 
         if (sample.equals(OnOffEdgeTransDistribution.stateOffToOn)
-            && tmpDomain.size() - 1 <= 0) {
+            && tmpDomain.size() - 1 > 0) {
           tmpDomain.remove(InferenceGraphEdge.nullGraphEdge);
           return tmpDomain.get(random.nextInt(tmpDomain.size()));
         } else {

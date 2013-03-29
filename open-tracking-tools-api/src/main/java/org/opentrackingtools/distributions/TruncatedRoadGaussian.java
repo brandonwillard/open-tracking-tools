@@ -9,8 +9,10 @@ import gov.sandia.cognition.statistics.distribution.UnivariateGaussian;
 import gov.sandia.cognition.util.DefaultPair;
 import gov.sandia.cognition.util.Pair;
 
+import java.util.List;
 import java.util.Random;
 
+import org.jfree.data.function.NormalDistributionFunction2D;
 import org.opentrackingtools.util.StatisticsUtil;
 
 import umontreal.iro.lecuyer.probdist.ContinuousDistribution;
@@ -18,8 +20,10 @@ import umontreal.iro.lecuyer.probdist.FoldedNormalDist;
 import umontreal.iro.lecuyer.probdist.HalfNormalDist;
 import umontreal.iro.lecuyer.probdist.NormalDist;
 import umontreal.iro.lecuyer.probdist.TruncatedDist;
+import umontreal.iro.lecuyer.probdistmulti.BiNormalDist;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.Lists;
 import com.google.common.collect.Range;
 import com.google.common.collect.Ranges;
 
@@ -328,4 +332,144 @@ public class TruncatedRoadGaussian extends AdjMultivariateGaussian {
     }
     return mean;
   }
+
+  public MultivariateGaussian getTruncatedDistribution() {
+    final double rho = this.getCovariance().getElement(1,0)/
+        (this.getCovariance().getElement(0,0) * this.getCovariance().getElement(1,1));
+    final double c = 1d/Math.sqrt(1d-rho*rho);
+    BiNormalDist biNormal = new BiNormalDist(
+        this.getMean().getElement(0), this.getCovariance().getElement(0,0),
+        this.getMean().getElement(1), this.getCovariance().getElement(1,1),
+        rho); 
+    
+    final double b1 = this.getDistanceRange().lowerEndpoint();
+    final double a1 = this.getDistanceRange().upperEndpoint();
+    final double b2 = this.velocityRange.lowerEndpoint();
+    final double a2 = this.velocityRange.upperEndpoint();
+    
+    final double L = biNormal.cdf(
+        this.getDistanceRange().lowerEndpoint(), this.velocityRange.lowerEndpoint(), 
+        this.getDistanceRange().upperEndpoint(), this.velocityRange.upperEndpoint());
+    
+    double Ed = 0d;
+    if (!Double.isInfinite(a1))
+      Ed += -NormalDist.density01(a1)
+          * (NormalDist.cdf01((a2 - rho * a1)*c)
+              - NormalDist.cdf01((b2 - rho * a1)*c));
+    if (!Double.isInfinite(b1))
+      Ed +=
+         NormalDist.density01(b1)
+          * (NormalDist.cdf01((a2 - rho * b1)*c)
+              - NormalDist.cdf01((b1 - rho * b1)*c));
+    if (!Double.isInfinite(a2))
+      Ed +=
+        - rho * NormalDist.density01(a2)
+          * (NormalDist.cdf01((a1 - rho * a2)*c)
+              - NormalDist.cdf01((b1 - rho * a2)*c));
+    if (!Double.isInfinite(b2))
+      Ed +=
+         rho * NormalDist.density01(b2)
+          * (NormalDist.cdf01((a1 - rho * b2)*c)
+              - NormalDist.cdf01((b1 - rho * b2)*c));
+    Ed /= L;
+    
+    double Ev = Double.NEGATIVE_INFINITY; 
+//    double Ev = 0d; 
+    double posSum = Double.NEGATIVE_INFINITY;
+    double negSum = Double.NEGATIVE_INFINITY;
+    if (!Double.isInfinite(a2))
+      negSum =  
+        // sign should be negative
+        UnivariateGaussian.PDF.logEvaluate(a2, 0d, 1d)
+          + LogMath.subtract(
+              StatisticsUtil.normalCdf((a1 - rho * a2)*c, 0d, 1d, true),
+              StatisticsUtil.normalCdf((b1 - rho * a2)*c, 0d, 1d, true));
+//      Ev += -NormalDist.density01(a2)
+//          * (NormalDist.cdf01((a1 - rho * a2)*c)
+//              - NormalDist.cdf01((b1 - rho * a2)*c));
+    if (!Double.isInfinite(b2))
+      posSum = 
+        UnivariateGaussian.PDF.logEvaluate(b2, 0d, 1d)
+          + LogMath.subtract(
+              StatisticsUtil.normalCdf((a1 - rho * b2)*c, 0d, 1d, true),
+              StatisticsUtil.normalCdf((b2 - rho * b2)*c, 0d, 1d, true));
+//      Ev += NormalDist.density01(b2)
+//          * (NormalDist.cdf01((a1 - rho * b2)*c)
+//              - NormalDist.cdf01((b2 - rho * b2)*c));
+    if (!Double.isInfinite(a1))
+      negSum = LogMath.add(negSum, 
+        // sign should be negative
+        Math.log(rho)
+          + UnivariateGaussian.PDF.logEvaluate(a1, 0d, 1d)
+          + LogMath.subtract(
+              StatisticsUtil.normalCdf((a2 - rho * b1)*c, 0d, 1d, true),
+              StatisticsUtil.normalCdf((b2 - rho * b1)*c, 0d, 1d, true)));
+//      Ev += - rho * NormalDist.density01(a1)
+//          * (NormalDist.cdf01((a2 - rho * a1)*c)
+//              - NormalDist.cdf01((b2 - rho * a1)*c));
+    if (!Double.isInfinite(b1))
+      posSum = LogMath.add(posSum,
+        Math.log(rho)
+          + UnivariateGaussian.PDF.logEvaluate(b1, 0d, 1d)
+          + LogMath.subtract(
+              StatisticsUtil.normalCdf((a2 - rho * b1)*c, 0d, 1d, true),
+              StatisticsUtil.normalCdf((b2 - rho * b1)*c, 0d, 1d, true)));
+//      Ev += rho * NormalDist.density01(b1)
+//          * (NormalDist.cdf01((a2 - rho * b1)*c)
+//              - NormalDist.cdf01((b2 - rho * b1)*c));
+    Ev = LogMath.subtract(posSum, negSum);
+    Ev -= Math.log(L);
+    Ev = Math.exp(Ev);
+    
+    MultivariateGaussian truncDist = new MultivariateGaussian();
+    truncDist.setMean(VectorFactory.getDefault().copyArray(new double[] {
+        Ed + biNormal.getMu1(), 
+        Ev + biNormal.getMu2()}));
+    
+    return truncDist;
+  }
+  
+  
+//  private double Fi(final int i) {
+//    final int j = i == 0 ? 1 : 0;
+//    final double ai;
+//    final double bi;
+//    final double aj;
+//    final double bj; 
+//    if (i == 0) {
+//      ai = (this.getDistanceRange().lowerEndpoint() - this.getMean().getElement(0));
+//      ai = (this.getDistanceRange().upperEndpoint() - this.getMean().getElement(0));
+//      aj = (this.velocityRange.lowerEndpoint() - this.getMean().getElement(1));
+//      bj = (this.velocityRange.upperEndpoint() - this.getMean().getElement(1));
+//    } else {
+//      aj = (this.getDistanceRange().lowerEndpoint() - this.getMean().getElement(0));
+//      aj = (this.getDistanceRange().upperEndpoint() - this.getMean().getElement(0));
+//      ai = (this.velocityRange.lowerEndpoint() - this.getMean().getElement(1));
+//      bi = (this.velocityRange.upperEndpoint() - this.getMean().getElement(1));
+//    }
+//    final double sig_ii = this.getCovariance().getElement(i, i);
+//    final double sig_ij = this.getCovariance().getElement(i, j);
+//    final double sig_jj = this.getCovariance().getElement(j, j);
+//    double val = 0d;
+//    if (!Double.isInfinite(a1))
+//      val += -NormalDist.density01(a1)
+//          * (NormalDist.cdf01((a2 - rho * a1)*c)
+//              - NormalDist.cdf01((b2 - rho * a1)*c));
+//    if (!Double.isInfinite(b1))
+//      val +=
+//         NormalDist.density01(b1)
+//          * (NormalDist.cdf01((a2 - rho * b1)*c)
+//              - NormalDist.cdf01((b1 - rho * b1)*c));
+//    if (!Double.isInfinite(a2))
+//      val +=
+//        - rho * NormalDist.density01(a2)
+//          * (NormalDist.cdf01((a1 - rho * a2)*c)
+//              - NormalDist.cdf01((b1 - rho * a2)*c));
+//    if (!Double.isInfinite(b2))
+//      val +=
+//         rho * NormalDist.density01(b2)
+//          * (NormalDist.cdf01((a1 - rho * b2)*c)
+//              - NormalDist.cdf01((b1 - rho * b2)*c));
+//    return val;
+//  }
 }

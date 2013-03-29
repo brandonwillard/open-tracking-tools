@@ -28,9 +28,14 @@ import org.opentrackingtools.paths.PathState;
 import org.opentrackingtools.util.PathUtils;
 import org.opentrackingtools.util.StatisticsUtil;
 
+import umontreal.iro.lecuyer.probdist.ContinuousDistribution;
+import umontreal.iro.lecuyer.probdist.NormalDist;
+import umontreal.iro.lecuyer.probdist.TruncatedDist;
+
 import com.beust.jcommander.internal.Lists;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Iterables;
+import com.google.common.collect.Ranges;
 import com.google.common.primitives.Doubles;
 
 /**
@@ -126,9 +131,8 @@ public class PathStateEstimatorPredictor extends
           groundDistribution));
       weights.add(0d);
     } else {
-      MultivariateGaussian roadDistribution;
       if (prior.getInputDimensionality() == 4) {
-        roadDistribution =
+      MultivariateGaussian roadDistribution =
             PathUtils.getRoadBeliefFromGround(prior,
                 Iterables.getOnlyElement(this.path.getPathEdges()),
                 true);
@@ -143,15 +147,24 @@ public class PathStateEstimatorPredictor extends
           weights.add(0d);
         }
       } else {
-        roadDistribution = prior;
+        MultivariateGaussian roadDistribution = prior;
+        /*
+         * This offset allows us to normalize the marginal
+         * likelihood when there are non-zero likelihood regions 
+         * (i.e. truncated velocity < 0).
+         */
+        double startOffset = 0d;
         for (final PathEdge edge : this.path.getPathEdges()) {
           PathStateDistribution prediction = getPathEdgePredictive(roadDistribution, edge);
-          if (prediction == null)
+          if (prediction == null) {
+            startOffset += edge.getLength();
             break;
+          }
           distributions.add(prediction);
           weights.add(
               this.path.getPathEdges().size() == 1 ? 0d :
-                this.marginalPredictiveLogLikInternal(this.path, roadDistribution, edge));
+                this.marginalPredictiveLogLikInternal(
+                    this.path, roadDistribution, edge, startOffset));
         }
       }
     }
@@ -173,31 +186,30 @@ public class PathStateEstimatorPredictor extends
    * @return
    */
   public PathStateDistribution getPathEdgePredictive(MultivariateGaussian roadDistribution, PathEdge edge) {
-    final Matrix Or = MotionStateEstimatorPredictor.getOr();
-    final double S =
-        Or.times(roadDistribution.getCovariance())
-            .times(Or.transpose()).getElement(0, 0)
-            // + 1d;
-            + Math.pow(edge.getLength() / Math.sqrt(12), 2);
-    final Matrix W =
-        roadDistribution.getCovariance().times(Or.transpose())
-            .scale(1 / S);
+//    final Matrix Or = MotionStateEstimatorPredictor.getOr();
+//    final double S =
+//        Or.times(roadDistribution.getCovariance())
+//            .times(Or.transpose()).getElement(0, 0)
+//            // + 1d;
+//            + Math.pow(this.path.getTotalPathDistance() / Math.sqrt(12), 2);
+//    final Matrix W =
+//        roadDistribution.getCovariance().times(Or.transpose())
+//            .scale(1 / S);
     final Matrix R = 
-        roadDistribution.getCovariance().minus(
-            W.times(W.transpose()).scale(S));
-      //roadDistribution.getCovariance();
+//        roadDistribution.getCovariance().minus(
+//            W.times(W.transpose()).scale(S));
+      roadDistribution.getCovariance();
 
-    final double direction = edge.isBackward() ? -1d : 1d;
-    final double mean =
-        (edge.getDistToStartOfEdge() + (edge
-            .getDistToStartOfEdge() + direction
-            * edge.getLength())) / 2d;
-
-    final Vector beliefMean = roadDistribution.getMean();
-    final double e = mean - Or.times(beliefMean).getElement(0);
-    Vector a = beliefMean.plus(W.getColumn(0).scale(e));
-//    roadDistribution.getMean();
-    
+//    final double direction = edge.isBackward() ? -1d : 1d;
+//    final double mean =
+//        (edge.getDistToStartOfEdge() + (edge
+//            .getDistToStartOfEdge() + direction
+//            * edge.getLength())) / 2d;
+//
+//    final Vector beliefMean = roadDistribution.getMean();
+//    final double e = mean - Or.times(beliefMean).getElement(0);
+    Vector a = //beliefMean.plus(W.getColumn(0).scale(e));
+      roadDistribution.getMean();
     if (a.getElement(1) < 0d)
       return null;
     
@@ -232,11 +244,11 @@ public class PathStateEstimatorPredictor extends
    * @return
    */
   public double marginalPredictiveLogLikInternal(Path path,
-    MultivariateGaussian beliefPrediction, PathEdge currentEdge) {
+    MultivariateGaussian beliefPrediction, PathEdge currentEdge, double startOffset) {
 
     final double direction = currentEdge.isBackward() ? -1d : 1d;
     final double thisStartDistance =
-        Math.abs(currentEdge.getDistToStartOfEdge());
+        Math.abs(currentEdge.getDistToStartOfEdge()) - startOffset;
     final double thisEndDistance =
         currentEdge.getLength() + thisStartDistance;
 
@@ -260,8 +272,9 @@ public class PathStateEstimatorPredictor extends
 
     final double Z =
       LogMath.subtract(
-          StatisticsUtil.normalCdf(Math.abs(path.getTotalPathDistance()), mean, Math.sqrt(var), true),
-          StatisticsUtil.normalCdf(0d, mean, Math.sqrt(var), true));
+          StatisticsUtil.normalCdf(
+              Math.abs(path.getTotalPathDistance()) - startOffset, mean, Math.sqrt(var), true),
+          StatisticsUtil.normalCdf(startOffset, mean, Math.sqrt(var), true));
 //        UnivariateGaussian.CDF.evaluate(
 //            Math.abs(path.getTotalPathDistance()), mean, var)
 //            - UnivariateGaussian.CDF.evaluate(0, mean, var);

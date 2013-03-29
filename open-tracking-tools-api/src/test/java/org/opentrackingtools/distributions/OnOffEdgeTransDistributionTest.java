@@ -83,9 +83,9 @@ public class OnOffEdgeTransDistributionTest {
     
     VehicleStateInitialParameters parameters = new VehicleStateInitialParameters(
         null,
-        VectorFactory.getDefault().createVector2D(100, 100), 0, 
-        VectorFactory.getDefault().createVector1D(6.25e-4), 0, 
-        VectorFactory.getDefault().createVector2D(6.25e-4, 6.25e-4), 0, 
+        VectorFactory.getDefault().createVector2D(100, 100), Integer.MAX_VALUE, 
+        VectorFactory.getDefault().createVector1D(6.25e-4), Integer.MAX_VALUE, 
+        VectorFactory.getDefault().createVector2D(6.25e-4, 6.25e-4), Integer.MAX_VALUE, 
         VectorFactory.getDefault().createVector2D(10, 50), 
         VectorFactory.getDefault().createVector2D(50, 10), 0, 30, 0);
     
@@ -161,9 +161,9 @@ public class OnOffEdgeTransDistributionTest {
     
     VehicleStateInitialParameters parameters = new VehicleStateInitialParameters(
         null,
-        VectorFactory.getDefault().createVector2D(100, 100), 0, 
-        VectorFactory.getDefault().createVector1D(6.25e-4), 0, 
-        VectorFactory.getDefault().createVector2D(6.25e-4, 6.25e-4), 0, 
+        VectorFactory.getDefault().createVector2D(100, 100), Integer.MAX_VALUE, 
+        VectorFactory.getDefault().createVector1D(6.25e-4), Integer.MAX_VALUE, 
+        VectorFactory.getDefault().createVector2D(6.25e-4, 6.25e-4), Integer.MAX_VALUE, 
         VectorFactory.getDefault().createVector2D(10, 50), 
         VectorFactory.getDefault().createVector2D(50, 10), 0, 30, 0);
     
@@ -234,9 +234,9 @@ public class OnOffEdgeTransDistributionTest {
     
     VehicleStateInitialParameters parameters = new VehicleStateInitialParameters(
         null,
-        VectorFactory.getDefault().createVector2D(100, 100), 0, 
-        VectorFactory.getDefault().createVector1D(6.25e-4), 0, 
-        VectorFactory.getDefault().createVector2D(6.25e-4, 6.25e-4), 0, 
+        VectorFactory.getDefault().createVector2D(100, 100), Integer.MAX_VALUE, 
+        VectorFactory.getDefault().createVector1D(6.25e-4), Integer.MAX_VALUE, 
+        VectorFactory.getDefault().createVector2D(6.25e-4, 6.25e-4), Integer.MAX_VALUE, 
         VectorFactory.getDefault().createVector2D(10, 50), 
         VectorFactory.getDefault().createVector2D(50, 10), 0, 30, 0);
     

@@ -300,10 +300,12 @@ public class VehicleStatePLFilter<O extends GpsObservation, G extends InferenceG
       final MultivariateGaussian obsProj =
           PathUtils.getRoadObservation(
               obs.getProjectedPoint(), updatedState.getObservationCovarianceParam().getValue(), 
-              priorPredictivePathStateDist.getPathState().getPath(), priorPredictivePathStateDist.getPathState().getEdge());
+              priorPredictivePathStateDist.getPathState().getPath(), 
+              priorPredictivePathStateDist.getPathState().getEdge());
 
       roadFilter.setMeasurementCovariance(obsProj.getCovariance());
       roadFilter.measure(updatedMotionState, obsProj.getMean());
+      
     } else {
       updatedState.getMotionStateEstimatorPredictor().update(
           updatedMotionState, obs.getProjectedPoint());
