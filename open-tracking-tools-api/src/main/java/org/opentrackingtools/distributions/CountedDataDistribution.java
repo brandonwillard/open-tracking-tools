@@ -453,7 +453,9 @@ public class CountedDataDistribution<KeyType> extends
   @Override
   public double getLogFraction(KeyType key) {
     if (this.isLogScale) {
-      return this.get(key) - this.getTotal();
+      Preconditions.checkArgument(this.containsKey(key));
+      final double keyVal = this.get(key);
+      return keyVal - this.getTotal();
     } else {
       return super.getLogFraction(key);
     }

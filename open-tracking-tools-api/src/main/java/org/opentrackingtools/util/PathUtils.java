@@ -5,7 +5,9 @@ import gov.sandia.cognition.math.matrix.Matrix;
 import gov.sandia.cognition.math.matrix.MatrixFactory;
 import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.math.matrix.VectorFactory;
+import gov.sandia.cognition.math.matrix.decomposition.AbstractSingularValueDecomposition;
 import gov.sandia.cognition.math.matrix.mtj.DenseMatrix;
+import gov.sandia.cognition.math.matrix.mtj.decomposition.SingularValueDecompositionMTJ;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 
 import java.util.Map.Entry;
@@ -137,67 +139,6 @@ public class PathUtils {
     return newState;
   }
 
-  /**
-   * See {@link #checkAndGetConvertedState(Vector, Path)}
-   * 
-   * @param belief
-   * @param path
-   * @return
-   */
-  public static MultivariateGaussian checkAndGetConvertedBelief(
-    PathStateDistribution belief, Path destPath) {
-
-    final MultivariateGaussian adjBelief;
-    if (destPath.isNullPath() && belief.getMean().getDimensionality() != 4) {
-      Preconditions.checkArgument(belief.getPathState().isOnRoad());
-      adjBelief = belief.getGroundDistribution();
-    } else if (!destPath.isNullPath()
-        && belief.getMean().getDimensionality() != 2) {
-      Preconditions.checkArgument(!belief.getPathState().isOnRoad());
-      adjBelief =
-          PathUtils.getRoadBeliefFromGround(belief.getGroundDistribution(), destPath, true);
-    } else {
-      if (!destPath.isNullPath()) {
-        Preconditions.checkState(destPath
-            .isOnPath(MotionStateEstimatorPredictor.getOr()
-                .times(belief.getMean()).getElement(0)));
-      }
-      adjBelief = belief.getMotionDistribution();
-    }
-
-    Preconditions
-        .checkState(belief.getMean().getDimensionality() == belief
-            .getCovariance().getNumColumns()
-            && belief.getCovariance().isSquare());
-
-    return adjBelief;
-  }
-
-  /**
-   * Checks that the state is either on- or off-road, depending on the given
-   * path, and converts if necessary.
-   * 
-   * @param state
-   * @param path
-   * @return
-   */
-  public static Vector checkAndGetConvertedState(PathState state,
-    Path destPath) {
-
-    final Vector adjState;
-    if (destPath.isNullPath() && state.getDimensionality() != 4) {
-      Preconditions.checkArgument(!state.getPath().isNullPath());
-      adjState = state.getGroundState();
-    } else if (!destPath.isNullPath() && state.getDimensionality() != 2) {
-      Preconditions.checkArgument(state.getPath().isNullPath());
-      adjState = PathUtils.getRoadStateFromGround(state.getGroundState(), destPath, true);
-    } else {
-      adjState = state.getMotionState();
-    }
-
-    return adjState;
-  }
-
   public static void convertToGroundBelief(
     MultivariateGaussian belief, PathEdge edge,
     boolean expandCovariance, boolean allowExtensions, boolean useAbsVelocity) {
@@ -211,20 +152,35 @@ public class PathUtils {
     }
 
     final Matrix C = belief.getCovariance();
-    
-    
     final Matrix projCov;
     if (expandCovariance) {
-      projCov = MatrixFactory.getDefault().createMatrix(4, 4);
-      projCov.setSubMatrix(0, 0, belief.getCovariance());
-      projCov.setSubMatrix(2, 2, belief.getCovariance());
+      if (C instanceof SvdMatrix) {
+        AbstractSingularValueDecomposition svdC = ((SvdMatrix)C).getSvd();
+        final Matrix U = MatrixFactory.getDefault().createMatrix(svdC.getU().getNumRows()*2, 
+            svdC.getU().getNumColumns()*2);
+        U.setSubMatrix(0, 0, svdC.getU());
+        U.setSubMatrix(2, 2, svdC.getU());
+        final Matrix Vt = MatrixFactory.getDefault().createMatrix(svdC.getVtranspose().getNumRows()*2, 
+            svdC.getVtranspose().getNumColumns()*2);
+        Vt.setSubMatrix(0, 0, svdC.getVtranspose());
+        Vt.setSubMatrix(2, 2, svdC.getVtranspose());
+        final Matrix S = MatrixFactory.getDefault().createMatrix(svdC.getS().getNumRows()*2, 
+            svdC.getS().getNumColumns()*2);
+        S.setSubMatrix(0, 0, svdC.getS());
+        S.setSubMatrix(2, 2, svdC.getS());
+        projCov = new SvdMatrix(new SimpleSingularValueDecomposition(
+            U, S, Vt));
+      } else {
+        final Matrix projCovTmp = MatrixFactory.getDefault().createMatrix(4, 4);
+        projCovTmp.setSubMatrix(0, 0, C);
+        projCovTmp.setSubMatrix(2, 2, C);
+        projCov = projCovTmp;
+      }
     } else {
-      projCov =
-        projPair.getProjMatrix().times(C)
-            .times(projPair.getProjMatrix().transpose());
+      projCov = getProjectedCovariance(projPair, C, false);
     }
 
-    assert StatisticsUtil.isPosSemiDefinite((DenseMatrix) projCov);
+    assert StatisticsUtil.isPosSemiDefinite(projCov);
 
     final Vector posState =
         edge.isBackward() ? belief.getMean().scale(-1d) : belief
@@ -255,18 +211,20 @@ public class PathUtils {
   }
 
   public static void convertToRoadBelief(MultivariateGaussian belief,
-    InferenceGraphEdge graphEdge, boolean useAbsVelocity) {
+    InferenceGraphEdge graphEdge, boolean useAbsVelocity, 
+    @Nullable Vector sourceLocation, @Nullable Double timeDiff) {
     final MultivariateGaussian projBelief =
         PathUtils.getRoadBeliefFromGround(belief, graphEdge.getGeometry(),
-            false, null, 0d, useAbsVelocity);
+            false, null, 0d, useAbsVelocity, sourceLocation, timeDiff);
 
     belief.setMean(projBelief.getMean());
     belief.setCovariance(projBelief.getCovariance());
   }
 
   public static void convertToRoadBelief(MultivariateGaussian belief,
-    Path path, boolean useAbsVelocity) {
-    PathUtils.convertToRoadBelief(belief, path, null, useAbsVelocity);
+    Path path, boolean useAbsVelocity, 
+    @Nullable Vector sourceLocation, @Nullable Double timeDiff) {
+    PathUtils.convertToRoadBelief(belief, path, null, useAbsVelocity, sourceLocation, timeDiff);
   }
 
   /**
@@ -285,13 +243,15 @@ public class PathUtils {
    */
   public static void
       convertToRoadBelief(MultivariateGaussian belief, Path path,
-        @Nullable PathEdge pathEdge, boolean useAbsVelocity) {
+        @Nullable PathEdge pathEdge, boolean useAbsVelocity, 
+    @Nullable Vector sourceLocation, @Nullable Double timeDiff) {
 
     final LineSegment lineSegment = pathEdge != null ? pathEdge.getLine() : null;
     final double distToStartOfEdge =pathEdge != null ? pathEdge.getDistToStartOfEdge() : 0d;
     final MultivariateGaussian projBelief =
         PathUtils.getRoadBeliefFromGround(belief, path.getGeometry(),
-            path.isBackward(), lineSegment, distToStartOfEdge, useAbsVelocity);
+            path.isBackward(), lineSegment, distToStartOfEdge, useAbsVelocity,
+            sourceLocation, timeDiff);
 
     belief.setMean(projBelief.getMean());
     belief.setCovariance(projBelief.getCovariance());
@@ -412,7 +372,8 @@ public class PathUtils {
   public static MultivariateGaussian getRoadBeliefFromGround(
     MultivariateGaussian belief, Geometry pathGeometry,
     boolean pathIsBackwards, @Nullable LineSegment edgeSegment,
-    double edgeDistanceToStartOnPath, boolean useAbsVelocity) {
+    double edgeDistanceToStartOnPath, boolean useAbsVelocity, 
+    @Nullable Vector sourceLocation, @Nullable Double timeDiff) {
 
     Preconditions.checkArgument(belief.getInputDimensionality() == 4);
 
@@ -423,17 +384,30 @@ public class PathUtils {
       return null;
     }
     
+    /*
+     * When we're given a source location, we will adjust
+     * the velocity to correspond to the snapped position.
+     */
+    final Vector adjState;
+    if (sourceLocation != null && timeDiff != null) {
+      final Vector newVelocity = MotionStateEstimatorPredictor.Og.times(projPair.stateOnSegment).minus(
+          MotionStateEstimatorPredictor.Og.times(sourceLocation))
+          .scale(1d/timeDiff);
+      adjState = projPair.getStateOnSegment().clone();
+      adjState.setElement(1, newVelocity.getElement(0));
+      adjState.setElement(3, newVelocity.getElement(1));
+    } else {
+      adjState = projPair.getStateOnSegment();
+    }
 
     final Matrix C = belief.getCovariance().clone();
-    final Matrix projCov =
-        projPair.getProjMatrix().transpose().times(C)
-            .times(projPair.getProjMatrix());
+    final Matrix projCov = getProjectedCovariance(projPair, C, true);
 
-    assert StatisticsUtil.isPosSemiDefinite((DenseMatrix) projCov);
+    assert StatisticsUtil.isPosSemiDefinite(projCov);
 
     final Vector projMean =
         projPair.getProjMatrix().transpose()
-            .times(projPair.getStateOnSegment().minus(projPair.getOffset()));
+            .times(adjState.minus(projPair.getOffset()));
 
 //    /*
 //     * When there is no exactly orthogonal line to the edge
@@ -454,7 +428,7 @@ public class PathUtils {
               .getDenseDefault()
               .copyVector(
                   MotionStateEstimatorPredictor.getVg().times(
-                      belief.getMean())).norm2();
+                      adjState)).norm2();
       final double projVelocity =
           Math.signum(projMean.getElement(1)) * absVelocity;
       projMean.setElement(1, projVelocity);
@@ -472,11 +446,12 @@ public class PathUtils {
 
   public static MultivariateGaussian getRoadBeliefFromGround(
     MultivariateGaussian belief, InferenceGraphEdge edge,
-    boolean useAbsVelocity) {
+    boolean useAbsVelocity, 
+    @Nullable Vector sourceLocation, @Nullable Double timeDiff) {
     Preconditions.checkArgument(belief.getInputDimensionality() == 4);
     final MultivariateGaussian tmpMg =
         PathUtils.getRoadBeliefFromGround(belief, edge.getGeometry(),
-            false, null, 0, useAbsVelocity);
+            false, null, 0, useAbsVelocity, sourceLocation, timeDiff);
     return tmpMg;
   }
 
@@ -489,11 +464,12 @@ public class PathUtils {
    * @return
    */
   public static MultivariateGaussian getRoadBeliefFromGround(
-    MultivariateGaussian belief, Path path, boolean useAbsVelocity) {
+    MultivariateGaussian belief, Path path, boolean useAbsVelocity, 
+    @Nullable Vector sourceLocation, @Nullable Double timeDiff) {
     Preconditions.checkArgument(belief.getInputDimensionality() == 4);
     final MultivariateGaussian tmpMg =
         PathUtils.getRoadBeliefFromGround(belief, path.getGeometry(),
-            path.isBackward(), null, 0, useAbsVelocity);
+            path.isBackward(), null, 0, useAbsVelocity, sourceLocation, timeDiff);
     return tmpMg;
   }
 
@@ -507,12 +483,13 @@ public class PathUtils {
    */
   public static MultivariateGaussian
       getRoadBeliefFromGround(MultivariateGaussian belief,
-        PathEdge edge, boolean useAbsVelocity) {
+        PathEdge edge, boolean useAbsVelocity, 
+    @Nullable Vector sourceLocation, @Nullable Double timeDiff) {
     Preconditions.checkArgument(belief.getInputDimensionality() == 4);
     final Geometry lineGeom = edge.getLine().toGeometry(JTSFactoryFinder.getGeometryFactory());
     final MultivariateGaussian tmpMg =
         PathUtils.getRoadBeliefFromGround(belief, lineGeom, edge
-            .isBackward(), null, 0, useAbsVelocity);
+            .isBackward(), null, 0, useAbsVelocity, sourceLocation, timeDiff);
     tmpMg.getMean().setElement(0,
         tmpMg.getMean().getElement(0) + edge.getDistToStartOfEdge());
     return tmpMg;
@@ -527,29 +504,31 @@ public class PathUtils {
    * @param edge
    * @return
    */
-  public static MultivariateGaussian getRoadObservation(Vector obs,
+  public static AdjMultivariateGaussian getRoadObservation(Vector obs,
     Matrix obsCov, Path path, PathEdge edge) {
 
     Preconditions.checkState(obs.getDimensionality() == 2
         && obsCov.getNumColumns() == 2 && obsCov.isSquare());
 
-    final Matrix obsCovExp =
+    final Matrix obsCovExp = 
         MotionStateEstimatorPredictor.getOg().transpose()
-            .times(obsCov)
+            .times(new SvdMatrix(obsCov))
             .times(MotionStateEstimatorPredictor.getOg());
     final MultivariateGaussian obsProjBelief =
-        new TruncatedRoadGaussian(MotionStateEstimatorPredictor
-            .getOg().transpose().times(obs), obsCovExp);
-    PathUtils.convertToRoadBelief(obsProjBelief, path, edge, true);
+        new MultivariateGaussian(MotionStateEstimatorPredictor
+            .getOg().transpose().times(obs), 
+            obsCovExp);
+    PathUtils.convertToRoadBelief(obsProjBelief, path, edge, true, null, null);
 
     final Vector y =
         MotionStateEstimatorPredictor.getOr().times(
             obsProjBelief.getMean());
-    final Matrix Sigma =
+    final SvdMatrix Sigma =
+        new SvdMatrix(
         MotionStateEstimatorPredictor.getOr()
             .times(obsProjBelief.getCovariance())
-            .times(MotionStateEstimatorPredictor.getOr().transpose());
-    return new MultivariateGaussian(y, Sigma);
+            .times(MotionStateEstimatorPredictor.getOr().transpose()));
+    return new AdjMultivariateGaussian(y, Sigma);
   }
 
   /**
@@ -626,29 +605,34 @@ public class PathUtils {
   public static Vector getRoadStateFromGround(Vector state,
     Geometry pathGeometry, boolean pathIsBackwards,
     @Nullable LineSegment edgeSegment,
-    double edgeDistanceToStartOnPath, boolean useAbsVelocity) {
+    double edgeDistanceToStartOnPath, boolean useAbsVelocity, 
+    @Nullable Vector sourceLocation, @Nullable Double timeDiff) {
 
     Preconditions.checkArgument(state.getDimensionality() == 4);
-
+    
+    
     final PathEdgeProjection projPair =
         PathUtils.getRoadProjection(state, pathGeometry, edgeSegment, edgeDistanceToStartOnPath);
 
-    if (projPair == null) {
-      return null;
+    /*
+     * When we're given a source location, we will adjust
+     * the velocity to correspond to the snapped position.
+     */
+    final Vector adjState;
+    if (sourceLocation != null && timeDiff != null) {
+      final Vector newVelocity = MotionStateEstimatorPredictor.Og.times(projPair.stateOnSegment).minus(
+          MotionStateEstimatorPredictor.Og.times(sourceLocation))
+          .scale(1d/timeDiff);
+      adjState = projPair.getStateOnSegment().clone();
+      adjState.setElement(1, newVelocity.getElement(0));
+      adjState.setElement(3, newVelocity.getElement(1));
+    } else {
+      adjState = projPair.getStateOnSegment();
     }
 
     final Vector projMean =
         projPair.getProjMatrix().transpose()
-            .times(state.minus(projPair.getOffset()));
-
-    /*
-     * When there is no exactly orthogonal line to the edge
-     * we must clip the result.
-     */
-    final LengthIndexedLine lil = new LengthIndexedLine(pathGeometry);
-    final double clampedIndex =
-        lil.clampIndex(projMean.getElement(0));
-    projMean.setElement(0, clampedIndex);
+            .times(adjState.minus(projPair.getOffset()));
 
     if (pathIsBackwards) {
       projMean.scaleEquals(-1d);
@@ -659,7 +643,7 @@ public class PathUtils {
           VectorFactory
               .getDenseDefault()
               .copyVector(
-                  MotionStateEstimatorPredictor.getVg().times(state))
+                  MotionStateEstimatorPredictor.getVg().times(adjState))
               .norm2();
       final double projVelocity =
           Math.signum(projMean.getElement(1)) * absVelocity;
@@ -673,10 +657,10 @@ public class PathUtils {
   }
 
   public static Vector getRoadStateFromGround(Vector state,
-    Path path, boolean useAbsVelocity) {
+    Path path, boolean useAbsVelocity, Vector prevState, Double timeDiff) {
     return PathUtils.getRoadStateFromGround(state,
         path.getGeometry(), path.isBackward(), null, 0,
-        useAbsVelocity);
+        useAbsVelocity, prevState, timeDiff);
   }
 
   /**
@@ -1207,17 +1191,34 @@ public class PathUtils {
   }
 
   public static Vector getRoadStateFromGround(Vector localState,
-    PathEdge edge, boolean useAbsVelocity) {
+    PathEdge edge, boolean useAbsVelocity, 
+    @Nullable Vector sourceLocation, @Nullable Double timeDiff) {
     
     final PathEdgeProjection projPair = PathUtils.posVelProjectionPair(edge.getLine(), 
         edge.getDistToFromStartOfGraphEdge());
     if (projPair == null) {
       return null;
     }
+    
+    /*
+     * When we're given a source location, we will adjust
+     * the velocity to correspond to the snapped position.
+     */
+    final Vector adjState;
+    if (sourceLocation != null && timeDiff != null) {
+      final Vector newVelocity = MotionStateEstimatorPredictor.Og.times(projPair.stateOnSegment).minus(
+          MotionStateEstimatorPredictor.Og.times(sourceLocation))
+          .scale(1d/timeDiff);
+      adjState = projPair.getStateOnSegment().clone();
+      adjState.setElement(1, newVelocity.getElement(0));
+      adjState.setElement(3, newVelocity.getElement(1));
+    } else {
+      adjState = projPair.getStateOnSegment();
+    }
 
     final Vector projMean =
         projPair.getProjMatrix().transpose()
-            .times(localState.minus(projPair.getOffset()));
+            .times(adjState.minus(projPair.getOffset()));
 
     /*
      * When there is no exactly orthogonal line to the edge
@@ -1239,7 +1240,7 @@ public class PathUtils {
           VectorFactory
               .getDenseDefault()
               .copyVector(
-                  MotionStateEstimatorPredictor.getVg().times(localState))
+                  MotionStateEstimatorPredictor.getVg().times(adjState))
               .norm2();
       final double projVelocity =
           Math.signum(projMean.getElement(1)) * absVelocity;
@@ -1250,6 +1251,25 @@ public class PathUtils {
         projMean.getElement(0)) != null;
 
     return projMean;
+  }
+
+  public static Matrix getProjectedCovariance(PathEdgeProjection proj, Matrix C, boolean isRoad) {
+    final Matrix result;
+    final Matrix projM = isRoad ? proj.getProjMatrix() : proj.getProjMatrix().transpose();
+    if (C instanceof SvdMatrix) {
+      AbstractSingularValueDecomposition svdC = ((SvdMatrix)C).getSvd();
+      final Matrix M = StatisticsUtil.getDiagonalSqrt(svdC.getS(), 1e-7)
+          .times(svdC.getVtranspose()).times(projM);
+      AbstractSingularValueDecomposition svdM = SingularValueDecompositionMTJ.create(M);
+      result = new SvdMatrix(new SimpleSingularValueDecomposition(
+        svdM.getVtranspose().transpose(),
+        StatisticsUtil.diagonalSquare(svdM.getS(), 1e-7),
+        svdM.getVtranspose()));
+    } else {
+      result = proj.getProjMatrix().transpose().times(C).times(projM);
+    }
+//    Preconditions.checkState((!isRoad || result.rank() == 1) && (isRoad || result.rank() == 2));
+    return result;
   }
 
 }

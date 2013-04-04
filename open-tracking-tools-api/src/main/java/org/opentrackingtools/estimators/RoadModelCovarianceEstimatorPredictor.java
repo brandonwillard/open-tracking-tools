@@ -3,6 +3,7 @@ package org.opentrackingtools.estimators;
 import java.util.Collection;
 import java.util.Random;
 
+import org.opentrackingtools.distributions.AdjMultivariateGaussian;
 import org.opentrackingtools.distributions.PathStateDistribution;
 import org.opentrackingtools.distributions.TruncatedRoadGaussian;
 import org.opentrackingtools.model.VehicleStateDistribution;
@@ -10,7 +11,9 @@ import org.opentrackingtools.paths.Path;
 import org.opentrackingtools.paths.PathEdge;
 import org.opentrackingtools.paths.PathState;
 import org.opentrackingtools.util.PathUtils;
+import org.opentrackingtools.util.SimpleSingularValueDecomposition;
 import org.opentrackingtools.util.StatisticsUtil;
+import org.opentrackingtools.util.SvdMatrix;
 import org.opentrackingtools.util.TrueObservation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,6 +24,8 @@ import com.google.common.collect.Iterables;
 import gov.sandia.cognition.learning.algorithm.IncrementalLearner;
 import gov.sandia.cognition.math.matrix.Matrix;
 import gov.sandia.cognition.math.matrix.Vector;
+import gov.sandia.cognition.math.matrix.decomposition.AbstractSingularValueDecomposition;
+import gov.sandia.cognition.math.matrix.mtj.decomposition.SingularValueDecompositionMTJ;
 import gov.sandia.cognition.statistics.ComputableDistribution;
 import gov.sandia.cognition.statistics.bayesian.AbstractKalmanFilter;
 import gov.sandia.cognition.statistics.bayesian.BayesianEstimatorPredictor;
@@ -128,9 +133,9 @@ public class RoadModelCovarianceEstimatorPredictor extends
     final MultivariateGaussian updatedPrediction = predictState.getMotionDistribution().clone();
     
     if (!path.isNullPath()) {
-      AbstractKalmanFilter roadFilter = this.vehicleState.getMotionStateEstimatorPredictor().getRoadFilter().clone();
+      TruncatedRoadKalmanFilter roadFilter = this.vehicleState.getMotionStateEstimatorPredictor().getRoadFilter().clone();
       
-      final MultivariateGaussian obsProj =
+      final AdjMultivariateGaussian obsProj =
           PathUtils.getRoadObservation(
               obs, this.vehicleState.getObservationCovarianceParam().getValue(), 
               path, predictState.getPathState().getEdge());//Iterables.getLast(path.getPathEdges()));
@@ -210,11 +215,17 @@ public class RoadModelCovarianceEstimatorPredictor extends
 
     final Vector mSmooth =
         m.plus(Wtil.times(y.minus(FG.times(m))));
-    final Matrix CSmooth =
+    final Matrix CSmooth = 
         C.minus(Wtil.times(A).times(Wtil.transpose()));
+    
+    // FIXME a temporary hack
+    AbstractSingularValueDecomposition Csvd = SingularValueDecompositionMTJ.create(CSmooth);
 
     final MultivariateGaussian sampler = 
-        new TruncatedRoadGaussian(mSmooth, CSmooth);
+        new TruncatedRoadGaussian(mSmooth, 
+            new SvdMatrix(
+                new SimpleSingularValueDecomposition(
+                    Csvd.getU(), Csvd.getS(), Csvd.getU().transpose())));
 
     final Vector result = sampler.sample(rng);
     

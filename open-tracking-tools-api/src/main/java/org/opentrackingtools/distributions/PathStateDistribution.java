@@ -20,6 +20,7 @@ import org.opentrackingtools.paths.Path;
 import org.opentrackingtools.paths.PathState;
 import org.opentrackingtools.util.PathUtils;
 import org.opentrackingtools.util.PathUtils.PathEdgeProjection;
+import org.opentrackingtools.util.SvdMatrix;
 
 import com.beust.jcommander.internal.Lists;
 import com.google.common.base.Preconditions;
@@ -254,15 +255,13 @@ public class PathStateDistribution extends
                 path.getGeometry(), onThisPath.getEdge().getLine(), 
                 onThisPath.getEdge().getDistToStartOfEdge());
         final Matrix C = stateBelief.getCovariance();
-        covar =
-            proj.getProjMatrix().transpose().times(C)
-                .times(proj.getProjMatrix());
+        covar = PathUtils.getProjectedCovariance(proj, C, true);
       } else {
         covar = stateBelief.getCovariance();
       }
     }
     final PathStateDistribution newBelief = new PathStateDistribution(path,
-        new TruncatedRoadGaussian(onThisPath.getMotionState().clone(), covar));
+        new TruncatedRoadGaussian(onThisPath.getMotionState().clone(), new SvdMatrix(covar)));
     return newBelief;
   }
 
@@ -303,7 +302,7 @@ public class PathStateDistribution extends
    * @param newGroundDist
    */
   public void
-      setGroundDistribution(MultivariateGaussian newGroundDist) {
+      setGroundDistribution(MultivariateGaussian newGroundDist, Vector prevState, double timeDiff) {
 
     Preconditions.checkArgument(newGroundDist
         .getInputDimensionality() == 4);
@@ -311,7 +310,7 @@ public class PathStateDistribution extends
     if (!this.path.isNullPath()) {
       this.motionDistribution =
           PathUtils.getRoadBeliefFromGround(newGroundDist,
-              this.pathState.getEdge(), true);
+              this.pathState.getEdge(), true, prevState, timeDiff);
     } else {
       this.motionDistribution = newGroundDist;
     }
@@ -346,8 +345,7 @@ public class PathStateDistribution extends
                 path.getGeometry(), onThisPath.getEdge().getLine(), 
                 onThisPath.getEdge().getDistToStartOfEdge());
         final Matrix C = this.getCovariance();
-        covar = proj.getProjMatrix().transpose().times(C)
-                .times(proj.getProjMatrix());
+        covar = PathUtils.getProjectedCovariance(proj, C, true);
       } else {
         covar = this.getCovariance();
       }

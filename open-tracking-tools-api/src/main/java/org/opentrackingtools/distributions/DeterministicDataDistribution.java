@@ -4,7 +4,6 @@ import gov.sandia.cognition.math.MutableDouble;
 import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.statistics.AbstractDataDistribution;
 import gov.sandia.cognition.statistics.ClosedFormComputableDiscreteDistribution;
-import gov.sandia.cognition.statistics.ComputableDistribution;
 import gov.sandia.cognition.statistics.DataDistribution;
 import gov.sandia.cognition.statistics.DistributionEstimator;
 import gov.sandia.cognition.statistics.distribution.DefaultDataDistribution;
@@ -31,8 +30,7 @@ public class DeterministicDataDistribution<T> extends
   @Override
   public DeterministicDataDistribution<T> clone() {
     final DeterministicDataDistribution<T> clone =
-        (DeterministicDataDistribution<T>) super.clone();
-    clone.element = ObjectUtil.cloneSmart(clone.element);
+        new DeterministicDataDistribution<T>(ObjectUtil.cloneSmart(this.element));
     return clone;
   }
 
@@ -94,16 +92,25 @@ public class DeterministicDataDistribution<T> extends
     return this.element;
   }
 
-  @Deprecated
+  /**
+   * Warning: no-op
+   */
   @Override
   public Vector convertToVector() {
     return null;
   }
 
-  @Deprecated
+  /**
+   * Warning: no-op
+   */
   @Override
   public void convertFromVector(Vector parameters) {
     
+  }
+
+  public void setElement(T priorPredRunState) {
+    this.map = Collections.singletonMap(priorPredRunState, internalValue);
+    this.element = priorPredRunState;
   }
 
 }

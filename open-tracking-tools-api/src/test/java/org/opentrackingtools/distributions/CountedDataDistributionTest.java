@@ -104,6 +104,7 @@ public class CountedDataDistributionTest {
       sampleDist2.increment(testDist.sample(rng2));
     }
     AssertJUnit.assertEquals(numSamples, sampleDist2.getTotalCount());
+    AssertJUnit.assertEquals(numSamples, Math.exp(sampleDist2.getTotal()), 1e-5);
     AssertJUnit.assertEquals(testDist.getLogFraction("item1"), sampleDist2.getLogFraction("item1"),
         1e-2);
 //         Math.sqrt(testDist.getFraction("item1") * (1d - testDist.getFraction("item1"))));

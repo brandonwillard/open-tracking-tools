@@ -21,6 +21,7 @@ import org.opentrackingtools.paths.Path;
 import org.opentrackingtools.paths.PathEdge;
 import org.opentrackingtools.paths.PathState;
 import org.opentrackingtools.util.PathUtils;
+import org.opentrackingtools.util.SvdMatrix;
 import org.opentrackingtools.util.TestUtils;
 import org.testng.AssertJUnit;
 import org.testng.annotations.BeforeMethod;
@@ -65,7 +66,7 @@ public class PathTest {
                 new double[] { 8.44, 0.56 } });
     final MultivariateGaussian startBelief =
         new AdjMultivariateGaussian(VectorFactory.getDefault()
-            .createVector2D(-0d, -5d / 30d), covar);
+            .createVector2D(-0d, -5d / 30d), new SvdMatrix(covar));
     final PathStateDistribution currentBelief =
         new PathStateDistribution(startPath,
             startBelief);
@@ -76,8 +77,7 @@ public class PathTest {
             new Coordinate(10, -10), new Coordinate(10, 0),
             new Coordinate(0, 0));
 
-    PathUtils.checkAndGetConvertedBelief(currentBelief, newPath);
-
+    currentBelief.convertToPath(newPath);
   }
 
   /**
@@ -196,7 +196,7 @@ public class PathTest {
                 new double[] { 8.44, 0.56 } });
     final MultivariateGaussian startBelief =
         new AdjMultivariateGaussian(VectorFactory.getDefault()
-            .createVector2D(-0d, -5d / 30d), covar);
+            .createVector2D(-0d, -5d / 30d), new SvdMatrix(covar));
     final PathStateDistribution currentBelief =
         new PathStateDistribution(startPath,
             startBelief);
@@ -236,7 +236,7 @@ public class PathTest {
                 new double[] { 8.44, 0.56 } });
     final MultivariateGaussian startBelief =
         new AdjMultivariateGaussian(VectorFactory.getDenseDefault()
-            .createVector2D(0d, 1d), covar);
+            .createVector2D(0d, 1d), new SvdMatrix(covar));
     final PathStateDistribution currentBelief =
         new PathStateDistribution(startPath,
             startBelief);
@@ -276,7 +276,7 @@ public class PathTest {
                 new double[] { 8.44, 0.56 } });
     final MultivariateGaussian startBelief =
         new AdjMultivariateGaussian(VectorFactory.getDefault()
-            .createVector2D(2.5d, 1d), covar);
+            .createVector2D(2.5d, 1d), new SvdMatrix(covar));
     final PathStateDistribution currentBelief =
         new PathStateDistribution(startPath,
             startBelief);
@@ -316,7 +316,7 @@ public class PathTest {
                 new double[] { 8.44, 0.56 } });
     final MultivariateGaussian startBelief =
         new AdjMultivariateGaussian(VectorFactory.getDefault()
-            .createVector2D(-2.5d, 1d), covar);
+            .createVector2D(-2.5d, 1d), new SvdMatrix(covar));
     final PathStateDistribution currentBelief =
         new PathStateDistribution(startPath,
             startBelief);
@@ -353,7 +353,7 @@ public class PathTest {
                 new double[] { 8.44, 0.56 } });
     final MultivariateGaussian startBelief =
         new AdjMultivariateGaussian(VectorFactory.getDefault()
-            .createVector2D(2.5d, 1d), covar);
+            .createVector2D(2.5d, 1d), new SvdMatrix(covar));
     final PathStateDistribution currentBelief =
         new PathStateDistribution(startPath,
             startBelief);
@@ -388,7 +388,7 @@ public class PathTest {
                 new double[] { 8.44, 0.56 } });
     final MultivariateGaussian startBelief =
         new AdjMultivariateGaussian(VectorFactory.getDefault()
-            .createVector2D(2.5d, 1d), covar);
+            .createVector2D(2.5d, 1d), new SvdMatrix(covar));
     final PathStateDistribution currentBelief =
         new PathStateDistribution(startPath,
             startBelief);
@@ -423,7 +423,7 @@ public class PathTest {
                 new double[] { 8.44, 0.56 } });
     final MultivariateGaussian startBelief =
         new AdjMultivariateGaussian(VectorFactory.getDefault()
-            .createVector2D(-2.5d, 1d), covar);
+            .createVector2D(-2.5d, 1d), new SvdMatrix(covar));
     final PathStateDistribution currentBelief =
         new PathStateDistribution(startPath,
             startBelief);

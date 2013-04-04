@@ -19,8 +19,11 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.Random;
+import java.util.Set;
 
+import org.opentrackingtools.distributions.AdjMultivariateGaussian;
 import org.opentrackingtools.distributions.CountedDataDistribution;
+import org.opentrackingtools.distributions.OnOffEdgeTransDistribution;
 import org.opentrackingtools.distributions.OnOffEdgeTransPriorDistribution;
 import org.opentrackingtools.distributions.PathStateDistribution;
 import org.opentrackingtools.distributions.PathStateMixtureDensityModel;
@@ -30,6 +33,7 @@ import org.opentrackingtools.estimators.OnOffEdgeTransitionEstimatorPredictor;
 import org.opentrackingtools.estimators.PathStateEstimatorPredictor;
 import org.opentrackingtools.estimators.RoadMeasurementCovarianceEstimatorPredictor;
 import org.opentrackingtools.estimators.RoadModelCovarianceEstimatorPredictor;
+import org.opentrackingtools.estimators.TruncatedRoadKalmanFilter;
 import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.graph.InferenceGraphEdge;
 import org.opentrackingtools.model.GpsObservation;
@@ -41,6 +45,9 @@ import org.opentrackingtools.updater.VehicleStatePLUpdater;
 import org.opentrackingtools.util.PathUtils;
 import org.opentrackingtools.util.TrueObservation;
 import org.opentrackingtools.util.model.MutableDoubleCount;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.testng.collections.Sets;
 
 import com.beust.jcommander.internal.Lists;
 import com.google.common.base.Preconditions;
@@ -48,6 +55,7 @@ import com.google.common.base.Preconditions;
 public class VehicleStatePLFilter<O extends GpsObservation, G extends InferenceGraph> extends
     AbstractParticleFilter<O, VehicleStateDistribution<O>> {
 
+  private static Logger _log = LoggerFactory.getLogger(VehicleStatePLFilter.class);
   private static final long serialVersionUID = -8257075186193062150L;
 
   protected final G inferredGraph;
@@ -109,6 +117,7 @@ public class VehicleStatePLFilter<O extends GpsObservation, G extends InferenceG
       } else {
         count = 1;
       }
+      Preconditions.checkState(count > 0);
 
       final double logCount = Math.log(count);
 
@@ -129,38 +138,13 @@ public class VehicleStatePLFilter<O extends GpsObservation, G extends InferenceG
     if (this.isDebug)
       this.lastResampleDistribution = resampleDist;
     
-    // TODO debug. remove.
+    // REMOVE debug. remove.
     if (obs instanceof TrueObservation) {
       final VehicleStateDistribution<?> trueState = ((TrueObservation)obs).getTrueState();
       if (!trueState.getPathStateParam().getValue().getEdge().
           equals(resampleDist.getMaxValueKey().getTransitionStateDistribution().getMaxValueKey().
               getPathStateParam().getValue().getEdge())) {
-        List<Entry<VehicleStateDistribution<O>, MutableDouble>> sortedDist = Lists.newArrayList(resampleDist.asMap().entrySet());
-        Collections.sort(sortedDist, 
-            new Comparator<Entry<VehicleStateDistribution<O>, MutableDouble>>() {
-              @Override
-              public int compare(
-                Entry<VehicleStateDistribution<O>, MutableDouble> o1,
-                Entry<VehicleStateDistribution<O>, MutableDouble> o2) {
-                final double adjValue1 = o1.getValue().getValue() + Math.log(((MutableDoubleCount)o1.getValue()).getCount());
-                final double adjValue2 = o2.getValue().getValue() + Math.log(((MutableDoubleCount)o2.getValue()).getCount());
-                return -Double.compare(adjValue1, adjValue2);
-              }
-            } 
-        );
-        for (Entry<VehicleStateDistribution<O>, MutableDouble>  entry : sortedDist) {
-          final VehicleStateDistribution<O> state = entry.getKey().getTransitionStateDistribution().getMaxValueKey();
-          final Vector distToTrueState = state.getPathStateParam().getParameterPrior().getGroundDistribution().
-              getMean().minus(trueState.getPathStateParam().getValue().getGroundState());
-          final int count = ((MutableDoubleCount)entry.getValue()).getCount();
-          final double adjValue = entry.getValue().getValue() + Math.log(count);
-          System.out.println(resampleDist.getLogFraction(entry.getKey()) + " [" + adjValue + "] (" + count + "),\n\t [" 
-            + distToTrueState + "]:\n\t" 
-            + state.getPathStateParam().getValue() + 
-            "\n\t pathStateLik=" + state.getPathStateDistLogLikelihood() +
-            "\n\t obsLik=" + state.getPredictiveLogLikelihood()
-          );
-        }
+        printResampleDist(resampleDist, trueState, true); 
         System.out.println(trueState.getPathStateParam().getValue());
       }
     }
@@ -172,6 +156,10 @@ public class VehicleStatePLFilter<O extends GpsObservation, G extends InferenceG
         resampleDist.sample(this.random, this.getNumParticles());
 
     List<VehicleStateDistribution<O>> updatedStates = Lists.newArrayList();
+    // REMOVE debug. remove.
+    if (obs.getRecordNumber() == 76)
+      printResampleDist(resampleDist, null, true); 
+    
     /*
      * Propagate/smooth the best states. 
      */
@@ -179,13 +167,22 @@ public class VehicleStatePLFilter<O extends GpsObservation, G extends InferenceG
       final VehicleStateDistribution<O> sampledTransitionState = state.getTransitionStateDistribution().sample(
           this.random);
       VehicleStateDistribution<O> updatedState = internalUpdate(sampledTransitionState, obs);
-      updatedState.setTransitionStateDistribution(state.getTransitionStateDistribution());
-      updatedState.setPriorPredictiveState(sampledTransitionState);
+      if (isDebug) {
+        updatedState.setTransitionStateDistribution(state.getTransitionStateDistribution());
+        updatedState.setPriorPredictiveState(sampledTransitionState);
+      }
+      // REMOVE debug. remove.
+      if (obs.getRecordNumber() == 76)
+        printResampleDist((CountedDataDistribution<VehicleStateDistribution<O>>) state.getTransitionStateDistribution(), null, false);
       updatedStates.add(updatedState);
     }
     
     target.clear();
     target.incrementAll(updatedStates);
+    
+    // REMOVE debug. remove.
+    if (obs.getRecordNumber() == 76)
+      printResampleDist((CountedDataDistribution<VehicleStateDistribution<O>>) target, null, false);
     
     Preconditions.checkState(target.getDomainSize() > 0);
     if (target instanceof CountedDataDistribution<?>) {
@@ -193,6 +190,38 @@ public class VehicleStatePLFilter<O extends GpsObservation, G extends InferenceG
     }
 
   }
+
+  private void printResampleDist(CountedDataDistribution<VehicleStateDistribution<O>> resampleDist, 
+      VehicleStateDistribution<?> trueState, boolean useResampleDist) {
+    List<Entry<VehicleStateDistribution<O>, MutableDouble>> sortedDist = Lists.newArrayList(resampleDist.asMap().entrySet());
+    Collections.sort(sortedDist, 
+        new Comparator<Entry<VehicleStateDistribution<O>, MutableDouble>>() {
+          @Override
+          public int compare(
+            Entry<VehicleStateDistribution<O>, MutableDouble> o1,
+            Entry<VehicleStateDistribution<O>, MutableDouble> o2) {
+            final double adjValue1 = o1.getValue().getValue();
+            final double adjValue2 = o2.getValue().getValue();
+            return -Double.compare(adjValue1, adjValue2);
+          }
+        } 
+    );
+    for (Entry<VehicleStateDistribution<O>, MutableDouble>  entry : sortedDist) {
+      final VehicleStateDistribution<O> state = useResampleDist ? entry.getKey().getTransitionStateDistribution().getMaxValueKey()
+          : entry.getKey();
+      final Vector distToTrueState = trueState != null ? state.getPathStateParam().getParameterPrior().getGroundDistribution().
+          getMean().minus(trueState.getPathStateParam().getValue().getGroundState()) : null;
+      final int count = ((MutableDoubleCount)entry.getValue()).getCount();
+      final double adjValue = entry.getValue().getValue();
+      System.out.println(resampleDist.getLogFraction(entry.getKey()) + " [" + adjValue + "] (" + count + "),\n\t [" 
+        + distToTrueState + "]:\n\t" 
+        + state.getPathStateParam().getValue() + 
+        "\n\t pathStateLik=" + state.getPathStateDistLogLikelihood() +
+        "\n\t obsLik=" + state.getPredictiveLogLikelihood()
+      );
+    }
+  }
+  
 
   /**
    * This method takes a prior predictive vehicle state distribution and
@@ -291,13 +320,9 @@ public class VehicleStatePLFilter<O extends GpsObservation, G extends InferenceG
      */
     final MultivariateGaussian updatedMotionState = priorPredictivePathStateDist.getMotionDistribution().clone();
     if (priorPredictivePathStateDist.getPathState().isOnRoad()) {
-//      PathUtils.convertToGroundBelief(updatedMotionState, pathStateDist.getPathState().getEdge(), true, false, true);
-//      updatedState.getMotionStateEstimatorPredictor().update(
-//          updatedMotionState, obs.getProjectedPoint());
+      TruncatedRoadKalmanFilter roadFilter = updatedState.getMotionStateEstimatorPredictor().getRoadFilter().clone();
       
-      AbstractKalmanFilter roadFilter = updatedState.getMotionStateEstimatorPredictor().getRoadFilter().clone();
-      
-      final MultivariateGaussian obsProj =
+      final AdjMultivariateGaussian obsProj =
           PathUtils.getRoadObservation(
               obs.getProjectedPoint(), updatedState.getObservationCovarianceParam().getValue(), 
               priorPredictivePathStateDist.getPathState().getPath(), 
@@ -306,6 +331,14 @@ public class VehicleStatePLFilter<O extends GpsObservation, G extends InferenceG
       roadFilter.setMeasurementCovariance(obsProj.getCovariance());
       roadFilter.measure(updatedMotionState, obsProj.getMean());
       
+      if ((state.getParentState().getPathStateParam().getParameterPrior().getPathState().isOnRoad()
+              &&
+              state.getParentState().getPathStateParam().getParameterPrior().getPathState().getElement(0)
+               <= obsProj.getMean().getElement(0)
+              )
+            || updatedMotionState.getMean().getElement(1) > 0d) {
+        _log.warn("edge update is adding noise!");
+      }
     } else {
       updatedState.getMotionStateEstimatorPredictor().update(
           updatedMotionState, obs.getProjectedPoint());
@@ -339,15 +372,6 @@ public class VehicleStatePLFilter<O extends GpsObservation, G extends InferenceG
     final OnOffEdgeTransitionEstimatorPredictor edgeTransitionEstimatorPredictor =
         new OnOffEdgeTransitionEstimatorPredictor(updatedState,
             graphEdge);
-    
-    OnOffEdgeTransPriorDistribution prior = updatedState
-        .getEdgeTransitionParam().getParameterPrior();
-    edgeTransitionEstimatorPredictor.update(prior, graphEdge);
-    updatedState.getEdgeTransitionParam().getConditionalDistribution().
-      setFreeMotionTransProbs(prior.getFreeMotionTransProbPrior().getMean());
-    updatedState.getEdgeTransitionParam().getConditionalDistribution().
-      setEdgeMotionTransProbs(prior.getEdgeMotionTransProbPrior().getMean());
-    updatedState.getEdgeTransitionParam().setValue(prior.getMean());
     
     if (!(posteriorPathStateDist.getPathState().isOnRoad() &&
           state.getOnRoadModelCovarianceParam().getParameterPrior().getDegreesOfFreedom()
@@ -400,7 +424,30 @@ public class VehicleStatePLFilter<O extends GpsObservation, G extends InferenceG
               obsCovSample));
     }
     
+    OnOffEdgeTransPriorDistribution updatedEdgeTransPrior = updatedState
+        .getEdgeTransitionParam().getParameterPrior().clone();
+    edgeTransitionEstimatorPredictor.update(updatedEdgeTransPrior, graphEdge);
+    
+    OnOffEdgeTransDistribution updatedEdgeTransConditional = updatedState.getEdgeTransitionParam()
+        .getConditionalDistribution().clone();
+    updatedEdgeTransConditional.setFreeMotionTransProbs(updatedEdgeTransPrior.getFreeMotionTransProbPrior().getMean());
+    updatedEdgeTransConditional.setEdgeMotionTransProbs(updatedEdgeTransPrior.getEdgeMotionTransProbPrior().getMean());
+    updatedEdgeTransConditional.setMotionState(updatedState.getMotionStateParam().getValue());
+    updatedEdgeTransConditional.setObsCovariance(updatedState.getObservationCovarianceParam().getValue());
+    
+    updatedState.setEdgeTransitionParam(
+        SimpleBayesianParameter.create(
+            updatedEdgeTransPrior.getMean(),
+            updatedEdgeTransConditional,
+            updatedEdgeTransPrior));
+    
+    
     return updatedState;
+  }
+
+  @Override
+  public VehicleStatePLUpdater<O, G> getUpdater() {
+    return (VehicleStatePLUpdater<O, G>)super.getUpdater();
   }
 
 }

@@ -52,19 +52,19 @@ public class PathUtilsTest {
             new Coordinate(length, 0d));
     
     MultivariateGaussian belief = new AdjMultivariateGaussian(
-        from, MatrixFactory.getDefault().copyArray(
+        from, new SvdMatrix(MatrixFactory.getDefault().copyArray(
                 new double[][] {
                     {91.64766085510277, 0.0, -10.790534809853966, 0.0},
                     {0.0, 0.0, 0.0, 0.0},
                     {-10.790534809853973, 0.0, 110.08645314343424, 0.0},
                     {0.0, 0.0, 0.0, 0.0}
                 })
-            );
+            ));
     
     final PathEdge pathEdge = Iterables.getLast(path.getPathEdges());
     MultivariateGaussian projBelief = PathUtils.getRoadBeliefFromGround(belief, 
         path.getGeometry(), path.isBackward(), pathEdge.getLine(), 
-        pathEdge.getDistToStartOfEdge(), true);
+        pathEdge.getDistToStartOfEdge(), true, null, null);
     
    
     ArrayAsserts.assertArrayEquals("convert to road", 

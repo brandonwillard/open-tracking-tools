@@ -3,6 +3,7 @@ package org.opentrackingtools.updater;
 import gov.sandia.cognition.math.matrix.MatrixFactory;
 import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.math.matrix.VectorFactory;
+import gov.sandia.cognition.math.matrix.mtj.decomposition.SingularValueDecompositionMTJ;
 import gov.sandia.cognition.statistics.DataDistribution;
 import gov.sandia.cognition.statistics.bayesian.ParticleFilter.Updater;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
@@ -32,6 +33,7 @@ import org.opentrackingtools.paths.PathEdge;
 import org.opentrackingtools.paths.PathState;
 import org.opentrackingtools.util.GeoUtils;
 import org.opentrackingtools.util.PathUtils;
+import org.opentrackingtools.util.SvdMatrix;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -317,7 +319,7 @@ public class VehicleStateBootstrapUpdater<O extends GpsObservation>
          */
         final MultivariateGaussian groundStateDist = new TruncatedRoadGaussian(
             previousState.getPathStateParam().getValue().getGroundState(), 
-            MatrixFactory.getDefault().createMatrix(4, 4));
+            new SvdMatrix(MatrixFactory.getDefault().createMatrix(4, 4)));
         predictedMotionState = motionStatePredictor.createPredictiveDistribution(groundStateDist);
         final Vector offRoadPredictedMean = predictedMotionState.getMean().clone();
         final Vector offRoadNoisyPredictedState =
@@ -334,7 +336,8 @@ public class VehicleStateBootstrapUpdater<O extends GpsObservation>
         /*
          * Going on-road from off-road
          */
-        PathUtils.convertToRoadBelief(predictedMotionState, initialEdge, true);
+        PathUtils.convertToRoadBelief(predictedMotionState, initialEdge, true, 
+            previousState.getPathStateParam().getValue().getMotionState(), this.parameters.getInitialObsFreq());
         InferenceGraphSegment segment = Iterables.getLast(initialEdge.getSegments(predictedMotionState.getMean().getElement(0)));
         newPath = new Path(new PathEdge(segment, 0d, false));
         

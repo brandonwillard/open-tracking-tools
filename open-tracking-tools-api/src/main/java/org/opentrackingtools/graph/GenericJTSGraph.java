@@ -328,7 +328,7 @@ public class GenericJTSGraph implements InferenceGraph {
         MotionStateEstimatorPredictor.getOg().times(
             initialBelief.getMean());
     final double varDistance =
-        StatisticsUtil.getLargeNormalCovRadius((DenseMatrix) covar);
+        StatisticsUtil.getLargeNormalCovRadius(covar);
 
     return this.getNearbyEdges(toLoc, varDistance);
   }

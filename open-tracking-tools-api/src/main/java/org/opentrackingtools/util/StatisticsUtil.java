@@ -5,6 +5,7 @@ import gov.sandia.cognition.math.matrix.Matrix;
 import gov.sandia.cognition.math.matrix.MatrixFactory;
 import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.math.matrix.VectorFactory;
+import gov.sandia.cognition.math.matrix.decomposition.AbstractSingularValueDecomposition;
 import gov.sandia.cognition.math.matrix.mtj.AbstractMTJMatrix;
 import gov.sandia.cognition.math.matrix.mtj.DenseMatrix;
 import gov.sandia.cognition.math.matrix.mtj.DenseMatrixFactoryMTJ;
@@ -93,6 +94,60 @@ public class StatisticsUtil {
 
     return d4;
   }
+  
+  /**
+   * Computes G*C*G^T + W in a numerically stable way for symmetric matrices C and W.
+   * @param C
+   * @param W
+   * @param G
+   * @return
+   */
+  public static SvdMatrix symmetricSvdAdd(SvdMatrix C, SvdMatrix W, Matrix G) {
+    AbstractSingularValueDecomposition svdC = C.getSvd();
+    final Matrix SUG = StatisticsUtil.getDiagonalSqrt(svdC.getS(), 1e-7)
+        .times(svdC.getU().transpose()).times(G.transpose());
+    final Matrix Nw = StatisticsUtil.getDiagonalSqrt(W.getSvd().getS(), 1e-7)
+        .times(W.getSvd().getU().transpose());
+    final int nN = SUG.getNumRows() + Nw.getNumRows();
+    final int nM = SUG.getNumColumns();
+    final Matrix M1 = MatrixFactory.getDefault().createMatrix(nN, nM);
+    M1.setSubMatrix(0, 0, SUG);
+    M1.setSubMatrix(SUG.getNumRows(), 0, Nw);
+    
+    AbstractSingularValueDecomposition svdM = SingularValueDecompositionMTJ.create(M1);
+    final Matrix S = diagonalSquare(svdM.getS(), 1e-7);
+    AbstractSingularValueDecomposition svdR = new SimpleSingularValueDecomposition(
+        svdM.getVtranspose().transpose(), 
+        S, 
+        svdM.getVtranspose());
+    return new SvdMatrix(svdR);
+  }
+  
+  public static Matrix diagonalInverse(Matrix S, double lowerTolerance) {
+    Preconditions.checkArgument(lowerTolerance >= 0d);
+    final Matrix result = MatrixFactory.getDefault().createMatrix(S.getNumColumns(),
+        S.getNumColumns());
+    for (int i = 0; i < Math.min(S.getNumColumns(), S.getNumRows()); i++) {
+      final double sVal = S.getElement(i, i);
+      if (Math.abs(sVal) > lowerTolerance)
+      result.setElement(i, i, 1d/sVal);
+    }
+    return result;
+  }
+  
+  public static Matrix diagonalSquare(Matrix S, double tolerance) {
+    Preconditions.checkArgument(tolerance >= 0d);
+    final Matrix result = MatrixFactory.getDefault().createMatrix(S.getNumColumns(),
+        S.getNumColumns());
+    for (int i = 0; i < Math.min(S.getNumColumns(), S.getNumRows()); i++) {
+      final double sVal = S.getElement(i, i);
+      final double sValSq = sVal * sVal;
+      if (Math.abs(sValSq) > tolerance)
+        result.setElement(i, i, sValSq);
+    }
+    return result;
+  }
+  
 
   /**
    * Returns, for A, an R s.t. R^T * R = A
@@ -122,18 +177,27 @@ public class StatisticsUtil {
    * @param covar
    * @return
    */
-  public static double getLargeNormalCovRadius(DenseMatrix covar) {
+  public static double getLargeNormalCovRadius(Matrix covar) {
     try {
-      final no.uib.cipr.matrix.Matrix covarMtj =
-          DenseMatrixFactoryMTJ.INSTANCE.copyMatrix(covar)
-              .getInternalMatrix();
-      final SymmDenseEVD evd =
-          new SymmDenseEVD(covarMtj.numRows(), true, false)
-              .factor(new UpperSymmDenseMatrix(covarMtj));
-      final Double largestEigenval =
-          Iterables.getLast(Doubles.asList(evd.getEigenvalues()));
-      final double varDistance = 3d * Math.sqrt(largestEigenval);
-      return varDistance;
+      
+      if (covar instanceof SvdMatrix) {
+        
+        SvdMatrix svdCovar = (SvdMatrix)covar;
+        final double largestEigenval = svdCovar.getSvd().getS().getElement(0, 0);
+        final double varDistance = 3d * Math.sqrt(largestEigenval);
+        return varDistance;
+      } else {
+        final no.uib.cipr.matrix.Matrix covarMtj =
+            DenseMatrixFactoryMTJ.INSTANCE.copyMatrix(covar)
+                .getInternalMatrix();
+        final SymmDenseEVD evd =
+            new SymmDenseEVD(covarMtj.numRows(), true, false)
+                .factor(new UpperSymmDenseMatrix(covarMtj));
+        final Double largestEigenval =
+            Iterables.getLast(Doubles.asList(evd.getEigenvalues()));
+        final double varDistance = 3d * Math.sqrt(largestEigenval);
+        return varDistance;
+      }
     } catch (final NotConvergedException e) {
       return Double.NaN;
     }
@@ -217,14 +281,22 @@ public class StatisticsUtil {
     }
   }
 
-  public static boolean isPosSemiDefinite(DenseMatrix covar) {
-    try {
-      DenseCholesky.factorize(DenseMatrixFactoryMTJ.INSTANCE
-          .copyMatrix(covar).getInternalMatrix());
-    } catch (final IllegalArgumentException ex) {
-      return false;
+  public static boolean isPosSemiDefinite(Matrix covar) {
+    if (covar instanceof SvdMatrix) {
+      AbstractSingularValueDecomposition svd = ((SvdMatrix)covar).getSvd();
+      if (svd.getU().equals(svd.getVtranspose().transpose()))
+        return true;
+      else
+        return false;
+    } else {
+      try {
+        DenseCholesky.factorize(DenseMatrixFactoryMTJ.INSTANCE
+            .copyMatrix(covar).getInternalMatrix());
+      } catch (final IllegalArgumentException ex) {
+        return false;
+      }
+      return true;
     }
-    return true;
   }
 
   public static double logEvaluateNormal(Vector input, Vector mean,
@@ -469,36 +541,34 @@ public class StatisticsUtil {
 
   public static Matrix rootOfSemiDefinite(Matrix matrix,
     boolean effRankDimResult, int rank) {
-    final SingularValueDecompositionMTJ svd =
-        SingularValueDecompositionMTJ.create(matrix);
-
-    final int effRank = rank > 0 ? rank : svd.effectiveRank(1e-9);
-
-    final DiagonalMatrixMTJ roots =
-        DiagonalMatrixFactoryMTJ.INSTANCE.createMatrix(matrix
-            .getNumColumns());
-    final Matrix U = svd.getU();
-    for (int i = 0; i < effRank; i++) {
-      roots.setElement(i, Math.sqrt(svd.getS().getElement(i, i)));
+    if (matrix instanceof SvdMatrix) {
+      final Matrix result = 
+          ((SvdMatrix)matrix).getSvd().getU().times(
+          StatisticsUtil.getDiagonalSqrt(((SvdMatrix)matrix).getSvd().getS(), 1e-9).transpose());
+      return result;
+    } else {
+      final SingularValueDecompositionMTJ svd =
+          SingularValueDecompositionMTJ.create(matrix);
+  
+      final int effRank = rank > 0 ? rank : svd.effectiveRank(1e-9);
+  
+      final DiagonalMatrixMTJ roots =
+          DiagonalMatrixFactoryMTJ.INSTANCE.createMatrix(matrix
+              .getNumColumns());
+      final Matrix U = svd.getU();
+      for (int i = 0; i < effRank; i++) {
+        roots.setElement(i, Math.sqrt(svd.getS().getElement(i, i)));
+      }
+  
+      Matrix result = U.times(roots);
+      if (effRankDimResult) {
+        result =
+            result.getSubMatrix(0, result.getNumRows() - 1, 0,
+                effRank - 1);
+      }
+  
+      return result;
     }
-
-    Matrix result = U.times(roots);
-
-    /*
-     * XXX: just for fun/testing/keep things
-     * positive.
-     */
-    if (result.sumOfRows().sum() < 0d) {
-      result.negativeEquals();
-    }
-
-    if (effRankDimResult) {
-      result =
-          result.getSubMatrix(0, result.getNumRows() - 1, 0,
-              effRank - 1);
-    }
-
-    return result;
   }
 
   public static Matrix sampleInvWishart(
@@ -555,5 +625,16 @@ public class StatisticsUtil {
     } else {
       return Objects.equal(vec1, vec2);
     }
+  }
+
+  public static Matrix getDiagonalSqrt(Matrix mat, double tolerance) {
+    Preconditions.checkArgument(tolerance > 0d);
+    final Matrix result = mat.clone();
+    for (int i = 0; i < Math.min(result.getNumColumns(), result.getNumRows()); i++) {
+      final double sqrt = Math.sqrt(result.getElement(i, i));
+      if (sqrt > tolerance)
+        result.setElement(i, i, sqrt);
+    }
+    return result;
   }
 }

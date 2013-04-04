@@ -100,12 +100,14 @@ public class VehicleStateDistribution<Observation extends GpsObservation> extend
 
     final CompareToBuilder comparator = new CompareToBuilder();
     comparator.append(t.observation, o.observation);
-    comparator.append(t.motionStateParam, o.motionStateParam);
-    comparator.append(t.pathStateParam, o.pathStateParam);
-    comparator.append(t.observationCovarianceParam, o.observationCovarianceParam);
-    comparator.append(t.onRoadModelCovarianceParam, o.onRoadModelCovarianceParam);
-    comparator.append(t.offRoadModelCovarianceParam, o.offRoadModelCovarianceParam);
-    comparator.append(t.edgeTransitionParam, o.edgeTransitionParam);
+    comparator.append(t.motionStateParam.value.toArray(), o.motionStateParam.value.toArray());
+    comparator.append(t.pathStateParam.prior.getMotionDistribution().convertToVector().toArray(), 
+        o.pathStateParam.prior.getMotionDistribution().convertToVector().toArray());
+    comparator.append(t.observationCovarianceParam.value.toArray(), 
+        o.observationCovarianceParam.value.toArray());
+    comparator.append(t.onRoadModelCovarianceParam.value.toArray(), o.onRoadModelCovarianceParam.value.toArray());
+    comparator.append(t.offRoadModelCovarianceParam.value.toArray(), o.offRoadModelCovarianceParam.value.toArray());
+    comparator.append(t.edgeTransitionParam.value, o.edgeTransitionParam.value);
 
     return comparator.toComparison();
   }
@@ -221,8 +223,6 @@ public class VehicleStateDistribution<Observation extends GpsObservation> extend
   protected SimpleBayesianParameter<TransitionProbMatrix, OnOffEdgeTransDistribution, OnOffEdgeTransPriorDistribution> edgeTransitionParam;
 
   protected InferenceGraph graph = null;
-
-  protected int hash = 0;
 
   /*
    * Allow ourself to hold on to estimator predictors in case we want
@@ -447,23 +447,15 @@ public class VehicleStateDistribution<Observation extends GpsObservation> extend
 
   @Override
   public int hashCode() {
-    /*
-     * We do this to avoid evaluating every parent down the chain.
-     */
-    if (this.hash != 0) {
-      return this.hash;
-    } else {
-      final int prime = 31;
-      int result = 1;
-      result = prime * result + VehicleStateDistribution.oneStateHashCode(this);
-      if (this.parentState != null) {
-        result =
-            prime * result
-                + VehicleStateDistribution.oneStateHashCode(this.parentState);
-      }
-      this.hash = result;
-      return result;
+    final int prime = 31;
+    int result = 1;
+    result = prime * result + VehicleStateDistribution.oneStateHashCode(this);
+    if (this.parentState != null) {
+      result =
+          prime * result
+              + VehicleStateDistribution.oneStateHashCode(this.parentState);
     }
+    return result;
   }
 
   public
@@ -527,7 +519,7 @@ public class VehicleStateDistribution<Observation extends GpsObservation> extend
   @Override
   public String toString() {
     final ToStringBuilder builder = new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE);
-    builder.append("pathState", this.pathStateParam);
+    builder.append("pathState", this.pathStateParam.getParameterPrior());
     builder.append("observation", this.observation);
     return builder.toString();
   }
@@ -633,7 +625,7 @@ public class VehicleStateDistribution<Observation extends GpsObservation> extend
       } else {
 
         final Path path = new Path(pathEdge);
-        PathUtils.convertToRoadBelief(initialMotionStateDist, path, pathEdge, true);
+        PathUtils.convertToRoadBelief(initialMotionStateDist, path, pathEdge, true, null, null);
 
         final MultivariateGaussian initialObservationState =
             motionStateEstimatorPredictor.getObservationDistribution(

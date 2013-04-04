@@ -14,6 +14,7 @@ import java.util.Random;
 
 import org.jfree.data.function.NormalDistributionFunction2D;
 import org.opentrackingtools.util.StatisticsUtil;
+import org.opentrackingtools.util.SvdMatrix;
 
 import umontreal.iro.lecuyer.probdist.ContinuousDistribution;
 import umontreal.iro.lecuyer.probdist.FoldedNormalDist;
@@ -44,7 +45,8 @@ public class TruncatedRoadGaussian extends AdjMultivariateGaussian {
 
   public static Range<Double> velocityRange = Ranges.closed(0d, Double.POSITIVE_INFINITY);
   protected Range<Double> distanceRange = Ranges.closed(0d, Double.POSITIVE_INFINITY);
-
+  protected AdjMultivariateGaussian unTruncatedDist = new AdjMultivariateGaussian();
+  
   public TruncatedRoadGaussian() {
   }
   
@@ -57,32 +59,51 @@ public class TruncatedRoadGaussian extends AdjMultivariateGaussian {
   }
 
   public TruncatedRoadGaussian(MultivariateGaussian other) {
-    this(other.getMean(), other.getCovariance());
+    super(other);
+    if (other instanceof TruncatedRoadGaussian) {
+      unTruncatedDist = ((TruncatedRoadGaussian)other).unTruncatedDist;
+    } else {
+      unTruncatedDist = new AdjMultivariateGaussian(other);
+    }
   }
 
   public TruncatedRoadGaussian(MultivariateGaussian other,
     Range<Double> distanceRange) {
-    this(other.getMean(), other.getCovariance(), distanceRange);
+    super(other);
+    if (other instanceof TruncatedRoadGaussian) {
+      unTruncatedDist = ((TruncatedRoadGaussian)other).unTruncatedDist;
+    } else {
+      unTruncatedDist = new AdjMultivariateGaussian(other);
+    }
+    this.distanceRange = distanceRange;
+    this.setMean(other.getMean());
+    unTruncatedDist = new AdjMultivariateGaussian(other);
   }
   
-  public TruncatedRoadGaussian(Vector mean, Matrix covariance) {
+  public TruncatedRoadGaussian(Vector mean, SvdMatrix svdMatrix) {
     Preconditions.checkArgument(mean.getDimensionality() == 2
         || mean.getDimensionality() == 4);
-    Preconditions.checkArgument(covariance.getNumColumns() == 2
-        || covariance.getNumColumns() == 4);
+    Preconditions.checkArgument(svdMatrix.isSymmetric());
+    Preconditions.checkArgument(
+        svdMatrix.getNumRows() == 2
+        || svdMatrix.getNumRows() == 4);
+//    /*
+//     * TODO perhaps we can remove this check.  especially
+//     * if we expect different model designs.
+//     */
+//    Preconditions.checkArgument(svdMatrix.rank() == 1
+//        || svdMatrix.rank() == 2);
     this.setMean(mean);
-    this.setCovariance(covariance);
+    this.setCovariance(svdMatrix);
   }
-
-  public TruncatedRoadGaussian(Vector mean, Matrix covariance,
+  
+  public TruncatedRoadGaussian(Vector mean, SvdMatrix svdMatrix,
     Range<Double> distanceRange) {
     Preconditions.checkArgument(mean.getDimensionality() == 2
         || mean.getDimensionality() == 4);
-    Preconditions.checkArgument(covariance.getNumColumns() == 2
-        || covariance.getNumColumns() == 4);
-    this.distanceRange = distanceRange;
     this.setMean(mean);
-    this.setCovariance(covariance);
+    this.setCovariance(svdMatrix);
+    this.distanceRange = distanceRange;
   }
 
   @Override
@@ -280,21 +301,33 @@ public class TruncatedRoadGaussian extends AdjMultivariateGaussian {
 
   @Override
   public void setCovariance(Matrix covariance) {
+    Preconditions.checkArgument(
+        covariance.getNumRows() == 2
+        || covariance.getNumRows() == 4);
     this.distanceTruncDist = null;
     super.setCovariance(covariance);
+    if (this.unTruncatedDist != null)
+      this.unTruncatedDist.setCovariance(covariance);
   }
 
   @Override
   public void setCovariance(Matrix covariance,
     double symmetryTolerance) {
+    Preconditions.checkArgument(
+        covariance.getNumRows() == 2
+        || covariance.getNumRows() == 4);
     this.distanceTruncDist = null;
     super.setCovariance(covariance, symmetryTolerance);
+    if (this.unTruncatedDist != null)
+      this.unTruncatedDist.setCovariance(covariance, symmetryTolerance);
   }
 
   @Override
   public void setCovarianceInverse(Matrix covarianceInverse) {
     this.distanceTruncDist = null;
     super.setCovarianceInverse(covarianceInverse);
+    if (this.unTruncatedDist != null)
+      this.unTruncatedDist.setCovarianceInverse(covarianceInverse);
   }
 
   @Override
@@ -302,18 +335,16 @@ public class TruncatedRoadGaussian extends AdjMultivariateGaussian {
     double symmetryTolerance) {
     this.distanceTruncDist = null;
     super.setCovarianceInverse(covarianceInverse, symmetryTolerance);
-  }
-
-  @Override
-  public void setCovSqrt(Matrix covSqrt) {
-    this.distanceTruncDist = null;
-    super.setCovSqrt(covSqrt);
+    if (this.unTruncatedDist != null)
+      this.unTruncatedDist.setCovarianceInverse(covarianceInverse, symmetryTolerance);
   }
 
   @Override
   public void setMean(Vector mean) {
     this.distanceTruncDist = null;
     super.setMean(this.truncateVector(mean));
+    if (this.unTruncatedDist != null)
+      this.unTruncatedDist.setMean(mean);
   }
 
   protected Vector truncateVector(Vector mean) {

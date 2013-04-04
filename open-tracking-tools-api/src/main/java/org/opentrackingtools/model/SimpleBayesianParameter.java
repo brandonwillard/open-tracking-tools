@@ -2,6 +2,7 @@ package org.opentrackingtools.model;
 
 import java.util.Random;
 
+import org.apache.commons.lang3.builder.CompareToBuilder;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
 
@@ -11,7 +12,7 @@ import gov.sandia.cognition.util.AbstractCloneableSerializable;
 
 public class SimpleBayesianParameter<ParameterType, ConditionalType extends Distribution<?>, PriorType extends Distribution<ParameterType>>
   extends AbstractCloneableSerializable
-  implements BayesianParameter<ParameterType, ConditionalType, PriorType> {
+  implements BayesianParameter<ParameterType, ConditionalType, PriorType>, Comparable<SimpleBayesianParameter<?,?,?>> {
 
   protected ConditionalType conditional;
   protected PriorType prior;
@@ -152,6 +153,16 @@ public class SimpleBayesianParameter<ParameterType, ConditionalType extends Dist
     builder.append("prior", prior);
     builder.append("name", name);
     return builder.toString();
+  }
+
+  @Override
+  public int compareTo(SimpleBayesianParameter<?, ?, ?> o) {
+    final CompareToBuilder comparator = new CompareToBuilder();
+    comparator.append(this.name, o.name);
+    comparator.append(this.conditional, o.conditional);
+    comparator.append(this.prior, o.prior);
+    comparator.append(this.value, o.value);
+    return comparator.build();
   }
 
 }

@@ -20,6 +20,7 @@ import gov.sandia.cognition.math.matrix.MatrixFactory;
 import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.math.matrix.VectorEntry;
 import gov.sandia.cognition.math.matrix.VectorFactory;
+import gov.sandia.cognition.math.matrix.mtj.decomposition.SingularValueDecompositionMTJ;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian.SufficientStatistic;
 
@@ -211,9 +212,8 @@ public class SimulationTest {
       final MultivariateGaussian priorState;
       final MultivariateGaussian predictedMotionStateDist;
       if (sampledPathState.getPath().isNullPath() && !parentPathState.getPath().isNullPath()) {
-        priorState = new 
-          TruncatedRoadGaussian(parentPathState.getGroundState(),
-              MatrixFactory.getDefault().createMatrix(4, 4));
+        priorState = new TruncatedRoadGaussian(parentPathState.getGroundState(),
+              new SvdMatrix(MatrixFactory.getDefault().createMatrix(4, 4)));
         final Vector expectedError = this.sim.getUpdater().getSampledTransitionError();
         predictedMotionStateDist = 
           motionStateEstimator.createPredictiveDistribution(priorState);
@@ -223,17 +223,17 @@ public class SimulationTest {
         priorState = new 
           TruncatedRoadGaussian(
               parentPathState.getEdgeState(), 
-              MatrixFactory.getDefault().createMatrix(4, 4));
+              new SvdMatrix(MatrixFactory.getDefault().createMatrix(4, 4)));
         predictedMotionStateDist = 
           motionStateEstimator.createPredictiveDistribution(priorState);
         predictedMotionStateDist.getMean().plusEquals(this.sim.getUpdater().getSampledTransitionError());
         PathUtils.convertToRoadBelief(predictedMotionStateDist,sampledPathState.getPath(), 
-            sampledPathState.getEdge(), true);
+            sampledPathState.getEdge(), true, null, null);
       } else {
         priorState = new 
           TruncatedRoadGaussian(
               parentState.getPathStateParam().getValue().getEdgeState(), 
-              parentState.getMotionStateParam().getParameterPrior().getCovariance());
+              new SvdMatrix(parentState.getMotionStateParam().getParameterPrior().getCovariance()));
         final Vector expectedError = this.sim.getUpdater().getSampledTransitionError();
         predictedMotionStateDist = 
           motionStateEstimator.createPredictiveDistribution(priorState);

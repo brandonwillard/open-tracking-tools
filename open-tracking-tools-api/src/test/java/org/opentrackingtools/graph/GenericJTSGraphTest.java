@@ -22,6 +22,8 @@ import org.opentrackingtools.paths.Path;
 import org.opentrackingtools.paths.PathEdge;
 import org.testng.annotations.Test;
 
+import umontreal.iro.lecuyer.randvar.NormalPolarGen;
+
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.vividsolutions.jts.algorithm.RobustLineIntersector;

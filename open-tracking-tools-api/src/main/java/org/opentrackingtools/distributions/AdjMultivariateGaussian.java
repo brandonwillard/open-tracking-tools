@@ -1,27 +1,30 @@
 package org.opentrackingtools.distributions;
 
+import com.google.common.base.Preconditions;
+
 import gov.sandia.cognition.math.matrix.Matrix;
 import gov.sandia.cognition.math.matrix.Vector;
+import gov.sandia.cognition.math.matrix.decomposition.AbstractSingularValueDecomposition;
+import gov.sandia.cognition.math.matrix.mtj.decomposition.SingularValueDecompositionMTJ;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 import gov.sandia.cognition.util.ObjectUtil;
 
 import java.util.Random;
 
 import org.opentrackingtools.util.StatisticsUtil;
+import org.opentrackingtools.util.SvdMatrix;
 
 public class AdjMultivariateGaussian extends MultivariateGaussian {
 
   private static final long serialVersionUID = -7465667744835664792L;
-
-  protected Matrix covSqrt = null;
 
   public AdjMultivariateGaussian() {
     super();
   }
 
   public AdjMultivariateGaussian(AdjMultivariateGaussian other) {
-    super(other);
-    this.covSqrt = other.covSqrt.clone();
+    this.setMean(other.getMean());
+    this.setCovariance(other.getCovariance());
   }
 
   public AdjMultivariateGaussian(int dimensionality) {
@@ -29,18 +32,19 @@ public class AdjMultivariateGaussian extends MultivariateGaussian {
   }
 
   public AdjMultivariateGaussian(MultivariateGaussian other) {
-    super(other);
+    this.setMean(other.getMean());
+    this.setCovariance((other.getCovariance() instanceof SvdMatrix) ? other.getCovariance() : new SvdMatrix(other.getCovariance()));
   }
 
-  public AdjMultivariateGaussian(Vector mean, Matrix covariance) {
-    super(mean, covariance);
+  public AdjMultivariateGaussian(Vector mean, SvdMatrix covariance) {
+    this.setMean(mean);
+    this.setCovariance(covariance);
   }
 
   @Override
   public MultivariateGaussian clone() {
     final AdjMultivariateGaussian clone =
         (AdjMultivariateGaussian) super.clone();
-    clone.covSqrt = ObjectUtil.cloneSmart(this.covSqrt);
     return clone;
   }
 
@@ -51,16 +55,7 @@ public class AdjMultivariateGaussian extends MultivariateGaussian {
 
   @Override
   public MultivariateGaussian convolve(MultivariateGaussian other) {
-    this.covSqrt = null;
     return super.convolve(other);
-  }
-
-  public Matrix getCovSqrt() {
-    if (this.covSqrt == null) {
-      this.covSqrt =
-          StatisticsUtil.rootOfSemiDefinite(this.getCovariance());
-    }
-    return this.covSqrt;
   }
 
   @Override
@@ -75,56 +70,57 @@ public class AdjMultivariateGaussian extends MultivariateGaussian {
 
   @Override
   public Vector sample(Random random) {
-    if (this.covSqrt == null) {
-      this.covSqrt =
-          StatisticsUtil.rootOfSemiDefinite(this.getCovariance());
-    }
-
-    return MultivariateGaussian.sample(this.getMean(), this.covSqrt,
+    final Matrix covSqrt = this.getCovariance().getSvd().getU().times(
+        StatisticsUtil.getDiagonalSqrt(this.getCovariance().getSvd().getS(), 1e-7));
+    return MultivariateGaussian.sample(this.getMean(), covSqrt,
         random);
   }
 
   @Override
-  public MultivariateGaussian scale(Matrix premultiplyMatrix) {
-    this.covSqrt = null;
-    return super.scale(premultiplyMatrix);
+  public MultivariateGaussian scale(Matrix cov) {
+    return super.scale((cov instanceof SvdMatrix) ? cov : new SvdMatrix(cov));
   }
 
   @Override
-  public void setCovariance(Matrix covariance) {
-    this.covSqrt = null;
-    super.setCovariance(covariance);
-  }
-
-  @Override
-  public void setCovariance(Matrix covariance,
+  public void setCovariance(Matrix cov,
     double symmetryTolerance) {
-    this.covSqrt = null;
-    super.setCovariance(covariance, symmetryTolerance);
+    super.setCovariance((cov instanceof SvdMatrix) ? cov : new SvdMatrix(cov), symmetryTolerance);
   }
 
   @Override
   public void setCovarianceInverse(Matrix covarianceInverse) {
-    this.covSqrt = null;
-    super.setCovarianceInverse(covarianceInverse);
+    super.setCovarianceInverse(new SvdMatrix(covarianceInverse));
   }
 
   @Override
-  public void setCovarianceInverse(Matrix covarianceInverse,
+  public void setCovarianceInverse(Matrix cov,
     double symmetryTolerance) {
-    this.covSqrt = null;
-    super.setCovarianceInverse(covarianceInverse, symmetryTolerance);
+    super.setCovarianceInverse((cov instanceof SvdMatrix) ? cov : new SvdMatrix(cov), symmetryTolerance);
   }
 
-  public void setCovSqrt(Matrix covSqrt) {
-    this.covSqrt = covSqrt;
-    this.setCovariance(covSqrt.times(covSqrt.transpose()));
+  @Override
+  public void setCovariance(Matrix cov) {
+    super.setCovariance((cov instanceof SvdMatrix) ? cov : new SvdMatrix(cov));
   }
 
   @Override
   public MultivariateGaussian times(MultivariateGaussian other) {
-    this.covSqrt = null;
     return super.times(other);
+  }
+
+  @Override
+  public SvdMatrix getCovariance() {
+    return (SvdMatrix) super.getCovariance();
+  }
+
+  @Override
+  public SvdMatrix getCovarianceInverse() {
+    return this.getCovariance().pseudoInverse();
+  }
+
+  @Override
+  public MultivariateGaussian plus(MultivariateGaussian other) {
+    return super.plus(other);
   }
 
 }

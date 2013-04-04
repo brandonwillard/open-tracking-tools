@@ -5,7 +5,9 @@ import gov.sandia.cognition.math.matrix.Matrix;
 import gov.sandia.cognition.math.matrix.MatrixFactory;
 import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.math.matrix.VectorFactory;
+import gov.sandia.cognition.math.matrix.decomposition.AbstractSingularValueDecomposition;
 import gov.sandia.cognition.math.matrix.mtj.DenseMatrix;
+import gov.sandia.cognition.math.matrix.mtj.decomposition.SingularValueDecompositionMTJ;
 import gov.sandia.cognition.math.signals.LinearDynamicalSystem;
 import gov.sandia.cognition.statistics.bayesian.AbstractKalmanFilter;
 import gov.sandia.cognition.statistics.bayesian.BayesianEstimatorPredictor;
@@ -23,7 +25,9 @@ import org.opentrackingtools.model.GpsObservation;
 import org.opentrackingtools.model.VehicleStateDistribution;
 import org.opentrackingtools.paths.PathEdge;
 import org.opentrackingtools.util.PathUtils;
+import org.opentrackingtools.util.SimpleSingularValueDecomposition;
 import org.opentrackingtools.util.StatisticsUtil;
+import org.opentrackingtools.util.SvdMatrix;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Ranges;
@@ -102,17 +106,28 @@ public class MotionStateEstimatorPredictor extends
     MotionStateEstimatorPredictor.Or.setElement(0, 0, 1);
   }
 
-  public static Matrix createStateCovarianceMatrix(
+  /**
+   * Warning: this assumes Q is a diagonal matrix with elements >= 0.
+   * @param timeDiff
+   * @param Q
+   * @param isRoad
+   * @return
+   */
+  public static SvdMatrix createStateCovarianceMatrix(
     double timeDiff, Matrix Q, boolean isRoad) {
 
     final Matrix A_half =
         MotionStateEstimatorPredictor.getCovarianceFactor(timeDiff,
             isRoad);
-    final Matrix A = A_half.times(Q).times(A_half.transpose());
-
-    assert StatisticsUtil.isPosSemiDefinite((DenseMatrix) A);
-
-    return A;
+    final Matrix Sq = StatisticsUtil.getDiagonalSqrt(Q, 1e-7);
+    final Matrix A_halfSqT = A_half.times(Sq).transpose();
+    final AbstractSingularValueDecomposition svdHalf = SingularValueDecompositionMTJ.create(A_halfSqT);
+    final SvdMatrix result = new SvdMatrix(new SimpleSingularValueDecomposition(
+        svdHalf.getVtranspose().transpose(),
+        svdHalf.getS().transpose().times(svdHalf.getS()),
+        svdHalf.getVtranspose()));
+    Preconditions.checkState(result.isSymmetric() && result.isSquare());
+    return result;
   }
 
   protected static Matrix createStateTransitionMatrix(
@@ -249,7 +264,7 @@ public class MotionStateEstimatorPredictor extends
    * The filter that applies movement and updates prior distributions for the
    * ground model.
    */
-  protected AbstractKalmanFilter groundFilter;
+  protected TruncatedRoadKalmanFilter groundFilter;
 
   /**
    * State movement and observation model for the ground-state.
@@ -264,14 +279,15 @@ public class MotionStateEstimatorPredictor extends
    * The filter that applies movement and updates prior distributions for the
    * road model.
    */
-  protected AbstractKalmanFilter roadFilter;
+  protected TruncatedRoadKalmanFilter roadFilter;
 
   /*
    * Default value assumes that there's roughly 10 meters of
    * error in our determination of the road's actual location.
    */
-  protected Matrix roadMeasurementError = MatrixFactory.getDefault()
-      .copyArray(new double[][] { { 10 * 5, 0 }, { 0, 0 } });
+  protected static SvdMatrix roadMeasurementError = 
+      new SvdMatrix(MatrixFactory.getDefault()
+      .copyArray(new double[][] { { 10 * 5, 0 }, { 0, 0 } }));
 
   /**
    * State movement and observation model for the road-state.
@@ -302,15 +318,15 @@ public class MotionStateEstimatorPredictor extends
     this.graph = currentState.getGraph();
     this.rng = rng;
 
-    if (currentState.getParentState() != null) {
-      this.currentTimeDiff =
-          (currentState.getObservation().getTimestamp().getTime() - currentState
-              .getParentState().getObservation().getTimestamp()
-              .getTime()) / 1000d;
-    } else {
+//    if (currentState.getParentState() != null) {
+//      this.currentTimeDiff =
+//          (currentState.getObservation().getTimestamp().getTime() - currentState
+//              .getParentState().getObservation().getTimestamp()
+//              .getTime()) / 1000d;
+//    } else {
       this.currentTimeDiff =
           Preconditions.checkNotNull(currentTimeDiff);
-    }
+//    }
 
     /*
      * Create the road-coordinates filter
@@ -323,14 +339,14 @@ public class MotionStateEstimatorPredictor extends
     roadModel.setA(roadG);
     roadModel.setC(MotionStateEstimatorPredictor.Or);
     this.roadModel = roadModel;
-
+    final SvdMatrix modelCovariance =
+        MotionStateEstimatorPredictor
+                    .createStateCovarianceMatrix(currentTimeDiff,
+                        currentState.getOnRoadModelCovarianceParam()
+                            .getValue(), true);
     this.roadFilter =
-        new TruncatedRoadKalmanFilter(roadModel,
-            MotionStateEstimatorPredictor
-                .createStateCovarianceMatrix(currentTimeDiff,
-                    currentState.getOnRoadModelCovarianceParam()
-                        .getValue(), true), this.roadMeasurementError,
-                        Double.MAX_VALUE, 0d);
+        new TruncatedRoadKalmanFilter(roadModel, modelCovariance, 
+            this.roadMeasurementError, currentTimeDiff);
 
     /*
      * Create the ground-coordinates filter
@@ -346,14 +362,14 @@ public class MotionStateEstimatorPredictor extends
     groundModel.setC(MotionStateEstimatorPredictor.Og);
 
     this.groundModel = groundModel;
-    this.groundFilter =
-        new TruncatedRoadKalmanFilter(groundModel,
-            MotionStateEstimatorPredictor
+    final SvdMatrix groundModelCovariance = MotionStateEstimatorPredictor
                 .createStateCovarianceMatrix(currentTimeDiff,
                     currentState.getOffRoadModelCovarianceParam()
-                        .getValue(), false), currentState
-                .getObservationCovarianceParam().getValue(),
-                Double.MAX_VALUE, 0d);
+                        .getValue(), false);
+    final SvdMatrix groundMeasurementCovariance =
+        new SvdMatrix(currentState.getObservationCovarianceParam().getValue());
+    this.groundFilter = new TruncatedRoadKalmanFilter(groundModel,
+            groundModelCovariance, groundMeasurementCovariance, currentTimeDiff);
 
   }
 
@@ -375,8 +391,27 @@ public class MotionStateEstimatorPredictor extends
   @Override
   public MultivariateGaussian createInitialLearnedObject() {
     MultivariateGaussian initialMotionStateDist = this.groundFilter.createInitialLearnedObject();
-    initialMotionStateDist.getMean().setElement(0, this.currentState.getObservation().getProjectedPoint().getElement(0));
-    initialMotionStateDist.getMean().setElement(2, this.currentState.getObservation().getProjectedPoint().getElement(1));
+    final Vector obsErrorSample = MultivariateGaussian.sample(
+        this.zeros2D, 
+        StatisticsUtil.rootOfSemiDefinite(this.currentState.getObservationCovarianceParam().getValue()), 
+        this.rng);
+    initialMotionStateDist.getMean().setElement(0, 
+        this.currentState.getObservation().getProjectedPoint().getElement(0)
+          + obsErrorSample.getElement(0));
+    initialMotionStateDist.getMean().setElement(2, 
+        this.currentState.getObservation().getProjectedPoint().getElement(1)
+          + obsErrorSample.getElement(1));
+    if (this.currentState.getObservation().getPreviousObservation() != null) {
+      final Vector locDiff = this.currentState.getObservation().getProjectedPoint().minus(
+          this.currentState.getObservation().getPreviousObservation().getProjectedPoint())
+          .scale(1d/this.currentTimeDiff);
+      initialMotionStateDist.getMean().setElement(1, locDiff.getElement(0));
+      initialMotionStateDist.getMean().setElement(3, locDiff.getElement(1));
+    }
+//    Preconditions.checkState((initialMotionStateDist.getInputDimensionality() != 2 
+//        || initialMotionStateDist.getCovariance().rank() == 1)
+//        && (initialMotionStateDist.getInputDimensionality() != 4 
+//        || initialMotionStateDist.getCovariance().rank() == 2));
     return initialMotionStateDist;
   }
 
@@ -475,7 +510,7 @@ public class MotionStateEstimatorPredictor extends
     return this.currentTimeDiff;
   }
 
-  public AbstractKalmanFilter getGroundFilter() {
+  public TruncatedRoadKalmanFilter getGroundFilter() {
     return this.groundFilter;
   }
 
@@ -501,8 +536,7 @@ public class MotionStateEstimatorPredictor extends
     MultivariateGaussian motionState, PathEdge edge) {
 
     final MultivariateGaussian projBelief;
-    final Matrix measurementCovariance =
-        this.groundFilter.getMeasurementCovariance().clone();
+    final Matrix measurementCovariance = this.groundFilter.getMeasurementCovariance();
     if (motionState.getInputDimensionality() == 2) {
       Preconditions.checkNotNull(edge);
       projBelief =
@@ -526,7 +560,7 @@ public class MotionStateEstimatorPredictor extends
     return this.prevTimeDiff;
   }
 
-  public AbstractKalmanFilter getRoadFilter() {
+  public TruncatedRoadKalmanFilter getRoadFilter() {
     return this.roadFilter;
   }
 

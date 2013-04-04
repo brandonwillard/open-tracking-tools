@@ -27,6 +27,7 @@ import org.opentrackingtools.paths.PathEdge;
 import org.opentrackingtools.paths.PathState;
 import org.opentrackingtools.util.PathUtils;
 import org.opentrackingtools.util.StatisticsUtil;
+import org.opentrackingtools.util.SvdMatrix;
 
 import umontreal.iro.lecuyer.probdist.ContinuousDistribution;
 import umontreal.iro.lecuyer.probdist.NormalDist;
@@ -59,6 +60,7 @@ public class PathStateEstimatorPredictor extends
   protected VehicleStateDistribution<? extends GpsObservation> currentState;
   protected Path path;
   protected PathStateDistribution priorPathStateDistribution;
+  protected double currentTimeDiff;
 
   /**
    * This estimator takes as conditional parameters the current/previous vehicle
@@ -70,7 +72,8 @@ public class PathStateEstimatorPredictor extends
    */
   public PathStateEstimatorPredictor(
     @Nonnull VehicleStateDistribution<? extends GpsObservation> currentState,
-    @Nonnull PathStateDistribution priorPathStateDistribution) {
+    @Nonnull PathStateDistribution priorPathStateDistribution, double timeDiff) {
+    this.currentTimeDiff = timeDiff;
     this.priorPathStateDistribution = priorPathStateDistribution;
     this.path = priorPathStateDistribution.getPathState().getPath();
     this.currentState = currentState;
@@ -78,7 +81,8 @@ public class PathStateEstimatorPredictor extends
   
   public PathStateEstimatorPredictor(
     @Nonnull VehicleStateDistribution<? extends GpsObservation> currentState,
-    @Nonnull Path path) {
+    @Nonnull Path path, double timeDiff) {
+    this.currentTimeDiff = timeDiff;
     this.priorPathStateDistribution = null;
     this.path = path;
     this.currentState = currentState;
@@ -132,10 +136,11 @@ public class PathStateEstimatorPredictor extends
       weights.add(0d);
     } else {
       if (prior.getInputDimensionality() == 4) {
-      MultivariateGaussian roadDistribution =
-            PathUtils.getRoadBeliefFromGround(prior,
-                Iterables.getOnlyElement(this.path.getPathEdges()),
-                true);
+        MultivariateGaussian roadDistribution =
+              PathUtils.getRoadBeliefFromGround(prior,
+                  Iterables.getOnlyElement(this.path.getPathEdges()),
+                  true, this.currentState.getPathStateParam().getValue().getMotionState(), 
+                  this.currentTimeDiff);
         /*
          * If we're going on-road, then no need to do the rest.
          * Also, don't consider moving backward (remember, half-normal 
@@ -221,11 +226,11 @@ public class PathStateEstimatorPredictor extends
     a = edge.clampToEdge(a);
 
     assert StatisticsUtil
-        .isPosSemiDefinite((gov.sandia.cognition.math.matrix.mtj.DenseMatrix) R);
+        .isPosSemiDefinite(R);
 
     final PathStateDistribution prediction =
         new PathStateDistribution(this.path.getPathTo(edge),
-            new TruncatedRoadGaussian(a, R));
+            new TruncatedRoadGaussian(a, new SvdMatrix(R)));
     
     return prediction;
   }
