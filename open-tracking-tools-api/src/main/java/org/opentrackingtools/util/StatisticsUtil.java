@@ -637,4 +637,22 @@ public class StatisticsUtil {
     }
     return result;
   }
+  
+  public static Matrix getInvWishartVar(InverseWishartDistribution invWishart) {
+    final int dim = invWishart.getInputDimensionality();
+    final int dof = invWishart.getDegreesOfFreedom();
+    Preconditions.checkArgument(dof > dim - 1);
+    final Matrix invScale = invWishart.getInverseScale();
+    final Matrix cov = MatrixFactory.getDefault().createMatrix(dim, dim);
+    for (int i = 0; i < dim; i++) {
+      for (int j = 0; j < dim; j++) {
+        final double numerator = (dof - dim + 1d) * invScale.getElement(i, j)
+            + (dof - dim - 1d) * invScale.getElement(i, i) * invScale.getElement(j, j);
+        final double denominator = (dof - dim) * (dof - dim - 1d)*(dof - dim - 1d)
+            * (dof - dim - 3d);
+        cov.setElement(i, j, numerator/denominator); 
+      }
+    }
+    return cov;
+  }
 }

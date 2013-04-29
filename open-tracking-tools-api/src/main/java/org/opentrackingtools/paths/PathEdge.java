@@ -23,7 +23,7 @@ public class PathEdge extends
   protected InferenceGraphEdge edge = null;
   protected Boolean isBackward = null;
   protected InferenceGraphSegment segment = null;
-  protected Double distToFromStartOfGraphEdge = null;
+  protected Double distFromStartOfGraphEdge = null;
   protected LineSegment line = null;
   
   public final static PathEdge nullPathEdge = new PathEdge();
@@ -32,8 +32,8 @@ public class PathEdge extends
     this.edge = InferenceGraphEdge.nullGraphEdge;
   }
 
-  public Double getDistToFromStartOfGraphEdge() {
-    return distToFromStartOfGraphEdge;
+  public Double getDistFromStartOfGraphEdge() {
+    return distFromStartOfGraphEdge;
   }
 
   public PathEdge(InferenceGraphSegment segment, double startDistance, boolean isBackward) {
@@ -45,7 +45,7 @@ public class PathEdge extends
     if (isBackward)
       this.line.reverse();
     this.edge = segment.getParentEdge();
-    this.distToFromStartOfGraphEdge = segment.getParentEdge().getLengthLocationMap().getLength(
+    this.distFromStartOfGraphEdge = segment.getParentEdge().getLengthLocationMap().getLength(
         segment.getStartIndex());
     this.distToStartOfEdge = startDistance;
     this.isBackward = isBackward;
@@ -126,10 +126,15 @@ public class PathEdge extends
     final double distance = direction * (newState.getElement(0)
         - this.distToStartOfEdge);
     
+    /*
+     * Notice that we add a small mount to the start distance and subtract
+     * from the end distance.  This is so to reduce confusion about which edge it's on
+     * when it's at the border of two.
+     */
     if ( distance < 0d) {
-      newState.setElement(0, this.distToStartOfEdge);
+      newState.setElement(0, this.distToStartOfEdge + 1e-4);
     } else if (distance > this.line.getLength()) {
-      newState.setElement(0, this.distToStartOfEdge + direction * this.line.getLength());
+      newState.setElement(0, this.distToStartOfEdge + direction * (this.line.getLength() - 1e-4));
     }
     return newState;
   }
@@ -253,8 +258,7 @@ public class PathEdge extends
       final double distToStart =
           this.distToStartOfEdge == 0d && this.isBackward ? -0d
               : this.distToStartOfEdge.longValue();
-      return "PathEdge [edge=" + this.edge.getEdgeId() + " ("
-          + this.getLength() + "/" + this.edge.getLength() + ")"
+      return "PathEdge [edge=" + this.segment
           + ", distToStart=" + distToStart + "]";
     }
   }

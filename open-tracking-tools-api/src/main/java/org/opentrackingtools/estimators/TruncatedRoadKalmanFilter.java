@@ -210,6 +210,14 @@ public class TruncatedRoadKalmanFilter extends AbstractBatchAndIncrementalLearne
     final Vector e = observation.minus(F.times(belief.getMean()));
     
     final Matrix A = belief.getCovariance().times(F.transpose()).times(Qinv);
+    /*
+     * Note: for exact location/velocity correlation, the velocity
+     * term(s) in A should be <= 1/30. 
+     * DEBUG REMOVE
+     */
+    if (A.getNumColumns() == 1 && A.getElement(1, 0) > 1d/30d)
+      System.out.println("amplifying velocity noise!");
+      
     final Vector postMean = belief.getMean().plus(A.times(e));
     
 //      final Vector a = belief.getMean();

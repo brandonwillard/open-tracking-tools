@@ -1,5 +1,7 @@
 package org.opentrackingtools.graph;
 
+import org.testng.annotations.Test;
+
 import gov.sandia.cognition.math.matrix.VectorFactory;
 
 import java.util.Arrays;
@@ -28,14 +30,20 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.vividsolutions.jts.algorithm.RobustLineIntersector;
 import com.vividsolutions.jts.geom.Coordinate;
+import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.LineString;
+import com.vividsolutions.jts.geom.PrecisionModel;
+import com.vividsolutions.jts.geomgraph.PlanarGraph;
 import com.vividsolutions.jts.noding.IntersectionAdder;
 import com.vividsolutions.jts.noding.MCIndexNoder;
 import com.vividsolutions.jts.noding.NodedSegmentString;
+import com.vividsolutions.jts.noding.snapround.GeometryNoder;
+import com.vividsolutions.jts.operation.polygonize.Polygonizer;
+import com.vividsolutions.jtsexample.operation.polygonize.PolygonizeExample;
 
 public class GenericJTSGraphTest {
 
-//  @Test
+  @Test
   public void testNoding() {
     
     final List<NodedSegmentString> graphEdges = Lists.newArrayList();

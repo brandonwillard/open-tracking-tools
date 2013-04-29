@@ -384,21 +384,7 @@ public class PathUtils {
       return null;
     }
     
-    /*
-     * When we're given a source location, we will adjust
-     * the velocity to correspond to the snapped position.
-     */
-    final Vector adjState;
-    if (sourceLocation != null && timeDiff != null) {
-      final Vector newVelocity = MotionStateEstimatorPredictor.Og.times(projPair.stateOnSegment).minus(
-          MotionStateEstimatorPredictor.Og.times(sourceLocation))
-          .scale(1d/timeDiff);
-      adjState = projPair.getStateOnSegment().clone();
-      adjState.setElement(1, newVelocity.getElement(0));
-      adjState.setElement(3, newVelocity.getElement(1));
-    } else {
-      adjState = projPair.getStateOnSegment();
-    }
+    final Vector adjState = projPair.getStateOnSegment();
 
     final Matrix C = belief.getCovariance().clone();
     final Matrix projCov = getProjectedCovariance(projPair, C, true);
@@ -433,6 +419,17 @@ public class PathUtils {
           Math.signum(projMean.getElement(1)) * absVelocity;
       projMean.setElement(1, projVelocity);
     }
+    
+    /*
+     * When we're given a source location, we will adjust
+     * the velocity to correspond to the snapped position.
+     */
+    if (sourceLocation != null && timeDiff != null) {
+      final double newVelocity = MotionStateEstimatorPredictor.Og.times(projPair.stateOnSegment).minus(
+          MotionStateEstimatorPredictor.Og.times(sourceLocation))
+          .norm2() / timeDiff;
+      projMean.setElement(1, Math.signum(projMean.getElement(1)) * newVelocity);
+    } 
 
     assert LengthLocationMap.getLocation(pathGeometry,
         projMean.getElement(0)) != null;
@@ -614,21 +611,7 @@ public class PathUtils {
     final PathEdgeProjection projPair =
         PathUtils.getRoadProjection(state, pathGeometry, edgeSegment, edgeDistanceToStartOnPath);
 
-    /*
-     * When we're given a source location, we will adjust
-     * the velocity to correspond to the snapped position.
-     */
-    final Vector adjState;
-    if (sourceLocation != null && timeDiff != null) {
-      final Vector newVelocity = MotionStateEstimatorPredictor.Og.times(projPair.stateOnSegment).minus(
-          MotionStateEstimatorPredictor.Og.times(sourceLocation))
-          .scale(1d/timeDiff);
-      adjState = projPair.getStateOnSegment().clone();
-      adjState.setElement(1, newVelocity.getElement(0));
-      adjState.setElement(3, newVelocity.getElement(1));
-    } else {
-      adjState = projPair.getStateOnSegment();
-    }
+    final Vector adjState = projPair.getStateOnSegment();
 
     final Vector projMean =
         projPair.getProjMatrix().transpose()
@@ -649,6 +632,17 @@ public class PathUtils {
           Math.signum(projMean.getElement(1)) * absVelocity;
       projMean.setElement(1, projVelocity);
     }
+    
+    /*
+     * When we're given a source location, we will adjust
+     * the velocity to correspond to the snapped position.
+     */
+    if (sourceLocation != null && timeDiff != null) {
+      final double newVelocity = MotionStateEstimatorPredictor.Og.times(projPair.stateOnSegment).minus(
+          MotionStateEstimatorPredictor.Og.times(sourceLocation))
+          .norm2() / timeDiff;
+      projMean.setElement(1, Math.signum(projMean.getElement(1)) * newVelocity);
+    } 
 
     assert LengthLocationMap.getLocation(pathGeometry,
         projMean.getElement(0)) != null;
@@ -1195,26 +1189,12 @@ public class PathUtils {
     @Nullable Vector sourceLocation, @Nullable Double timeDiff) {
     
     final PathEdgeProjection projPair = PathUtils.posVelProjectionPair(edge.getLine(), 
-        edge.getDistToFromStartOfGraphEdge());
+        edge.getDistFromStartOfGraphEdge());
     if (projPair == null) {
       return null;
     }
     
-    /*
-     * When we're given a source location, we will adjust
-     * the velocity to correspond to the snapped position.
-     */
-    final Vector adjState;
-    if (sourceLocation != null && timeDiff != null) {
-      final Vector newVelocity = MotionStateEstimatorPredictor.Og.times(projPair.stateOnSegment).minus(
-          MotionStateEstimatorPredictor.Og.times(sourceLocation))
-          .scale(1d/timeDiff);
-      adjState = projPair.getStateOnSegment().clone();
-      adjState.setElement(1, newVelocity.getElement(0));
-      adjState.setElement(3, newVelocity.getElement(1));
-    } else {
-      adjState = projPair.getStateOnSegment();
-    }
+    final Vector adjState = projPair.getStateOnSegment();
 
     final Vector projMean =
         projPair.getProjMatrix().transpose()
@@ -1246,6 +1226,17 @@ public class PathUtils {
           Math.signum(projMean.getElement(1)) * absVelocity;
       projMean.setElement(1, projVelocity);
     }
+    
+    /*
+     * When we're given a source location, we will adjust
+     * the velocity to correspond to the snapped position.
+     */
+    if (sourceLocation != null && timeDiff != null) {
+      final double newVelocity = MotionStateEstimatorPredictor.Og.times(projPair.stateOnSegment).minus(
+          MotionStateEstimatorPredictor.Og.times(sourceLocation))
+          .norm2() / timeDiff;
+      projMean.setElement(1, Math.signum(projMean.getElement(1)) * newVelocity);
+    } 
 
     assert LengthLocationMap.getLocation(segmentGeom,
         projMean.getElement(0)) != null;

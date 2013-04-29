@@ -459,6 +459,17 @@ public class TruncatedRoadGaussian extends AdjMultivariateGaussian {
     
     return truncDist;
   }
+
+  public AdjMultivariateGaussian getUnTruncatedDist() {
+    return unTruncatedDist;
+  }
+
+  @Override
+  public TruncatedRoadGaussian clone() {
+    TruncatedRoadGaussian clone = (TruncatedRoadGaussian)super.clone();
+    clone.unTruncatedDist = (AdjMultivariateGaussian) this.unTruncatedDist.clone();
+    return clone;
+  }
   
   
 //  private double Fi(final int i) {

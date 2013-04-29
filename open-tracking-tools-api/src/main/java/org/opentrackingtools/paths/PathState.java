@@ -331,6 +331,9 @@ public class PathState extends AbstractVector implements
     return this.motionState.iterator();
   }
 
+  /**
+   * Subtract path states
+   */
   @Override
   public Vector minus(Vector other) {
     if (other instanceof PathState)

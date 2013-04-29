@@ -11,8 +11,8 @@ import javax.annotation.Nonnull;
 
 import org.opentrackingtools.util.GeoUtils;
 
-import com.beust.jcommander.internal.Lists;
 import com.google.common.base.Preconditions;
+import com.google.common.collect.Lists;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.LineSegment;
@@ -37,7 +37,6 @@ public class InferenceGraphEdge implements
   protected final Geometry geometry;
   protected final Boolean hasReverse;
   protected final Vector startPoint;
-  protected final SIRtree lengthSegmentGraph;
   protected final List<InferenceGraphSegment> graphSegments;
   protected final LocationIndexedLine locationIndexedLine;
   protected LengthLocationMap lengthLocationMap = null;
@@ -47,7 +46,6 @@ public class InferenceGraphEdge implements
   protected InferenceGraphEdge() {
     this.locationIndexedLine = null;
     this.graphSegments = null;
-    this.lengthSegmentGraph = null;
     this.edgeId = null;
     this.endPoint = null;
     this.startPoint = null;
@@ -82,17 +80,15 @@ public class InferenceGraphEdge implements
             endPointCoord.y);
 
     this.locationIndexedLine = new LocationIndexedLine(this.geometry);
-    this.lengthSegmentGraph = new SIRtree();
     this.graphSegments = Lists.newArrayList();
     List<LineSegment> segments = GeoUtils.getSubLineSegments((LineString)this.geometry);
-    double currentDistance = 0d;
-    for (LineSegment segment : segments) {
-      InferenceGraphSegment infSegment = new InferenceGraphSegment(segment, this);
+    InferenceGraphSegment nextSegment = null;
+    for (LineSegment segment : Lists.reverse(segments)) {
+      InferenceGraphSegment infSegment = new InferenceGraphSegment(segment, this, nextSegment);
+      nextSegment = infSegment;
       graphSegments.add(infSegment);
-      lengthSegmentGraph.insert(currentDistance, currentDistance + segment.getLength(), 
-          infSegment);
     }
-    lengthSegmentGraph.build();
+    Collections.reverse(graphSegments);
   }
 
   @Override

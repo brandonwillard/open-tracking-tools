@@ -19,6 +19,7 @@ import com.google.common.collect.Iterables;
 
 import gov.sandia.cognition.learning.algorithm.IncrementalLearner;
 import gov.sandia.cognition.math.matrix.Matrix;
+import gov.sandia.cognition.math.matrix.MatrixFactory;
 import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.statistics.ComputableDistribution;
 import gov.sandia.cognition.statistics.bayesian.BayesianEstimatorPredictor;
@@ -39,7 +40,7 @@ public class RoadMeasurementCovarianceEstimatorPredictor extends
   
   /**
    * This estimator will learn/update a path state model covariance with an inverse Wishart
-   * prior.<br>
+   * prior. 
    * 
    * @param vehicleState
    * @param motionStateEstimator 
@@ -61,10 +62,12 @@ public class RoadMeasurementCovarianceEstimatorPredictor extends
      */
     final Vector obsError =
         obs.minus(newStateObsSample);
-    final Matrix obsSmplCov =
+    final Matrix obsSmplCov = 
         obsError.outerProduct(obsError);
+//        MatrixFactory.getDefault().createDiagonal(
+//        obsError.dotTimes(obsError));
     
-    // TODO debug.  remove.
+    // REMOVE debug.  remove.
     if (this.vehicleState.getObservation() instanceof TrueObservation) {
       final VehicleStateDistribution<?> trueState = ((TrueObservation)this.vehicleState.getObservation()).getTrueState();
       InverseWishartDistribution tmpPrior = obsCovPrior.clone();

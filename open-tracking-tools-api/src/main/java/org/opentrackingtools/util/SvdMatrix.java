@@ -21,8 +21,11 @@ import gov.sandia.cognition.math.matrix.mtj.decomposition.SingularValueDecomposi
 import gov.sandia.cognition.util.ObjectUtil;
 
 /**
- * This class is simply a this for a matrix object with
- * the addition of the this's SVD object.
+ * This class is simply a matrix object that carries the SVD components.
+ * When possible, operations will be performed with respect to those components.
+ * 
+ * TODO implement this for a symmetric matrix.
+ * 
  * @author bwillard
  *
  */

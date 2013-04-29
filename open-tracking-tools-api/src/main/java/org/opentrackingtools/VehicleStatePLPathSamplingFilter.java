@@ -54,10 +54,10 @@ import com.beust.jcommander.internal.Lists;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Iterables;
 
-public class VehicleStatePLFilter<O extends GpsObservation, G extends InferenceGraph> extends
+public class VehicleStatePLPathSamplingFilter<O extends GpsObservation, G extends InferenceGraph> extends
     AbstractParticleFilter<O, VehicleStateDistribution<O>> {
 
-  private static Logger _log = LoggerFactory.getLogger(VehicleStatePLFilter.class);
+  private static Logger _log = LoggerFactory.getLogger(VehicleStatePLPathSamplingFilter.class);
   private static final long serialVersionUID = -8257075186193062150L;
 
   protected final G inferredGraph;
@@ -87,13 +87,13 @@ public class VehicleStatePLFilter<O extends GpsObservation, G extends InferenceG
     return isDebug;
   }
 
-  public VehicleStatePLFilter(O obs, G inferredGraph, VehicleStateDistributionFactory<O,G> vehicleStateFactory,
+  public VehicleStatePLPathSamplingFilter(O obs, G inferredGraph, VehicleStateDistributionFactory<O,G> vehicleStateFactory,
     VehicleStateInitialParameters parameters, Boolean isDebug,
     Random rng) {
     this.vehicleStateFactory = vehicleStateFactory;
     this.inferredGraph = inferredGraph;
     this.isDebug = isDebug;
-    this.setUpdater(new VehicleStatePLUpdater<O, G>(obs, inferredGraph, 
+    this.setUpdater(new VehicleStatePLPathGeneratingUpdater<O, G>(obs, inferredGraph, 
         vehicleStateFactory,
         parameters, rng));
     this.setNumParticles(parameters.getNumParticles());
@@ -313,6 +313,14 @@ public class VehicleStatePLFilter<O extends GpsObservation, G extends InferenceG
       roadFilter.setMeasurementCovariance(obsProj.getCovariance());
       roadFilter.measure(updatedMotionState, obsProj.getMean());
       
+      if ((state.getParentState().getPathStateParam().getParameterPrior().getPathState().isOnRoad()
+              &&
+              state.getParentState().getPathStateParam().getParameterPrior().getPathState().getElement(0)
+               <= obsProj.getMean().getElement(0)
+              )
+            || updatedMotionState.getMean().getElement(1) > 0d) {
+        _log.warn("edge update is adding noise!");
+      }
       posteriorPathStateDist = new PathStateDistribution(
           priorPredictivePathStateDist.getPathState().getPath()
           .getPathTo(updatedMotionState.getMean().getElement(0)), 
@@ -324,6 +332,8 @@ public class VehicleStatePLFilter<O extends GpsObservation, G extends InferenceG
           priorPredictivePathStateDist.getPathState().getPath(), 
           updatedMotionState);
     }
+//    Preconditions.checkState(posteriorPathStateDist.getPathState().getEdge().equals(
+//       Iterables.getLast(priorPredictivePathStateDist.getPathState().getPath().getPathEdges())));
 
     /*
      * Update parameters
@@ -335,7 +345,8 @@ public class VehicleStatePLFilter<O extends GpsObservation, G extends InferenceG
     final InferenceGraphEdge graphEdge =
         updatedState.getParentState().getPathStateParam().getValue().getEdge().getInferenceGraphEdge();
     final OnOffEdgeTransitionEstimatorPredictor edgeTransitionEstimatorPredictor =
-        getEdgeTransitionEstimatorPredictor(updatedState, graphEdge);
+        new OnOffEdgeTransitionEstimatorPredictor(updatedState,
+            graphEdge);
     Vector newObsStateSample;
     if (!(posteriorPathStateDist.getPathState().isOnRoad() &&
           state.getOnRoadModelCovarianceParam().getParameterPrior().getDegreesOfFreedom()
@@ -343,8 +354,8 @@ public class VehicleStatePLFilter<O extends GpsObservation, G extends InferenceG
           && !(!posteriorPathStateDist.getPathState().isOnRoad() &&
             state.getOffRoadModelCovarianceParam().getParameterPrior().getDegreesOfFreedom()
             >= Integer.MAX_VALUE-1)) {
-      RoadModelCovarianceEstimatorPredictor modelCovarianceEstimator = 
-          getRoadModelCovarianceEstimatorPredictor(updatedState, state.getMotionStateEstimatorPredictor());
+      RoadModelCovarianceEstimatorPredictor modelCovarianceEstimator = new RoadModelCovarianceEstimatorPredictor(updatedState, 
+          state.getMotionStateEstimatorPredictor(), this.random);
       
       final InverseWishartDistribution currentModelCovDistribution = posteriorPathStateDist.getPathState().isOnRoad() ?
           updatedState.getOnRoadModelCovarianceParam().getParameterPrior().clone() :
@@ -380,8 +391,8 @@ public class VehicleStatePLFilter<O extends GpsObservation, G extends InferenceG
     
     if (state.getObservationCovarianceParam().getParameterPrior().getDegreesOfFreedom()
           < Integer.MAX_VALUE-1) {
-      RoadMeasurementCovarianceEstimatorPredictor measurementCovarianceEstimator = 
-         getRoadMeasurementCovarianceEstimatorPredictor(updatedState, newObsStateSample);
+      RoadMeasurementCovarianceEstimatorPredictor measurementCovarianceEstimator = new RoadMeasurementCovarianceEstimatorPredictor(
+          updatedState, newObsStateSample);
       final InverseWishartDistribution currentObsCovDistribution = updatedState.getObservationCovarianceParam()
           .getParameterPrior().clone();
       measurementCovarianceEstimator.update(currentObsCovDistribution, obs.getProjectedPoint());
@@ -420,25 +431,6 @@ public class VehicleStatePLFilter<O extends GpsObservation, G extends InferenceG
     
     
     return updatedState;
-  }
-
-  protected RoadMeasurementCovarianceEstimatorPredictor getRoadMeasurementCovarianceEstimatorPredictor(
-      VehicleStateDistribution<O> updatedState, Vector newObsStateSample) {
-    return new RoadMeasurementCovarianceEstimatorPredictor(
-          updatedState, newObsStateSample);
-  }
-
-  protected RoadModelCovarianceEstimatorPredictor getRoadModelCovarianceEstimatorPredictor(
-      VehicleStateDistribution<O> updatedState,
-      MotionStateEstimatorPredictor motionStateEstimatorPredictor) {
-    return new RoadModelCovarianceEstimatorPredictor(updatedState, 
-          motionStateEstimatorPredictor, this.random);
-  }
-
-  protected OnOffEdgeTransitionEstimatorPredictor getEdgeTransitionEstimatorPredictor(
-      VehicleStateDistribution<O> updatedState, InferenceGraphEdge graphEdge) {
-    return new OnOffEdgeTransitionEstimatorPredictor(updatedState,
-            graphEdge);
   }
 
 }

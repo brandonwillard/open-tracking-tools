@@ -1,7 +1,7 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
-	<artifactId>open-tracking-tools-api</artifactId>
+	<artifactId>open-tracking-tools-otp</artifactId>
 	<name>OpenTrackingTools API</name>
 
 	<parent>
@@ -10,17 +10,27 @@
 		<version>0.0.1-SNAPSHOT</version>
 	</parent>
 
-	<build>
-		<sourceDirectory>src/main/java</sourceDirectory>
-
-		<resources>
-			<resource>
-				<directory>src/main/resources</directory>
-			</resource>
-		</resources>
-	</build>
-
 	<dependencies>
+    <dependency>
+      <artifactId>open-tracking-tools-api</artifactId>
+      <groupId>org.opentrackingtools</groupId>
+      <version>0.0.1-SNAPSHOT</version>
+    </dependency>
+    <dependency>
+      <artifactId>opentripplanner-graph-builder</artifactId>
+      <groupId>org.opentripplanner</groupId>
+      <version>${otp.version}</version>
+    </dependency>
+    <dependency>
+      <artifactId>opentripplanner-routing</artifactId>
+      <groupId>org.opentripplanner</groupId>
+      <version>${otp.version}</version>
+    </dependency>
+    <dependency>
+      <artifactId>opentripplanner-utils</artifactId>
+      <groupId>org.opentripplanner</groupId>
+      <version>${otp.version}</version>
+    </dependency>
 		<dependency>
 			<groupId>org.testng</groupId>
 			<artifactId>testng</artifactId>
@@ -178,4 +188,7 @@
 			<version>1.27</version>
 		</dependency>
 	</dependencies>
+  <properties>
+    <otp.version>0.7.10</otp.version>
+  </properties>
 </project>

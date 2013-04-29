@@ -103,12 +103,14 @@ public class GenericJTSGraph implements InferenceGraph {
       AStarFunctions {
 
     final double obsStdDevDistance;
+    final double distanceToTravel;
     final Coordinate toCoord;
 
     public VehicleStateAStarFunction(Node destination,
-      Coordinate toCoord, double obsStdDevDistance) {
+      Coordinate toCoord, double obsStdDevDistance, double distanceToTravel) {
       super(destination);
       this.toCoord = toCoord;
+      this.distanceToTravel = distanceToTravel;
       this.obsStdDevDistance = obsStdDevDistance;
     }
 
@@ -137,8 +139,10 @@ public class GenericJTSGraph implements InferenceGraph {
       for (int i = 0; i < lengths.length; i++) {
         lengths[i] = ((LineString)edgesBetween.get(i).getObject()).getLength();
       }
+      final double totalDistanceTraveled = Doubles.min(lengths) + n1.getG();
 
-      return Doubles.min(lengths);
+      final double cost = Math.abs(Math.min(0, this.distanceToTravel - totalDistanceTraveled));
+      return cost;
     }
 
     @Override
@@ -242,10 +246,8 @@ public class GenericJTSGraph implements InferenceGraph {
     for (Object obj : graphGenerator.getGraph().getEdges()) {
       final BasicDirectedEdge edge = (BasicDirectedEdge) obj;
       InferenceGraphEdge infEdge = getInferenceGraphEdge(edge);
-      final LineString lineString = (LineString) infEdge.getGeometry();
-      for (LineSegment line : GeoUtils.getSubLineSegments(lineString)) {
-        InferenceGraphSegment subline = new InferenceGraphSegment(line, infEdge);
-        edgeIndex.insert(new Envelope(line.p0, line.p1), subline);
+      for (InferenceGraphSegment segment : infEdge.getSegments()) {
+        edgeIndex.insert(new Envelope(segment.line.p0, segment.line.p1), segment);
       }
       
     }
@@ -378,6 +380,11 @@ public class GenericJTSGraph implements InferenceGraph {
     paths.add(Path.nullPath);
     
     final Coordinate toCoord = obs.getObsProjected();
+    MotionStateEstimatorPredictor motionEstimator = 
+        Preconditions.checkNotNull(fromState.getMotionStateEstimatorPredictor());
+    MultivariateGaussian projectedDist = 
+        motionEstimator.createPredictiveDistribution(
+          fromState.getMotionStateParam().getParameterPrior());
     
     PathEdge currrentPathEdge = fromState.getPathStateParam().getValue().getEdge();
     InferenceGraphEdge currentEdge = currrentPathEdge.getInferenceGraphEdge();
@@ -388,11 +395,6 @@ public class GenericJTSGraph implements InferenceGraph {
       startEdges.add(currrentPathEdge.getSegment());
     } else {
 
-      MotionStateEstimatorPredictor motionEstimator = 
-          Preconditions.checkNotNull(fromState.getMotionStateEstimatorPredictor());
-      MultivariateGaussian projectedDist = 
-          motionEstimator.createPredictiveDistribution(
-            fromState.getMotionStateParam().getParameterPrior());
       MultivariateGaussian obsDist = 
           motionEstimator.getObservationDistribution(projectedDist,
           PathEdge.nullPathEdge);
@@ -461,7 +463,7 @@ public class GenericJTSGraph implements InferenceGraph {
             continue;
           
           AStarFunctions afuncs = new VehicleStateAStarFunction(target, 
-              toCoord, obsStdDevDistance);
+              toCoord, obsStdDevDistance, projectedDist.getMean().getElement(0));
           
           CustomAStarShortestPathFinder aStarIter = new CustomAStarShortestPathFinder(
               this.graphGenerator.getGraph(), source, target, afuncs);

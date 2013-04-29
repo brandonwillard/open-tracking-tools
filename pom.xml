@@ -27,7 +27,7 @@
 
   <modules>
     <module>open-tracking-tools-api</module>
-<!--     <module>open-tracking-tools-otp</module> -->
+    <module>open-tracking-tools-otp</module>
   </modules>
 
   <build>
