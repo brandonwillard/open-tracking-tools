@@ -6,7 +6,6 @@ import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.math.matrix.VectorFactory;
 import gov.sandia.cognition.statistics.ClosedFormComputableDistribution;
 import gov.sandia.cognition.statistics.DataDistribution;
-import gov.sandia.cognition.statistics.Distribution;
 import gov.sandia.cognition.statistics.ProbabilityDensityFunction;
 import gov.sandia.cognition.statistics.ProbabilityFunction;
 import gov.sandia.cognition.statistics.distribution.DefaultDataDistribution;
@@ -25,10 +24,10 @@ import com.beust.jcommander.internal.Maps;
 
 /**
  * Copy of MultivariateMixtureDensityModel for path states.<br>
- * Note: this takes log-scale weights! 
+ * Note: this takes log-scale weights!
  */
-public class PathStateMixtureDensityModel
-    extends LinearMixtureModel<PathState, PathStateDistribution> implements
+public class PathStateMixtureDensityModel extends
+    LinearMixtureModel<PathState, PathStateDistribution> implements
     ClosedFormComputableDistribution<PathState> {
 
   /**
@@ -37,19 +36,18 @@ public class PathStateMixtureDensityModel
    * @param <PathStateDistribution>
    *          Type of Distribution in the mixture
    */
-  public static class PDF
-      extends PathStateMixtureDensityModel
+  public static class PDF extends PathStateMixtureDensityModel
       implements ProbabilityDensityFunction<PathState> {
 
     private static final long serialVersionUID = -715039776358524176L;
 
-    public PDF(Collection<? extends PathStateDistribution> distributions,
+    public PDF(
+      Collection<? extends PathStateDistribution> distributions,
       double[] priorWeights) {
       super(distributions, priorWeights);
     }
 
-    public PDF(
-      PathStateMixtureDensityModel other) {
+    public PDF(PathStateMixtureDensityModel other) {
       super(other);
     }
 
@@ -137,8 +135,7 @@ public class PathStateMixtureDensityModel
     }
 
     @Override
-    public PathStateMixtureDensityModel.PDF
-        getProbabilityFunction() {
+    public PathStateMixtureDensityModel.PDF getProbabilityFunction() {
       return this;
     }
 
@@ -158,19 +155,6 @@ public class PathStateMixtureDensityModel
     super.setPriorWeights(priorWeights);
   }
 
-  @Override
-  public double getPriorWeightSum() {
-    if (priorWeights.length <= 0) 
-      return Double.NEGATIVE_INFINITY;
-    if (priorWeights.length == 1)
-      return priorWeights[0];
-    double logSum = priorWeights[0];
-    for (int i = 1; i < priorWeights.length; i++) {
-      logSum = LogMath.add(logSum, priorWeights[i]);
-    }
-    return logSum;
-  }
-
   public PathStateMixtureDensityModel(
     PathStateMixtureDensityModel other) {
     this(ObjectUtil.cloneSmartElementsAsArrayList(other
@@ -181,8 +165,7 @@ public class PathStateMixtureDensityModel
   @Override
   public PathStateMixtureDensityModel clone() {
     final PathStateMixtureDensityModel clone =
-        (PathStateMixtureDensityModel) super
-            .clone();
+        (PathStateMixtureDensityModel) super.clone();
     return clone;
   }
 
@@ -208,26 +191,28 @@ public class PathStateMixtureDensityModel
   @Override
   public PathState getMean() {
 
-    final Map<PathEdge, RingAccumulator<Vector>> edgeToMean = Maps.newHashMap();
-    final Map<PathEdge, DataDistribution<Path>> edgeToPaths = Maps.newHashMap();
+    final Map<PathEdge, RingAccumulator<Vector>> edgeToMean =
+        Maps.newHashMap();
+    final Map<PathEdge, DataDistribution<Path>> edgeToPaths =
+        Maps.newHashMap();
     final int K = this.getDistributionCount();
     final DefaultDataDistribution<PathEdge> edgeDist =
         new DefaultDataDistribution<PathEdge>();
     for (int k = 0; k < K; k++) {
       final double priorWeight = this.getPriorWeights()[k];
-      final PathStateDistribution dist = this.getDistributions().get(k);
-      PathEdge edge = dist.getMean().getEdge();
+      final PathStateDistribution dist =
+          this.getDistributions().get(k);
+      final PathEdge edge = dist.getMean().getEdge();
       edgeDist.increment(edge, priorWeight);
-      
-      Path path = dist.getMean().getPath();
+
+      final Path path = dist.getMean().getPath();
       DataDistribution<Path> pathDist = edgeToPaths.get(path);
       if (pathDist == null) {
         pathDist = new DefaultDataDistribution<Path>();
         pathDist.increment(path, priorWeight);
       }
 
-      RingAccumulator<Vector> mean =
-          edgeToMean.get(edge);
+      RingAccumulator<Vector> mean = edgeToMean.get(edge);
 
       if (mean == null) {
         mean = new RingAccumulator<Vector>();
@@ -244,10 +229,23 @@ public class PathStateMixtureDensityModel
   }
 
   @Override
-  public PathStateMixtureDensityModel.PDF
-      getProbabilityFunction() {
-    return new PathStateMixtureDensityModel.PDF(
-        this);
+  public double getPriorWeightSum() {
+    if (this.priorWeights.length <= 0) {
+      return Double.NEGATIVE_INFINITY;
+    }
+    if (this.priorWeights.length == 1) {
+      return this.priorWeights[0];
+    }
+    double logSum = this.priorWeights[0];
+    for (int i = 1; i < this.priorWeights.length; i++) {
+      logSum = LogMath.add(logSum, this.priorWeights[i]);
+    }
+    return logSum;
+  }
+
+  @Override
+  public PathStateMixtureDensityModel.PDF getProbabilityFunction() {
+    return new PathStateMixtureDensityModel.PDF(this);
   }
 
 }

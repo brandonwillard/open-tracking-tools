@@ -12,32 +12,32 @@ import java.util.Iterator;
 
 import org.apache.commons.lang3.builder.CompareToBuilder;
 import org.opentrackingtools.estimators.MotionStateEstimatorPredictor;
-import org.opentrackingtools.graph.InferenceGraphEdge;
 import org.opentrackingtools.util.PathUtils;
 
 import com.google.common.base.Preconditions;
-import com.google.common.collect.Iterables;
 
 public class PathState extends AbstractVector implements
     Comparable<PathState>, Cloneable {
 
   private static final long serialVersionUID = 2846671162796173049L;
 
+  protected PathEdge edge = null;
+  protected Vector edgeState = null;
+  protected Vector groundState = null;
   protected Vector motionState = null;
   protected Path path = null;
-  protected PathEdge edge = null;
-  protected Vector groundState = null;
-  protected Vector edgeState = null;
 
   public PathState(Path path, Vector state) {
-    
-    Preconditions.checkArgument(path.isNullPath() || state.getDimensionality() == 2);
-    Preconditions.checkArgument(!path.isNullPath() || state.getDimensionality() == 4);
+
+    Preconditions.checkArgument(path.isNullPath()
+        || state.getDimensionality() == 2);
+    Preconditions.checkArgument(!path.isNullPath()
+        || state.getDimensionality() == 4);
     Preconditions.checkArgument(!(state instanceof PathState));
-    
+
     this.motionState = state;
     this.path = path;
-    
+
     /*
      * Now make sure the result is on this path.
      */
@@ -49,7 +49,7 @@ public class PathState extends AbstractVector implements
 
   public PathState(PathState pathState) {
     this.edge = pathState.edge;
-    
+
     this.motionState = pathState.motionState;
     this.groundState = pathState.groundState;
     this.edgeState = pathState.edgeState;
@@ -103,6 +103,38 @@ public class PathState extends AbstractVector implements
   @Override
   public void convertFromVector(Vector parameters) {
     this.motionState.convertFromVector(parameters);
+  }
+
+  public PathState convertToPath(Path newPath) {
+    final Vector adjState;
+    if (newPath.isNullPath()) {
+      adjState = this.getGroundState().clone();
+    } else {
+
+      final PathState startState =
+          new PathState(newPath, VectorFactory.getDefault()
+              .createVector2D(0d, 0d));
+
+      final Vector diff = startState.minus(this);
+      diff.negativeEquals();
+
+      adjState =
+          VectorFactory.getDefault().createVector2D(
+              newPath.clampToPath(diff.getElement(0)),
+              diff.getElement(1));
+
+      assert (newPath.isOnPath(adjState.getElement(0)));
+      assert !this.isOnRoad()
+          || Preconditions.checkNotNull(new PathState(newPath,
+              adjState).minus(this).isZero(
+              MotionStateEstimatorPredictor
+                  .getEdgeLengthErrorTolerance()) ? Boolean.TRUE
+              : null);
+    }
+
+    final PathState result = new PathState(newPath, adjState);
+
+    return result;
   }
 
   @Override
@@ -198,30 +230,6 @@ public class PathState extends AbstractVector implements
     return Preconditions.checkNotNull(this.edge);
   }
 
-  @Override
-  public double getElement(int index) {
-    return this.motionState.getElement(index);
-  }
-
-  public Vector getMotionState() {
-    return this.motionState;
-  }
-
-  public Vector getGroundState() {
-    if (!this.isOnRoad()) {
-      return this.motionState;
-    }
-
-    if (this.groundState == null) {
-      this.groundState =
-          PathUtils.getGroundStateFromRoad(this.motionState,
-              this.getEdge(), true);
-      
-    }
-
-    return this.groundState;
-  }
-
   public Vector getEdgeState() {
     if (this.edgeState != null) {
       return this.edgeState;
@@ -236,6 +244,30 @@ public class PathState extends AbstractVector implements
                   .getEdgeLengthErrorTolerance(), true);
     }
     return this.edgeState;
+  }
+
+  @Override
+  public double getElement(int index) {
+    return this.motionState.getElement(index);
+  }
+
+  public Vector getGroundState() {
+    if (!this.isOnRoad()) {
+      return this.motionState;
+    }
+
+    if (this.groundState == null) {
+      this.groundState =
+          PathUtils.getGroundStateFromRoad(this.motionState,
+              this.getEdge(), true);
+
+    }
+
+    return this.groundState;
+  }
+
+  public Vector getMotionState() {
+    return this.motionState;
   }
 
   public Path getPath() {
@@ -307,6 +339,11 @@ public class PathState extends AbstractVector implements
   }
 
   @Override
+  public boolean isSparse() {
+    return false;
+  }
+
+  @Override
   public boolean isUnitVector() {
     return this.motionState.isUnitVector();
   }
@@ -336,10 +373,11 @@ public class PathState extends AbstractVector implements
    */
   @Override
   public Vector minus(Vector other) {
-    if (other instanceof PathState)
-      return PathUtils.stateDiff((PathState)other, this, false);
-    else
+    if (other instanceof PathState) {
+      return PathUtils.stateDiff((PathState) other, this, false);
+    } else {
       return this.motionState.minus(other);
+    }
   }
 
   @Override
@@ -439,12 +477,12 @@ public class PathState extends AbstractVector implements
   public void setElement(int index, double value) {
     this.motionState.setElement(index, value);
     if (!this.path.isNullPath() && index == 0) {
-      this.edgeState = null; 
+      this.edgeState = null;
     } else {
       this.edgeState.setElement(index, value);
     }
     this.groundState = null;
-    
+
   }
 
   @Override
@@ -505,42 +543,4 @@ public class PathState extends AbstractVector implements
     this.motionState.zero();
   }
 
-  public PathState convertToPath(Path newPath) {
-    final Vector adjState;
-    if (newPath.isNullPath()) {
-      adjState = this.getGroundState().clone();
-    } else {
-  
-      final PathState startState =
-          new PathState(newPath, VectorFactory
-              .getDefault().createVector2D(0d, 0d));
-  
-      final Vector diff = startState.minus(this);
-      diff.negativeEquals();
-  
-      adjState =
-          VectorFactory.getDefault().createVector2D(
-              newPath.clampToPath(diff.getElement(0)),
-              diff.getElement(1));
-  
-      assert (newPath.isOnPath(adjState.getElement(0)));
-      assert !this.isOnRoad() || Preconditions.checkNotNull(
-          new PathState(newPath, adjState)
-            .minus(this)
-            .isZero(
-               MotionStateEstimatorPredictor 
-                    .getEdgeLengthErrorTolerance())
-          ? Boolean.TRUE : null);
-    }
-  
-    PathState result = new PathState(newPath, adjState);
-    
-    return result;
-  }
-
-  @Override
-  public boolean isSparse() {
-    return false;
-  }
-  
 }

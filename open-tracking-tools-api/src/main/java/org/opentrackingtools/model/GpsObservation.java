@@ -137,12 +137,12 @@ public class GpsObservation {
   @Override
   public String toString() {
     final StringBuilder builder = new StringBuilder();
-    builder.append("GpsObservation [sourceId=")
-        .append(this.sourceId).append(", timestamp=")
-        .append(this.timestamp).append(", coordsLatLon=")
-        .append(this.coordsLatLon).append(", recordNumber=")
-        .append(this.recordNumber).append(", coordsProjected=")
-        .append(this.coordsProjected).append("]");
+    builder.append("GpsObservation [sourceId=").append(this.sourceId)
+        .append(", timestamp=").append(this.timestamp)
+        .append(", coordsLatLon=").append(this.coordsLatLon)
+        .append(", recordNumber=").append(this.recordNumber)
+        .append(", coordsProjected=").append(this.coordsProjected)
+        .append("]");
     return builder.toString();
   }
 

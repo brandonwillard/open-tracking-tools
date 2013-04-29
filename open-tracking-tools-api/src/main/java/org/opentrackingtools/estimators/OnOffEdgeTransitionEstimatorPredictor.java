@@ -3,7 +3,6 @@ package org.opentrackingtools.estimators;
 import gov.sandia.cognition.learning.algorithm.IncrementalLearner;
 import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.statistics.bayesian.BayesianEstimatorPredictor;
-import gov.sandia.cognition.statistics.bayesian.BayesianParameter;
 import gov.sandia.cognition.statistics.bayesian.DefaultBayesianParameter;
 import gov.sandia.cognition.statistics.bayesian.conjugate.MultinomialBayesianEstimator;
 import gov.sandia.cognition.statistics.distribution.DirichletDistribution;
@@ -25,8 +24,12 @@ public class OnOffEdgeTransitionEstimatorPredictor extends
     BayesianEstimatorPredictor<InferenceGraphEdge, TransitionProbMatrix, OnOffEdgeTransPriorDistribution>,
     IncrementalLearner<InferenceGraphEdge, OnOffEdgeTransPriorDistribution> {
 
-  public static class Parameter extends 
+  public static class Parameter
+      extends
       DefaultBayesianParameter<TransitionProbMatrix, OnOffEdgeTransDistribution, OnOffEdgeTransPriorDistribution> {
+
+    private static final long serialVersionUID =
+        -1188148823031520367L;
 
     public Parameter(
       OnOffEdgeTransDistribution conditionalDistribution,
@@ -34,17 +37,14 @@ public class OnOffEdgeTransitionEstimatorPredictor extends
       super(conditionalDistribution, "edgeTransition", parameterPrior);
     }
 
-    private static final long serialVersionUID =
-        -1188148823031520367L;
-
     @Override
     public void updateConditionalDistribution(Random random) {
       final TransitionProbMatrix transMatrix =
           this.getParameterPrior().sample(random);
-      this.getConditionalDistribution().setEdgeMotionTransProbs(transMatrix
-          .getEdgeMotionTransProbs());
-      this.getConditionalDistribution().setEdgeMotionTransProbs(transMatrix
-          .getFreeMotionTransProbs());
+      this.getConditionalDistribution().setEdgeMotionTransProbs(
+          transMatrix.getEdgeMotionTransProbs());
+      this.getConditionalDistribution().setEdgeMotionTransProbs(
+          transMatrix.getFreeMotionTransProbs());
 
     }
 
@@ -59,7 +59,8 @@ public class OnOffEdgeTransitionEstimatorPredictor extends
   MultinomialBayesianEstimator estimator;
 
   public OnOffEdgeTransitionEstimatorPredictor(
-    VehicleStateDistribution<?> currentState, InferenceGraphEdge currentEdge) {
+    VehicleStateDistribution<?> currentState,
+    InferenceGraphEdge currentEdge) {
 
     this.currentState = currentState;
     this.currentEdge = currentEdge;
@@ -88,7 +89,7 @@ public class OnOffEdgeTransitionEstimatorPredictor extends
 
   @Override
   public OnOffEdgeTransPriorDistribution createInitialLearnedObject() {
-    return null; 
+    return null;
   }
 
   @Override

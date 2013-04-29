@@ -16,21 +16,19 @@ import org.opentrackingtools.paths.Path;
 import org.opentrackingtools.updater.VehicleStateBootstrapUpdater;
 import org.opentrackingtools.util.model.MutableDoubleCount;
 
-import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Sets;
 
-public class VehicleStateBootstrapFilter<O extends GpsObservation> extends
-    AbstractParticleFilter<O, VehicleStateDistribution<O>> {
+public class VehicleStateBootstrapFilter<O extends GpsObservation>
+    extends AbstractParticleFilter<O, VehicleStateDistribution<O>> {
 
-  private static final long serialVersionUID =
-      -2642221321938929247L;
+  private static final long serialVersionUID = -2642221321938929247L;
   protected final InferenceGraph inferredGraph;
   protected final Boolean isDebug;
 
   public VehicleStateBootstrapFilter(O obs,
     InferenceGraph inferredGraph,
-    VehicleStateInitialParameters parameters,
-    Boolean isDebug, Random rng) {
+    VehicleStateInitialParameters parameters, Boolean isDebug,
+    Random rng) {
     this.inferredGraph = inferredGraph;
     this.isDebug = isDebug;
     this.setUpdater(new VehicleStateBootstrapUpdater<O>(obs,
@@ -40,14 +38,16 @@ public class VehicleStateBootstrapFilter<O extends GpsObservation> extends
   @Override
   public void update(
     DataDistribution<VehicleStateDistribution<O>> target, O obs) {
-    
+
     /*
      * Get predictive states
      */
-    CountedDataDistribution<VehicleStateDistribution<O>> resampler = new CountedDataDistribution<VehicleStateDistribution<O>>(true);
+    final CountedDataDistribution<VehicleStateDistribution<O>> resampler =
+        new CountedDataDistribution<VehicleStateDistribution<O>>(true);
     int totalCount = 0;
     final Set<Path> evaledPaths = Sets.newHashSet();
-    for (Entry<VehicleStateDistribution<O>, ? extends Number> entry : target.asMap().entrySet()) {
+    for (final Entry<VehicleStateDistribution<O>, ? extends Number> entry : target
+        .asMap().entrySet()) {
 
       final int count;
       if (target instanceof CountedDataDistribution<?>) {
@@ -57,13 +57,15 @@ public class VehicleStateBootstrapFilter<O extends GpsObservation> extends
       }
       totalCount += count;
       for (int i = 0; i < count; i++) {
-        final VehicleStateDistribution<O> predictedState = entry.getKey().clone();
+        final VehicleStateDistribution<O> predictedState =
+            entry.getKey().clone();
         predictedState.setObservation(obs);
         this.updater.update(predictedState);
 
-        if (this.isDebug)
-          evaledPaths.add(predictedState.getPathStateParam().getValue()
-              .getPath());
+        if (this.isDebug) {
+          evaledPaths.add(predictedState.getPathStateParam()
+              .getValue().getPath());
+        }
 
         /*
          * Previous particle weight times new state likelihood
@@ -71,7 +73,8 @@ public class VehicleStateBootstrapFilter<O extends GpsObservation> extends
         final double totalLogLik =
             target.getProbabilityFunction().logEvaluate(
                 entry.getKey())
-                + this.updater.computeLogLikelihood(predictedState, obs);
+                + this.updater.computeLogLikelihood(predictedState,
+                    obs);
 
         resampler.increment(predictedState, totalLogLik, 1);
       }
@@ -79,20 +82,20 @@ public class VehicleStateBootstrapFilter<O extends GpsObservation> extends
 
     assert totalCount == this.numParticles;
 
-    final double efps =
-        this.computeEffectiveParticles(resampler);
+    final double efps = this.computeEffectiveParticles(resampler);
 
     target.clear();
     if (efps < this.numParticles * 0.9d) {
-      target.incrementAll(resampler.sample(this.random, numParticles));
+      target.incrementAll(resampler.sample(this.random,
+          this.numParticles));
     } else {
-      for (Entry<VehicleStateDistribution<O>, MutableDouble> entry : resampler.asMap().entrySet()) {
-        MutableDoubleCount value = ((MutableDoubleCount) entry.getValue());
+      for (final Entry<VehicleStateDistribution<O>, MutableDouble> entry : resampler
+          .asMap().entrySet()) {
+        final MutableDoubleCount value =
+            ((MutableDoubleCount) entry.getValue());
         if (target instanceof CountedDataDistribution<?>) {
-          ((CountedDataDistribution<VehicleStateDistribution<O>>)target).set(
-              entry.getKey(), 
-              value.value, 
-              value.count);
+          ((CountedDataDistribution<VehicleStateDistribution<O>>) target)
+              .set(entry.getKey(), value.value, value.count);
         } else {
           for (int i = 0; i < value.count; i++) {
             target.set(entry.getKey(), value.value);
@@ -101,9 +104,9 @@ public class VehicleStateBootstrapFilter<O extends GpsObservation> extends
       }
     }
 
-    assert (target instanceof CountedDataDistribution<?>) ? 
-        (((CountedDataDistribution<VehicleStateDistribution<O>>) target).getTotalCount() 
-            == this.numParticles) : true;
+    assert (target instanceof CountedDataDistribution<?>)
+        ? (((CountedDataDistribution<VehicleStateDistribution<O>>) target)
+            .getTotalCount() == this.numParticles) : true;
   }
 
 }

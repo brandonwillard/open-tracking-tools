@@ -1,16 +1,16 @@
 package org.opentrackingtools.util;
 
-import com.google.common.base.Preconditions;
+import gov.sandia.cognition.math.matrix.Matrix;
+import gov.sandia.cognition.math.matrix.decomposition.AbstractSingularValueDecomposition;
 
 import org.apache.commons.lang3.builder.ToStringBuilder;
 
-import gov.sandia.cognition.math.matrix.Matrix;
-import gov.sandia.cognition.math.matrix.decomposition.AbstractSingularValueDecomposition;
+import com.google.common.base.Preconditions;
 
 public class SimpleSingularValueDecomposition extends
     AbstractSingularValueDecomposition {
   public SimpleSingularValueDecomposition(Matrix U, Matrix S,
-      Matrix Vtranspose) {
+    Matrix Vtranspose) {
     super(U, S, Vtranspose);
     Preconditions.checkState(U.getNumColumns() == S.getNumRows()
         && S.getNumColumns() == Vtranspose.getNumRows());
@@ -18,12 +18,11 @@ public class SimpleSingularValueDecomposition extends
 
   @Override
   public String toString() {
-    ToStringBuilder builder = new ToStringBuilder(this);
-    builder.append("getS()", getS());
-    builder.append("conditionNumber()", conditionNumber());
-    builder.append("rank()", rank());
+    final ToStringBuilder builder = new ToStringBuilder(this);
+    builder.append("getS()", this.getS());
+    builder.append("conditionNumber()", this.conditionNumber());
+    builder.append("rank()", this.rank());
     return builder.toString();
   }
-  
-  
+
 }

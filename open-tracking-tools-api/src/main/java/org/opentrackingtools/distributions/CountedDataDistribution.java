@@ -154,8 +154,7 @@ public class CountedDataDistribution<KeyType> extends
     @Override
     public CountedDataDistribution.PMF<KeyType>
         createInitialLearnedObject() {
-      return new CountedDataDistribution.PMF<KeyType>(
-          this.isLogScale);
+      return new CountedDataDistribution.PMF<KeyType>(this.isLogScale);
     }
 
     @Override
@@ -307,8 +306,7 @@ public class CountedDataDistribution<KeyType> extends
    * Default constructor
    */
   public CountedDataDistribution(boolean isLogScale) {
-    this(CountedDataDistribution.DEFAULT_INITIAL_CAPACITY,
-        isLogScale);
+    this(CountedDataDistribution.DEFAULT_INITIAL_CAPACITY, isLogScale);
   }
 
   /**
@@ -389,6 +387,26 @@ public class CountedDataDistribution<KeyType> extends
           (MutableDoubleCount) entry.getValue();
       this.set(entry.getKey(), count.getValue(), count.getCount());
     }
+  }
+
+  @Override
+  public double decrement(KeyType key) {
+    return this.decrement(key, this.isLogScale ? 0d : 1d);
+  }
+
+  @Override
+  public double decrement(KeyType key, double value) {
+    return super.decrement(key, value);
+  }
+
+  @Override
+  public void decrementAll(Iterable<? extends KeyType> keys) {
+    super.decrementAll(keys);
+  }
+
+  @Override
+  public void decrementAll(ScalarMap<? extends KeyType> other) {
+    super.decrementAll(other);
   }
 
   public int getCount(KeyType key) {
@@ -501,14 +519,19 @@ public class CountedDataDistribution<KeyType> extends
   }
 
   @Override
+  public double increment(KeyType key) {
+    return this.increment(key, this.isLogScale ? 0d : 1d);
+  }
+
+  @Override
   public double increment(KeyType key, final double value) {
     return this.increment(key, value, 1);
   }
 
   /**
    * Increments by amount value and sets the extra info of count.<br>
-   * Note: count does not factor into the value amount, and thus weight
-   * of the key.
+   * Note: count does not factor into the value amount, and thus weight of the
+   * key.
    * 
    * @param key
    * @param value
@@ -552,6 +575,16 @@ public class CountedDataDistribution<KeyType> extends
     }
 
     return newValue;
+  }
+
+  @Override
+  public void incrementAll(Iterable<? extends KeyType> keys) {
+    super.incrementAll(keys);
+  }
+
+  @Override
+  public void incrementAll(ScalarMap<? extends KeyType> other) {
+    super.incrementAll(other);
   }
 
   public boolean isLogScale() {
@@ -660,41 +693,6 @@ public class CountedDataDistribution<KeyType> extends
           identity) == 0);
       entry.set(identity, count);
     }
-  }
-
-  @Override
-  public double increment(KeyType key) {
-    return this.increment(key, isLogScale ? 0d : 1d);
-  }
-
-  @Override
-  public void incrementAll(Iterable<? extends KeyType> keys) {
-    super.incrementAll(keys);
-  }
-
-  @Override
-  public void incrementAll(ScalarMap<? extends KeyType> other) {
-    super.incrementAll(other);
-  }
-
-  @Override
-  public double decrement(KeyType key) {
-    return this.decrement(key, isLogScale ? 0d : 1d);
-  }
-
-  @Override
-  public double decrement(KeyType key, double value) {
-    return super.decrement(key, value);
-  }
-
-  @Override
-  public void decrementAll(Iterable<? extends KeyType> keys) {
-    super.decrementAll(keys);
-  }
-
-  @Override
-  public void decrementAll(ScalarMap<? extends KeyType> other) {
-    super.decrementAll(other);
   }
 
 }

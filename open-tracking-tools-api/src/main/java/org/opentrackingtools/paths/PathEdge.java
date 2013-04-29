@@ -1,7 +1,5 @@
 package org.opentrackingtools.paths;
 
-import javax.annotation.Nonnull;
-
 import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.util.AbstractCloneableSerializable;
 
@@ -11,44 +9,66 @@ import org.opentrackingtools.graph.InferenceGraphSegment;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ComparisonChain;
 import com.google.common.collect.Ordering;
-import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.LineSegment;
 
-public class PathEdge extends
-    AbstractCloneableSerializable implements Comparable<PathEdge> {
+public class PathEdge extends AbstractCloneableSerializable implements
+    Comparable<PathEdge> {
+
+  public final static PathEdge nullPathEdge = new PathEdge();
 
   private static final long serialVersionUID = 2615199504616160384L;
-
+  protected Double distFromStartOfGraphEdge = null;
   protected Double distToStartOfEdge = null;
   protected InferenceGraphEdge edge = null;
   protected Boolean isBackward = null;
-  protected InferenceGraphSegment segment = null;
-  protected Double distFromStartOfGraphEdge = null;
   protected LineSegment line = null;
-  
-  public final static PathEdge nullPathEdge = new PathEdge();
+
+  protected InferenceGraphSegment segment = null;
 
   protected PathEdge() {
     this.edge = InferenceGraphEdge.nullGraphEdge;
   }
 
-  public Double getDistFromStartOfGraphEdge() {
-    return distFromStartOfGraphEdge;
-  }
-
-  public PathEdge(InferenceGraphSegment segment, double startDistance, boolean isBackward) {
-    Preconditions.checkArgument(!segment.getParentEdge().isNullEdge());
+  public PathEdge(InferenceGraphSegment segment,
+    double startDistance, boolean isBackward) {
+    Preconditions
+        .checkArgument(!segment.getParentEdge().isNullEdge());
     Preconditions.checkState((isBackward != Boolean.TRUE)
         || startDistance <= 0d);
     this.segment = segment;
     this.line = new LineSegment(segment.getLine());
-    if (isBackward)
+    if (isBackward) {
       this.line.reverse();
+    }
     this.edge = segment.getParentEdge();
-    this.distFromStartOfGraphEdge = segment.getParentEdge().getLengthLocationMap().getLength(
-        segment.getStartIndex());
+    this.distFromStartOfGraphEdge =
+        segment.getParentEdge().getLengthLocationMap()
+            .getLength(segment.getStartIndex());
     this.distToStartOfEdge = startDistance;
     this.isBackward = isBackward;
+  }
+
+  public Vector clampToEdge(Vector state) {
+    Preconditions.checkState(!this.isNullEdge());
+    Preconditions.checkArgument(state.getDimensionality() == 2);
+
+    final Vector newState = state.clone();
+    final double direction = this.isBackward ? -1d : 1d;
+    final double distance =
+        direction * (newState.getElement(0) - this.distToStartOfEdge);
+
+    /*
+     * Notice that we add a small mount to the start distance and subtract
+     * from the end distance.  This is so to reduce confusion about which edge it's on
+     * when it's at the border of two.
+     */
+    if (distance < 0d) {
+      newState.setElement(0, this.distToStartOfEdge + 1e-4);
+    } else if (distance > this.line.getLength()) {
+      newState.setElement(0, this.distToStartOfEdge + direction
+          * (this.line.getLength() - 1e-4));
+    }
+    return newState;
   }
 
   @Override
@@ -116,28 +136,6 @@ public class PathEdge extends
     }
     return true;
   }
-  
-  public Vector clampToEdge(Vector state) {
-    Preconditions.checkState(!this.isNullEdge());
-    Preconditions.checkArgument(state.getDimensionality() == 2);
-    
-    final Vector newState = state.clone();
-    final double direction = this.isBackward ? -1d : 1d;
-    final double distance = direction * (newState.getElement(0)
-        - this.distToStartOfEdge);
-    
-    /*
-     * Notice that we add a small mount to the start distance and subtract
-     * from the end distance.  This is so to reduce confusion about which edge it's on
-     * when it's at the border of two.
-     */
-    if ( distance < 0d) {
-      newState.setElement(0, this.distToStartOfEdge + 1e-4);
-    } else if (distance > this.line.getLength()) {
-      newState.setElement(0, this.distToStartOfEdge + direction * (this.line.getLength() - 1e-4));
-    }
-    return newState;
-  }
 
   /**
    * Returns a state on the edge that's been truncated within the given
@@ -184,16 +182,12 @@ public class PathEdge extends
     return newState;
   }
 
-  public Double getDistToStartOfEdge() {
-    return this.distToStartOfEdge;
+  public Double getDistFromStartOfGraphEdge() {
+    return this.distFromStartOfGraphEdge;
   }
 
-  public InferenceGraphSegment getSegment() {
-    return this.segment;
-  }
-  
-  public LineSegment getLine() {
-    return this.line;
+  public Double getDistToStartOfEdge() {
+    return this.distToStartOfEdge;
   }
 
   public InferenceGraphEdge getInferenceGraphEdge() {
@@ -202,6 +196,14 @@ public class PathEdge extends
 
   public double getLength() {
     return this.segment.getLine().getLength();
+  }
+
+  public LineSegment getLine() {
+    return this.line;
+  }
+
+  public InferenceGraphSegment getSegment() {
+    return this.segment;
   }
 
   @Override
@@ -232,7 +234,7 @@ public class PathEdge extends
   }
 
   public boolean isNullEdge() {
-    return this.equals(nullPathEdge);
+    return this.equals(PathEdge.nullPathEdge);
   }
 
   public boolean isOnEdge(double distance) {
@@ -258,8 +260,8 @@ public class PathEdge extends
       final double distToStart =
           this.distToStartOfEdge == 0d && this.isBackward ? -0d
               : this.distToStartOfEdge.longValue();
-      return "PathEdge [edge=" + this.segment
-          + ", distToStart=" + distToStart + "]";
+      return "PathEdge [edge=" + this.segment + ", distToStart="
+          + distToStart + "]";
     }
   }
 

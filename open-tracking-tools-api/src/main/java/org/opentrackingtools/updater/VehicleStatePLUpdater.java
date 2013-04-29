@@ -50,7 +50,8 @@ public class VehicleStatePLUpdater<O extends GpsObservation, G extends Inference
 
   protected VehicleStateDistributionFactory<O, G> vehicleStateFactory;
 
-  public VehicleStatePLUpdater(O obs, G inferencedGraph, VehicleStateDistributionFactory<O,G> vehicleStateFactory,
+  public VehicleStatePLUpdater(O obs, G inferencedGraph,
+    VehicleStateDistributionFactory<O, G> vehicleStateFactory,
     VehicleStateInitialParameters parameters, Random rng) {
     this.vehicleStateFactory = vehicleStateFactory;
     this.initialObservation = obs;
@@ -77,8 +78,8 @@ public class VehicleStatePLUpdater<O extends GpsObservation, G extends Inference
   }
 
   @Override
-  public double computeLogLikelihood(VehicleStateDistribution<O> particle,
-    O observation) {
+  public double computeLogLikelihood(
+    VehicleStateDistribution<O> particle, O observation) {
     double logLikelihood = 0d;
     logLikelihood +=
         particle.getMotionStateParam().getConditionalDistribution()
@@ -91,8 +92,8 @@ public class VehicleStatePLUpdater<O extends GpsObservation, G extends Inference
    * Create vehicle states from the nearby edges.
    */
   @Override
-  public DataDistribution<VehicleStateDistribution<O>> createInitialParticles(
-    int numParticles) {
+  public DataDistribution<VehicleStateDistribution<O>>
+      createInitialParticles(int numParticles) {
     final DataDistribution<VehicleStateDistribution<O>> retDist =
         new CountedDataDistribution<VehicleStateDistribution<O>>(true);
 
@@ -101,8 +102,8 @@ public class VehicleStatePLUpdater<O extends GpsObservation, G extends Inference
      * edges.
      */
     final VehicleStateDistribution<O> nullState =
-        vehicleStateFactory.createInitialVehicleState(
-            this.parameters, this.inferenceGraph, 
+        this.vehicleStateFactory.createInitialVehicleState(
+            this.parameters, this.inferenceGraph,
             this.initialObservation, this.random,
             PathEdge.nullPathEdge);
     final MultivariateGaussian initialMotionStateDist =
@@ -116,12 +117,13 @@ public class VehicleStatePLUpdater<O extends GpsObservation, G extends Inference
        * From the surrounding edges, we create states on those edges.
        */
       final DataDistribution<VehicleStateDistribution<O>> statesOnEdgeDistribution =
-          new CountedDataDistribution<VehicleStateDistribution<O>>(true);
-      
+          new CountedDataDistribution<VehicleStateDistribution<O>>(
+              true);
+
       final double nullLogLikelihood =
           nullState.getEdgeTransitionParam()
-              .getConditionalDistribution()
-              .getProbabilityFunction().logEvaluate(InferenceGraphEdge.nullGraphEdge)
+              .getConditionalDistribution().getProbabilityFunction()
+              .logEvaluate(InferenceGraphEdge.nullGraphEdge)
               + this.computeLogLikelihood(nullState,
                   this.initialObservation);
 
@@ -129,16 +131,19 @@ public class VehicleStatePLUpdater<O extends GpsObservation, G extends Inference
           .increment(nullState, nullLogLikelihood);
 
       for (final InferenceGraphSegment segment : edges) {
-        
+
         final PathEdge pathEdge = new PathEdge(segment, 0d, false);
-        
-        VehicleStateDistribution<O> stateOnEdge = vehicleStateFactory.createInitialVehicleState(
-            parameters, inferenceGraph, initialObservation, random, pathEdge);
+
+        final VehicleStateDistribution<O> stateOnEdge =
+            this.vehicleStateFactory.createInitialVehicleState(
+                this.parameters, this.inferenceGraph,
+                this.initialObservation, this.random, pathEdge);
 
         final double logLikelihood =
             stateOnEdge.getEdgeTransitionParam()
                 .getConditionalDistribution()
-                .getProbabilityFunction().logEvaluate(pathEdge.getInferenceGraphEdge())
+                .getProbabilityFunction()
+                .logEvaluate(pathEdge.getInferenceGraphEdge())
                 + this.computeLogLikelihood(stateOnEdge,
                     this.initialObservation);
 
@@ -151,6 +156,10 @@ public class VehicleStatePLUpdater<O extends GpsObservation, G extends Inference
 
     Preconditions.checkState(retDist.getDomainSize() > 0);
     return retDist;
+  }
+
+  public G getInferenceGraph() {
+    return this.inferenceGraph;
   }
 
   public InferenceGraph getInferredGraph() {
@@ -173,6 +182,23 @@ public class VehicleStatePLUpdater<O extends GpsObservation, G extends Inference
     return this.seed;
   }
 
+  public VehicleStateDistributionFactory<O, G>
+      getVehicleStateFactory() {
+    return this.vehicleStateFactory;
+  }
+
+  public void setInferenceGraph(G inferenceGraph) {
+    this.inferenceGraph = inferenceGraph;
+  }
+
+  public void setInitialObservation(O initialObservation) {
+    this.initialObservation = initialObservation;
+  }
+
+  public void setParameters(VehicleStateInitialParameters parameters) {
+    this.parameters = parameters;
+  }
+
   public void setRandom(Random random) {
     this.random = random;
   }
@@ -181,22 +207,30 @@ public class VehicleStatePLUpdater<O extends GpsObservation, G extends Inference
     this.seed = seed;
   }
 
+  public void setVehicleStateFactory(
+    VehicleStateDistributionFactory<O, G> vehicleStateFactory) {
+    this.vehicleStateFactory = vehicleStateFactory;
+  }
+
   @Override
-  public VehicleStateDistribution<O> update(VehicleStateDistribution<O> state) {
+  public VehicleStateDistribution<O> update(
+    VehicleStateDistribution<O> state) {
     final VehicleStateDistribution<O> predictedState = state.clone();
-    
+
     /*
      * Predict/project the motion state forward.
      */
     final MotionStateEstimatorPredictor motionStateEstimatorPredictor =
-        new MotionStateEstimatorPredictor(state, this.random, this.parameters.getInitialObsFreq());
+        new MotionStateEstimatorPredictor(state, this.random,
+            this.parameters.getInitialObsFreq());
 
     predictedState
         .setMotionStateEstimatorPredictor(motionStateEstimatorPredictor);
 
     final Collection<? extends Path> paths =
-        this.inferenceGraph.getPaths(predictedState, predictedState.getObservation());
-    
+        this.inferenceGraph.getPaths(predictedState,
+            predictedState.getObservation());
+
     Preconditions.checkState(paths.contains(Path.nullPath));
 
     final List<PathStateDistribution> distributions =
@@ -207,38 +241,49 @@ public class VehicleStatePLUpdater<O extends GpsObservation, G extends Inference
     double weightsSum = Double.NEGATIVE_INFINITY;
     for (final Path path : paths) {
       final PathStateEstimatorPredictor pathStateEstimatorPredictor =
-          new PathStateEstimatorPredictor(state, path, this.parameters.getInitialObsFreq());
-      
+          new PathStateEstimatorPredictor(state, path,
+              this.parameters.getInitialObsFreq());
+
       /*
        * These edge-free prior predictions need to be relative
        * to the assumed starting edge.  Since our paths
        * are both on and off-road, we have to project on when
        * we're off, then predict, and vice versa, when applicable.
        */
-      final PathStateDistribution priorPathStateDist = predictedState.getPathStateParam().getParameterPrior();
+      final PathStateDistribution priorPathStateDist =
+          predictedState.getPathStateParam().getParameterPrior();
       final MultivariateGaussian priorPredictiveMotionState;
-      if (path.isNullPath() && priorPathStateDist.getPathState().isOnRoad()) {
+      if (path.isNullPath()
+          && priorPathStateDist.getPathState().isOnRoad()) {
         /*
          * Convert to off-road, then predict
          */
-        final MultivariateGaussian priorMotionState = priorPathStateDist.getMotionDistribution().clone();
-        PathUtils.convertToGroundBelief(priorMotionState, priorPathStateDist.getPathState().getEdge(), 
-            true, false, true);
-        priorPredictiveMotionState = motionStateEstimatorPredictor
+        final MultivariateGaussian priorMotionState =
+            priorPathStateDist.getMotionDistribution().clone();
+        PathUtils.convertToGroundBelief(priorMotionState,
+            priorPathStateDist.getPathState().getEdge(), true, false,
+            true);
+        priorPredictiveMotionState =
+            motionStateEstimatorPredictor
                 .createPredictiveDistribution(priorMotionState);
-      } else if (!path.isNullPath() && !priorPathStateDist.getPathState().isOnRoad()) {
-        final MultivariateGaussian priorMotionState = motionStateEstimatorPredictor
-                .createPredictiveDistribution(priorPathStateDist.getMotionDistribution());
-        
-        priorPredictiveMotionState = PathUtils.getRoadBeliefFromGround(
-            priorMotionState, Iterables.getFirst(path.getPathEdges(), null), true,
-            priorPathStateDist.getMotionDistribution().getMean(),
-            this.parameters.getInitialObsFreq());
+      } else if (!path.isNullPath()
+          && !priorPathStateDist.getPathState().isOnRoad()) {
+        final MultivariateGaussian priorMotionState =
+            motionStateEstimatorPredictor
+                .createPredictiveDistribution(priorPathStateDist
+                    .getMotionDistribution());
+
+        priorPredictiveMotionState =
+            PathUtils.getRoadBeliefFromGround(priorMotionState,
+                Iterables.getFirst(path.getPathEdges(), null), true,
+                priorPathStateDist.getMotionDistribution().getMean(),
+                this.parameters.getInitialObsFreq());
         /*
          * Not allowing backward movement...
          */
-        if (priorPredictiveMotionState.getMean().getElement(1) <= 0d)
+        if (priorPredictiveMotionState.getMean().getElement(1) <= 0d) {
           continue;
+        }
       } else {
         /*
          * Stay on or off-road, but notice that we use the "local" state (the distance
@@ -246,36 +291,39 @@ public class VehicleStatePLUpdater<O extends GpsObservation, G extends Inference
          * don't use the local state, then our state distance will increase on each
          * update.
          */
-        final MultivariateGaussian priorMotionState = 
-            predictedState.getPathStateParam().getParameterPrior().getEdgeDistribution();
-        priorPredictiveMotionState = motionStateEstimatorPredictor
+        final MultivariateGaussian priorMotionState =
+            predictedState.getPathStateParam().getParameterPrior()
+                .getEdgeDistribution();
+        priorPredictiveMotionState =
+            motionStateEstimatorPredictor
                 .createPredictiveDistribution(priorMotionState);
       }
 
       final PathStateMixtureDensityModel pathStateDist =
           pathStateEstimatorPredictor
               .createPredictiveDistribution(priorPredictiveMotionState);
-      
+
       /*
        * We only consider non-zero predictive results, naturally.
        * Also, a path can be rejected due to direction,
        * so we must expect this.
        */
       if (pathStateDist.getDistributionCount() > 0) {
-        final double mixtureLikelihood = pathStateDist.getPriorWeightSum();
+        final double mixtureLikelihood =
+            pathStateDist.getPriorWeightSum();
         if (priorPredictiveMotionState.getInputDimensionality() == 4) {
           numberOfOffRoadPaths++;
-        } else if (mixtureLikelihood > Double.NEGATIVE_INFINITY){
+        } else if (mixtureLikelihood > Double.NEGATIVE_INFINITY) {
           numberOfNonZeroPaths++;
         }
-        
+
         weightsSum = LogMath.add(weightsSum, mixtureLikelihood);
         distributions.addAll(pathStateDist.getDistributions());
         weights =
             Doubles.concat(weights, pathStateDist.getPriorWeights());
       }
     }
-    
+
     /*
      * Normalize over on/off-road and edge count
      */
@@ -292,44 +340,20 @@ public class VehicleStatePLUpdater<O extends GpsObservation, G extends Inference
         /*
          * Normalize over categories
          */
-        if (numberOfOffRoadPaths > 0)
+        if (numberOfOffRoadPaths > 0) {
           weights[i] -= Math.log(2);
+        }
       }
     }
-    
+
     final PathStateMixtureDensityModel predictedPathStateDist =
-        new PathStateMixtureDensityModel(
-            distributions, weights);
+        new PathStateMixtureDensityModel(distributions, weights);
     predictedState.setPathStateParam(SimpleBayesianParameter.create(
         state.getPathStateParam().getParameterPrior().getPathState(),
-        predictedPathStateDist, state.getPathStateParam().getParameterPrior()));
-    
+        predictedPathStateDist, state.getPathStateParam()
+            .getParameterPrior()));
+
     return predictedState;
-  }
-
-  public G getInferenceGraph() {
-    return inferenceGraph;
-  }
-
-  public void setInferenceGraph(G inferenceGraph) {
-    this.inferenceGraph = inferenceGraph;
-  }
-
-  public VehicleStateDistributionFactory<O, G> getVehicleStateFactory() {
-    return vehicleStateFactory;
-  }
-
-  public void setVehicleStateFactory(
-      VehicleStateDistributionFactory<O, G> vehicleStateFactory) {
-    this.vehicleStateFactory = vehicleStateFactory;
-  }
-
-  public void setInitialObservation(O initialObservation) {
-    this.initialObservation = initialObservation;
-  }
-
-  public void setParameters(VehicleStateInitialParameters parameters) {
-    this.parameters = parameters;
   }
 
 }

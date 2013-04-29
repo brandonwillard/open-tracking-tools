@@ -53,7 +53,8 @@ public class PathStateDistribution extends
     public PDF(PathStateDistribution pathStateDistribution) {
       super(pathStateDistribution);
       this.gaussianPdf =
-          pathStateDistribution.motionDistribution.getProbabilityFunction();
+          pathStateDistribution.motionDistribution
+              .getProbabilityFunction();
     }
 
     @Override
@@ -80,27 +81,21 @@ public class PathStateDistribution extends
 
   private static final long serialVersionUID = -31238492416118648L;
 
-  @Override
-  public String toString() {
-    ToStringBuilder builder = new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE);
-    builder.append("distribution", motionDistribution);
-    builder.append("path", path);
-    return builder.toString();
-  }
-
-  protected MultivariateGaussian motionDistribution;
+  protected MultivariateGaussian edgeDistribution = null;
 
   protected MultivariateGaussian groundDistribution = null;
+
+  protected MultivariateGaussian motionDistribution;
 
   protected Path path;
 
   protected PathState pathState;
 
-  protected MultivariateGaussian edgeDistribution = null;
-
   public PathStateDistribution(Path path, MultivariateGaussian dist) {
-    Preconditions.checkArgument(path.isNullPath() || dist.getInputDimensionality() == 2);
-    Preconditions.checkArgument(!path.isNullPath() || dist.getInputDimensionality() == 4);
+    Preconditions.checkArgument(path.isNullPath()
+        || dist.getInputDimensionality() == 2);
+    Preconditions.checkArgument(!path.isNullPath()
+        || dist.getInputDimensionality() == 4);
     this.path = path;
     this.motionDistribution = dist;
     this.pathState = new PathState(path, dist.getMean());
@@ -110,8 +105,10 @@ public class PathStateDistribution extends
     PathStateDistribution pathStateDistribution) {
     this.pathState = pathStateDistribution.pathState;
     this.path = pathStateDistribution.path;
-    this.motionDistribution = pathStateDistribution.motionDistribution;
-    this.groundDistribution = pathStateDistribution.groundDistribution;
+    this.motionDistribution =
+        pathStateDistribution.motionDistribution;
+    this.groundDistribution =
+        pathStateDistribution.groundDistribution;
     this.edgeDistribution = pathStateDistribution.edgeDistribution;
   }
 
@@ -122,8 +119,10 @@ public class PathStateDistribution extends
     clone.path = ObjectUtil.cloneSmart(this.path);
     clone.pathState = ObjectUtil.cloneSmart(this.pathState);
     clone.motionDistribution = this.motionDistribution.clone();
-    clone.groundDistribution = ObjectUtil.cloneSmart(this.groundDistribution);
-    clone.edgeDistribution = ObjectUtil.cloneSmart(this.edgeDistribution);
+    clone.groundDistribution =
+        ObjectUtil.cloneSmart(this.groundDistribution);
+    clone.edgeDistribution =
+        ObjectUtil.cloneSmart(this.edgeDistribution);
     return clone;
   }
 
@@ -141,7 +140,37 @@ public class PathStateDistribution extends
     this.motionDistribution.convertFromVector(parameters);
     this.groundDistribution = null;
     this.edgeDistribution = null;
-    this.pathState = new PathState(this.path, this.motionDistribution.getMean());
+    this.pathState =
+        new PathState(this.path, this.motionDistribution.getMean());
+  }
+
+  public PathStateDistribution convertToPath(Path newPath) {
+    final PathState onThisPath =
+        this.pathState.convertToPath(newPath);
+    final Matrix covar;
+    if (newPath.isNullPath()) {
+      covar = this.getGroundDistribution().getCovariance();
+    } else {
+      if (!this.pathState.isOnRoad()) {
+        /*
+         * Project covar to edge 
+         */
+        final PathEdgeProjection proj =
+            PathUtils.getRoadProjection(this.pathState
+                .getGroundState(), this.path.getGeometry(),
+                onThisPath.getEdge().getLine(), onThisPath.getEdge()
+                    .getDistToStartOfEdge());
+        final Matrix C = this.getCovariance();
+        covar = PathUtils.getProjectedCovariance(proj, C, true);
+      } else {
+        covar = this.getCovariance();
+      }
+    }
+    final MultivariateGaussian newBelief =
+        this.motionDistribution.clone();
+    newBelief.setMean(onThisPath.getMotionState());
+    newBelief.setCovariance(covar);
+    return new PathStateDistribution(newPath, newBelief);
   }
 
   @Override
@@ -172,7 +201,8 @@ public class PathStateDistribution extends
       if (other.motionDistribution != null) {
         return false;
       }
-    } else if (!this.motionDistribution.equals(other.motionDistribution)) {
+    } else if (!this.motionDistribution
+        .equals(other.motionDistribution)) {
       return false;
     }
     return true;
@@ -180,21 +210,6 @@ public class PathStateDistribution extends
 
   public Matrix getCovariance() {
     return this.motionDistribution.getCovariance();
-  }
-
-  public MultivariateGaussian getGroundDistribution() {
-
-    if (!this.pathState.isOnRoad()) {
-      return this.motionDistribution;
-    }
-
-    if (this.groundDistribution == null) {
-      this.groundDistribution =
-          PathUtils.getGroundBeliefFromRoad(this.motionDistribution,
-              this.pathState.getEdge(), false, true);
-    }
-
-    return this.groundDistribution;
   }
 
   public MultivariateGaussian getEdgeDistribution() {
@@ -213,8 +228,23 @@ public class PathStateDistribution extends
         localStateBelief.setMean(mean);
         this.edgeDistribution = localStateBelief;
       }
-      return edgeDistribution;
+      return this.edgeDistribution;
     }
+  }
+
+  public MultivariateGaussian getGroundDistribution() {
+
+    if (!this.pathState.isOnRoad()) {
+      return this.motionDistribution;
+    }
+
+    if (this.groundDistribution == null) {
+      this.groundDistribution =
+          PathUtils.getGroundBeliefFromRoad(this.motionDistribution,
+              this.pathState.getEdge(), false, true);
+    }
+
+    return this.groundDistribution;
   }
 
   @Override
@@ -250,9 +280,9 @@ public class PathStateDistribution extends
          * Project covar to edge 
          */
         final PathEdgeProjection proj =
-            PathUtils.getRoadProjection(stateBelief.
-                getMotionDistribution().getMean(), 
-                path.getGeometry(), onThisPath.getEdge().getLine(), 
+            PathUtils.getRoadProjection(stateBelief
+                .getMotionDistribution().getMean(), path
+                .getGeometry(), onThisPath.getEdge().getLine(),
                 onThisPath.getEdge().getDistToStartOfEdge());
         final Matrix C = stateBelief.getCovariance();
         covar = PathUtils.getProjectedCovariance(proj, C, true);
@@ -260,8 +290,10 @@ public class PathStateDistribution extends
         covar = stateBelief.getCovariance();
       }
     }
-    final PathStateDistribution newBelief = new PathStateDistribution(path,
-        new TruncatedRoadGaussian(onThisPath.getMotionState().clone(), new SvdMatrix(covar)));
+    final PathStateDistribution newBelief =
+        new PathStateDistribution(path,
+            new TruncatedRoadGaussian(onThisPath.getMotionState()
+                .clone(), new SvdMatrix(covar)));
     return newBelief;
   }
 
@@ -301,8 +333,9 @@ public class PathStateDistribution extends
    * 
    * @param newGroundDist
    */
-  public void
-      setGroundDistribution(MultivariateGaussian newGroundDist, Vector prevState, double timeDiff) {
+  public void setGroundDistribution(
+    MultivariateGaussian newGroundDist, Vector prevState,
+    double timeDiff) {
 
     Preconditions.checkArgument(newGroundDist
         .getInputDimensionality() == 4);
@@ -314,7 +347,7 @@ public class PathStateDistribution extends
     } else {
       this.motionDistribution = newGroundDist;
     }
-    this.pathState = 
+    this.pathState =
         new PathState(this.pathState.getPath(),
             this.motionDistribution.getMean());
 
@@ -328,33 +361,14 @@ public class PathStateDistribution extends
     this.groundDistribution = null;
     this.pathState = new PathState(this.path, mean);
   }
-  
-  public PathStateDistribution convertToPath(Path newPath) {
-    final PathState onThisPath = 
-        this.pathState.convertToPath(newPath);
-    final Matrix covar;
-    if (newPath.isNullPath()) {
-      covar = this.getGroundDistribution().getCovariance();
-    } else {
-      if (!this.pathState.isOnRoad()) {
-        /*
-         * Project covar to edge 
-         */
-        PathEdgeProjection proj = 
-            PathUtils.getRoadProjection(this.pathState.getGroundState(), 
-                path.getGeometry(), onThisPath.getEdge().getLine(), 
-                onThisPath.getEdge().getDistToStartOfEdge());
-        final Matrix C = this.getCovariance();
-        covar = PathUtils.getProjectedCovariance(proj, C, true);
-      } else {
-        covar = this.getCovariance();
-      }
-    }
-    final MultivariateGaussian newBelief = 
-        this.motionDistribution.clone();
-    newBelief.setMean(onThisPath.getMotionState());
-    newBelief.setCovariance(covar);
-    return new PathStateDistribution(newPath, newBelief);
+
+  @Override
+  public String toString() {
+    final ToStringBuilder builder =
+        new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE);
+    builder.append("distribution", this.motionDistribution);
+    builder.append("path", this.path);
+    return builder.toString();
   }
-  
+
 }

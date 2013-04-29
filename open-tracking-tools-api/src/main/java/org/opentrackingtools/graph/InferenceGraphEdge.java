@@ -1,11 +1,10 @@
 package org.opentrackingtools.graph;
 
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.List;
-
 import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.math.matrix.VectorFactory;
+
+import java.util.Collections;
+import java.util.List;
 
 import javax.annotation.Nonnull;
 
@@ -17,10 +16,7 @@ import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.LineSegment;
 import com.vividsolutions.jts.geom.LineString;
-import com.vividsolutions.jts.index.strtree.SIRtree;
-import com.vividsolutions.jts.linearref.LengthIndexedLine;
 import com.vividsolutions.jts.linearref.LengthLocationMap;
-import com.vividsolutions.jts.linearref.LinearLocation;
 import com.vividsolutions.jts.linearref.LocationIndexedLine;
 
 public class InferenceGraphEdge implements
@@ -29,19 +25,18 @@ public class InferenceGraphEdge implements
   /*
    * This is the empty edge, which stands for free movement
    */
-  public final static InferenceGraphEdge nullGraphEdge = new InferenceGraphEdge();
+  public final static InferenceGraphEdge nullGraphEdge =
+      new InferenceGraphEdge();
 
   protected final Object backingEdge;
   protected final Integer edgeId;
   protected final Vector endPoint;
   protected final Geometry geometry;
-  protected final Boolean hasReverse;
-  protected final Vector startPoint;
   protected final List<InferenceGraphSegment> graphSegments;
-  protected final LocationIndexedLine locationIndexedLine;
+  protected final Boolean hasReverse;
   protected LengthLocationMap lengthLocationMap = null;
-
-  
+  protected final LocationIndexedLine locationIndexedLine;
+  protected final Vector startPoint;
 
   protected InferenceGraphEdge() {
     this.locationIndexedLine = null;
@@ -81,14 +76,16 @@ public class InferenceGraphEdge implements
 
     this.locationIndexedLine = new LocationIndexedLine(this.geometry);
     this.graphSegments = Lists.newArrayList();
-    List<LineSegment> segments = GeoUtils.getSubLineSegments((LineString)this.geometry);
+    final List<LineSegment> segments =
+        GeoUtils.getSubLineSegments((LineString) this.geometry);
     InferenceGraphSegment nextSegment = null;
-    for (LineSegment segment : Lists.reverse(segments)) {
-      InferenceGraphSegment infSegment = new InferenceGraphSegment(segment, this, nextSegment);
+    for (final LineSegment segment : Lists.reverse(segments)) {
+      final InferenceGraphSegment infSegment =
+          new InferenceGraphSegment(segment, this, nextSegment);
       nextSegment = infSegment;
-      graphSegments.add(infSegment);
+      this.graphSegments.add(infSegment);
     }
-    Collections.reverse(graphSegments);
+    Collections.reverse(this.graphSegments);
   }
 
   @Override
@@ -145,6 +142,47 @@ public class InferenceGraphEdge implements
     return this.geometry.getLength();
   }
 
+  public LengthLocationMap getLengthLocationMap() {
+    if (this.lengthLocationMap == null) {
+      this.lengthLocationMap = new LengthLocationMap(this.geometry);
+    }
+    return this.lengthLocationMap;
+  }
+
+  public LocationIndexedLine getLocationIndexedLine() {
+    return this.locationIndexedLine;
+  }
+
+  public List<InferenceGraphSegment> getSegments() {
+    return this.graphSegments;
+  }
+
+  public List<InferenceGraphSegment> getSegments(double upToLength) {
+    return this.getSegments(0d, upToLength);
+  }
+
+  /**
+   * Get segments with distances that overlap the given interval (inclusive).
+   * 
+   * @param lengthStart
+   * @param lengthEnd
+   * @return
+   */
+  public List<InferenceGraphSegment> getSegments(double lengthStart,
+    double lengthEnd) {
+    Preconditions.checkState(lengthStart <= lengthEnd);
+    final List<InferenceGraphSegment> results = Lists.newArrayList();
+    for (final InferenceGraphSegment segment : this.graphSegments) {
+      if (segment.startDistance >= lengthStart) {
+        results.add(segment);
+      }
+      if (segment.startDistance + segment.line.getLength() > lengthEnd) {
+        break;
+      }
+    }
+    return results;
+  }
+
   public Vector getStartPoint() {
     return this.startPoint;
   }
@@ -165,7 +203,7 @@ public class InferenceGraphEdge implements
   }
 
   public boolean isNullEdge() {
-    return this.equals(nullGraphEdge);
+    return this.equals(InferenceGraphEdge.nullGraphEdge);
   }
 
   @Override
@@ -173,47 +211,9 @@ public class InferenceGraphEdge implements
     if (this == InferenceGraphEdge.nullGraphEdge) {
       return "InferenceGraphEdge [null]";
     } else {
-      return "InferenceGraphEdge [edgeId=" + this.edgeId + ", length="
-          + this.getLength() + "]";
+      return "InferenceGraphEdge [edgeId=" + this.edgeId
+          + ", length=" + this.getLength() + "]";
     }
-  }
-
-  public LocationIndexedLine getLocationIndexedLine() {
-    return this.locationIndexedLine;
-  }
-
-  public LengthLocationMap getLengthLocationMap() {
-    if (this.lengthLocationMap == null)
-      this.lengthLocationMap = new LengthLocationMap(this.geometry);
-    return this.lengthLocationMap;
-  }
-  
-  public List<InferenceGraphSegment> getSegments() {
-    return this.graphSegments;
-  }
-
-  public List<InferenceGraphSegment> getSegments(double upToLength) {
-    return this.getSegments(0d, upToLength);
-  }
-  
-  /**
-   * Get segments with distances that overlap the given interval (inclusive).
-   * @param lengthStart
-   * @param lengthEnd
-   * @return
-   */
-  public List<InferenceGraphSegment> getSegments(double lengthStart, double lengthEnd) {
-    Preconditions.checkState(lengthStart <= lengthEnd);
-    List<InferenceGraphSegment> results = Lists.newArrayList();
-    for (InferenceGraphSegment segment : this.graphSegments) {
-      if (segment.startDistance >= lengthStart) {
-        results.add(segment);
-      }
-      if (segment.startDistance + segment.line.getLength() > lengthEnd) {
-        break;
-      }
-    }
-    return results;
   }
 
 }

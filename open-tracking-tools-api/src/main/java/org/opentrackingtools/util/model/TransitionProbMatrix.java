@@ -1,10 +1,11 @@
 package org.opentrackingtools.util.model;
 
-import org.apache.commons.lang3.builder.CompareToBuilder;
-
 import gov.sandia.cognition.math.matrix.Vector;
 
-public class TransitionProbMatrix implements Comparable<TransitionProbMatrix>{
+import org.apache.commons.lang3.builder.CompareToBuilder;
+
+public class TransitionProbMatrix implements
+    Comparable<TransitionProbMatrix> {
 
   protected Vector edgeTransitionProbs;
   protected Vector freeTransitionProbs;
@@ -13,6 +14,47 @@ public class TransitionProbMatrix implements Comparable<TransitionProbMatrix>{
     Vector freeTransitionProbs) {
     this.edgeTransitionProbs = edgeTransitionProbs;
     this.freeTransitionProbs = freeTransitionProbs;
+  }
+
+  @Override
+  public int compareTo(TransitionProbMatrix o) {
+    final CompareToBuilder comparator = new CompareToBuilder();
+    comparator.append(this.edgeTransitionProbs.toArray(),
+        o.edgeTransitionProbs.toArray());
+    comparator.append(this.freeTransitionProbs.toArray(),
+        o.freeTransitionProbs.toArray());
+    return comparator.build();
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj) {
+      return true;
+    }
+    if (obj == null) {
+      return false;
+    }
+    if (!(obj instanceof TransitionProbMatrix)) {
+      return false;
+    }
+    final TransitionProbMatrix other = (TransitionProbMatrix) obj;
+    if (this.edgeTransitionProbs == null) {
+      if (other.edgeTransitionProbs != null) {
+        return false;
+      }
+    } else if (!this.edgeTransitionProbs
+        .equals(other.edgeTransitionProbs)) {
+      return false;
+    }
+    if (this.freeTransitionProbs == null) {
+      if (other.freeTransitionProbs != null) {
+        return false;
+      }
+    } else if (!this.freeTransitionProbs
+        .equals(other.freeTransitionProbs)) {
+      return false;
+    }
+    return true;
   }
 
   public Vector getEdgeMotionTransProbs() {
@@ -27,48 +69,17 @@ public class TransitionProbMatrix implements Comparable<TransitionProbMatrix>{
   public int hashCode() {
     final int prime = 31;
     int result = 1;
-    result = prime * result
-        + ((edgeTransitionProbs == null) ? 0 : edgeTransitionProbs.hashCode());
-    result = prime * result
-        + ((freeTransitionProbs == null) ? 0 : freeTransitionProbs.hashCode());
+    result =
+        prime
+            * result
+            + ((this.edgeTransitionProbs == null) ? 0
+                : this.edgeTransitionProbs.hashCode());
+    result =
+        prime
+            * result
+            + ((this.freeTransitionProbs == null) ? 0
+                : this.freeTransitionProbs.hashCode());
     return result;
-  }
-
-  @Override
-  public boolean equals(Object obj) {
-    if (this == obj) {
-      return true;
-    }
-    if (obj == null) {
-      return false;
-    }
-    if (!(obj instanceof TransitionProbMatrix)) {
-      return false;
-    }
-    TransitionProbMatrix other = (TransitionProbMatrix) obj;
-    if (edgeTransitionProbs == null) {
-      if (other.edgeTransitionProbs != null) {
-        return false;
-      }
-    } else if (!edgeTransitionProbs.equals(other.edgeTransitionProbs)) {
-      return false;
-    }
-    if (freeTransitionProbs == null) {
-      if (other.freeTransitionProbs != null) {
-        return false;
-      }
-    } else if (!freeTransitionProbs.equals(other.freeTransitionProbs)) {
-      return false;
-    }
-    return true;
-  }
-
-  @Override
-  public int compareTo(TransitionProbMatrix o) {
-    final CompareToBuilder comparator = new CompareToBuilder();
-    comparator.append(this.edgeTransitionProbs.toArray(), o.edgeTransitionProbs.toArray());
-    comparator.append(this.freeTransitionProbs.toArray(), o.freeTransitionProbs.toArray());
-    return comparator.build();
   }
 
 }

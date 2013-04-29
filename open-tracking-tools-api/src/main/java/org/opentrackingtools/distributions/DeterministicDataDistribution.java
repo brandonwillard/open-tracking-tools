@@ -12,7 +12,8 @@ import gov.sandia.cognition.util.ObjectUtil;
 import java.util.Collections;
 
 public class DeterministicDataDistribution<T> extends
-    AbstractDataDistribution<T> implements ClosedFormComputableDiscreteDistribution<T> {
+    AbstractDataDistribution<T> implements
+    ClosedFormComputableDiscreteDistribution<T> {
 
   final protected static MutableDouble internalValue =
       new MutableDouble(1d);
@@ -30,8 +31,25 @@ public class DeterministicDataDistribution<T> extends
   @Override
   public DeterministicDataDistribution<T> clone() {
     final DeterministicDataDistribution<T> clone =
-        new DeterministicDataDistribution<T>(ObjectUtil.cloneSmart(this.element));
+        new DeterministicDataDistribution<T>(
+            ObjectUtil.cloneSmart(this.element));
     return clone;
+  }
+
+  /**
+   * Warning: no-op
+   */
+  @Override
+  public void convertFromVector(Vector parameters) {
+
+  }
+
+  /**
+   * Warning: no-op
+   */
+  @Override
+  public Vector convertToVector() {
+    return null;
   }
 
   @Override
@@ -68,6 +86,11 @@ public class DeterministicDataDistribution<T> extends
   }
 
   @Override
+  public T getMean() {
+    return this.element;
+  }
+
+  @Override
   public PMF<T> getProbabilityFunction() {
     return new DefaultDataDistribution.PMF<T>(this);
   }
@@ -87,29 +110,10 @@ public class DeterministicDataDistribution<T> extends
     return result;
   }
 
-  @Override
-  public T getMean() {
-    return this.element;
-  }
-
-  /**
-   * Warning: no-op
-   */
-  @Override
-  public Vector convertToVector() {
-    return null;
-  }
-
-  /**
-   * Warning: no-op
-   */
-  @Override
-  public void convertFromVector(Vector parameters) {
-    
-  }
-
   public void setElement(T priorPredRunState) {
-    this.map = Collections.singletonMap(priorPredRunState, internalValue);
+    this.map =
+        Collections.singletonMap(priorPredRunState,
+            DeterministicDataDistribution.internalValue);
     this.element = priorPredRunState;
   }
 

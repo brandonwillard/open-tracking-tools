@@ -1,8 +1,5 @@
 package org.opentrackingtools.util;
 
-import org.testng.annotations.Test;
-import org.testng.annotations.BeforeMethod;
-import org.testng.AssertJUnit;
 import gov.sandia.cognition.math.matrix.Matrix;
 import gov.sandia.cognition.math.matrix.MatrixFactory;
 import gov.sandia.cognition.math.matrix.Vector;
@@ -14,6 +11,9 @@ import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 
 import java.util.Random;
 
+import org.testng.AssertJUnit;
+import org.testng.annotations.BeforeMethod;
+import org.testng.annotations.Test;
 
 public class StatisticsUtilTest {
 
@@ -30,23 +30,23 @@ public class StatisticsUtilTest {
                 { 0.00009d, 0.0001d } });
 
     final Matrix chol =
-        CholeskyDecompositionMTJ.create((DenseMatrix) mat)
-            .getR();
-    final Matrix covSqrt =
-        StatisticsUtil.rootOfSemiDefinite(mat);
+        CholeskyDecompositionMTJ.create((DenseMatrix) mat).getR();
+    final Matrix covSqrt = StatisticsUtil.rootOfSemiDefinite(mat);
     final Matrix localChol = StatisticsUtil.getCholR(mat);
 
     AssertJUnit.assertTrue(chol.equals(localChol, 1e-5));
 
     final Random rng = new Random(1234567);
 
-    MultivariateGaussian.sample(VectorFactory.getDefault()
-        .copyArray(new double[] { 0, 0 }), covSqrt, rng);
+    MultivariateGaussian.sample(
+        VectorFactory.getDefault().copyArray(new double[] { 0, 0 }),
+        covSqrt, rng);
 
     rng.setSeed(1234567);
 
-    MultivariateGaussian.sample(VectorFactory.getDefault()
-        .copyArray(new double[] { 0, 0 }), chol, rng);
+    MultivariateGaussian.sample(
+        VectorFactory.getDefault().copyArray(new double[] { 0, 0 }),
+        chol, rng);
 
     final MultivariateGaussian.SufficientStatistic ss1 =
         new MultivariateGaussian.SufficientStatistic();
@@ -56,13 +56,10 @@ public class StatisticsUtilTest {
 
     for (int i = 0; i < 500000; i++) {
       final Vector localSmpl1 =
-          MultivariateGaussian.sample(VectorFactory
-              .getDefault()
-              .copyArray(new double[] { 0, 0 }), covSqrt,
-              rng);
+          MultivariateGaussian.sample(VectorFactory.getDefault()
+              .copyArray(new double[] { 0, 0 }), covSqrt, rng);
       final Vector localSmpl2 =
-          MultivariateGaussian.sample(VectorFactory
-              .getDefault()
+          MultivariateGaussian.sample(VectorFactory.getDefault()
               .copyArray(new double[] { 0, 0 }), chol, rng);
       ss1.update(localSmpl1);
       ss2.update(localSmpl2);
@@ -84,10 +81,9 @@ public class StatisticsUtilTest {
         MatrixFactory.getDefault().copyArray(
             new double[][] { { 100d, 0d }, { 0d, 100d } });
     final InverseWishartDistribution invWish =
-        new InverseWishartDistribution(MatrixFactory
-            .getDefault().copyArray(
-                new double[][] { { 1700d, 0d },
-                    { 0d, 1700d } }), 20);
+        new InverseWishartDistribution(MatrixFactory.getDefault()
+            .copyArray(
+                new double[][] { { 1700d, 0d }, { 0d, 1700d } }), 20);
 
     MultivariateGaussian.SufficientStatistic ss =
         new MultivariateGaussian.SufficientStatistic();

@@ -16,34 +16,34 @@ import com.vividsolutions.jts.geom.Geometry;
 
 public interface InferenceGraph {
 
-  public Collection<Path> getPaths(
-    VehicleStateDistribution<? extends GpsObservation> fromState,
-    GpsObservation toCoord);
-
-  public Collection<InferenceGraphEdge> getTopoEquivEdges(
-    InferenceGraphEdge edge);
+  public boolean edgeHasReverse(Geometry edge);
 
   public Envelope getGPSGraphExtent();
+
+  public Collection<InferenceGraphEdge> getIncomingTransferableEdges(
+    InferenceGraphEdge infEdge);
+
+  public InferenceGraphEdge getInferenceGraphEdge(String id);
+
+  public Collection<InferenceGraphSegment> getNearbyEdges(
+    Coordinate projLocation, double radius);
 
   public Collection<InferenceGraphSegment> getNearbyEdges(
     DistributionWithMean<Vector> tmpInitialBelief, Matrix covariance);
 
   public Collection<InferenceGraphSegment> getNearbyEdges(
     Vector projLocation, double radius);
-  
-  public Collection<InferenceGraphSegment> getNearbyEdges(
-    Coordinate projLocation, double radius);
-
-  public Collection<InferenceGraphEdge> getIncomingTransferableEdges(
-    InferenceGraphEdge infEdge);
 
   public Collection<InferenceGraphEdge> getOutgoingTransferableEdges(
     InferenceGraphEdge infEdge);
 
+  public Collection<Path> getPaths(
+    VehicleStateDistribution<? extends GpsObservation> fromState,
+    GpsObservation toCoord);
+
   public Envelope getProjGraphExtent();
 
-  public boolean edgeHasReverse(Geometry edge);
-
-  public InferenceGraphEdge getInferenceGraphEdge(String id);
+  public Collection<InferenceGraphEdge> getTopoEquivEdges(
+    InferenceGraphEdge edge);
 
 }

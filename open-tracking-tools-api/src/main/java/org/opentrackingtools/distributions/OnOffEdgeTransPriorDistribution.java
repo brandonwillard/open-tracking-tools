@@ -2,19 +2,15 @@ package org.opentrackingtools.distributions;
 
 import gov.sandia.cognition.math.LogMath;
 import gov.sandia.cognition.math.matrix.Vector;
-import gov.sandia.cognition.statistics.ClosedFormComputableDiscreteDistribution;
 import gov.sandia.cognition.statistics.ClosedFormComputableDistribution;
-import gov.sandia.cognition.statistics.ComputableDistribution;
 import gov.sandia.cognition.statistics.ProbabilityFunction;
 import gov.sandia.cognition.statistics.distribution.DirichletDistribution;
 import gov.sandia.cognition.util.AbstractCloneableSerializable;
-import gov.sandia.cognition.util.ObjectUtil;
 
 import java.util.ArrayList;
 import java.util.Random;
 
 import org.apache.commons.lang.builder.CompareToBuilder;
-import org.opentrackingtools.graph.InferenceGraphEdge;
 import org.opentrackingtools.util.model.TransitionProbMatrix;
 
 import com.google.common.collect.Lists;
@@ -131,6 +127,15 @@ public class OnOffEdgeTransPriorDistribution extends
   }
 
   @Override
+  public void convertFromVector(Vector parameters) {
+  }
+
+  @Override
+  public Vector convertToVector() {
+    return null;
+  }
+
+  @Override
   public boolean equals(Object obj) {
     if (this == obj) {
       return true;
@@ -168,6 +173,19 @@ public class OnOffEdgeTransPriorDistribution extends
 
   public DirichletDistribution getFreeMotionTransProbPrior() {
     return this.freeMotionTransProbPrior;
+  }
+
+  @Override
+  public TransitionProbMatrix getMean() {
+    return new TransitionProbMatrix(
+        this.edgeMotionTransProbPrior.getMean(),
+        this.freeMotionTransProbPrior.getMean());
+  }
+
+  @Override
+  public OnOffEdgeTransPriorProbabilityFunction
+      getProbabilityFunction() {
+    return new OnOffEdgeTransPriorProbabilityFunction(this);
   }
 
   @Override
@@ -227,27 +245,6 @@ public class OnOffEdgeTransPriorDistribution extends
         + this.getFreeMotionTransProbPrior().getParameters()
         + ", edgeMotionTransPrior="
         + this.getEdgeMotionTransProbPrior().getParameters() + "]";
-  }
-
-  @Override
-  public TransitionProbMatrix getMean() {
-    return new TransitionProbMatrix(this.edgeMotionTransProbPrior.getMean(), 
-        this.freeMotionTransProbPrior.getMean());
-  }
-
-  @Override
-  public Vector convertToVector() {
-    return null;
-  }
-
-  @Override
-  public void convertFromVector(Vector parameters) {
-  }
-
-  @Override
-  public OnOffEdgeTransPriorProbabilityFunction
-      getProbabilityFunction() {
-    return new OnOffEdgeTransPriorProbabilityFunction(this);
   }
 
 }

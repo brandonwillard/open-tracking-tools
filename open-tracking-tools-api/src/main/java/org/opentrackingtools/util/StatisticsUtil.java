@@ -7,7 +7,6 @@ import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.math.matrix.VectorFactory;
 import gov.sandia.cognition.math.matrix.decomposition.AbstractSingularValueDecomposition;
 import gov.sandia.cognition.math.matrix.mtj.AbstractMTJMatrix;
-import gov.sandia.cognition.math.matrix.mtj.DenseMatrix;
 import gov.sandia.cognition.math.matrix.mtj.DenseMatrixFactoryMTJ;
 import gov.sandia.cognition.math.matrix.mtj.DiagonalMatrixFactoryMTJ;
 import gov.sandia.cognition.math.matrix.mtj.DiagonalMatrixMTJ;
@@ -94,60 +93,36 @@ public class StatisticsUtil {
 
     return d4;
   }
-  
-  /**
-   * Computes G*C*G^T + W in a numerically stable way for symmetric matrices C and W.
-   * @param C
-   * @param W
-   * @param G
-   * @return
-   */
-  public static SvdMatrix symmetricSvdAdd(SvdMatrix C, SvdMatrix W, Matrix G) {
-    AbstractSingularValueDecomposition svdC = C.getSvd();
-    final Matrix SUG = StatisticsUtil.getDiagonalSqrt(svdC.getS(), 1e-7)
-        .times(svdC.getU().transpose()).times(G.transpose());
-    final Matrix Nw = StatisticsUtil.getDiagonalSqrt(W.getSvd().getS(), 1e-7)
-        .times(W.getSvd().getU().transpose());
-    final int nN = SUG.getNumRows() + Nw.getNumRows();
-    final int nM = SUG.getNumColumns();
-    final Matrix M1 = MatrixFactory.getDefault().createMatrix(nN, nM);
-    M1.setSubMatrix(0, 0, SUG);
-    M1.setSubMatrix(SUG.getNumRows(), 0, Nw);
-    
-    AbstractSingularValueDecomposition svdM = SingularValueDecompositionMTJ.create(M1);
-    final Matrix S = diagonalSquare(svdM.getS(), 1e-7);
-    AbstractSingularValueDecomposition svdR = new SimpleSingularValueDecomposition(
-        svdM.getVtranspose().transpose(), 
-        S, 
-        svdM.getVtranspose());
-    return new SvdMatrix(svdR);
-  }
-  
-  public static Matrix diagonalInverse(Matrix S, double lowerTolerance) {
+
+  public static Matrix
+      diagonalInverse(Matrix S, double lowerTolerance) {
     Preconditions.checkArgument(lowerTolerance >= 0d);
-    final Matrix result = MatrixFactory.getDefault().createMatrix(S.getNumColumns(),
-        S.getNumColumns());
+    final Matrix result =
+        MatrixFactory.getDefault().createMatrix(S.getNumColumns(),
+            S.getNumColumns());
     for (int i = 0; i < Math.min(S.getNumColumns(), S.getNumRows()); i++) {
       final double sVal = S.getElement(i, i);
-      if (Math.abs(sVal) > lowerTolerance)
-      result.setElement(i, i, 1d/sVal);
+      if (Math.abs(sVal) > lowerTolerance) {
+        result.setElement(i, i, 1d / sVal);
+      }
     }
     return result;
   }
-  
+
   public static Matrix diagonalSquare(Matrix S, double tolerance) {
     Preconditions.checkArgument(tolerance >= 0d);
-    final Matrix result = MatrixFactory.getDefault().createMatrix(S.getNumColumns(),
-        S.getNumColumns());
+    final Matrix result =
+        MatrixFactory.getDefault().createMatrix(S.getNumColumns(),
+            S.getNumColumns());
     for (int i = 0; i < Math.min(S.getNumColumns(), S.getNumRows()); i++) {
       final double sVal = S.getElement(i, i);
       final double sValSq = sVal * sVal;
-      if (Math.abs(sValSq) > tolerance)
+      if (Math.abs(sValSq) > tolerance) {
         result.setElement(i, i, sValSq);
+      }
     }
     return result;
   }
-  
 
   /**
    * Returns, for A, an R s.t. R^T * R = A
@@ -170,6 +145,42 @@ public class StatisticsUtil {
     return covSqrt;
   }
 
+  public static Matrix getDiagonalSqrt(Matrix mat, double tolerance) {
+    Preconditions.checkArgument(tolerance > 0d);
+    final Matrix result = mat.clone();
+    for (int i = 0; i < Math.min(result.getNumColumns(),
+        result.getNumRows()); i++) {
+      final double sqrt = Math.sqrt(result.getElement(i, i));
+      if (sqrt > tolerance) {
+        result.setElement(i, i, sqrt);
+      }
+    }
+    return result;
+  }
+
+  public static Matrix getInvWishartVar(
+    InverseWishartDistribution invWishart) {
+    final int dim = invWishart.getInputDimensionality();
+    final int dof = invWishart.getDegreesOfFreedom();
+    Preconditions.checkArgument(dof > dim - 1);
+    final Matrix invScale = invWishart.getInverseScale();
+    final Matrix cov =
+        MatrixFactory.getDefault().createMatrix(dim, dim);
+    for (int i = 0; i < dim; i++) {
+      for (int j = 0; j < dim; j++) {
+        final double numerator =
+            (dof - dim + 1d) * invScale.getElement(i, j)
+                + (dof - dim - 1d) * invScale.getElement(i, i)
+                * invScale.getElement(j, j);
+        final double denominator =
+            (dof - dim) * (dof - dim - 1d) * (dof - dim - 1d)
+                * (dof - dim - 3d);
+        cov.setElement(i, j, numerator / denominator);
+      }
+    }
+    return cov;
+  }
+
   /**
    * Returns a ~99% confidence interval/credibility region by using the largest
    * eigen value for a normal covariance.
@@ -179,11 +190,12 @@ public class StatisticsUtil {
    */
   public static double getLargeNormalCovRadius(Matrix covar) {
     try {
-      
+
       if (covar instanceof SvdMatrix) {
-        
-        SvdMatrix svdCovar = (SvdMatrix)covar;
-        final double largestEigenval = svdCovar.getSvd().getS().getElement(0, 0);
+
+        final SvdMatrix svdCovar = (SvdMatrix) covar;
+        final double largestEigenval =
+            svdCovar.getSvd().getS().getElement(0, 0);
         final double varDistance = 3d * Math.sqrt(largestEigenval);
         return varDistance;
       } else {
@@ -283,11 +295,13 @@ public class StatisticsUtil {
 
   public static boolean isPosSemiDefinite(Matrix covar) {
     if (covar instanceof SvdMatrix) {
-      AbstractSingularValueDecomposition svd = ((SvdMatrix)covar).getSvd();
-      if (svd.getU().equals(svd.getVtranspose().transpose()))
+      final AbstractSingularValueDecomposition svd =
+          ((SvdMatrix) covar).getSvd();
+      if (svd.getU().equals(svd.getVtranspose().transpose())) {
         return true;
-      else
+      } else {
         return false;
+      }
     } else {
       try {
         DenseCholesky.factorize(DenseMatrixFactoryMTJ.INSTANCE
@@ -542,16 +556,21 @@ public class StatisticsUtil {
   public static Matrix rootOfSemiDefinite(Matrix matrix,
     boolean effRankDimResult, int rank) {
     if (matrix instanceof SvdMatrix) {
-      final Matrix result = 
-          ((SvdMatrix)matrix).getSvd().getU().times(
-          StatisticsUtil.getDiagonalSqrt(((SvdMatrix)matrix).getSvd().getS(), 1e-9).transpose());
+      final Matrix result =
+          ((SvdMatrix) matrix)
+              .getSvd()
+              .getU()
+              .times(
+                  StatisticsUtil.getDiagonalSqrt(
+                      ((SvdMatrix) matrix).getSvd().getS(), 1e-9)
+                      .transpose());
       return result;
     } else {
       final SingularValueDecompositionMTJ svd =
           SingularValueDecompositionMTJ.create(matrix);
-  
+
       final int effRank = rank > 0 ? rank : svd.effectiveRank(1e-9);
-  
+
       final DiagonalMatrixMTJ roots =
           DiagonalMatrixFactoryMTJ.INSTANCE.createMatrix(matrix
               .getNumColumns());
@@ -559,14 +578,14 @@ public class StatisticsUtil {
       for (int i = 0; i < effRank; i++) {
         roots.setElement(i, Math.sqrt(svd.getS().getElement(i, i)));
       }
-  
+
       Matrix result = U.times(roots);
       if (effRankDimResult) {
         result =
             result.getSubMatrix(0, result.getNumRows() - 1, 0,
                 effRank - 1);
       }
-  
+
       return result;
     }
   }
@@ -612,6 +631,39 @@ public class StatisticsUtil {
   }
 
   /**
+   * Computes G*C*G^T + W in a numerically stable way for symmetric matrices C
+   * and W.
+   * 
+   * @param C
+   * @param W
+   * @param G
+   * @return
+   */
+  public static SvdMatrix symmetricSvdAdd(SvdMatrix C, SvdMatrix W,
+    Matrix G) {
+    final AbstractSingularValueDecomposition svdC = C.getSvd();
+    final Matrix SUG =
+        StatisticsUtil.getDiagonalSqrt(svdC.getS(), 1e-7)
+            .times(svdC.getU().transpose()).times(G.transpose());
+    final Matrix Nw =
+        StatisticsUtil.getDiagonalSqrt(W.getSvd().getS(), 1e-7)
+            .times(W.getSvd().getU().transpose());
+    final int nN = SUG.getNumRows() + Nw.getNumRows();
+    final int nM = SUG.getNumColumns();
+    final Matrix M1 = MatrixFactory.getDefault().createMatrix(nN, nM);
+    M1.setSubMatrix(0, 0, SUG);
+    M1.setSubMatrix(SUG.getNumRows(), 0, Nw);
+
+    final AbstractSingularValueDecomposition svdM =
+        SingularValueDecompositionMTJ.create(M1);
+    final Matrix S = StatisticsUtil.diagonalSquare(svdM.getS(), 1e-7);
+    final AbstractSingularValueDecomposition svdR =
+        new SimpleSingularValueDecomposition(svdM.getVtranspose()
+            .transpose(), S, svdM.getVtranspose());
+    return new SvdMatrix(svdR);
+  }
+
+  /**
    * Uses the underlying arrays in these vector objects for comparison.
    */
   public static boolean vectorEquals(Vector vec1, Vector vec2) {
@@ -625,34 +677,5 @@ public class StatisticsUtil {
     } else {
       return Objects.equal(vec1, vec2);
     }
-  }
-
-  public static Matrix getDiagonalSqrt(Matrix mat, double tolerance) {
-    Preconditions.checkArgument(tolerance > 0d);
-    final Matrix result = mat.clone();
-    for (int i = 0; i < Math.min(result.getNumColumns(), result.getNumRows()); i++) {
-      final double sqrt = Math.sqrt(result.getElement(i, i));
-      if (sqrt > tolerance)
-        result.setElement(i, i, sqrt);
-    }
-    return result;
-  }
-  
-  public static Matrix getInvWishartVar(InverseWishartDistribution invWishart) {
-    final int dim = invWishart.getInputDimensionality();
-    final int dof = invWishart.getDegreesOfFreedom();
-    Preconditions.checkArgument(dof > dim - 1);
-    final Matrix invScale = invWishart.getInverseScale();
-    final Matrix cov = MatrixFactory.getDefault().createMatrix(dim, dim);
-    for (int i = 0; i < dim; i++) {
-      for (int j = 0; j < dim; j++) {
-        final double numerator = (dof - dim + 1d) * invScale.getElement(i, j)
-            + (dof - dim - 1d) * invScale.getElement(i, i) * invScale.getElement(j, j);
-        final double denominator = (dof - dim) * (dof - dim - 1d)*(dof - dim - 1d)
-            * (dof - dim - 3d);
-        cov.setElement(i, j, numerator/denominator); 
-      }
-    }
-    return cov;
   }
 }

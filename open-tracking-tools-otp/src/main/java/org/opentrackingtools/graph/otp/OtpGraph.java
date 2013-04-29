@@ -178,13 +178,13 @@ public class OtpGraph implements InferenceGraph {
   }
 
   private final STRtree baseEdgeIndex = new STRtree();
-  
+
   /**
    * This is the original (intersection-and-street-segment) graph, used for all
    * inference tasks other than routing.
    */
   private final Graph baseGraph;
-  
+
   private final Map<VertexPair, InferenceGraphEdge> edgeToInfo = Maps
       .newConcurrentMap();
 
@@ -638,19 +638,21 @@ public class OtpGraph implements InferenceGraph {
     for (final Object obj : this.baseEdgeIndex.query(toEnv)) {
       final StreetEdge edge = (StreetEdge) obj;
       if (edge.canTraverse(OtpGraph.defaultOptions)) {
-        
+
         /*
          * FIXME we don't want to do this scanning, yet we don't
          * want to instantiate every inference graph edge.
          */
-        final InferenceGraphEdge infEdge = getInferenceGraphEdge(edge);
-        for (InferenceGraphSegment segment : infEdge.getSegments()) {
-//          Preconditions.checkState(segment.getEndIndex()
-//              .getSegmentIndex()
-//              - segment.getStartIndex().getSegmentIndex() == 1);
+        final InferenceGraphEdge infEdge =
+            this.getInferenceGraphEdge(edge);
+        for (final InferenceGraphSegment segment : infEdge
+            .getSegments()) {
+          //          Preconditions.checkState(segment.getEndIndex()
+          //              .getSegmentIndex()
+          //              - segment.getStartIndex().getSegmentIndex() == 1);
           if (segment.getLine().distance(toCoord) < radius) {
             streetEdges.add(segment);
-          } 
+          }
         }
       }
     }

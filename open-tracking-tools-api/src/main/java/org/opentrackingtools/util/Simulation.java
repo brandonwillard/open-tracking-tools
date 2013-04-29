@@ -4,7 +4,6 @@ import gov.sandia.cognition.math.matrix.Matrix;
 import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 
-import java.lang.reflect.InvocationTargetException;
 import java.util.Date;
 import java.util.Random;
 
@@ -27,11 +26,11 @@ public class Simulation {
 
   public static class SimulationParameters {
 
-    protected final boolean projectCoords;
     protected final long duration;
     protected final Date endTime;
     protected final double frequency;
     protected final boolean performInference;
+    protected final boolean projectCoords;
     protected final Coordinate startCoordinate;
     protected final Date startTime;
     protected final VehicleStateInitialParameters stateParams;
@@ -52,42 +51,57 @@ public class Simulation {
 
     @Override
     public boolean equals(Object obj) {
-      if (this == obj)
+      if (this == obj) {
         return true;
-      if (obj == null)
+      }
+      if (obj == null) {
         return false;
-      if (getClass() != obj.getClass())
+      }
+      if (this.getClass() != obj.getClass()) {
         return false;
-      SimulationParameters other = (SimulationParameters) obj;
-      if (projectCoords != other.projectCoords)
+      }
+      final SimulationParameters other = (SimulationParameters) obj;
+      if (this.projectCoords != other.projectCoords) {
         return false;
-      if (duration != other.duration)
+      }
+      if (this.duration != other.duration) {
         return false;
-      if (endTime == null) {
-        if (other.endTime != null)
+      }
+      if (this.endTime == null) {
+        if (other.endTime != null) {
           return false;
-      } else if (!endTime.equals(other.endTime))
+        }
+      } else if (!this.endTime.equals(other.endTime)) {
         return false;
-      if (Double.doubleToLongBits(frequency) != Double
-          .doubleToLongBits(other.frequency))
+      }
+      if (Double.doubleToLongBits(this.frequency) != Double
+          .doubleToLongBits(other.frequency)) {
         return false;
-      if (performInference != other.performInference)
+      }
+      if (this.performInference != other.performInference) {
         return false;
-      if (startCoordinate == null) {
-        if (other.startCoordinate != null)
+      }
+      if (this.startCoordinate == null) {
+        if (other.startCoordinate != null) {
           return false;
-      } else if (!startCoordinate.equals(other.startCoordinate))
+        }
+      } else if (!this.startCoordinate.equals(other.startCoordinate)) {
         return false;
-      if (startTime == null) {
-        if (other.startTime != null)
+      }
+      if (this.startTime == null) {
+        if (other.startTime != null) {
           return false;
-      } else if (!startTime.equals(other.startTime))
+        }
+      } else if (!this.startTime.equals(other.startTime)) {
         return false;
-      if (stateParams == null) {
-        if (other.stateParams != null)
+      }
+      if (this.stateParams == null) {
+        if (other.stateParams != null) {
           return false;
-      } else if (!stateParams.equals(other.stateParams))
+        }
+      } else if (!this.stateParams.equals(other.stateParams)) {
         return false;
+      }
       return true;
     }
 
@@ -119,35 +133,42 @@ public class Simulation {
     public int hashCode() {
       final int prime = 31;
       int result = 1;
-      result = prime * result + (projectCoords ? 1231 : 1237);
-      result = prime * result + (int) (duration ^ (duration >>> 32));
+      result = prime * result + (this.projectCoords ? 1231 : 1237);
       result =
           prime * result
-              + ((endTime == null) ? 0 : endTime.hashCode());
-      long temp;
-      temp = Double.doubleToLongBits(frequency);
-      result = prime * result + (int) (temp ^ (temp >>> 32));
-      result = prime * result + (performInference ? 1231 : 1237);
+              + (int) (this.duration ^ (this.duration >>> 32));
       result =
           prime
               * result
-              + ((startCoordinate == null) ? 0 : startCoordinate
+              + ((this.endTime == null) ? 0 : this.endTime.hashCode());
+      long temp;
+      temp = Double.doubleToLongBits(this.frequency);
+      result = prime * result + (int) (temp ^ (temp >>> 32));
+      result = prime * result + (this.performInference ? 1231 : 1237);
+      result =
+          prime
+              * result
+              + ((this.startCoordinate == null) ? 0
+                  : this.startCoordinate.hashCode());
+      result =
+          prime
+              * result
+              + ((this.startTime == null) ? 0 : this.startTime
                   .hashCode());
       result =
-          prime * result
-              + ((startTime == null) ? 0 : startTime.hashCode());
-      result =
-          prime * result
-              + ((stateParams == null) ? 0 : stateParams.hashCode());
+          prime
+              * result
+              + ((this.stateParams == null) ? 0 : this.stateParams
+                  .hashCode());
       return result;
-    }
-
-    public boolean projectCoords() {
-      return this.projectCoords;
     }
 
     public boolean isPerformInference() {
       return this.performInference;
+    }
+
+    public boolean projectCoords() {
+      return this.projectCoords;
     }
   }
 
@@ -163,14 +184,6 @@ public class Simulation {
   private final SimulationParameters simParameters;
 
   private final String simulationName;
-
-  public int getRecordsProcessed() {
-    return recordsProcessed;
-  }
-
-  public VehicleStateBootstrapUpdater<GpsObservation> getUpdater() {
-    return updater;
-  }
 
   private final VehicleStateBootstrapUpdater<GpsObservation> updater;
 
@@ -195,17 +208,18 @@ public class Simulation {
 
     final Coordinate startCoord;
     if (this.simParameters.getStartCoordinate() == null) {
-      startCoord = this.simParameters.projectCoords ? 
-          this.inferredGraph.getGPSGraphExtent().centre() : 
-            this.inferredGraph.getProjGraphExtent().centre();
+      startCoord =
+          this.simParameters.projectCoords ? this.inferredGraph
+              .getGPSGraphExtent().centre() : this.inferredGraph
+              .getProjGraphExtent().centre();
     } else {
       startCoord = this.simParameters.getStartCoordinate();
     }
 
     final ProjectedCoordinate obsPoint =
-        this.simParameters.projectCoords ? 
-        GeoUtils.convertToEuclidean(startCoord) : 
-          new ProjectedCoordinate(null, startCoord, startCoord);
+        this.simParameters.projectCoords ? GeoUtils
+            .convertToEuclidean(startCoord)
+            : new ProjectedCoordinate(null, startCoord, startCoord);
 
     final GpsObservation initialObs =
         new GpsObservation(this.simulationName,
@@ -213,13 +227,13 @@ public class Simulation {
             null, null, 0, null, obsPoint);
 
     this.updater =
-        new VehicleStateBootstrapUpdater<GpsObservation>(
-            initialObs, graph, this.simParameters.getStateParams(),
-            this.rng);
+        new VehicleStateBootstrapUpdater<GpsObservation>(initialObs,
+            graph, this.simParameters.getStateParams(), this.rng);
     this.updater.setRandom(this.rng);
   }
 
-  public VehicleStateDistribution<GpsObservation> computeInitialState() {
+  public VehicleStateDistribution<GpsObservation>
+      computeInitialState() {
 
     /*
      * If the updater is null, then creation of the initial obs failed,
@@ -248,6 +262,10 @@ public class Simulation {
     return this.infParameters;
   }
 
+  public int getRecordsProcessed() {
+    return this.recordsProcessed;
+  }
+
   public Random getRng() {
     return this.rng;
   }
@@ -262,6 +280,10 @@ public class Simulation {
 
   public String getSimulationName() {
     return this.simulationName;
+  }
+
+  public VehicleStateBootstrapUpdater<GpsObservation> getUpdater() {
+    return this.updater;
   }
 
   /**
@@ -300,18 +322,19 @@ public class Simulation {
             .getValue(), gCov);
 
     final Coordinate obsCoord =
-        this.simParameters.projectCoords ? 
-        GeoUtils.convertToLatLon(thisLoc, vehicleState
-            .getObservation().getObsProjected()) : GeoUtils.getCoordinates(thisLoc);
+        this.simParameters.projectCoords ? GeoUtils.convertToLatLon(
+            thisLoc, vehicleState.getObservation().getObsProjected())
+            : GeoUtils.getCoordinates(thisLoc);
 
     final int thisRecNum =
         1 + vehicleState.getObservation().getRecordNumber();
-    
-    final ProjectedCoordinate newProjCoord = 
-        this.simParameters.projectCoords ?
-        new ProjectedCoordinate(GeoUtils.getTransform(obsCoord), GeoUtils.makeCoordinate(thisLoc), obsCoord) : 
-          new ProjectedCoordinate(null, obsCoord, obsCoord) ;
-                
+
+    final ProjectedCoordinate newProjCoord =
+        this.simParameters.projectCoords ? new ProjectedCoordinate(
+            GeoUtils.getTransform(obsCoord),
+            GeoUtils.makeCoordinate(thisLoc), obsCoord)
+            : new ProjectedCoordinate(null, obsCoord, obsCoord);
+
     final GpsObservation thisObs =
         new GpsObservation(this.simulationName, new Date(time),
             obsCoord, null, null, null, thisRecNum,
@@ -335,7 +358,7 @@ public class Simulation {
     this.updater.seed = this.rng.nextLong();
 
     final VehicleStateDistribution<GpsObservation> vehicleState =
-        this.sampleState(currentState, (long)time);
+        this.sampleState(currentState, time);
 
     Simulation._log.info("processed simulation observation : "
         + this.recordsProcessed + ", " + time);

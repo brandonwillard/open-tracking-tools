@@ -1,36 +1,33 @@
 package org.opentrackingtools;
 
 import gov.sandia.cognition.math.matrix.Vector;
-import gov.sandia.cognition.math.matrix.Vector1D;
-import gov.sandia.cognition.math.matrix.Vector2D;
 
 public class VehicleStateInitialParameters {
 
   protected final Vector initialMotionState;
-  
+
   protected final double initialObsFreq;
   protected final int numParticles;
-  
+
   protected final Vector obsCov;
   protected final int obsCovDof;
-  
+
   protected final int offRoadCovDof;
   protected final Vector offRoadStateCov;
-  
+
+  protected final Vector offTransitionProbsPrior;
   protected final int onRoadCovDof;
   protected final Vector onRoadStateCov;
-  protected final long seed;
-  
-  protected final Vector onTransitionProbsPrior;
-  protected final Vector offTransitionProbsPrior;
 
-  public VehicleStateInitialParameters(
-    Vector initialMotionState,
-    Vector obsCov, int obsCovDof,
-    Vector onRoadStateCov, int onRoadCovDof, Vector offRoadStateCov,
-    int offRoadCovDof, Vector offProbs, Vector onProbs,
-    int numParticles, double initialObsFreq, long seed) {
-    
+  protected final Vector onTransitionProbsPrior;
+  protected final long seed;
+
+  public VehicleStateInitialParameters(Vector initialMotionState,
+    Vector obsCov, int obsCovDof, Vector onRoadStateCov,
+    int onRoadCovDof, Vector offRoadStateCov, int offRoadCovDof,
+    Vector offProbs, Vector onProbs, int numParticles,
+    double initialObsFreq, long seed) {
+
     this.initialMotionState = initialMotionState;
     this.obsCovDof = obsCovDof;
     this.onRoadCovDof = onRoadCovDof;
@@ -44,67 +41,89 @@ public class VehicleStateInitialParameters {
     this.seed = seed;
     this.initialObsFreq = initialObsFreq;
   }
-  
-  public Vector getInitialMotionState() {
-    return initialMotionState;
-  }
 
   @Override
   public boolean equals(Object obj) {
-    if (this == obj)
+    if (this == obj) {
       return true;
-    if (obj == null)
+    }
+    if (obj == null) {
       return false;
-    if (getClass() != obj.getClass())
+    }
+    if (this.getClass() != obj.getClass()) {
       return false;
-    VehicleStateInitialParameters other =
+    }
+    final VehicleStateInitialParameters other =
         (VehicleStateInitialParameters) obj;
-    if (initialMotionState == null) {
-      if (other.initialMotionState != null)
+    if (this.initialMotionState == null) {
+      if (other.initialMotionState != null) {
         return false;
-    } else if (!initialMotionState.equals(other.initialMotionState))
+      }
+    } else if (!this.initialMotionState
+        .equals(other.initialMotionState)) {
       return false;
-    if (Double.doubleToLongBits(initialObsFreq) != Double
-        .doubleToLongBits(other.initialObsFreq))
+    }
+    if (Double.doubleToLongBits(this.initialObsFreq) != Double
+        .doubleToLongBits(other.initialObsFreq)) {
       return false;
-    if (numParticles != other.numParticles)
+    }
+    if (this.numParticles != other.numParticles) {
       return false;
-    if (obsCov == null) {
-      if (other.obsCov != null)
+    }
+    if (this.obsCov == null) {
+      if (other.obsCov != null) {
         return false;
-    } else if (!obsCov.equals(other.obsCov))
+      }
+    } else if (!this.obsCov.equals(other.obsCov)) {
       return false;
-    if (obsCovDof != other.obsCovDof)
+    }
+    if (this.obsCovDof != other.obsCovDof) {
       return false;
-    if (offRoadCovDof != other.offRoadCovDof)
+    }
+    if (this.offRoadCovDof != other.offRoadCovDof) {
       return false;
-    if (offRoadStateCov == null) {
-      if (other.offRoadStateCov != null)
+    }
+    if (this.offRoadStateCov == null) {
+      if (other.offRoadStateCov != null) {
         return false;
-    } else if (!offRoadStateCov.equals(other.offRoadStateCov))
+      }
+    } else if (!this.offRoadStateCov.equals(other.offRoadStateCov)) {
       return false;
-    if (offTransitionProbsPrior == null) {
-      if (other.offTransitionProbsPrior != null)
+    }
+    if (this.offTransitionProbsPrior == null) {
+      if (other.offTransitionProbsPrior != null) {
         return false;
-    } else if (!offTransitionProbsPrior
-        .equals(other.offTransitionProbsPrior))
+      }
+    } else if (!this.offTransitionProbsPrior
+        .equals(other.offTransitionProbsPrior)) {
       return false;
-    if (onRoadCovDof != other.onRoadCovDof)
+    }
+    if (this.onRoadCovDof != other.onRoadCovDof) {
       return false;
-    if (onRoadStateCov == null) {
-      if (other.onRoadStateCov != null)
+    }
+    if (this.onRoadStateCov == null) {
+      if (other.onRoadStateCov != null) {
         return false;
-    } else if (!onRoadStateCov.equals(other.onRoadStateCov))
+      }
+    } else if (!this.onRoadStateCov.equals(other.onRoadStateCov)) {
       return false;
-    if (onTransitionProbsPrior == null) {
-      if (other.onTransitionProbsPrior != null)
+    }
+    if (this.onTransitionProbsPrior == null) {
+      if (other.onTransitionProbsPrior != null) {
         return false;
-    } else if (!onTransitionProbsPrior
-        .equals(other.onTransitionProbsPrior))
+      }
+    } else if (!this.onTransitionProbsPrior
+        .equals(other.onTransitionProbsPrior)) {
       return false;
-    if (seed != other.seed)
+    }
+    if (this.seed != other.seed) {
       return false;
+    }
     return true;
+  }
+
+  public Vector getInitialMotionState() {
+    return this.initialMotionState;
   }
 
   public double getInitialObsFreq() {
@@ -158,38 +177,39 @@ public class VehicleStateInitialParameters {
     result =
         prime
             * result
-            + ((initialMotionState == null) ? 0 : initialMotionState
-                .hashCode());
+            + ((this.initialMotionState == null) ? 0
+                : this.initialMotionState.hashCode());
     long temp;
-    temp = Double.doubleToLongBits(initialObsFreq);
+    temp = Double.doubleToLongBits(this.initialObsFreq);
     result = prime * result + (int) (temp ^ (temp >>> 32));
-    result = prime * result + numParticles;
+    result = prime * result + this.numParticles;
     result =
-        prime * result + ((obsCov == null) ? 0 : obsCov.hashCode());
-    result = prime * result + obsCovDof;
-    result = prime * result + offRoadCovDof;
-    result =
-        prime
-            * result
-            + ((offRoadStateCov == null) ? 0 : offRoadStateCov
-                .hashCode());
+        prime * result
+            + ((this.obsCov == null) ? 0 : this.obsCov.hashCode());
+    result = prime * result + this.obsCovDof;
+    result = prime * result + this.offRoadCovDof;
     result =
         prime
             * result
-            + ((offTransitionProbsPrior == null) ? 0
-                : offTransitionProbsPrior.hashCode());
-    result = prime * result + onRoadCovDof;
+            + ((this.offRoadStateCov == null) ? 0
+                : this.offRoadStateCov.hashCode());
     result =
         prime
             * result
-            + ((onRoadStateCov == null) ? 0 : onRoadStateCov
-                .hashCode());
+            + ((this.offTransitionProbsPrior == null) ? 0
+                : this.offTransitionProbsPrior.hashCode());
+    result = prime * result + this.onRoadCovDof;
     result =
         prime
             * result
-            + ((onTransitionProbsPrior == null) ? 0
-                : onTransitionProbsPrior.hashCode());
-    result = prime * result + (int) (seed ^ (seed >>> 32));
+            + ((this.onRoadStateCov == null) ? 0
+                : this.onRoadStateCov.hashCode());
+    result =
+        prime
+            * result
+            + ((this.onTransitionProbsPrior == null) ? 0
+                : this.onTransitionProbsPrior.hashCode());
+    result = prime * result + (int) (this.seed ^ (this.seed >>> 32));
     return result;
   }
 
@@ -204,10 +224,8 @@ public class VehicleStateInitialParameters {
         .append(", onTransitionProbs=")
         .append(this.onTransitionProbsPrior).append(", seed=")
         .append(this.seed).append(", numParticles=")
-        .append(this.numParticles)
-        .append(", initialMotionState=")
-        .append(this.initialMotionState)
-        .append(", initialObsFreq=")
+        .append(this.numParticles).append(", initialMotionState=")
+        .append(this.initialMotionState).append(", initialObsFreq=")
         .append(this.initialObsFreq).append(", obsCovDof=")
         .append(this.obsCovDof).append(", onRoadCovDof=")
         .append(this.onRoadCovDof).append(", offRoadCovDof=")

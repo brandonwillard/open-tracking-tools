@@ -16,7 +16,6 @@ import org.opengis.referencing.crs.CoordinateReferenceSystem;
 import org.opengis.referencing.crs.GeographicCRS;
 import org.opengis.referencing.operation.MathTransform;
 import org.opengis.referencing.operation.TransformException;
-import org.opentrackingtools.model.ProjectedCoordinate;
 import org.opentrackingtools.util.GeoUtils;
 import org.opentripplanner.graph_builder.services.GraphBuilder;
 import org.opentripplanner.routing.edgetype.PlainStreetEdge;
@@ -77,8 +76,8 @@ public class ReprojectCoords implements GraphBuilder {
             toRemove.add(e);
             continue;
           }
-          final Geometry geom = 
-            JTS.transform(orig, getTransform(vertexCoord));
+          final Geometry geom =
+              JTS.transform(orig, this.getTransform(vertexCoord));
 
           /*
            * FYI: the user data of the projected geom has the original geom.
@@ -96,11 +95,21 @@ public class ReprojectCoords implements GraphBuilder {
       throw new RuntimeException(e);
     } catch (final IllegalAccessException e) {
       throw new RuntimeException(e);
-    } catch (TransformException e) {
+    } catch (final TransformException e) {
       throw new RuntimeException(e);
     }
   }
-  
+
+  @Override
+  public void checkInputs() {
+    // nothing to do
+  }
+
+  @Override
+  public List<String> getPrerequisites() {
+    return Collections.emptyList();
+  }
+
   private MathTransform getTransform(Coordinate refLonLat) {
 
     try {
@@ -132,16 +141,6 @@ public class ReprojectCoords implements GraphBuilder {
     }
 
     return null;
-  }
-
-  @Override
-  public void checkInputs() {
-    // nothing to do
-  }
-
-  @Override
-  public List<String> getPrerequisites() {
-    return Collections.emptyList();
   }
 
   @Override

@@ -94,20 +94,23 @@ public class OnOffEdgeTransProbabilityFunction extends
             - totalProb;
       }
     } else {
-      
-      final InferenceGraphEdge currentEdge = this.distribution.currentEdge;
+
+      final InferenceGraphEdge currentEdge =
+          this.distribution.currentEdge;
       if (currentEdge.isNullEdge()) {
         return this.distribution
             .getFreeMotionTransProbs()
             .getProbabilityFunction()
             .logEvaluate(
-                OnOffEdgeTransDistribution.getTransitionType(currentEdge, to));
+                OnOffEdgeTransDistribution.getTransitionType(
+                    currentEdge, to));
       } else {
         return this.distribution
             .getEdgeMotionTransProbs()
             .getProbabilityFunction()
             .logEvaluate(
-                OnOffEdgeTransDistribution.getTransitionType(currentEdge, to));
+                OnOffEdgeTransDistribution.getTransitionType(
+                    currentEdge, to));
       }
     }
   }
