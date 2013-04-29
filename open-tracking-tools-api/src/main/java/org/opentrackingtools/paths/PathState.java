@@ -538,4 +538,9 @@ public class PathState extends AbstractVector implements
     return result;
   }
 
+  @Override
+  public boolean isSparse() {
+    return false;
+  }
+  
 }

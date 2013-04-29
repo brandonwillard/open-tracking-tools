@@ -384,5 +384,9 @@ public class SvdMatrix extends AbstractMTJMatrix {
     return result.toString();
   }
 
+  @Override
+  public boolean isSparse() {
+    return false;
+  }
   
 }
