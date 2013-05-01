@@ -10,16 +10,16 @@ import com.vividsolutions.jts.geom.Coordinate;
 
 public class GpsObservation {
 
-  private final Double accuracy;
-  private final Coordinate coordsLatLon;
-  private final ProjectedCoordinate coordsProjected;
-  private final Double heading;
-  private GpsObservation prevObs;
-  private final Vector projPoint;
-  private final int recordNumber;
-  private final String sourceId;
-  private final Date timestamp;
-  private final Double velocity;
+  protected final Double accuracy;
+  protected final Coordinate coordsLatLon;
+  protected final ProjectedCoordinate coordsProjected;
+  protected final Double heading;
+  protected GpsObservation prevObs;
+  protected final Vector projPoint;
+  protected final int recordNumber;
+  protected final String sourceId;
+  protected final Date timestamp;
+  protected final Double velocity;
 
   public GpsObservation(String sourceId, Date timestamp,
     Coordinate coordsLatLon, Double velocity, Double heading,
