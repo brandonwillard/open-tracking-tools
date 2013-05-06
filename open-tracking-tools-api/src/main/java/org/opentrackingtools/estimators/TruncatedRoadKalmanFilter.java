@@ -241,7 +241,7 @@ public class TruncatedRoadKalmanFilter
      * DEBUG REMOVE
      */
     if (A.getNumColumns() == 1 && A.getElement(1, 0) > 1d / 30d) {
-      System.out.println("amplifying velocity noise!");
+//      System.out.println("amplifying velocity noise!");
     }
 
     final Vector postMean = belief.getMean().plus(A.times(e));

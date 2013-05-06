@@ -4,7 +4,7 @@ import gov.sandia.cognition.math.matrix.Matrix;
 import gov.sandia.cognition.math.matrix.MatrixFactory;
 import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.math.matrix.VectorFactory;
-import gov.sandia.cognition.statistics.distribution.InverseWishartDistribution;
+import gov.sandia.cognition.statistics.DistributionWithMean;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 import gov.sandia.cognition.util.AbstractCloneableSerializable;
 import gov.sandia.cognition.util.ObjectUtil;
@@ -21,6 +21,7 @@ import org.opentrackingtools.distributions.OnOffEdgeTransDistribution;
 import org.opentrackingtools.distributions.OnOffEdgeTransPriorDistribution;
 import org.opentrackingtools.distributions.PathStateDistribution;
 import org.opentrackingtools.distributions.PathStateMixtureDensityModel;
+import org.opentrackingtools.distributions.ScaledInverseGammaCovDistribution;
 import org.opentrackingtools.estimators.MotionStateEstimatorPredictor;
 import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.paths.Path;
@@ -75,27 +76,27 @@ public class VehicleStateDistribution<Observation extends GpsObservation>
        * Create parameters without path or motion state dependencies
        */
       final int obsInitialDof =
-          parameters.getObsCovDof()
-              - parameters.getObsCov().getDimensionality() - 1;
-      final InverseWishartDistribution obsCovDistribution =
-          new InverseWishartDistribution(MatrixFactory.getDefault()
+          parameters.getObsCovDof() - 1;
+      final DistributionWithMean<Matrix> obsCovDistribution =
+          new ScaledInverseGammaCovDistribution(2,
+              parameters.getObsCovDof(),
+              MatrixFactory.getDefault()
               .createDiagonal(parameters.getObsCov())
-              .scale(obsInitialDof), parameters.getObsCovDof());
-      final SimpleBayesianParameter<Matrix, MultivariateGaussian, InverseWishartDistribution> observationCovParam =
+              .scale(obsInitialDof).getElement(0, 0));
+      final SimpleBayesianParameter<Matrix, MultivariateGaussian, DistributionWithMean<Matrix>> observationCovParam =
           SimpleBayesianParameter.create(
               obsCovDistribution.getMean(), new MultivariateGaussian(
                   VectorFactory.getDefault().createVector2D(),
                   obsCovDistribution.getMean()), obsCovDistribution);
 
-      final int onRoadInitialDof =
-          parameters.getOnRoadCovDof()
-              - parameters.getOnRoadStateCov().getDimensionality()
-              - 1;
-      final InverseWishartDistribution onRoadCovDistribution =
-          new InverseWishartDistribution(MatrixFactory.getDefault()
+      final int onRoadInitialDof = parameters.getOnRoadCovDof() - 1; 
+      final DistributionWithMean<Matrix> onRoadCovDistribution =
+          new ScaledInverseGammaCovDistribution(1, 
+              parameters.getOnRoadCovDof(), 
+              MatrixFactory.getDefault()
               .createDiagonal(parameters.getOnRoadStateCov())
-              .scale(onRoadInitialDof), parameters.getOnRoadCovDof());
-      final SimpleBayesianParameter<Matrix, MultivariateGaussian, InverseWishartDistribution> onRoadCovParam =
+              .scale(onRoadInitialDof).getElement(0, 0) );
+      final SimpleBayesianParameter<Matrix, MultivariateGaussian, DistributionWithMean<Matrix>> onRoadCovParam =
           SimpleBayesianParameter
               .create(
                   onRoadCovDistribution.getMean(),
@@ -103,16 +104,13 @@ public class VehicleStateDistribution<Observation extends GpsObservation>
                       .createVector1D(), onRoadCovDistribution
                       .getMean()), onRoadCovDistribution);
 
-      final int offRoadInitialDof =
-          parameters.getOffRoadCovDof()
-              - parameters.getOffRoadStateCov().getDimensionality()
-              - 1;
-      final InverseWishartDistribution offRoadCovDistribution =
-          new InverseWishartDistribution(MatrixFactory.getDefault()
-              .createDiagonal(parameters.getOffRoadStateCov())
-              .scale(offRoadInitialDof),
-              parameters.getOffRoadCovDof());
-      final SimpleBayesianParameter<Matrix, MultivariateGaussian, InverseWishartDistribution> offRoadCovParam =
+      final int offRoadInitialDof = parameters.getOffRoadCovDof() - 1;
+      final DistributionWithMean<Matrix> offRoadCovDistribution =
+          new ScaledInverseGammaCovDistribution(2, 
+              parameters.getOffRoadCovDof(),
+              MatrixFactory.getDefault().createDiagonal(parameters.getOffRoadStateCov())
+              .scale(offRoadInitialDof).getElement(0, 0));
+      final SimpleBayesianParameter<Matrix, MultivariateGaussian, DistributionWithMean<Matrix>> offRoadCovParam =
           SimpleBayesianParameter
               .create(
                   offRoadCovDistribution.getMean(),
@@ -415,14 +413,14 @@ public class VehicleStateDistribution<Observation extends GpsObservation>
   /*-
    * E.g. GPS error distribution 
    */
-  protected SimpleBayesianParameter<Matrix, MultivariateGaussian, InverseWishartDistribution> observationCovarianceParam;
+  protected SimpleBayesianParameter<Matrix, MultivariateGaussian, DistributionWithMean<Matrix>> observationCovarianceParam;
 
-  protected SimpleBayesianParameter<Matrix, MultivariateGaussian, InverseWishartDistribution> offRoadModelCovarianceParam;
+  protected SimpleBayesianParameter<Matrix, MultivariateGaussian, DistributionWithMean<Matrix>> offRoadModelCovarianceParam;
 
   /*-
    * E.g. acceleration error distributions
    */
-  protected SimpleBayesianParameter<Matrix, MultivariateGaussian, InverseWishartDistribution> onRoadModelCovarianceParam;
+  protected SimpleBayesianParameter<Matrix, MultivariateGaussian, DistributionWithMean<Matrix>> onRoadModelCovarianceParam;
   protected VehicleStateDistribution<Observation> parentState = null;
 
   protected double pathStateDistLogLikelihood;
@@ -447,9 +445,9 @@ public class VehicleStateDistribution<Observation extends GpsObservation>
     Observation observation,
     SimpleBayesianParameter<Vector, MultivariateGaussian, MultivariateGaussian> motionStateParam,
     SimpleBayesianParameter<PathState, PathStateMixtureDensityModel, PathStateDistribution> pathStateParam,
-    SimpleBayesianParameter<Matrix, MultivariateGaussian, InverseWishartDistribution> observationCovParam,
-    SimpleBayesianParameter<Matrix, MultivariateGaussian, InverseWishartDistribution> onRoadModelCovParam,
-    SimpleBayesianParameter<Matrix, MultivariateGaussian, InverseWishartDistribution> offRoadModelCovParam,
+    SimpleBayesianParameter<Matrix, MultivariateGaussian, DistributionWithMean<Matrix>> observationCovParam,
+    SimpleBayesianParameter<Matrix, MultivariateGaussian, DistributionWithMean<Matrix>> onRoadModelCovParam,
+    SimpleBayesianParameter<Matrix, MultivariateGaussian, DistributionWithMean<Matrix>> offRoadModelCovParam,
     SimpleBayesianParameter<TransitionProbMatrix, OnOffEdgeTransDistribution, OnOffEdgeTransPriorDistribution> edgeTransitionDist,
     VehicleStateDistribution<Observation> parentState) {
 
@@ -590,19 +588,19 @@ public class VehicleStateDistribution<Observation extends GpsObservation>
   }
 
   public
-      SimpleBayesianParameter<Matrix, MultivariateGaussian, InverseWishartDistribution>
+      SimpleBayesianParameter<Matrix, MultivariateGaussian, DistributionWithMean<Matrix>>
       getObservationCovarianceParam() {
     return this.observationCovarianceParam;
   }
 
   public
-      SimpleBayesianParameter<Matrix, MultivariateGaussian, InverseWishartDistribution>
+      SimpleBayesianParameter<Matrix, MultivariateGaussian, DistributionWithMean<Matrix>>
       getOffRoadModelCovarianceParam() {
     return this.offRoadModelCovarianceParam;
   }
 
   public
-      SimpleBayesianParameter<Matrix, MultivariateGaussian, InverseWishartDistribution>
+      SimpleBayesianParameter<Matrix, MultivariateGaussian, DistributionWithMean<Matrix>>
       getOnRoadModelCovarianceParam() {
     return this.onRoadModelCovarianceParam;
   }
@@ -684,21 +682,21 @@ public class VehicleStateDistribution<Observation extends GpsObservation>
   public
       void
       setObservationCovarianceParam(
-        SimpleBayesianParameter<Matrix, MultivariateGaussian, InverseWishartDistribution> observationCovarianceParam) {
+        SimpleBayesianParameter<Matrix, MultivariateGaussian, DistributionWithMean<Matrix>> observationCovarianceParam) {
     this.observationCovarianceParam = observationCovarianceParam;
   }
 
   public
       void
       setOffRoadModelCovarianceParam(
-        SimpleBayesianParameter<Matrix, MultivariateGaussian, InverseWishartDistribution> offRoadModelCovarianceParam) {
+        SimpleBayesianParameter<Matrix, MultivariateGaussian, DistributionWithMean<Matrix>> offRoadModelCovarianceParam) {
     this.offRoadModelCovarianceParam = offRoadModelCovarianceParam;
   }
 
   public
       void
       setOnRoadModelCovarianceParam(
-        SimpleBayesianParameter<Matrix, MultivariateGaussian, InverseWishartDistribution> onRoadModelCovarianceParam) {
+        SimpleBayesianParameter<Matrix, MultivariateGaussian, DistributionWithMean<Matrix>> onRoadModelCovarianceParam) {
     this.onRoadModelCovarianceParam = onRoadModelCovarianceParam;
   }
 

@@ -63,7 +63,7 @@ public class PathStateEstimatorPredictor extends
     MultivariateGaussian roadDistribution, PathEdge edge,
     Coordinate obs, Double startDistance, double deltaTime) {
     final Matrix Or = MotionStateEstimatorPredictor.getOr();
-    final double edgeLength;
+    double edgeLength;
     final double distToStartOfEdge;
     /*
      * When we're on the initial edge, we create a 
@@ -75,10 +75,20 @@ public class PathStateEstimatorPredictor extends
     LineSegment lineSegment;
     if (startDistance != null && edge.getDistToStartOfEdge() == 0) {
       edgeLength = edge.getLength() - startDistance;
-      distToStartOfEdge = startDistance;
+      /*
+       * Zero edge length can happen, and does, so we
+       * need to provide a non-zero distance over which
+       * error can exist.
+       */
+      if (edgeLength < 10d) {
+        distToStartOfEdge = Math.max(startDistance - 10d, 10d);
+        edgeLength = edge.getLength() - distToStartOfEdge;
+      } else {
+        distToStartOfEdge = startDistance;
+      }
       lineSegment =
           new LineSegment(edge.getSegment().getLine()
-              .pointAlong(startDistance / edge.getLength()), edge
+              .pointAlong(distToStartOfEdge / edge.getLength()), edge
               .getSegment().getLine().p1);
     } else {
       edgeLength = edge.getLength();
@@ -172,7 +182,7 @@ public class PathStateEstimatorPredictor extends
     MultivariateGaussian roadDistribution, PathEdge edge,
     Coordinate obs, Double startDistance, double deltaTime) {
     final Matrix Or = MotionStateEstimatorPredictor.getOr();
-    final double edgeLength;
+    double edgeLength;
     final double distToStartOfEdge;
     /*
      * When we're on the initial edge, we create a 
@@ -184,10 +194,20 @@ public class PathStateEstimatorPredictor extends
     LineSegment lineSegment;
     if (startDistance != null && edge.getDistToStartOfEdge() == 0) {
       edgeLength = edge.getLength() - startDistance;
-      distToStartOfEdge = startDistance;
+      /*
+       * Zero edge length can happen, and does, so we
+       * need to provide a non-zero distance over which
+       * error can exist.
+       */
+      if (edgeLength < 10d) {
+        distToStartOfEdge = Math.max(startDistance - 10d, 10d);
+        edgeLength = edge.getLength() - distToStartOfEdge;
+      } else {
+        distToStartOfEdge = startDistance;
+      }
       lineSegment =
           new LineSegment(edge.getSegment().getLine()
-              .pointAlong(startDistance / edge.getLength()), edge
+              .pointAlong(distToStartOfEdge / edge.getLength()), edge
               .getSegment().getLine().p1);
     } else {
       edgeLength = edge.getLength();

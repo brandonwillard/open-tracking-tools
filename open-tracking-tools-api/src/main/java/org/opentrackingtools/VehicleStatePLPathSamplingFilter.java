@@ -4,9 +4,11 @@ import gov.sandia.cognition.math.MutableDouble;
 import gov.sandia.cognition.math.matrix.Matrix;
 import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.math.matrix.VectorFactory;
+import gov.sandia.cognition.statistics.ClosedFormComputableDistribution;
 import gov.sandia.cognition.statistics.DataDistribution;
+import gov.sandia.cognition.statistics.Distribution;
+import gov.sandia.cognition.statistics.DistributionWithMean;
 import gov.sandia.cognition.statistics.bayesian.AbstractParticleFilter;
-import gov.sandia.cognition.statistics.distribution.InverseWishartDistribution;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 
 import java.util.ArrayList;
@@ -22,6 +24,7 @@ import org.opentrackingtools.distributions.OnOffEdgeTransDistribution;
 import org.opentrackingtools.distributions.OnOffEdgeTransPriorDistribution;
 import org.opentrackingtools.distributions.PathStateDistribution;
 import org.opentrackingtools.distributions.PathStateMixtureDensityModel;
+import org.opentrackingtools.distributions.ScaledInverseGammaCovDistribution;
 import org.opentrackingtools.estimators.MotionStateEstimatorPredictor;
 import org.opentrackingtools.estimators.OnOffEdgeTransitionEstimatorPredictor;
 import org.opentrackingtools.estimators.RoadMeasurementCovarianceEstimatorPredictor;
@@ -243,87 +246,73 @@ public class VehicleStatePLPathSamplingFilter<O extends GpsObservation, G extend
         new OnOffEdgeTransitionEstimatorPredictor(updatedState,
             graphEdge);
     Vector newObsStateSample;
-    if (!(posteriorPathStateDist.getPathState().isOnRoad() && state
-        .getOnRoadModelCovarianceParam().getParameterPrior()
-        .getDegreesOfFreedom() >= Integer.MAX_VALUE - 1)
-        && !(!posteriorPathStateDist.getPathState().isOnRoad() && state
-            .getOffRoadModelCovarianceParam().getParameterPrior()
-            .getDegreesOfFreedom() >= Integer.MAX_VALUE - 1)) {
-      final RoadModelCovarianceEstimatorPredictor modelCovarianceEstimator =
-          new RoadModelCovarianceEstimatorPredictor(updatedState,
-              state.getMotionStateEstimatorPredictor(), this.random);
+    
+    final RoadModelCovarianceEstimatorPredictor modelCovarianceEstimator =
+        new RoadModelCovarianceEstimatorPredictor(updatedState,
+            state.getMotionStateEstimatorPredictor(), this.random);
 
-      final InverseWishartDistribution currentModelCovDistribution =
-          posteriorPathStateDist.getPathState().isOnRoad()
-              ? updatedState.getOnRoadModelCovarianceParam()
-                  .getParameterPrior().clone() : updatedState
-                  .getOffRoadModelCovarianceParam()
-                  .getParameterPrior().clone();
-      modelCovarianceEstimator.update(currentModelCovDistribution,
-          obs.getProjectedPoint());
+    final ScaledInverseGammaCovDistribution currentModelCovDistribution =
+        (ScaledInverseGammaCovDistribution) (posteriorPathStateDist.getPathState().isOnRoad()
+        ? updatedState.getOnRoadModelCovarianceParam()
+            .getParameterPrior().clone() : updatedState
+            .getOffRoadModelCovarianceParam()
+            .getParameterPrior().clone());
+    modelCovarianceEstimator.update(currentModelCovDistribution,
+        obs.getProjectedPoint());
 
-      /*
-       * After updating the covariance priors, we need to sample our new covariance matrix.
-       * Also, note that we really have separate on/off covariances.  We could project
-       * back and forth, then we'd really only have one.
-       */
-      if (posteriorPathStateDist.getPathState().isOnRoad()) {
-        updatedState.getOnRoadModelCovarianceParam()
-            .setParameterPrior(currentModelCovDistribution);
-        final Matrix stateCovSample =
-            currentModelCovDistribution.sample(this.random);
-        updatedState.getOnRoadModelCovarianceParam().setValue(
-            stateCovSample);
-        updatedState.getOnRoadModelCovarianceParam()
-            .setConditionalDistribution(
-                new MultivariateGaussian(VectorFactory.getDefault()
-                    .createVector1D(), stateCovSample));
-      } else {
-        updatedState.getOffRoadModelCovarianceParam()
-            .setParameterPrior(currentModelCovDistribution);
-        final Matrix stateCovSample =
-            currentModelCovDistribution.sample(this.random);
-        updatedState.getOffRoadModelCovarianceParam().setValue(
-            stateCovSample);
-        updatedState.getOffRoadModelCovarianceParam()
-            .setConditionalDistribution(
-                new MultivariateGaussian(VectorFactory.getDefault()
-                    .createVector1D(), stateCovSample));
-      }
-      newObsStateSample =
-          MotionStateEstimatorPredictor.getOg().times(
-              modelCovarianceEstimator.getNewPosteriorStateSample()
-                  .getGroundDistribution().getMean());
-    } else {
-      newObsStateSample =
-          MotionStateEstimatorPredictor.getOg().times(
-              posteriorPathStateDist.getGroundDistribution()
-                  .getMean());
-    }
-
-    if (state.getObservationCovarianceParam().getParameterPrior()
-        .getDegreesOfFreedom() < Integer.MAX_VALUE - 1) {
-      final RoadMeasurementCovarianceEstimatorPredictor measurementCovarianceEstimator =
-          new RoadMeasurementCovarianceEstimatorPredictor(
-              updatedState, newObsStateSample);
-      final InverseWishartDistribution currentObsCovDistribution =
-          updatedState.getObservationCovarianceParam()
-              .getParameterPrior().clone();
-      measurementCovarianceEstimator.update(
-          currentObsCovDistribution, obs.getProjectedPoint());
-
-      updatedState.getObservationCovarianceParam().setParameterPrior(
-          currentObsCovDistribution);
-      final Matrix obsCovSample =
-          currentObsCovDistribution.sample(this.random);
-      updatedState.getObservationCovarianceParam().setValue(
-          obsCovSample);
-      updatedState.getObservationCovarianceParam()
+    /*
+     * After updating the covariance priors, we need to sample our new covariance matrix.
+     * Also, note that we really have separate on/off covariances.  We could project
+     * back and forth, then we'd really only have one.
+     */
+    if (posteriorPathStateDist.getPathState().isOnRoad()) {
+      updatedState.getOnRoadModelCovarianceParam()
+          .setParameterPrior(currentModelCovDistribution);
+      final Matrix stateCovSample =
+          currentModelCovDistribution.sample(this.random);
+      updatedState.getOnRoadModelCovarianceParam().setValue(
+          stateCovSample);
+      updatedState.getOnRoadModelCovarianceParam()
           .setConditionalDistribution(
               new MultivariateGaussian(VectorFactory.getDefault()
-                  .createVector(obsCovSample.getNumColumns()),
-                  obsCovSample));
+                  .createVector1D(), stateCovSample));
+    } else {
+      updatedState.getOffRoadModelCovarianceParam()
+          .setParameterPrior(currentModelCovDistribution);
+      final Matrix stateCovSample =
+          currentModelCovDistribution.sample(this.random);
+      updatedState.getOffRoadModelCovarianceParam().setValue(
+          stateCovSample);
+      updatedState.getOffRoadModelCovarianceParam()
+          .setConditionalDistribution(
+              new MultivariateGaussian(VectorFactory.getDefault()
+                  .createVector1D(), stateCovSample));
     }
+    newObsStateSample =
+        MotionStateEstimatorPredictor.getOg().times(
+            modelCovarianceEstimator.getNewPosteriorStateSample()
+                .getGroundDistribution().getMean());
+
+    final RoadMeasurementCovarianceEstimatorPredictor measurementCovarianceEstimator =
+        new RoadMeasurementCovarianceEstimatorPredictor(
+            updatedState, newObsStateSample);
+    final ScaledInverseGammaCovDistribution currentObsCovDistribution =
+        (ScaledInverseGammaCovDistribution) updatedState.getObservationCovarianceParam()
+        .getParameterPrior().clone();
+    measurementCovarianceEstimator.update(
+        currentObsCovDistribution, obs.getProjectedPoint());
+
+    updatedState.getObservationCovarianceParam().setParameterPrior(
+        currentObsCovDistribution);
+    final Matrix obsCovSample =
+        currentObsCovDistribution.sample(this.random);
+    updatedState.getObservationCovarianceParam().setValue(
+        obsCovSample);
+    updatedState.getObservationCovarianceParam()
+        .setConditionalDistribution(
+            new MultivariateGaussian(VectorFactory.getDefault()
+                .createVector(obsCovSample.getNumColumns()),
+                obsCovSample));
 
     updatedState.getMotionStateParam().setParameterPrior(
         posteriorPathStateDist.getMotionDistribution());

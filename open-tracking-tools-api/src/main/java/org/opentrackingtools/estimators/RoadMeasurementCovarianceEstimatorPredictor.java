@@ -5,12 +5,14 @@ import gov.sandia.cognition.math.matrix.Matrix;
 import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.statistics.ComputableDistribution;
 import gov.sandia.cognition.statistics.bayesian.BayesianEstimatorPredictor;
+import gov.sandia.cognition.statistics.distribution.InverseGammaDistribution;
 import gov.sandia.cognition.statistics.distribution.InverseWishartDistribution;
 import gov.sandia.cognition.util.AbstractCloneableSerializable;
 
 import java.util.Collection;
 import java.util.Random;
 
+import org.opentrackingtools.distributions.ScaledInverseGammaCovDistribution;
 import org.opentrackingtools.model.VehicleStateDistribution;
 import org.opentrackingtools.util.TrueObservation;
 import org.slf4j.Logger;
@@ -21,8 +23,8 @@ import com.google.common.base.Preconditions;
 public class RoadMeasurementCovarianceEstimatorPredictor extends
     AbstractCloneableSerializable
     implements
-    BayesianEstimatorPredictor<Matrix, Matrix, InverseWishartDistribution>,
-    IncrementalLearner<Vector, InverseWishartDistribution> {
+    BayesianEstimatorPredictor<Matrix, Matrix, ScaledInverseGammaCovDistribution>,
+    IncrementalLearner<Vector, ScaledInverseGammaCovDistribution> {
 
   private static final Logger log = LoggerFactory
       .getLogger(RoadMeasurementCovarianceEstimatorPredictor.class);
@@ -53,48 +55,45 @@ public class RoadMeasurementCovarianceEstimatorPredictor extends
   }
 
   @Override
-  public InverseWishartDistribution createInitialLearnedObject() {
-    return new InverseWishartDistribution(2);
+  public ScaledInverseGammaCovDistribution createInitialLearnedObject() {
+    return new ScaledInverseGammaCovDistribution(2, 1d, 1d);
   }
 
   @Override
   public ComputableDistribution<Matrix> createPredictiveDistribution(
-    InverseWishartDistribution posterior) {
+    ScaledInverseGammaCovDistribution posterior) {
     return posterior;
   }
 
   @Override
-  public InverseWishartDistribution learn(
+  public ScaledInverseGammaCovDistribution learn(
     Collection<? extends Matrix> data) {
     // TODO Auto-generated method stub
     return null;
   }
 
   @Override
-  public void update(InverseWishartDistribution target,
+  public void update(ScaledInverseGammaCovDistribution target,
     Iterable<? extends Vector> data) {
     // TODO Auto-generated method stub
 
   }
 
   @Override
-  public void update(InverseWishartDistribution obsCovPrior,
+  public void update(ScaledInverseGammaCovDistribution obsCovPrior,
     Vector obs) {
     /*
      * observation covar update
      */
     final Vector obsError = obs.minus(this.newStateObsSample);
-    final Matrix obsSmplCov = obsError.outerProduct(obsError);
-    //        MatrixFactory.getDefault().createDiagonal(
-    //        obsError.dotTimes(obsError));
 
     // REMOVE debug.  remove.
     if (this.vehicleState.getObservation() instanceof TrueObservation) {
       final VehicleStateDistribution<?> trueState =
           ((TrueObservation) this.vehicleState.getObservation())
               .getTrueState();
-      final InverseWishartDistribution tmpPrior = obsCovPrior.clone();
-      this.updateInvWishart(tmpPrior, obsSmplCov);
+      final ScaledInverseGammaCovDistribution tmpPrior = obsCovPrior.clone();
+      this.updateInternal(tmpPrior, obsError);
       final Matrix trueQ =
           trueState.getObservationCovarianceParam().getValue();
       obs.minus(trueState.getMotionStateParam().getValue());
@@ -107,17 +106,18 @@ public class RoadMeasurementCovarianceEstimatorPredictor extends
       }
     }
 
-    this.updateInvWishart(obsCovPrior, obsSmplCov);
+    this.updateInternal(obsCovPrior, obsError);
 
   }
 
-  private void updateInvWishart(
-    InverseWishartDistribution covarPrior, Matrix smplCov) {
-    final int nOld = covarPrior.getDegreesOfFreedom();
-    final int nNew = nOld + 1;
-    covarPrior.setDegreesOfFreedom(nNew);
-    covarPrior.setInverseScale(covarPrior.getInverseScale().plus(
-        smplCov));
+  private void updateInternal(
+    ScaledInverseGammaCovDistribution covarPrior, Vector error) {
+    final InverseGammaDistribution igDist = covarPrior.getInverseGammaDist();
+    final double nOld = igDist.getShape();
+    final double nNew = nOld + 0.5d;
+    final double newScale = igDist.getScale() + error.dotProduct(error) * 0.5d;
+    igDist.setShape(nNew);
+    igDist.setScale(newScale);
   }
 
 }

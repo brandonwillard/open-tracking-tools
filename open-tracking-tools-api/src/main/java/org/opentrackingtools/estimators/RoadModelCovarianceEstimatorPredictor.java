@@ -7,6 +7,7 @@ import gov.sandia.cognition.math.matrix.decomposition.AbstractSingularValueDecom
 import gov.sandia.cognition.math.matrix.mtj.decomposition.SingularValueDecompositionMTJ;
 import gov.sandia.cognition.statistics.ComputableDistribution;
 import gov.sandia.cognition.statistics.bayesian.BayesianEstimatorPredictor;
+import gov.sandia.cognition.statistics.distribution.InverseGammaDistribution;
 import gov.sandia.cognition.statistics.distribution.InverseWishartDistribution;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 import gov.sandia.cognition.util.AbstractCloneableSerializable;
@@ -16,6 +17,7 @@ import java.util.Random;
 
 import org.opentrackingtools.distributions.AdjMultivariateGaussian;
 import org.opentrackingtools.distributions.PathStateDistribution;
+import org.opentrackingtools.distributions.ScaledInverseGammaCovDistribution;
 import org.opentrackingtools.distributions.TruncatedRoadGaussian;
 import org.opentrackingtools.model.VehicleStateDistribution;
 import org.opentrackingtools.paths.Path;
@@ -32,8 +34,8 @@ import com.google.common.base.Preconditions;
 public class RoadModelCovarianceEstimatorPredictor extends
     AbstractCloneableSerializable
     implements
-    BayesianEstimatorPredictor<Matrix, Matrix, InverseWishartDistribution>,
-    IncrementalLearner<Vector, InverseWishartDistribution> {
+    BayesianEstimatorPredictor<Matrix, Matrix, ScaledInverseGammaCovDistribution>,
+    IncrementalLearner<Vector, ScaledInverseGammaCovDistribution> {
 
   private static final Logger log = LoggerFactory
       .getLogger(RoadModelCovarianceEstimatorPredictor.class);
@@ -67,14 +69,14 @@ public class RoadModelCovarianceEstimatorPredictor extends
   }
 
   @Override
-  public InverseWishartDistribution createInitialLearnedObject() {
+  public ScaledInverseGammaCovDistribution createInitialLearnedObject() {
     // TODO Auto-generated method stub
     return null;
   }
 
   @Override
   public ComputableDistribution<Matrix> createPredictiveDistribution(
-    InverseWishartDistribution posterior) {
+    ScaledInverseGammaCovDistribution posterior) {
     return posterior;
   }
 
@@ -99,7 +101,7 @@ public class RoadModelCovarianceEstimatorPredictor extends
   }
 
   @Override
-  public InverseWishartDistribution learn(
+  public ScaledInverseGammaCovDistribution learn(
     Collection<? extends Matrix> data) {
     // TODO Auto-generated method stub
     return null;
@@ -276,7 +278,7 @@ public class RoadModelCovarianceEstimatorPredictor extends
   }
 
   @Override
-  public void update(InverseWishartDistribution target,
+  public void update(ScaledInverseGammaCovDistribution target,
     Iterable<? extends Vector> data) {
     // TODO Auto-generated method stub
 
@@ -284,7 +286,7 @@ public class RoadModelCovarianceEstimatorPredictor extends
 
   @Override
   public void
-      update(InverseWishartDistribution covarPrior, Vector obs) {
+      update(ScaledInverseGammaCovDistribution covarPrior, Vector obs) {
 
     final PathStateDistribution posteriorState =
         this.vehicleState.getPathStateParam().getParameterPrior();
@@ -326,15 +328,14 @@ public class RoadModelCovarianceEstimatorPredictor extends
             covFactor.times(covFactor.transpose())
                 .pseudoInverse(1e-7), true, -1).transpose();
     final Vector stateError = covFactorInv.times(sampleDiff);
-    final Matrix smplCov = stateError.outerProduct(stateError);
 
     // TODO debug.  remove.
     if (this.vehicleState.getObservation() instanceof TrueObservation) {
       final VehicleStateDistribution<?> trueState =
           ((TrueObservation) this.vehicleState.getObservation())
               .getTrueState();
-      final InverseWishartDistribution tmpPrior = covarPrior.clone();
-      this.updateInvWishart(tmpPrior, smplCov);
+      final ScaledInverseGammaCovDistribution tmpPrior = covarPrior.clone();
+      this.updateInternal(tmpPrior, stateError);
       final Matrix trueQ =
           newPrevStateSample.getPathState().isOnRoad() ? trueState
               .getOnRoadModelCovarianceParam().getValue() : trueState
@@ -348,16 +349,17 @@ public class RoadModelCovarianceEstimatorPredictor extends
       }
     }
 
-    this.updateInvWishart(covarPrior, smplCov);
+    this.updateInternal(covarPrior, stateError);
   }
 
-  private void updateInvWishart(
-    InverseWishartDistribution covarPrior, Matrix smplCov) {
-    final int nOld = covarPrior.getDegreesOfFreedom();
-    final int nNew = nOld + 1;
-    covarPrior.setDegreesOfFreedom(nNew);
-    covarPrior.setInverseScale(covarPrior.getInverseScale().plus(
-        smplCov));
+  private void updateInternal(
+    ScaledInverseGammaCovDistribution covarPrior, Vector error) {
+    final InverseGammaDistribution igDist = covarPrior.getInverseGammaDist();
+    final double nOld = igDist.getShape();
+    final double nNew = nOld + 0.5d;
+    final double newScale = igDist.getScale() + error.dotProduct(error) * 0.5d;
+    igDist.setShape(nNew);
+    igDist.setScale(newScale);
   }
 
 }

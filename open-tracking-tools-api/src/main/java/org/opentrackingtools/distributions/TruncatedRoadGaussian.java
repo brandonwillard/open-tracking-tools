@@ -505,6 +505,10 @@ public class TruncatedRoadGaussian extends AdjMultivariateGaussian {
 
   @Override
   public void setMean(Vector mean) {
+    Preconditions.checkArgument(!Double.isNaN(mean.getElement(0))
+        && !Double.isNaN(mean.getElement(1))
+        && !Double.isInfinite(mean.getElement(0))
+        && !Double.isInfinite(mean.getElement(1)));
     this.distanceTruncDist = null;
     super.setMean(this.truncateVector(mean));
     if (this.unTruncatedDist != null) {
