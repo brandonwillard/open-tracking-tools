@@ -379,8 +379,7 @@ public class GenericJTSGraph implements InferenceGraph {
      * Get only the segments forward from the current segment on the current edge
      */
     double distance = 0d;
-    for (final InferenceGraphSegment segment : startSegment
-        .getParentEdge().getSegments(startSegment.startDistance,
+    for (final InferenceGraphSegment segment : startSegment.getSegments(startSegment.startDistance,
             Double.POSITIVE_INFINITY)) {
       pathEdges.add(new PathEdge(segment, distance, false));
       distance += segment.getLine().getLength();
@@ -446,12 +445,12 @@ public class GenericJTSGraph implements InferenceGraph {
     final PathEdge currrentPathEdge =
         fromState.getPathStateParam().getValue().getEdge();
     final InferenceGraphEdge currentEdge =
-        currrentPathEdge.getInferenceGraphEdge();
+        currrentPathEdge.getInferenceGraphSegment();
 
     final Set<InferenceGraphSegment> startEdges = Sets.newHashSet();
 
     if (!currentEdge.isNullEdge()) {
-      startEdges.add(currrentPathEdge.getSegment());
+      startEdges.add(currrentPathEdge.getInferenceGraphSegment());
     } else {
 
       final MultivariateGaussian obsDist =
@@ -492,7 +491,7 @@ public class GenericJTSGraph implements InferenceGraph {
 
     for (final InferenceGraphSegment startEdge : startEdges) {
       final DirectedEdge bStartEdge =
-          ((DirectedEdge) startEdge.getParentEdge().getBackingEdge());
+          ((DirectedEdge) startEdge.getBackingEdge());
       final Node source = bStartEdge.getOutNode();
       /*
        * Use this set to avoid recomputing subpaths of 
@@ -501,12 +500,11 @@ public class GenericJTSGraph implements InferenceGraph {
       final Set<Node> reachedEndNodes = Sets.newHashSet(source);
       for (final InferenceGraphSegment endEdge : endLines) {
 
-        if (startEdge.getParentEdge().equals(endEdge.getParentEdge())) {
+        if (startEdge.equals(endEdge)) {
           final List<PathEdge> currentEdgePathEdges =
               Lists.newArrayList();
           double distance = 0d;
-          for (final InferenceGraphSegment segment : startEdge
-              .getParentEdge().getSegments(startEdge.startDistance,
+          for (final InferenceGraphSegment segment : startEdge.getSegments(startEdge.startDistance,
                   Double.POSITIVE_INFINITY)) {
             currentEdgePathEdges.add(new PathEdge(segment, distance,
                 false));
@@ -519,7 +517,7 @@ public class GenericJTSGraph implements InferenceGraph {
         }
 
         final DirectedEdge bEdge =
-            ((DirectedEdge) endEdge.getParentEdge().getBackingEdge());
+            ((DirectedEdge) endEdge.getBackingEdge());
         final List<Node> endNodes = Lists.newArrayList();
         endNodes.add(bEdge.getNodeA());
         endNodes.add(bEdge.getNodeB());

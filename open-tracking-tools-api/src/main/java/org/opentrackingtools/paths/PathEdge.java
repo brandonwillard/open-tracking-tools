@@ -19,30 +19,29 @@ public class PathEdge extends AbstractCloneableSerializable implements
   private static final long serialVersionUID = 2615199504616160384L;
   protected Double distFromStartOfGraphEdge = null;
   protected Double distToStartOfEdge = null;
-  protected InferenceGraphEdge edge = null;
+  protected InferenceGraphSegment edge = null;
   protected Boolean isBackward = null;
   protected LineSegment line = null;
 
-  protected InferenceGraphSegment segment = null;
-
   protected PathEdge() {
-    this.edge = InferenceGraphEdge.nullGraphEdge;
+    this.edge = InferenceGraphSegment.nullGraphSegment;
   }
 
   public PathEdge(InferenceGraphSegment segment,
     double startDistance, boolean isBackward) {
     Preconditions
-        .checkArgument(!segment.getParentEdge().isNullEdge());
+        .checkArgument(!segment.isNullEdge());
     Preconditions.checkState((isBackward != Boolean.TRUE)
         || startDistance <= 0d);
-    this.segment = segment;
-    this.line = new LineSegment(segment.getLine());
     if (isBackward) {
+      this.line = new LineSegment(segment.getLine());
       this.line.reverse();
+    } else {
+      this.line = segment.getLine();
     }
-    this.edge = segment.getParentEdge();
+    this.edge = segment;
     this.distFromStartOfGraphEdge =
-        segment.getParentEdge().getLengthLocationMap()
+        segment.getLengthLocationMap()
             .getLength(segment.getStartIndex());
     this.distToStartOfEdge = startDistance;
     this.isBackward = isBackward;
@@ -77,7 +76,6 @@ public class PathEdge extends AbstractCloneableSerializable implements
     clone.distToStartOfEdge = this.distToStartOfEdge;
     clone.edge = this.edge;
     clone.isBackward = this.isBackward;
-    clone.segment = this.segment;
     return clone;
   }
 
@@ -86,7 +84,6 @@ public class PathEdge extends AbstractCloneableSerializable implements
     return ComparisonChain
         .start()
         .compare(this.edge, o.edge)
-        .compare(this.segment, o.segment)
         .compare(this.isBackward(), o.isBackward,
             Ordering.natural().nullsLast())
         .compare(this.distToStartOfEdge, o.distToStartOfEdge,
@@ -111,13 +108,6 @@ public class PathEdge extends AbstractCloneableSerializable implements
       }
     } else if (!this.distToStartOfEdge
         .equals(other.distToStartOfEdge)) {
-      return false;
-    }
-    if (this.segment == null) {
-      if (other.segment != null) {
-        return false;
-      }
-    } else if (!this.segment.equals(other.segment)) {
       return false;
     }
     if (this.edge == null) {
@@ -190,20 +180,16 @@ public class PathEdge extends AbstractCloneableSerializable implements
     return this.distToStartOfEdge;
   }
 
-  public InferenceGraphEdge getInferenceGraphEdge() {
+  public InferenceGraphSegment getInferenceGraphSegment() {
     return this.edge;
   }
 
   public double getLength() {
-    return this.segment.getLine().getLength();
+    return this.line.getLength();
   }
 
   public LineSegment getLine() {
     return this.line;
-  }
-
-  public InferenceGraphSegment getSegment() {
-    return this.segment;
   }
 
   @Override
@@ -218,9 +204,6 @@ public class PathEdge extends AbstractCloneableSerializable implements
     result =
         prime * result
             + ((this.edge == null) ? 0 : this.edge.hashCode());
-    result =
-        prime * result
-            + ((this.segment == null) ? 0 : this.segment.hashCode());
     result =
         prime
             * result
@@ -260,7 +243,7 @@ public class PathEdge extends AbstractCloneableSerializable implements
       final double distToStart =
           this.distToStartOfEdge == 0d && this.isBackward ? -0d
               : this.distToStartOfEdge.longValue();
-      return "PathEdge [edge=" + this.segment + ", distToStart="
+      return "PathEdge [edge=" + this.edge + ", distToStart="
           + distToStart + "]";
     }
   }

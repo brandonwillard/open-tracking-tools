@@ -74,7 +74,6 @@ public class VehicleStatePLUpdaterTest {
                 .getDefault().createVector2D(Double.MAX_VALUE, 1), 0,
             4, 0);
 
-    startLine.getParentEdge();
     final PathEdge startPathEdge = new PathEdge(startLine, 0d, false);
 
     final VehicleStateDistributionFactory<GpsObservation, GenericJTSGraph> factory =

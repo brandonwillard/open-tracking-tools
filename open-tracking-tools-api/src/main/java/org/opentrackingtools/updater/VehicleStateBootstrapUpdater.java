@@ -186,7 +186,7 @@ public class VehicleStateBootstrapUpdater<O extends GpsObservation>
             stateOnEdge.getEdgeTransitionParam()
                 .getConditionalDistribution()
                 .getProbabilityFunction()
-                .logEvaluate(startPathEdge.getInferenceGraphEdge())
+                .logEvaluate(startPathEdge.getInferenceGraphSegment())
                 + this.computeLogLikelihood(stateOnEdge,
                     this.initialObservation);
 

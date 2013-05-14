@@ -11,7 +11,7 @@ public class TrueObservation extends GpsObservation {
     VehicleStateDistribution<GpsObservation> trueState) {
     super(obs.getSourceId(), obs.getTimestamp(), obs
         .getObsCoordsLatLon(), obs.getVelocity(), obs.getHeading(),
-        obs.getAccuracy(), obs.getRecordNumber(), obs
+        obs.getFixQuality(), obs.getRecordNumber(), obs
             .getPreviousObservation(), obs.getObsProjected());
     this.trueState = trueState;
   }

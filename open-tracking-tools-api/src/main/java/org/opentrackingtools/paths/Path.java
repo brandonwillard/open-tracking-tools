@@ -78,7 +78,7 @@ public class Path extends AbstractCloneableSerializable implements
         coords.add(geom.p0, false);
         coords.add(geom.p1, false);
         if (!edge.equals(lastEdge)) {
-          this.edgeIds.add(edge.getInferenceGraphEdge().getEdgeId());
+          this.edgeIds.add(edge.getInferenceGraphSegment().getEdgeId());
         }
       }
 
@@ -108,9 +108,9 @@ public class Path extends AbstractCloneableSerializable implements
         (this.isBackward == Boolean.TRUE ? -1d : 1d)
             * edge.getLength();
     this.edgeIds =
-        Lists.newArrayList(edge.getInferenceGraphEdge().getEdgeId());
+        Lists.newArrayList(edge.getInferenceGraphSegment().getEdgeId());
     this.geometry =
-        edge.segment.getLine().toGeometry(
+        edge.getLine().toGeometry(
             JTSFactoryFinder.getGeometryFactory());
 
     if (this.isBackward == Boolean.TRUE) {
@@ -194,7 +194,7 @@ public class Path extends AbstractCloneableSerializable implements
     double distance = 0d;
     for (final PathEdge edge1 : this.getPathEdges()) {
       if (edge1.getDistToStartOfEdge() >= edge.getDistToStartOfEdge()) {
-        newEdges.add(new PathEdge(edge1.getSegment(), distance, edge1
+        newEdges.add(new PathEdge(edge1.getInferenceGraphSegment(), distance, edge1
             .isBackward()));
         distance += edge1.getLength();
       }

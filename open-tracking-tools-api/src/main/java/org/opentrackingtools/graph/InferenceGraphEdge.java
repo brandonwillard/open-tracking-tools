@@ -30,20 +30,17 @@ public class InferenceGraphEdge implements
 
   protected final Object backingEdge;
   protected final Integer edgeId;
-  protected final Vector endPoint;
   protected final Geometry geometry;
-  protected final List<InferenceGraphSegment> graphSegments;
   protected final Boolean hasReverse;
+  
+  protected List<InferenceGraphSegment> graphSegments;
   protected LengthLocationMap lengthLocationMap = null;
-  protected final LocationIndexedLine locationIndexedLine;
-  protected final Vector startPoint;
+  protected LocationIndexedLine locationIndexedLine;
 
   protected InferenceGraphEdge() {
     this.locationIndexedLine = null;
     this.graphSegments = null;
     this.edgeId = null;
-    this.endPoint = null;
-    this.startPoint = null;
     this.backingEdge = null;
     this.geometry = null;
     this.hasReverse = null;
@@ -63,16 +60,8 @@ public class InferenceGraphEdge implements
     final Coordinate startPointCoord =
         this.geometry.getCoordinates()[0];
 
-    this.startPoint =
-        VectorFactory.getDefault().createVector2D(startPointCoord.x,
-            startPointCoord.y);
-
     final Coordinate endPointCoord =
         this.geometry.getCoordinates()[this.geometry.getNumPoints() - 1];
-
-    this.endPoint =
-        VectorFactory.getDefault().createVector2D(endPointCoord.x,
-            endPointCoord.y);
 
     this.locationIndexedLine = new LocationIndexedLine(this.geometry);
     this.graphSegments = Lists.newArrayList();
@@ -86,6 +75,13 @@ public class InferenceGraphEdge implements
       this.graphSegments.add(infSegment);
     }
     Collections.reverse(this.graphSegments);
+  }
+
+  public InferenceGraphEdge(InferenceGraphEdge infEdge) {
+    this.backingEdge = infEdge.backingEdge;
+    this.edgeId = infEdge.edgeId;
+    this.geometry = infEdge.geometry;
+    this.hasReverse = infEdge.hasReverse;
   }
 
   @Override
@@ -125,10 +121,6 @@ public class InferenceGraphEdge implements
 
   public String getEdgeId() {
     return String.valueOf(this.edgeId);
-  }
-
-  public Vector getEndPoint() {
-    return this.endPoint;
   }
 
   public Geometry getGeometry() {
@@ -181,10 +173,6 @@ public class InferenceGraphEdge implements
       }
     }
     return results;
-  }
-
-  public Vector getStartPoint() {
-    return this.startPoint;
   }
 
   @Override

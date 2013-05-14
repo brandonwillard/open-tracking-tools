@@ -433,7 +433,7 @@ public class VehicleStateDistribution<Observation extends GpsObservation>
   /*
    * Debug values
    */
-  protected double predictiveLogLikelihood;
+  protected double obsLogLikelihood;
   protected VehicleStateDistribution<Observation> priorPredictiveState;
   /*
    * This holds the prior predictive transition states.  Again, debug.
@@ -488,7 +488,7 @@ public class VehicleStateDistribution<Observation extends GpsObservation>
         other.edgeTransitionLogLikelihood;
     this.pathStateDistLogLikelihood =
         other.pathStateDistLogLikelihood;
-    this.predictiveLogLikelihood = other.predictiveLogLikelihood;
+    this.obsLogLikelihood = other.obsLogLikelihood;
   }
 
   @Override
@@ -516,7 +516,7 @@ public class VehicleStateDistribution<Observation extends GpsObservation>
         this.edgeTransitionLogLikelihood;
     clone.pathStateDistLogLikelihood =
         this.pathStateDistLogLikelihood;
-    clone.predictiveLogLikelihood = this.predictiveLogLikelihood;
+    clone.obsLogLikelihood = this.obsLogLikelihood;
 
     return clone;
   }
@@ -619,8 +619,8 @@ public class VehicleStateDistribution<Observation extends GpsObservation>
     return this.pathStateParam;
   }
 
-  public double getPredictiveLogLikelihood() {
-    return this.predictiveLogLikelihood;
+  public double getObsLogLikelihood() {
+    return this.obsLogLikelihood;
   }
 
   public
@@ -718,9 +718,9 @@ public class VehicleStateDistribution<Observation extends GpsObservation>
     this.pathStateParam = pathStateParam;
   }
 
-  public void setPredictiveLogLikelihood(
+  public void setObsLogLikelihood(
     double predictiveLogLikelihood) {
-    this.predictiveLogLikelihood = predictiveLogLikelihood;
+    this.obsLogLikelihood = predictiveLogLikelihood;
   }
 
   public void setPriorPredictiveState(

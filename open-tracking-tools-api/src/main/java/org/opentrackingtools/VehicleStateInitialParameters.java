@@ -4,23 +4,23 @@ import gov.sandia.cognition.math.matrix.Vector;
 
 public class VehicleStateInitialParameters {
 
-  protected final Vector initialMotionState;
+  protected Vector initialMotionState;
 
-  protected final double initialObsFreq;
-  protected final int numParticles;
+  protected double initialObsFreq;
+  protected int numParticles;
 
-  protected final Vector obsCov;
-  protected final int obsCovDof;
+  protected Vector obsCov;
+  protected int obsCovDof;
 
-  protected final int offRoadCovDof;
-  protected final Vector offRoadStateCov;
+  protected int offRoadCovDof;
+  protected Vector offRoadStateCov;
 
-  protected final Vector offTransitionProbsPrior;
-  protected final int onRoadCovDof;
-  protected final Vector onRoadStateCov;
+  protected Vector offTransitionProbsPrior;
+  protected int onRoadCovDof;
+  protected Vector onRoadStateCov;
 
-  protected final Vector onTransitionProbsPrior;
-  protected final long seed;
+  protected Vector onTransitionProbsPrior;
+  protected long seed;
 
   public VehicleStateInitialParameters(Vector initialMotionState,
     Vector obsCov, int obsCovDof, Vector onRoadStateCov,
@@ -40,6 +40,21 @@ public class VehicleStateInitialParameters {
     this.onTransitionProbsPrior = onProbs;
     this.seed = seed;
     this.initialObsFreq = initialObsFreq;
+  }
+
+  public VehicleStateInitialParameters(VehicleStateInitialParameters parameters) {
+    this.initialMotionState = parameters.initialMotionState;
+    this.obsCovDof = parameters.obsCovDof;
+    this.onRoadCovDof = parameters.onRoadCovDof;
+    this.offRoadCovDof = parameters.offRoadCovDof;
+    this.numParticles = parameters.numParticles;
+    this.obsCov = parameters.obsCov;
+    this.onRoadStateCov = parameters.onRoadStateCov;
+    this.offRoadStateCov = parameters.offRoadStateCov;
+    this.offTransitionProbsPrior = parameters.offTransitionProbsPrior;
+    this.onTransitionProbsPrior = parameters.onTransitionProbsPrior;
+    this.seed = parameters.seed;
+    this.initialObsFreq = parameters.initialObsFreq;
   }
 
   @Override
@@ -231,5 +246,53 @@ public class VehicleStateInitialParameters {
         .append(this.onRoadCovDof).append(", offRoadCovDof=")
         .append(this.offRoadCovDof).append("]");
     return builder.toString();
+  }
+
+  public void setInitialMotionState(Vector initialMotionState) {
+    this.initialMotionState = initialMotionState;
+  }
+
+  public void setInitialObsFreq(double initialObsFreq) {
+    this.initialObsFreq = initialObsFreq;
+  }
+
+  public void setNumParticles(int numParticles) {
+    this.numParticles = numParticles;
+  }
+
+  public void setObsCov(Vector obsCov) {
+    this.obsCov = obsCov;
+  }
+
+  public void setObsCovDof(int obsCovDof) {
+    this.obsCovDof = obsCovDof;
+  }
+
+  public void setOffRoadCovDof(int offRoadCovDof) {
+    this.offRoadCovDof = offRoadCovDof;
+  }
+
+  public void setOffRoadStateCov(Vector offRoadStateCov) {
+    this.offRoadStateCov = offRoadStateCov;
+  }
+
+  public void setOffTransitionProbsPrior(Vector offTransitionProbsPrior) {
+    this.offTransitionProbsPrior = offTransitionProbsPrior;
+  }
+
+  public void setOnRoadCovDof(int onRoadCovDof) {
+    this.onRoadCovDof = onRoadCovDof;
+  }
+
+  public void setOnRoadStateCov(Vector onRoadStateCov) {
+    this.onRoadStateCov = onRoadStateCov;
+  }
+
+  public void setOnTransitionProbsPrior(Vector onTransitionProbsPrior) {
+    this.onTransitionProbsPrior = onTransitionProbsPrior;
+  }
+
+  public void setSeed(long seed) {
+    this.seed = seed;
   }
 }

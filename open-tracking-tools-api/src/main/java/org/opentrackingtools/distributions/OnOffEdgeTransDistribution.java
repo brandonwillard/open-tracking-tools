@@ -162,7 +162,7 @@ public class OnOffEdgeTransDistribution extends
     Vector edgeMotionProbs, Vector freeMotionProbs) {
 
     this.motionState = pathState.getMotionState();
-    this.currentEdge = pathState.getEdge().getInferenceGraphEdge();
+    this.currentEdge = pathState.getEdge().getInferenceGraphSegment();
     this.obsCovariance = obsCovariance;
     this.graph = graph;
 
@@ -305,7 +305,7 @@ public class OnOffEdgeTransDistribution extends
                 .getLargeNormalCovRadius(this.obsCovariance);
         for (final InferenceGraphSegment line : this.graph
             .getNearbyEdges(currentLocation, radius)) {
-          this.domain.add(line.getParentEdge());
+          this.domain.add(line);
         }
         // add the off-road possibility
         this.domain.add(this.currentEdge);

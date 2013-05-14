@@ -143,7 +143,7 @@ public class VehicleStatePLUpdater<O extends GpsObservation, G extends Inference
             stateOnEdge.getEdgeTransitionParam()
                 .getConditionalDistribution()
                 .getProbabilityFunction()
-                .logEvaluate(pathEdge.getInferenceGraphEdge())
+                .logEvaluate(pathEdge.getInferenceGraphSegment())
                 + this.computeLogLikelihood(stateOnEdge,
                     this.initialObservation);
 

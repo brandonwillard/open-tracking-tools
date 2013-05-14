@@ -2,24 +2,37 @@ package org.opentrackingtools.graph;
 
 import org.apache.commons.lang3.builder.ToStringBuilder;
 
+import javax.media.jai.IntegerSequence;
+
 import com.google.common.collect.ComparisonChain;
+import com.google.common.primitives.Doubles;
+import com.google.common.primitives.Ints;
 import com.vividsolutions.jts.geom.LineSegment;
 import com.vividsolutions.jts.linearref.LinearLocation;
 
-public class InferenceGraphSegment implements
-    Comparable<InferenceGraphSegment> {
+public class InferenceGraphSegment extends InferenceGraphEdge {
 
   final protected LinearLocation endIndex;
   final protected LineSegment line;
   final protected InferenceGraphSegment nextSegment;
-  final protected InferenceGraphEdge parentEdge;
-  final protected double startDistance;
+  final protected Double startDistance;
   final protected LinearLocation startIndex;
+  
+  final public static InferenceGraphSegment nullGraphSegment = new InferenceGraphSegment();
 
+  protected InferenceGraphSegment() {
+    super();
+    this.endIndex = null;
+    this.startIndex = null;
+    this.startDistance = null;
+    this.nextSegment = null;
+    this.line = null;
+  }
+  
   public InferenceGraphSegment(LineSegment line,
     InferenceGraphEdge infEdge, InferenceGraphSegment nextSegment) {
+    super(infEdge);
     this.line = line;
-    this.parentEdge = infEdge;
     this.startIndex =
         infEdge.getLocationIndexedLine().indexOf(line.p0);
     this.endIndex =
@@ -31,10 +44,14 @@ public class InferenceGraphSegment implements
   }
 
   @Override
-  public int compareTo(InferenceGraphSegment o) {
-    return ComparisonChain.start()
-        .compare(this.startDistance, o.startDistance)
-        .compare(this.parentEdge, o.parentEdge).result();
+  public int compareTo(InferenceGraphEdge o) {
+    ComparisonChain chain = ComparisonChain.start()
+        .compare(this.edgeId, o.edgeId);
+    
+    if (o instanceof InferenceGraphSegment)
+      chain = chain.compare(this.startIndex, ((InferenceGraphSegment)o).startIndex);
+    
+    return chain.result();
   }
 
   public LinearLocation getEndIndex() {
@@ -49,10 +66,6 @@ public class InferenceGraphSegment implements
     return this.nextSegment;
   }
 
-  public InferenceGraphEdge getParentEdge() {
-    return this.parentEdge;
-  }
-
   public double getStartDistance() {
     return this.startDistance;
   }
@@ -64,10 +77,51 @@ public class InferenceGraphSegment implements
   @Override
   public String toString() {
     final ToStringBuilder builder = new ToStringBuilder(this);
-    builder.append("line", this.line);
-    builder.append("parentEdge", this.parentEdge.getEdgeId());
+    builder.append("parentEdge", this.getEdgeId());
     builder.append("startIndex", this.startIndex.getSegmentIndex());
+    builder.append("line", this.line);
     return builder.toString();
+  }
+
+  @Override
+  public int hashCode() {
+    final int prime = 31;
+    int result = super.hashCode();
+    
+    result = prime * result
+        + ((startIndex != null) ? Doubles.hashCode(startIndex.getSegmentFraction()) : 0);
+    result = prime * result
+        + ((startIndex != null) ? Ints.hashCode(startIndex.getComponentIndex()) : 0);
+    result = prime * result
+        + ((startIndex != null) ? Ints.hashCode(startIndex.getSegmentIndex()) : 0);
+    return result;
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj) {
+      return true;
+    }
+    if (!super.equals(obj)) {
+      return false;
+    }
+    if (!(obj instanceof InferenceGraphSegment)) {
+      return false;
+    }
+    InferenceGraphSegment other = (InferenceGraphSegment) obj;
+    if (startIndex == null) {
+      if (other.startIndex != null) {
+        return false;
+      }
+    } else if (startIndex.compareTo(other.startIndex) != 0) {
+      return false;
+    }
+    return true;
+  }
+
+  @Override
+  public boolean isNullEdge() {
+    return this.equals(InferenceGraphSegment.nullGraphSegment);
   }
 
 }

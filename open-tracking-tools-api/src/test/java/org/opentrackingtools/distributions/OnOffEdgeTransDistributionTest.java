@@ -75,7 +75,6 @@ public class OnOffEdgeTransDistributionTest {
                 .getDefault().createVector2D(10, 50), VectorFactory
                 .getDefault().createVector2D(50, 10), 0, 30, 0);
 
-    startLine.getParentEdge();
     final PathEdge startPathEdge = new PathEdge(startLine, 0d, false);
 
     final VehicleStateDistributionFactory<GpsObservation, GenericJTSGraph> factory =
@@ -99,8 +98,7 @@ public class OnOffEdgeTransDistributionTest {
 
     final InferenceGraphEdge expectedEdge =
         Iterables.getOnlyElement(
-            graph.getNearbyEdges(new Coordinate(1d, 3d), 1d))
-            .getParentEdge();
+            graph.getNearbyEdges(new Coordinate(1d, 3d), 1d));
 
     /*
      * Grab the only non-null edge.
@@ -161,7 +159,6 @@ public class OnOffEdgeTransDistributionTest {
                 .getDefault().createVector2D(10, 50), VectorFactory
                 .getDefault().createVector2D(50, 10), 0, 30, 0);
 
-    startLine.getParentEdge();
     final PathEdge startPathEdge = new PathEdge(startLine, 0d, false);
 
     final VehicleStateDistributionFactory<GpsObservation, GenericJTSGraph> factory =
@@ -239,7 +236,7 @@ public class OnOffEdgeTransDistributionTest {
                 .getDefault().createVector2D(10, 50), VectorFactory
                 .getDefault().createVector2D(50, 10), 0, 30, 0);
 
-    final InferenceGraphEdge startEdge = startLine.getParentEdge();
+    final InferenceGraphEdge startEdge = startLine;
     final PathEdge startPathEdge = new PathEdge(startLine, 0d, false);
 
     final VehicleStateDistributionFactory<GpsObservation, GenericJTSGraph> factory =

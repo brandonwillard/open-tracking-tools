@@ -597,7 +597,7 @@ public class PathStateTest {
             .createVector2D(5d, 1d));
     final PathState y =
         new PathState(new Path(new PathEdge(p1.getPathEdges().get(1)
-            .getSegment(), 0d, false)), VectorFactory
+            .getInferenceGraphSegment(), 0d, false)), VectorFactory
             .getDenseDefault().createVector2D(5d, -1d));
     final Vector diff = y.minus(x);
     AssertJUnit.assertEquals("distance", 10d, diff.getElement(0),
@@ -628,7 +628,7 @@ public class PathStateTest {
             .createVector2D(5d, 1d));
     final PathState y =
         new PathState(new Path(new PathEdge(p1.getPathEdges().get(1)
-            .getSegment(), 0d, true)), VectorFactory
+            .getInferenceGraphSegment(), 0d, true)), VectorFactory
             .getDenseDefault().createVector2D(0d, -1d));
     final Vector diff = y.minus(x);
     AssertJUnit.assertEquals("distance", -15d, diff.getElement(0),

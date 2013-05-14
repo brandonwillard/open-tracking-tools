@@ -87,13 +87,13 @@ public class PathStateEstimatorPredictor extends
         distToStartOfEdge = startDistance;
       }
       lineSegment =
-          new LineSegment(edge.getSegment().getLine()
+          new LineSegment(edge.getInferenceGraphSegment().getLine()
               .pointAlong(distToStartOfEdge / edge.getLength()), edge
-              .getSegment().getLine().p1);
+              .getInferenceGraphSegment().getLine().p1);
     } else {
       edgeLength = edge.getLength();
       distToStartOfEdge = edge.getDistToStartOfEdge();
-      lineSegment = edge.getSegment().getLine();
+      lineSegment = edge.getInferenceGraphSegment().getLine();
     }
 
     final double S =
@@ -206,13 +206,13 @@ public class PathStateEstimatorPredictor extends
         distToStartOfEdge = startDistance;
       }
       lineSegment =
-          new LineSegment(edge.getSegment().getLine()
+          new LineSegment(edge.getInferenceGraphSegment().getLine()
               .pointAlong(distToStartOfEdge / edge.getLength()), edge
-              .getSegment().getLine().p1);
+              .getInferenceGraphSegment().getLine().p1);
     } else {
       edgeLength = edge.getLength();
       distToStartOfEdge = edge.getDistToStartOfEdge();
-      lineSegment = edge.getSegment().getLine();
+      lineSegment = edge.getInferenceGraphSegment().getLine();
     }
 
     final double S =

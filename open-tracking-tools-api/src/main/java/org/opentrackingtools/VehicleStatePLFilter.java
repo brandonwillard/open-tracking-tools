@@ -137,9 +137,7 @@ public class VehicleStatePLFilter<O extends GpsObservation, G extends InferenceG
               .getEdgeTransitionParam()
               .getConditionalDistribution()
               .getProbabilityFunction()
-              .logEvaluate(
-                  predictedPathStateDist.getPathState().getEdge()
-                      .getInferenceGraphEdge());
+              .logEvaluate(predictedPathStateDist.getPathState().getEdge().getInferenceGraphSegment());
 
       /*
        * Create a new vehicle state for this possible transition
@@ -162,7 +160,7 @@ public class VehicleStatePLFilter<O extends GpsObservation, G extends InferenceG
               measurementPredictionDist,
               predictedPathStateDist.getMotionDistribution()));
 
-      final double predictiveLogLikelihood =
+      final double obsLogLikelihood =
           this.getUpdater().computeLogLikelihood(predictedChildState,
               obs);
 
@@ -173,14 +171,14 @@ public class VehicleStatePLFilter<O extends GpsObservation, G extends InferenceG
        * Set these for debugging.
        */
       predictedChildState
-          .setPredictiveLogLikelihood(predictiveLogLikelihood);
+          .setObsLogLikelihood(obsLogLikelihood);
       predictedChildState
           .setPathStateDistLogLikelihood(pathStateDistLogLikelihood);
       predictedChildState
           .setEdgeTransitionLogLikelihood(edgeTransitionLogLikelihood);
 
       final double childLogLikTotal =
-          predictiveLogLikelihood + pathStateDistLogLikelihood
+          obsLogLikelihood + pathStateDistLogLikelihood
               + edgeTransitionLogLikelihood;
 
       childDist.increment(predictedChildState, childLogLikTotal);
@@ -253,7 +251,7 @@ public class VehicleStatePLFilter<O extends GpsObservation, G extends InferenceG
 
     final InferenceGraphEdge graphEdge =
         updatedState.getParentState().getPathStateParam().getValue()
-            .getEdge().getInferenceGraphEdge();
+            .getEdge().getInferenceGraphSegment();
     final OnOffEdgeTransitionEstimatorPredictor edgeTransitionEstimatorPredictor =
         this.getEdgeTransitionEstimatorPredictor(updatedState,
             graphEdge);
@@ -407,7 +405,7 @@ public class VehicleStatePLFilter<O extends GpsObservation, G extends InferenceG
           + state.getPathStateParam().getValue()
           + "\n\t pathStateLik="
           + state.getPathStateDistLogLikelihood() + "\n\t obsLik="
-          + state.getPredictiveLogLikelihood());
+          + state.getObsLogLikelihood());
     }
   }
 

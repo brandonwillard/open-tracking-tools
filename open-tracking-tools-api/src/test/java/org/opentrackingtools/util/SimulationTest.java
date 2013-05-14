@@ -285,8 +285,8 @@ public class SimulationTest {
 
       Vector transType =
           OnOffEdgeTransDistribution.getTransitionType(
-              parentPathState.getEdge().getInferenceGraphEdge(),
-              sampledPathState.getEdge().getInferenceGraphEdge());
+              parentPathState.getEdge().getInferenceGraphSegment(),
+              sampledPathState.getEdge().getInferenceGraphSegment());
 
       if (parentPathState.isOnRoad()) {
         transType =

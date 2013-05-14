@@ -10,7 +10,7 @@ import com.vividsolutions.jts.geom.Coordinate;
 
 public class GpsObservation {
 
-  protected final Double accuracy;
+  protected Double fixQuality;
   protected final Coordinate coordsLatLon;
   protected final ProjectedCoordinate coordsProjected;
   protected final Double heading;
@@ -30,7 +30,7 @@ public class GpsObservation {
     this.coordsLatLon = coordsLatLon;
     this.velocity = velocity;
     this.heading = heading;
-    this.accuracy = accuracy;
+    this.fixQuality = accuracy;
     this.recordNumber = recordNumber;
     this.projPoint =
         VectorFactory.getDefault().createVector2D(coordsProjected.x,
@@ -74,8 +74,8 @@ public class GpsObservation {
     return true;
   }
 
-  public Double getAccuracy() {
-    return this.accuracy;
+  public Double getFixQuality() {
+    return this.fixQuality;
   }
 
   public Double getHeading() {

@@ -80,7 +80,6 @@ public class VehicleStateBootstrapUpdaterTest {
                 .getDefault().createVector2D(Double.MAX_VALUE, 1), 0,
             4, 0);
 
-    startLine.getParentEdge();
     final PathEdge startPathEdge = new PathEdge(startLine, 0d, false);
 
     final VehicleStateDistributionFactory<GpsObservation, GenericJTSGraph> factory =
@@ -154,7 +153,6 @@ public class VehicleStateBootstrapUpdaterTest {
                 .getDefault().createVector2D(Double.MAX_VALUE, 1), 0,
             4, 0);
 
-    startLine.getParentEdge();
     final PathEdge startPathEdge = new PathEdge(startLine, 0d, false);
 
     final VehicleStateDistributionFactory<GpsObservation, GenericJTSGraph> factory =
@@ -172,12 +170,11 @@ public class VehicleStateBootstrapUpdaterTest {
 
     final InferenceGraphEdge expectedEdge =
         Iterables.getOnlyElement(
-            graph.getNearbyEdges(new Coordinate(1d, 3d), 0.5d))
-            .getParentEdge();
+            graph.getNearbyEdges(new Coordinate(1d, 3d), 0.5d));
 
     AssertJUnit.assertEquals(expectedEdge, newState
         .getPathStateParam().getValue().getEdge()
-        .getInferenceGraphEdge());
+        .getInferenceGraphSegment());
   }
 
   /**
@@ -230,7 +227,6 @@ public class VehicleStateBootstrapUpdaterTest {
                 .getDefault().createVector2D(Double.MAX_VALUE, 1), 0,
             4, 0);
 
-    startLine.getParentEdge();
     final PathEdge startPathEdge = new PathEdge(startLine, 0d, false);
 
     final VehicleStateDistributionFactory<GpsObservation, GenericJTSGraph> factory =
@@ -251,7 +247,7 @@ public class VehicleStateBootstrapUpdaterTest {
 
     AssertJUnit.assertEquals(expectedEdge, newState
         .getPathStateParam().getValue().getEdge()
-        .getInferenceGraphEdge());
+        .getInferenceGraphSegment());
 
     final Vector expectedMotionState =
         VectorFactory.getDefault().copyArray(
@@ -335,7 +331,7 @@ public class VehicleStateBootstrapUpdaterTest {
         InferenceGraphEdge.nullGraphEdge;
     AssertJUnit.assertEquals(expectedEdge, newState
         .getPathStateParam().getValue().getEdge()
-        .getInferenceGraphEdge());
+        .getInferenceGraphSegment());
 
     final Vector expectedMotionState =
         VectorFactory.getDefault().copyArray(
@@ -409,12 +405,11 @@ public class VehicleStateBootstrapUpdaterTest {
 
     final InferenceGraphEdge expectedEdge =
         Iterables.getOnlyElement(
-            graph.getNearbyEdges(new Coordinate(1d, 2d), 0.5d))
-            .getParentEdge();
+            graph.getNearbyEdges(new Coordinate(1d, 2d), 0.5d));
 
     final InferenceGraphEdge actualEdge =
         newState.getPathStateParam().getValue().getEdge()
-            .getInferenceGraphEdge();
+            .getInferenceGraphSegment();
     AssertJUnit.assertEquals(expectedEdge, actualEdge);
 
     final Vector expectedMotionState =

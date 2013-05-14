@@ -143,19 +143,32 @@ public class VehicleStatePLPathGeneratingUpdater<O extends GpsObservation, G ext
       /*
        * From the surrounding edges, we create states on those edges.
        */
-      final DataDistribution<VehicleStateDistribution<O>> statesOnEdgeDistribution =
+      final CountedDataDistribution<VehicleStateDistribution<O>> statesOnEdgeDistribution =
           new CountedDataDistribution<VehicleStateDistribution<O>>(
               true);
 
-      final double nullLogLikelihood =
+      final double nullEdgeLogLikelihood =
           nullState.getEdgeTransitionParam()
               .getConditionalDistribution().getProbabilityFunction()
-              .logEvaluate(InferenceGraphEdge.nullGraphEdge)
-              + this.computeLogLikelihood(nullState,
+              .logEvaluate(InferenceGraphEdge.nullGraphEdge);
+      final double nullObsLogLikelihood = this.computeLogLikelihood(nullState,
                   this.initialObservation);
+      nullState.setEdgeTransitionLogLikelihood(nullEdgeLogLikelihood);
+      nullState.setObsLogLikelihood(nullObsLogLikelihood);
+      final double nullTotalLogLikelihood = nullState.getEdgeTransitionLogLikelihood()
+          + nullState.getPathStateDistLogLikelihood()
+          + nullState.getObsLogLikelihood();
 
       statesOnEdgeDistribution
-          .increment(nullState, nullLogLikelihood);
+          .increment(nullState, nullTotalLogLikelihood);
+      
+      /*
+       * Make sure we're fair about the sampled initial location and
+       * set it here.  Otherwise, if we don't do this, each call
+       * to createInitialVehicleState will sample a new location.
+       */
+      VehicleStateInitialParameters newParams = new VehicleStateInitialParameters(this.parameters);
+      newParams.setInitialMotionState(initialMotionStateDist.sample(this.random));
 
       for (final InferenceGraphSegment segment : edges) {
 
@@ -163,22 +176,32 @@ public class VehicleStatePLPathGeneratingUpdater<O extends GpsObservation, G ext
 
         final VehicleStateDistribution<O> stateOnEdge =
             this.vehicleStateFactory.createInitialVehicleState(
-                this.parameters, this.inferenceGraph,
+                newParams, this.inferenceGraph,
                 this.initialObservation, this.random, pathEdge);
 
-        final double logLikelihood =
+        final double edgeLikelihood =
             stateOnEdge.getEdgeTransitionParam()
                 .getConditionalDistribution()
                 .getProbabilityFunction()
-                .logEvaluate(pathEdge.getInferenceGraphEdge())
-                + this.computeLogLikelihood(stateOnEdge,
+                .logEvaluate(pathEdge.getInferenceGraphSegment());
+        final double obsLikelihood =
+                this.computeLogLikelihood(stateOnEdge,
                     this.initialObservation);
+        
+        stateOnEdge.setEdgeTransitionLogLikelihood(edgeLikelihood);
+        stateOnEdge.setObsLogLikelihood(obsLikelihood);
+        
+        final double logLikelihood = stateOnEdge.getEdgeTransitionLogLikelihood()
+            + stateOnEdge.getPathStateDistLogLikelihood() 
+            + stateOnEdge.getObsLogLikelihood();
 
         statesOnEdgeDistribution
             .increment(stateOnEdge, logLikelihood);
       }
 
-      retDist.increment(statesOnEdgeDistribution.sample(this.random));
+      VehicleStateDistribution<O> sampledDist = statesOnEdgeDistribution.sample(this.random);
+      sampledDist.setTransitionStateDistribution(statesOnEdgeDistribution);
+      retDist.increment(sampledDist);
     }
 
     Preconditions.checkState(retDist.getDomainSize() > 0);
@@ -312,7 +335,7 @@ public class VehicleStatePLPathGeneratingUpdater<O extends GpsObservation, G ext
 
       PathEdgeNode currentPathEdgeNode =
           new PathEdgeNode(new PathEdge(priorPathStateDist
-              .getPathState().getEdge().getSegment(), 0d, false),
+              .getPathState().getEdge().getInferenceGraphSegment(), 0d, false),
               null);
       openPathEdgeQueue.add(currentPathEdgeNode);
       final MultivariateGaussian initialEdgePathState =
@@ -352,7 +375,7 @@ public class VehicleStatePLPathGeneratingUpdater<O extends GpsObservation, G ext
               .getProbabilityFunction()
               .logEvaluate(
                   currentPathEdgeNode.getPathEdge()
-                      .getInferenceGraphEdge());
+                      .getInferenceGraphSegment());
 
       currentPathEdgeNode
           .setTransitionLogLikelihood(initialTransitionLogLikelihood);
@@ -416,12 +439,12 @@ public class VehicleStatePLPathGeneratingUpdater<O extends GpsObservation, G ext
         closedPathEdgeSet.add(currentPathEdgeNode);
 
         List<PathEdge> neighborPathEdges;
-        if (currentPathEdgeNode.getPathEdge().getSegment()
+        if (currentPathEdgeNode.getPathEdge().getInferenceGraphSegment()
             .getNextSegment() == null) {
           neighborPathEdges = Lists.newArrayList();
           for (final InferenceGraphEdge transitionEdge : this.inferenceGraph
               .getOutgoingTransferableEdges(currentPathEdgeNode
-                  .getPathEdge().getInferenceGraphEdge())) {
+                  .getPathEdge().getInferenceGraphSegment())) {
             final InferenceGraphSegment firstSegment =
                 Iterables
                     .getFirst(transitionEdge.getSegments(), null);
@@ -439,7 +462,7 @@ public class VehicleStatePLPathGeneratingUpdater<O extends GpsObservation, G ext
           neighborPathEdges =
               Collections
                   .singletonList(new PathEdge(currentPathEdgeNode
-                      .getPathEdge().getSegment().getNextSegment(),
+                      .getPathEdge().getInferenceGraphSegment().getNextSegment(),
                       currentPathEdgeNode.getPathEdge()
                           .getDistToStartOfEdge()
                           + currentPathEdgeNode.getPathEdge()
@@ -478,7 +501,7 @@ public class VehicleStatePLPathGeneratingUpdater<O extends GpsObservation, G ext
                   .getConditionalDistribution()
                   .getProbabilityFunction()
                   .logEvaluate(
-                      neighborPathEdge.getInferenceGraphEdge());
+                      neighborPathEdge.getInferenceGraphSegment());
 
           //          if (neighborEdgePathState == null
           //              || neighborEdgePathState.getMean().getElement(0) > bciDist.getUpperBound()) {
@@ -607,7 +630,7 @@ public class VehicleStatePLPathGeneratingUpdater<O extends GpsObservation, G ext
                 .getProbabilityFunction()
                 .logEvaluate(
                     newDist.getPathState().getEdge()
-                        .getInferenceGraphEdge());
+                        .getInferenceGraphSegment());
 
         distributions.add(newDist);
         weights.add(onRoadObsLogLikelihood
