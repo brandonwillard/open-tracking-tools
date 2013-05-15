@@ -374,8 +374,8 @@ public class VehicleStatePLFilterSimulationTest {
             parentState.getPathStateParam().getValue();
         transType =
             OnOffEdgeTransDistribution.getTransitionType(
-                parentPathState.getEdge().getInferenceGraphEdge(),
-                pathState.getEdge().getInferenceGraphEdge());
+                parentPathState.getEdge().getInferenceGraphSegment(),
+                pathState.getEdge().getInferenceGraphSegment());
         if (parentPathState.isOnRoad()) {
           transType =
               transType.stack(MotionStateEstimatorPredictor.zeros2D);
@@ -393,8 +393,8 @@ public class VehicleStatePLFilterSimulationTest {
           truePathsFound++;
         }
 
-        if (pathState.getEdge().getInferenceGraphEdge()
-            .equals(truePathState.getEdge().getInferenceGraphEdge())) {
+        if (pathState.getEdge().getInferenceGraphSegment()
+            .equals(truePathState.getEdge().getInferenceGraphSegment())) {
           numOnTrueEdge++;
         }
 
