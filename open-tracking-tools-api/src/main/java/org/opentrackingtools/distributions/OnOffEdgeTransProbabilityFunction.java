@@ -132,10 +132,15 @@ public class OnOffEdgeTransProbabilityFunction extends
               && (to instanceof InferenceGraphSegment)) {
             InferenceGraphSegment fromSegment = (InferenceGraphSegment) this.fromEdge;
             InferenceGraphSegment toSegment = (InferenceGraphSegment) to;
-            final Coordinate toEndOnFrom = fromSegment.getLine().project(toSegment.getLine().p1);
+            final double angle = Angle.angleBetween(fromSegment.getLine().p0, fromSegment.getLine().p1, 
+                toSegment.getLine().p1);
+//            final Coordinate toEndOnFrom = fromSegment.getLine().project(toSegment.getLine().p1);
+            final double distanceApart = angle < Math.PI/2d ?
+                Math.min(fromSegment.getLength(), toSegment.getLength()) * Math.sin(angle) : Double.POSITIVE_INFINITY;
+//                toEndOnFrom.distance(toSegment.getLine().p1)
             final double localLogUTurnProb;
             if (!this.fromEdge.getSegments().contains(toSegment)
-                && toEndOnFrom.distance(toSegment.getLine().p1) < 7d) {
+                && distanceApart < 15d) {
               localLogUTurnProb = logUTurnProbability;
             } else {
               localLogUTurnProb = logNoUTurnProbability;
