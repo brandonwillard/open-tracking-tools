@@ -158,11 +158,11 @@ public class OnOffEdgeTransDistribution extends
   protected Matrix obsCovariance;
 
   public OnOffEdgeTransDistribution(InferenceGraph graph,
-    PathState pathState, Matrix obsCovariance,
-    Vector edgeMotionProbs, Vector freeMotionProbs) {
+    PathState pathState, InferenceGraphEdge currentEdge,
+    Matrix obsCovariance, Vector edgeMotionProbs, Vector freeMotionProbs) {
 
     this.motionState = pathState.getMotionState();
-    this.currentEdge = pathState.getEdge().getInferenceGraphSegment();
+    this.currentEdge = currentEdge;
     this.obsCovariance = obsCovariance;
     this.graph = graph;
 
@@ -400,7 +400,7 @@ public class OnOffEdgeTransDistribution extends
 
   @Override
   public OnOffEdgeTransProbabilityFunction getProbabilityFunction() {
-    return new OnOffEdgeTransProbabilityFunction(this);
+    return new OnOffEdgeTransProbabilityFunction(this, this.currentEdge);
   }
 
   @Override
@@ -498,6 +498,7 @@ public class OnOffEdgeTransDistribution extends
 
   public void setCurrentEdge(InferenceGraphEdge currentEdge) {
     this.currentEdge = currentEdge;
+    this.domain = null;
   }
 
   public void setDomain(Set<InferenceGraphEdge> domain) {

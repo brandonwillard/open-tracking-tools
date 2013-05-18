@@ -135,4 +135,20 @@ public class OnOffEdgeTransitionEstimatorPredictor extends
       this.update(target, toEdge);
     }
   }
+
+  public InferenceGraphEdge getCurrentEdge() {
+    return currentEdge;
+  }
+
+  public void setCurrentEdge(InferenceGraphEdge currentEdge) {
+    this.currentEdge = currentEdge;
+  }
+
+  public VehicleStateDistribution<?> getCurrentState() {
+    return currentState;
+  }
+
+  public void setCurrentState(VehicleStateDistribution<?> currentState) {
+    this.currentState = currentState;
+  }
 }

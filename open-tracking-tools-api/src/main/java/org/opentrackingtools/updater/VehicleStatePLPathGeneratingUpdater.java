@@ -17,6 +17,7 @@ import java.util.Set;
 
 import org.opentrackingtools.VehicleStateInitialParameters;
 import org.opentrackingtools.distributions.CountedDataDistribution;
+import org.opentrackingtools.distributions.OnOffEdgeTransProbabilityFunction;
 import org.opentrackingtools.distributions.PathStateDistribution;
 import org.opentrackingtools.distributions.PathStateMixtureDensityModel;
 import org.opentrackingtools.estimators.MotionStateEstimatorPredictor;
@@ -368,12 +369,18 @@ public class VehicleStatePLPathGeneratingUpdater<O extends GpsObservation, G ext
         initialObsLikelihood = Double.NEGATIVE_INFINITY;
         initialEdgeLikelihood = Double.NEGATIVE_INFINITY;
       }
-      final double initialTransitionLogLikelihood =
-          predictedState
+      
+      OnOffEdgeTransProbabilityFunction edgeTransProbFunction = predictedState
               .getEdgeTransitionParam()
               .getConditionalDistribution()
-              .getProbabilityFunction()
-              .logEvaluate(
+              .getProbabilityFunction().clone();
+      
+      Preconditions.checkState((edgeTransProbFunction.getFromEdge() == null)
+          || edgeTransProbFunction.getFromEdge().equals(predictedState.
+          getPathStateParam().getParameterPrior().getPathState().getEdge().getInferenceGraphSegment()));
+
+      final double initialTransitionLogLikelihood =
+          edgeTransProbFunction.logEvaluate(
                   currentPathEdgeNode.getPathEdge()
                       .getInferenceGraphSegment());
 
@@ -401,7 +408,7 @@ public class VehicleStatePLPathGeneratingUpdater<O extends GpsObservation, G ext
           3d * Math.sqrt(predictedState
               .getObservationCovarianceParam().getValue()
               .normFrobenius());
-
+      
       while (!openPathEdgeQueue.isEmpty()) {
         currentPathEdgeNode = openPathEdgeQueue.poll();
 
@@ -495,12 +502,11 @@ public class VehicleStatePLPathGeneratingUpdater<O extends GpsObservation, G ext
                       onRoadPriorPredictiveMotionState,
                       neighborPathEdge, obs.getObsProjected(), null,
                       this.parameters.getInitialObsFreq());
+          
+          edgeTransProbFunction.setFromEdge(currentPathEdgeNode.getPathEdge().getInferenceGraphSegment());
+          
           final double neighborTransitionLogLikelihood =
-              predictedState
-                  .getEdgeTransitionParam()
-                  .getConditionalDistribution()
-                  .getProbabilityFunction()
-                  .logEvaluate(
+             edgeTransProbFunction.logEvaluate(
                       neighborPathEdge.getInferenceGraphSegment());
 
           //          if (neighborEdgePathState == null

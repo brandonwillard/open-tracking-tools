@@ -82,6 +82,9 @@ public class InferenceGraphEdge implements
     this.edgeId = infEdge.edgeId;
     this.geometry = infEdge.geometry;
     this.hasReverse = infEdge.hasReverse;
+    this.graphSegments = infEdge.graphSegments;
+    this.lengthLocationMap = infEdge.lengthLocationMap;
+    this.locationIndexedLine = infEdge.locationIndexedLine;
   }
 
   @Override

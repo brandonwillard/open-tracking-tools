@@ -212,12 +212,12 @@ public class VehicleStateDistribution<Observation extends GpsObservation>
        * for construction.
        */
       final OnOffEdgeTransDistribution initialTransDist =
-          new OnOffEdgeTransDistribution(graph, state
-              .getPathStateParam().getValue(), state
-              .getObservationCovarianceParam().getValue(),
-              initialPriorTransDist.getEdgeMotionTransProbPrior()
-                  .getMean(), initialPriorTransDist
-                  .getFreeMotionTransProbPrior().getMean());
+          new OnOffEdgeTransDistribution(graph, 
+              state.getPathStateParam().getValue(), 
+              null,
+              state.getObservationCovarianceParam().getValue(),
+              initialPriorTransDist.getEdgeMotionTransProbPrior().getMean(), 
+              initialPriorTransDist.getFreeMotionTransProbPrior().getMean());
       final SimpleBayesianParameter<TransitionProbMatrix, OnOffEdgeTransDistribution, OnOffEdgeTransPriorDistribution> edgeTransitionParam =
           SimpleBayesianParameter.create(transitionProbMatrix,
               initialTransDist, initialPriorTransDist);

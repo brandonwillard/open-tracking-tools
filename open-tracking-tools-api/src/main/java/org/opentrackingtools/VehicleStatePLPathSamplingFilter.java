@@ -10,6 +10,7 @@ import gov.sandia.cognition.statistics.Distribution;
 import gov.sandia.cognition.statistics.DistributionWithMean;
 import gov.sandia.cognition.statistics.bayesian.AbstractParticleFilter;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
+import gov.sandia.cognition.util.CloneableSerializable;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -22,6 +23,7 @@ import org.opentrackingtools.distributions.AdjMultivariateGaussian;
 import org.opentrackingtools.distributions.CountedDataDistribution;
 import org.opentrackingtools.distributions.OnOffEdgeTransDistribution;
 import org.opentrackingtools.distributions.OnOffEdgeTransPriorDistribution;
+import org.opentrackingtools.distributions.OnOffEdgeTransProbabilityFunction;
 import org.opentrackingtools.distributions.PathStateDistribution;
 import org.opentrackingtools.distributions.PathStateMixtureDensityModel;
 import org.opentrackingtools.distributions.ScaledInverseGammaCovDistribution;
@@ -110,11 +112,12 @@ public class VehicleStatePLPathSamplingFilter<O extends GpsObservation, G extend
           predictedPathStateMixture.getDistributions().get(i);
       final double pathStateDistLogLikelihood =
           predictedPathStateMixture.getPriorWeights()[i];
-      final double edgeTransitionLogLikelihood =
-          predictedState
+      OnOffEdgeTransProbabilityFunction edgeTransProbFunction = predictedState
               .getEdgeTransitionParam()
               .getConditionalDistribution()
-              .getProbabilityFunction()
+              .getProbabilityFunction().clone();
+      final double edgeTransitionLogLikelihood =
+          edgeTransProbFunction
               .logEvaluate(
                   predictedPathStateDist.getPathState().getEdge()
                       .getInferenceGraphSegment());
@@ -239,12 +242,6 @@ public class VehicleStatePLPathSamplingFilter<O extends GpsObservation, G extend
     updatedState.getPathStateParam().setParameterPrior(
         posteriorPathStateDist);
 
-    final InferenceGraphEdge graphEdge =
-        updatedState.getParentState().getPathStateParam().getValue()
-            .getEdge().getInferenceGraphSegment();
-    final OnOffEdgeTransitionEstimatorPredictor edgeTransitionEstimatorPredictor =
-        new OnOffEdgeTransitionEstimatorPredictor(updatedState,
-            graphEdge);
     Vector newObsStateSample;
     
     final RoadModelCovarianceEstimatorPredictor modelCovarianceEstimator =
@@ -326,31 +323,40 @@ public class VehicleStatePLPathSamplingFilter<O extends GpsObservation, G extend
     updatedState.getMotionStateParam().setValue(
         obsMotionDist.getMean());
 
+    final InferenceGraphEdge fromEdge =
+        updatedState.getParentState().getPathStateParam().getValue()
+            .getEdge().getInferenceGraphSegment();
+    final InferenceGraphEdge toEdge =
+        updatedState.getPathStateParam().getValue()
+            .getEdge().getInferenceGraphSegment();
+    final OnOffEdgeTransitionEstimatorPredictor edgeTransitionEstimatorPredictor =
+        this.getEdgeTransitionEstimatorPredictor(updatedState,
+            fromEdge);
     final OnOffEdgeTransPriorDistribution updatedEdgeTransPrior =
         updatedState.getEdgeTransitionParam().getParameterPrior()
             .clone();
     edgeTransitionEstimatorPredictor.update(updatedEdgeTransPrior,
-        graphEdge);
+        toEdge);
 
     final OnOffEdgeTransDistribution updatedEdgeTransConditional =
-        updatedState.getEdgeTransitionParam()
-            .getConditionalDistribution().clone();
-    updatedEdgeTransConditional
-        .setFreeMotionTransProbs(updatedEdgeTransPrior
-            .getFreeMotionTransProbPrior().getMean());
-    updatedEdgeTransConditional
-        .setEdgeMotionTransProbs(updatedEdgeTransPrior
-            .getEdgeMotionTransProbPrior().getMean());
-    updatedEdgeTransConditional.setMotionState(updatedState
-        .getMotionStateParam().getValue());
-    updatedEdgeTransConditional.setObsCovariance(updatedState
-        .getObservationCovarianceParam().getValue());
-
+        new OnOffEdgeTransDistribution(this.inferredGraph, updatedState.getPathStateParam().getValue(), 
+            toEdge, updatedState.getObservationCovarianceParam().getValue(), 
+            updatedEdgeTransPrior.getEdgeMotionTransProbPrior().getMean(),
+            updatedEdgeTransPrior.getFreeMotionTransProbPrior().getMean());
+    
     updatedState.setEdgeTransitionParam(SimpleBayesianParameter
         .create(updatedEdgeTransPrior.getMean(),
             updatedEdgeTransConditional, updatedEdgeTransPrior));
 
     return updatedState;
+  }
+
+  protected OnOffEdgeTransitionEstimatorPredictor
+      getEdgeTransitionEstimatorPredictor(
+        VehicleStateDistribution<O> updatedState,
+        InferenceGraphEdge graphEdge) {
+    return new OnOffEdgeTransitionEstimatorPredictor(updatedState,
+        graphEdge);
   }
 
   private

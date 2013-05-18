@@ -7,6 +7,7 @@ import com.vividsolutions.jts.geom.LineSegment;
 import gov.sandia.cognition.math.LogMath;
 import gov.sandia.cognition.statistics.ProbabilityMassFunction;
 import gov.sandia.cognition.util.AbstractCloneableSerializable;
+import gov.sandia.cognition.util.CloneableSerializable;
 
 import java.util.ArrayList;
 import java.util.Random;
@@ -26,12 +27,13 @@ public class OnOffEdgeTransProbabilityFunction extends
   private static final double logUTurnProbability = Math.log(0.05d);
   private static final double logNoUTurnProbability = Math.log(1d - 0.05d);
   
-  protected VehicleStateDistribution<? extends GpsObservation> currentState;
+  protected InferenceGraphEdge fromEdge;
   protected OnOffEdgeTransDistribution distribution;
 
   public OnOffEdgeTransProbabilityFunction(
-    OnOffEdgeTransDistribution onOffEdgeTransDistribution) {
+    OnOffEdgeTransDistribution onOffEdgeTransDistribution, InferenceGraphEdge fromEdge) {
     this.distribution = onOffEdgeTransDistribution;
+    this.fromEdge = fromEdge;
   }
 
   @Override
@@ -57,13 +59,13 @@ public class OnOffEdgeTransProbabilityFunction extends
   @Override
   public ProbabilityMassFunction<InferenceGraphEdge>
       getProbabilityFunction() {
-    return new OnOffEdgeTransProbabilityFunction(this.distribution);
+    return new OnOffEdgeTransProbabilityFunction(this.distribution, this.fromEdge);
   }
 
   @Override
   public double logEvaluate(InferenceGraphEdge to) {
 
-    if (this.currentState == null) {
+    if (this.fromEdge == null) {
 
       final double totalProb =
           Math.log(this.distribution.getFreeMotionTransProbs()
@@ -101,15 +103,13 @@ public class OnOffEdgeTransProbabilityFunction extends
       }
     } else {
 
-      final InferenceGraphEdge currentEdge =
-          this.distribution.currentEdge;
-      if (currentEdge.isNullEdge()) {
+      if (this.fromEdge.isNullEdge()) {
         return this.distribution
             .getFreeMotionTransProbs()
             .getProbabilityFunction()
             .logEvaluate(
                 OnOffEdgeTransDistribution.getTransitionType(
-                    currentEdge, to));
+                    this.fromEdge, to));
       } else {
         /*
          * Since we don't want, nor expect, an
@@ -120,22 +120,26 @@ public class OnOffEdgeTransProbabilityFunction extends
          * the right velocity, this is a priori most likely), than
          * to have simply stayed in place.
          */
-        if (!currentEdge.equals(to)
-            && !currentEdge.isNullEdge() && !to.isNullEdge()) {
+        if (!this.fromEdge.equals(to)
+            && !this.fromEdge.isNullEdge() && !to.isNullEdge()) {
           final double generalTransProb = this.distribution
                 .getEdgeMotionTransProbs()
                 .getProbabilityFunction()
                 .logEvaluate(
                     OnOffEdgeTransDistribution.getTransitionType(
-                        currentEdge, to));
-          if ((currentEdge instanceof InferenceGraphSegment)
-              && (to instanceof InferenceGraphSegment)
-              ) {
-            InferenceGraphSegment fromSegment = (InferenceGraphSegment) currentEdge;
+                        this.fromEdge, to));
+          if ((this.fromEdge instanceof InferenceGraphSegment)
+              && (to instanceof InferenceGraphSegment)) {
+            InferenceGraphSegment fromSegment = (InferenceGraphSegment) this.fromEdge;
             InferenceGraphSegment toSegment = (InferenceGraphSegment) to;
             final Coordinate toEndOnFrom = fromSegment.getLine().project(toSegment.getLine().p1);
-            final double localLogUTurnProb = (toEndOnFrom.distance(toSegment.getLine().p1) < 7d) ? 
-               logUTurnProbability : logNoUTurnProbability;
+            final double localLogUTurnProb;
+            if (!this.fromEdge.getSegments().contains(toSegment)
+                && toEndOnFrom.distance(toSegment.getLine().p1) < 7d) {
+              localLogUTurnProb = logUTurnProbability;
+            } else {
+              localLogUTurnProb = logNoUTurnProbability;
+            }
             
             return generalTransProb + localLogUTurnProb;
           } else {
@@ -153,7 +157,7 @@ public class OnOffEdgeTransProbabilityFunction extends
               .getProbabilityFunction()
               .logEvaluate(
                   OnOffEdgeTransDistribution.getTransitionType(
-                      currentEdge, to));
+                      this.fromEdge, to));
         }
       }
     }
@@ -168,6 +172,22 @@ public class OnOffEdgeTransProbabilityFunction extends
   public ArrayList<? extends InferenceGraphEdge> sample(
     Random random, int numSamples) {
     return this.distribution.sample(random, numSamples);
+  }
+
+  @Override
+  public OnOffEdgeTransProbabilityFunction clone() {
+    OnOffEdgeTransProbabilityFunction clone = (OnOffEdgeTransProbabilityFunction) super.clone();
+    clone.distribution = this.distribution;
+    clone.fromEdge = this.fromEdge;
+    return clone;
+  }
+
+  public InferenceGraphEdge getFromEdge() {
+    return fromEdge;
+  }
+
+  public void setFromEdge(InferenceGraphEdge fromEdge) {
+    this.fromEdge = fromEdge;
   }
 
 }
