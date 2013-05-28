@@ -9,9 +9,9 @@
   <name>OpenTrackingTools</name>
 
   <scm>
-    <connection>scm:git:http://github.com/openplans/open-tracking-tools.git</connection>
-    <developerConnection>scm:git:ssh://git@github.com/openplans/open-tracking-tools.git</developerConnection>
-    <url>http://github.com/openplans/open-tracking-tools</url>
+    <connection>scm:git:http://github.com/brandonwillard/open-tracking-tools.git</connection>
+    <developerConnection>scm:git:ssh://git@github.com/brandonwillard/open-tracking-tools.git</developerConnection>
+    <url>http://github.com/brandonwillard/open-tracking-tools</url>
   </scm>
 
   <distributionManagement>
