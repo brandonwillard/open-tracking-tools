@@ -24,8 +24,8 @@ public class OnOffEdgeTransProbabilityFunction extends
 
   private static final long serialVersionUID = 824339714203059115L;
   
-  private static final double logUTurnProbability = Math.log(0.05d);
-  private static final double logNoUTurnProbability = Math.log(1d - 0.05d);
+  private static final double logUTurnProbability = Math.log(0.35d);
+  private static final double logNoUTurnProbability = Math.log(1d - 0.35d);
   
   protected InferenceGraphEdge fromEdge;
   protected OnOffEdgeTransDistribution distribution;

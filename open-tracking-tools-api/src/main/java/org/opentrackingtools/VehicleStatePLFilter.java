@@ -34,6 +34,7 @@ import org.opentrackingtools.model.GpsObservation;
 import org.opentrackingtools.model.SimpleBayesianParameter;
 import org.opentrackingtools.model.VehicleStateDistribution;
 import org.opentrackingtools.model.VehicleStateDistribution.VehicleStateDistributionFactory;
+import org.opentrackingtools.paths.Path;
 import org.opentrackingtools.updater.VehicleStatePLUpdater;
 import org.opentrackingtools.util.PathUtils;
 import org.opentrackingtools.util.model.MutableDoubleCount;
@@ -42,6 +43,7 @@ import org.slf4j.LoggerFactory;
 
 import com.beust.jcommander.internal.Lists;
 import com.google.common.base.Preconditions;
+import com.google.common.collect.Iterables;
 
 public class VehicleStatePLFilter<O extends GpsObservation, G extends InferenceGraph>
     extends AbstractParticleFilter<O, VehicleStateDistribution<O>> {
@@ -223,16 +225,27 @@ public class VehicleStatePLFilter<O extends GpsObservation, G extends InferenceG
                       .getPathState().getPath(),
                   priorPredictivePathStateDist.getPathState()
                       .getEdge());
+      
+      /*
+       * Make sure the projected obs is after or at the current location
+       * along the edge; otherwise, we'll end up allowing backward movement.
+       */
+      final double currentDist = updatedMotionState.getMean().getElement(0);
+      if (obsProj.getMean().getElement(0) < currentDist) {
+        obsProj.getMean().setElement(0, currentDist);
+      }
 
       roadFilter.setMeasurementCovariance(obsProj.getCovariance());
       roadFilter.measure(updatedMotionState, obsProj.getMean());
       Preconditions.checkState(updatedMotionState.getCovariance().getElement(0, 0) > 1e-6);
- 
-      posteriorPathStateDist =
-          new PathStateDistribution(priorPredictivePathStateDist
-              .getPathState().getPath()
-              .getPathTo(updatedMotionState.getMean().getElement(0)),
-              updatedMotionState);
+      /*
+       * Stay on our edge/path.  Note: we must, since we're conditioning on it.
+       */
+      final Path postPath = priorPredictivePathStateDist
+              .getPathState().getPath();
+      updatedMotionState.setMean( 
+         Iterables.getLast(postPath.getPathEdges()).clampToEdge(updatedMotionState.getMean()));
+      posteriorPathStateDist = new PathStateDistribution(postPath, updatedMotionState);
     } else {
       updatedState.getMotionStateEstimatorPredictor().update(
           updatedMotionState, obs.getProjectedPoint());

@@ -60,8 +60,8 @@ public class PathStateEstimatorPredictor extends
    * @return
    */
   public static TruncatedRoadGaussian getPathEdgePredictive(
-    MultivariateGaussian roadDistribution, PathEdge edge,
-    Coordinate obs, Double startDistance, double deltaTime) {
+    MultivariateGaussian roadDistribution, Matrix measurementError, 
+    PathEdge edge, Coordinate obs, Double startDistance, double deltaTime) {
     final Matrix Or = MotionStateEstimatorPredictor.getOr();
     double edgeLength;
     final double distToStartOfEdge;
@@ -97,9 +97,8 @@ public class PathStateEstimatorPredictor extends
     }
 
     final double S =
-        Or.times(roadDistribution.getCovariance())
+        Or.times(measurementError)
             .times(Or.transpose()).getElement(0, 0)
-            // + 1d;
             + Math.pow(edgeLength / Math.sqrt(12), 2);
     final Matrix W =
         roadDistribution.getCovariance().times(Or.transpose())
@@ -179,8 +178,8 @@ public class PathStateEstimatorPredictor extends
    * @return
    */
   public static double marginalPredictiveLogLikInternal(
-    MultivariateGaussian roadDistribution, PathEdge edge,
-    Coordinate obs, Double startDistance, double deltaTime) {
+    MultivariateGaussian roadDistribution, Matrix stateTransCov, 
+    PathEdge edge, Coordinate obs, Double startDistance, double deltaTime) {
     final Matrix Or = MotionStateEstimatorPredictor.getOr();
     double edgeLength;
     final double distToStartOfEdge;
@@ -216,9 +215,8 @@ public class PathStateEstimatorPredictor extends
     }
 
     final double S =
-        Or.times(roadDistribution.getCovariance())
+        Or.times(stateTransCov)
             .times(Or.transpose()).getElement(0, 0)
-            // + 1d;
             + Math.pow(edgeLength / Math.sqrt(12), 2);
 
     final double mean;
@@ -384,8 +382,8 @@ public class PathStateEstimatorPredictor extends
         for (final PathEdge edge : this.path.getPathEdges()) {
           final TruncatedRoadGaussian edgeResult =
               PathStateEstimatorPredictor.getPathEdgePredictive(
-                  roadDistribution, edge, this.currentState
-                      .getObservation().getObsProjected(), null,
+                  roadDistribution, this.currentState.getOnRoadModelCovarianceParam().getValue(), 
+                  edge, this.currentState.getObservation().getObsProjected(), null,
                   this.currentTimeDiff);
 
           final PathStateDistribution prediction =
