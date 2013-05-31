@@ -82,8 +82,8 @@ public class VehicleStatePLPathGeneratingUpdaterTest {
         factory.createInitialVehicleState(parameters, graph, obs,
             rng, startPathEdge);
 
-    final VehicleStatePLPathGeneratingUpdater<GpsObservation, GenericJTSGraph> updater =
-        new VehicleStatePLPathGeneratingUpdater<GpsObservation, GenericJTSGraph>(
+    final VehicleStatePLPathSamplingUpdater<GpsObservation, GenericJTSGraph> updater =
+        new VehicleStatePLPathSamplingUpdater<GpsObservation, GenericJTSGraph>(
             obs, graph, factory, parameters, rng);
 
     final VehicleStateDistribution<GpsObservation> newState =

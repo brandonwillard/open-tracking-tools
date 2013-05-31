@@ -48,7 +48,7 @@ import com.google.common.collect.Ranges;
 import com.google.common.collect.Sets;
 import com.google.common.primitives.Doubles;
 
-public class VehicleStatePLPathGeneratingUpdater<O extends GpsObservation, G extends InferenceGraph>
+public class VehicleStatePLPathSamplingUpdater<O extends GpsObservation, G extends InferenceGraph>
     extends AbstractCloneableSerializable implements
     ParticleFilter.Updater<O, VehicleStateDistribution<O>> {
 
@@ -81,7 +81,7 @@ public class VehicleStatePLPathGeneratingUpdater<O extends GpsObservation, G ext
 
   protected VehicleStateDistributionFactory<O, G> vehicleStateFactory;
 
-  public VehicleStatePLPathGeneratingUpdater(O obs,
+  public VehicleStatePLPathSamplingUpdater(O obs,
     G inferencedGraph,
     VehicleStateDistributionFactory<O, G> vehicleStateFactory,
     VehicleStateInitialParameters parameters, Random rng) {
@@ -98,9 +98,9 @@ public class VehicleStatePLPathGeneratingUpdater<O extends GpsObservation, G ext
   }
 
   @Override
-  public VehicleStatePLPathGeneratingUpdater<O, G> clone() {
-    final VehicleStatePLPathGeneratingUpdater<O, G> clone =
-        (VehicleStatePLPathGeneratingUpdater<O, G>) super.clone();
+  public VehicleStatePLPathSamplingUpdater<O, G> clone() {
+    final VehicleStatePLPathSamplingUpdater<O, G> clone =
+        (VehicleStatePLPathSamplingUpdater<O, G>) super.clone();
     clone.seed = this.seed;
     clone.inferenceGraph = this.inferenceGraph;
     clone.initialObservation = this.initialObservation;
@@ -594,7 +594,7 @@ public class VehicleStatePLPathGeneratingUpdater<O extends GpsObservation, G ext
           Math.min(
               StatisticsUtil.getLargeNormalCovRadius(obsDist
                   .getCovariance()),
-              VehicleStatePLPathGeneratingUpdater.MAX_STATE_SNAP_RADIUS);
+              VehicleStatePLPathSamplingUpdater.MAX_STATE_SNAP_RADIUS);
 
       /*
        * Simply stay off-road and move forward

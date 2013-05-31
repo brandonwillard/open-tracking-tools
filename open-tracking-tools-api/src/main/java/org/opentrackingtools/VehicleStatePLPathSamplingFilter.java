@@ -41,7 +41,7 @@ import org.opentrackingtools.model.SimpleBayesianParameter;
 import org.opentrackingtools.model.VehicleStateDistribution;
 import org.opentrackingtools.model.VehicleStateDistribution.VehicleStateDistributionFactory;
 import org.opentrackingtools.paths.Path;
-import org.opentrackingtools.updater.VehicleStatePLPathGeneratingUpdater;
+import org.opentrackingtools.updater.VehicleStatePLPathSamplingUpdater;
 import org.opentrackingtools.util.PathUtils;
 import org.opentrackingtools.util.model.MutableDoubleCount;
 import org.slf4j.Logger;
@@ -76,7 +76,7 @@ public class VehicleStatePLPathSamplingFilter<O extends GpsObservation, G extend
     this.vehicleStateFactory = vehicleStateFactory;
     this.inferredGraph = inferredGraph;
     this.isDebug = isDebug;
-    this.setUpdater(new VehicleStatePLPathGeneratingUpdater<O, G>(
+    this.setUpdater(new VehicleStatePLPathSamplingUpdater<O, G>(
         obs, inferredGraph, vehicleStateFactory, parameters, rng));
     this.setNumParticles(parameters.getNumParticles());
     this.setRandom(rng);
@@ -526,6 +526,11 @@ public class VehicleStatePLPathSamplingFilter<O extends GpsObservation, G extend
         updatedState.setTransitionStateDistribution(state
             .getTransitionStateDistribution());
         updatedState.setPriorPredictiveState(sampledTransitionState);
+      } else {
+        updatedState.setTransitionStateDistribution(null);
+        updatedState.setPriorPredictiveState(null);
+        updatedState.getPathStateParam().setConditionalDistribution(null);
+        // TODO perhaps remove parent's parent here.
       }
       updatedStates.add(updatedState);
     }
