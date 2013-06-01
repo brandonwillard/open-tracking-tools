@@ -77,7 +77,7 @@ public class VehicleStatePLPathSamplingFilter<O extends GpsObservation, G extend
     this.inferredGraph = inferredGraph;
     this.isDebug = isDebug;
     this.setUpdater(new VehicleStatePLPathSamplingUpdater<O, G>(
-        obs, inferredGraph, vehicleStateFactory, parameters, rng));
+        obs, inferredGraph, vehicleStateFactory, parameters, isDebug, rng));
     this.setNumParticles(parameters.getNumParticles());
     this.setRandom(rng);
   }
@@ -305,6 +305,13 @@ public class VehicleStatePLPathSamplingFilter<O extends GpsObservation, G extend
               new MultivariateGaussian(VectorFactory.getDefault()
                   .createVector1D(), stateCovSample));
       
+      ScaledInverseGammaCovDistribution offRoadCovDist = (ScaledInverseGammaCovDistribution) 
+          updatedState.getOffRoadModelCovarianceParam().getParameterPrior();
+      offRoadCovDist.getInverseGammaDist().setScale(
+            ((ScaledInverseGammaCovDistribution)currentModelCovDistribution).getInverseGammaDist().getScale());
+      offRoadCovDist.getInverseGammaDist().setShape(
+            ((ScaledInverseGammaCovDistribution)currentModelCovDistribution).getInverseGammaDist().getShape());
+      
       final Matrix offRoadStateCovSample = MatrixFactory.getDiagonalDefault()
           .createIdentity(2,2).scale(stateCovSample.getElement(0, 0));
       updatedState.getOffRoadModelCovarianceParam().setValue(
@@ -324,6 +331,13 @@ public class VehicleStatePLPathSamplingFilter<O extends GpsObservation, G extend
           .setConditionalDistribution(
               new MultivariateGaussian(VectorFactory.getDefault()
                   .createVector1D(), stateCovSample));
+      
+      ScaledInverseGammaCovDistribution onRoadCovDist = (ScaledInverseGammaCovDistribution) 
+          updatedState.getOnRoadModelCovarianceParam().getParameterPrior();
+      onRoadCovDist.getInverseGammaDist().setScale(
+            ((ScaledInverseGammaCovDistribution)currentModelCovDistribution).getInverseGammaDist().getScale());
+      onRoadCovDist.getInverseGammaDist().setShape(
+            ((ScaledInverseGammaCovDistribution)currentModelCovDistribution).getInverseGammaDist().getShape());
       
       final Matrix onRoadStateCovSample = MatrixFactory.getDiagonalDefault()
           .createIdentity(1,1).scale(stateCovSample.getElement(0, 0));

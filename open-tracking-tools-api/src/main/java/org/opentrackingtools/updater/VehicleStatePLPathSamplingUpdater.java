@@ -81,10 +81,13 @@ public class VehicleStatePLPathSamplingUpdater<O extends GpsObservation, G exten
 
   protected VehicleStateDistributionFactory<O, G> vehicleStateFactory;
 
+  protected boolean isDebug;
+
   public VehicleStatePLPathSamplingUpdater(O obs,
     G inferencedGraph,
     VehicleStateDistributionFactory<O, G> vehicleStateFactory,
-    VehicleStateInitialParameters parameters, Random rng) {
+    VehicleStateInitialParameters parameters, boolean isDebug, Random rng) {
+    this.isDebug = isDebug;
     this.vehicleStateFactory = vehicleStateFactory;
     this.initialObservation = obs;
     this.inferenceGraph = inferencedGraph;
@@ -101,6 +104,7 @@ public class VehicleStatePLPathSamplingUpdater<O extends GpsObservation, G exten
   public VehicleStatePLPathSamplingUpdater<O, G> clone() {
     final VehicleStatePLPathSamplingUpdater<O, G> clone =
         (VehicleStatePLPathSamplingUpdater<O, G>) super.clone();
+    clone.isDebug = this.isDebug;
     clone.seed = this.seed;
     clone.inferenceGraph = this.inferenceGraph;
     clone.initialObservation = this.initialObservation;
@@ -205,7 +209,8 @@ public class VehicleStatePLPathSamplingUpdater<O extends GpsObservation, G exten
       }
 
       VehicleStateDistribution<O> sampledDist = statesOnEdgeDistribution.sample(this.random);
-      sampledDist.setTransitionStateDistribution(statesOnEdgeDistribution);
+      if (this.isDebug)
+        sampledDist.setTransitionStateDistribution(statesOnEdgeDistribution);
       retDist.increment(sampledDist);
     }
 
@@ -418,13 +423,13 @@ public class VehicleStatePLPathSamplingUpdater<O extends GpsObservation, G exten
           BayesianCredibleInterval.compute(new UnivariateGaussian(
               onRoadPriorPredictiveMotionState.getMean()
                   .getElement(0), onRoadPriorPredictiveMotionState
-                  .getCovariance().getElement(0, 0)), 0.90d);
+                  .getCovariance().getElement(0, 0)), 0.95d);
       final Range<Double> bciRangeDist =
           Ranges.closed(bciDist.getLowerBound(),
               bciDist.getUpperBound());
 
       final double obsErrorMagnitude =
-          3d * Math.sqrt(predictedState
+          2.5d * Math.sqrt(predictedState
               .getObservationCovarianceParam().getValue()
               .normFrobenius());
       
