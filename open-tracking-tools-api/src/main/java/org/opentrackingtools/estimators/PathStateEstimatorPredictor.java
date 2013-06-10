@@ -25,6 +25,7 @@ import org.opentrackingtools.paths.PathEdge;
 import org.opentrackingtools.paths.PathState;
 import org.opentrackingtools.util.PathUtils;
 import org.opentrackingtools.util.SimpleSingularValueDecomposition;
+import org.opentrackingtools.util.StatisticsUtil;
 import org.opentrackingtools.util.SvdMatrix;
 
 import com.beust.jcommander.internal.Lists;
@@ -72,7 +73,6 @@ public class PathStateEstimatorPredictor extends
      * the start point (when the prior is after the middle
      * distance of its edge).
      */
-    LineSegment lineSegment;
     if (startDistance != null && edge.getDistToStartOfEdge() == 0) {
       edgeLength = edge.getLength() - startDistance;
       /*
@@ -86,18 +86,13 @@ public class PathStateEstimatorPredictor extends
       } else {
         distToStartOfEdge = startDistance;
       }
-      lineSegment =
-          new LineSegment(edge.getInferenceGraphSegment().getLine()
-              .pointAlong(distToStartOfEdge / edge.getLength()), edge
-              .getInferenceGraphSegment().getLine().p1);
     } else {
       edgeLength = edge.getLength();
       distToStartOfEdge = edge.getDistToStartOfEdge();
-      lineSegment = edge.getInferenceGraphSegment().getLine();
     }
 
     final double S =
-        Or.times(measurementError)
+        Or.times(roadDistribution.getCovariance())
             .times(Or.transpose()).getElement(0, 0)
             + Math.pow(edgeLength / Math.sqrt(12), 2);
     final Matrix W =
@@ -111,11 +106,9 @@ public class PathStateEstimatorPredictor extends
     if (edgeLength < 1e-5) {
       mean = distToStartOfEdge;
     } else {
-      mean =
-          lineSegment.segmentFraction(obs) * edgeLength
-              + distToStartOfEdge;
-      //          (distToStartOfEdge + (distToStartOfEdge + direction
-      //              * edgeLength)) / 2d;
+      mean = (distToStartOfEdge + (distToStartOfEdge + edgeLength)) / 2d;
+//          lineSegment.segmentFraction(obs) * edgeLength
+//              + distToStartOfEdge;
     }
 
     final Vector beliefMean = roadDistribution.getMean();
@@ -181,92 +174,25 @@ public class PathStateEstimatorPredictor extends
     MultivariateGaussian roadDistribution, Matrix stateTransCov, 
     PathEdge edge, Coordinate obs, Double startDistance, double deltaTime) {
     final Matrix Or = MotionStateEstimatorPredictor.getOr();
-    double edgeLength;
-    final double distToStartOfEdge;
-    /*
-     * When we're on the initial edge, we create a 
-     * sub-edge that starts at the original distance.
-     * This is done to avoid pulling our prior behind
-     * the start point (when the prior is after the middle
-     * distance of its edge).
-     */
-    LineSegment lineSegment;
-    if (startDistance != null && edge.getDistToStartOfEdge() == 0) {
-      edgeLength = edge.getLength() - startDistance;
-      /*
-       * Zero edge length can happen, and does, so we
-       * need to provide a non-zero distance over which
-       * error can exist.
-       */
-      if (edgeLength < 10d) {
-        distToStartOfEdge = Math.max(startDistance - 10d, 10d);
-        edgeLength = edge.getLength() - distToStartOfEdge;
-      } else {
-        distToStartOfEdge = startDistance;
-      }
-      lineSegment =
-          new LineSegment(edge.getInferenceGraphSegment().getLine()
-              .pointAlong(distToStartOfEdge / edge.getLength()), edge
-              .getInferenceGraphSegment().getLine().p1);
-    } else {
-      edgeLength = edge.getLength();
-      distToStartOfEdge = edge.getDistToStartOfEdge();
-      lineSegment = edge.getInferenceGraphSegment().getLine();
-    }
+    final double direction = edge.isBackward() ? -1d : 1d;
+    final double thisStartDistance =
+        Math.abs(edge.getDistToStartOfEdge());
+    final double thisEndDistance =
+        edge.getLength() + thisStartDistance;
 
-    final double S =
-        Or.times(stateTransCov)
-            .times(Or.transpose()).getElement(0, 0)
-            + Math.pow(edgeLength / Math.sqrt(12), 2);
+    final double var =
+        Or.times(roadDistribution.getCovariance())
+            .times(Or.transpose()).getElement(0, 0);
 
-    final double mean;
-    if (edgeLength < 1e-5) {
-      mean = distToStartOfEdge;
-    } else {
-      mean =
-          lineSegment.segmentFraction(obs) * edgeLength
-              + distToStartOfEdge;
-      //          (distToStartOfEdge + (distToStartOfEdge + direction
-      //              * edgeLength)) / 2d;
-    }
+    final double mean =
+        direction
+            * Or.times(roadDistribution.getMean()).getElement(0);
 
-    return UnivariateGaussian.PDF.logEvaluate(roadDistribution
-        .getMean().getElement(0), mean, S);
-    //    final double direction = currentEdge.isBackward() ? -1d : 1d;
-    //    final double thisStartDistance =
-    //        Math.abs(currentEdge.getDistToStartOfEdge()) - startOffset;
-    //    final double thisEndDistance =
-    //        currentEdge.getLength() + thisStartDistance;
-    //
-    //    final Matrix Or = MotionStateEstimatorPredictor.getOr();
-    //
-    //    final double var =
-    //        Or.times(beliefPrediction.getCovariance())
-    //            .times(Or.transpose()).getElement(0, 0);
-    //
-    //    final double mean =
-    //        direction
-    //            * Or.times(beliefPrediction.getMean()).getElement(0);
-    //
-    //    final double t1 =
-    //      LogMath.subtract(
-    //          StatisticsUtil.normalCdf(thisEndDistance, mean, Math.sqrt(var), true),
-    //          StatisticsUtil.normalCdf(thisStartDistance, mean, Math.sqrt(var), true));
-    ////        UnivariateGaussian.CDF.evaluate(thisEndDistance, mean, var)
-    ////            - UnivariateGaussian.CDF.evaluate(thisStartDistance,
-    ////                mean, var);
-    //
-    //    final double Z =
-    //      LogMath.subtract(
-    //          StatisticsUtil.normalCdf(
-    //              Math.abs(totalPathDistance) - startOffset, mean, Math.sqrt(var), true),
-    //          StatisticsUtil.normalCdf(startOffset, mean, Math.sqrt(var), true));
-    ////        UnivariateGaussian.CDF.evaluate(
-    ////            Math.abs(path.getTotalPathDistance()), mean, var)
-    ////            - UnivariateGaussian.CDF.evaluate(0, mean, var);
-    //
-    ////    return Math.log(t1) - Math.log(Z);
-    //    return t1 - Z;
+    final double t1 =
+      LogMath.subtract(
+          StatisticsUtil.normalCdf(thisEndDistance, mean, Math.sqrt(var), true),
+          StatisticsUtil.normalCdf(thisStartDistance, mean, Math.sqrt(var), true));
+    return t1;
   }
 
   protected VehicleStateDistribution<? extends GpsObservation> currentState;

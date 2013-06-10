@@ -54,7 +54,7 @@ import com.google.common.collect.Iterables;
 public class VehicleStatePLPathSamplingFilter<O extends GpsObservation, G extends InferenceGraph>
     extends AbstractParticleFilter<O, VehicleStateDistribution<O>> {
 
-  private static Logger _log = LoggerFactory
+  protected static Logger _log = LoggerFactory
       .getLogger(VehicleStatePLPathSamplingFilter.class);
   private static final long serialVersionUID = -8257075186193062150L;
 
@@ -68,11 +68,13 @@ public class VehicleStatePLPathSamplingFilter<O extends GpsObservation, G extend
   protected CountedDataDistribution<VehicleStateDistribution<O>> lastResampleDistribution;
 
   protected VehicleStateDistributionFactory<O, G> vehicleStateFactory;
+  protected VehicleStateInitialParameters parameters;
 
   public VehicleStatePLPathSamplingFilter(O obs, G inferredGraph,
     VehicleStateDistributionFactory<O, G> vehicleStateFactory,
     VehicleStateInitialParameters parameters, Boolean isDebug,
     Random rng) {
+    this.parameters = parameters;
     this.vehicleStateFactory = vehicleStateFactory;
     this.inferredGraph = inferredGraph;
     this.isDebug = isDebug;
@@ -232,10 +234,12 @@ public class VehicleStatePLPathSamplingFilter<O extends GpsObservation, G extend
                   priorPredictivePathStateDist.getPathState()
                       .getEdge());
       /*
-       * Make sure the projected obs is after or at the current location
+       * Make sure the projected obs is after or at the starting location
        * along the edge; otherwise, we'll end up allowing backward movement.
        */
-      final double currentDist = updatedMotionState.getMean().getElement(0);
+      final double currentDist = 
+          state.getParentState().getPathStateParam().getValue().isOnRoad() ?
+          state.getParentState().getPathStateParam().getValue().getElement(0) : 0d;
       if (obsProj.getMean().getElement(0) < currentDist) {
         obsProj.getMean().setElement(0, currentDist);
       }
@@ -252,6 +256,9 @@ public class VehicleStatePLPathSamplingFilter<O extends GpsObservation, G extend
       updatedMotionState.setMean( 
          Iterables.getLast(postPath.getPathEdges()).clampToEdge(updatedMotionState.getMean()));
       posteriorPathStateDist = new PathStateDistribution(postPath, updatedMotionState);
+      
+      // DEBUG REMOVE
+//      Preconditions.checkState(updatedMotionState.getMean().getElement(1) < 50d);
     } else {
       updatedState.getMotionStateEstimatorPredictor().update(
           updatedMotionState, obs.getProjectedPoint());
@@ -284,7 +291,7 @@ public class VehicleStatePLPathSamplingFilter<O extends GpsObservation, G extend
             .getParameterPrior().clone());
     modelCovarianceEstimator.update(currentModelCovDistribution,
         obs.getProjectedPoint());
-
+    
     /*
      * After updating the covariance priors, we need to sample our new covariance matrix.
      * Also, note that we really have separate on/off covariances.  We could project
@@ -294,59 +301,41 @@ public class VehicleStatePLPathSamplingFilter<O extends GpsObservation, G extend
      * on/off road.
      */
     if (posteriorPathStateDist.getPathState().isOnRoad()) {
-      updatedState.getOnRoadModelCovarianceParam()
-          .setParameterPrior(currentModelCovDistribution);
       final Matrix stateCovSample =
           currentModelCovDistribution.sample(this.random);
-      updatedState.getOnRoadModelCovarianceParam().setValue(
-          stateCovSample);
-      updatedState.getOnRoadModelCovarianceParam()
-          .setConditionalDistribution(
+      updatedState.setOnRoadModelCovarianceParam(
+          SimpleBayesianParameter.<Matrix, MultivariateGaussian, DistributionWithMean<Matrix>>create(stateCovSample, 
               new MultivariateGaussian(VectorFactory.getDefault()
-                  .createVector1D(), stateCovSample));
+                  .createVector1D(), stateCovSample), currentModelCovDistribution));
       
-      ScaledInverseGammaCovDistribution offRoadCovDist = (ScaledInverseGammaCovDistribution) 
-          updatedState.getOffRoadModelCovarianceParam().getParameterPrior();
-      offRoadCovDist.getInverseGammaDist().setScale(
-            ((ScaledInverseGammaCovDistribution)currentModelCovDistribution).getInverseGammaDist().getScale());
-      offRoadCovDist.getInverseGammaDist().setShape(
-            ((ScaledInverseGammaCovDistribution)currentModelCovDistribution).getInverseGammaDist().getShape());
-      
+      ScaledInverseGammaCovDistribution offRoadCovDist = new ScaledInverseGammaCovDistribution(
+          2, currentModelCovDistribution.getInverseGammaDist().getShape(),
+          currentModelCovDistribution.getInverseGammaDist().getScale());
       final Matrix offRoadStateCovSample = MatrixFactory.getDiagonalDefault()
           .createIdentity(2,2).scale(stateCovSample.getElement(0, 0));
-      updatedState.getOffRoadModelCovarianceParam().setValue(
-          offRoadStateCovSample);
-      updatedState.getOffRoadModelCovarianceParam()
-          .setConditionalDistribution(
+      updatedState.setOffRoadModelCovarianceParam(
+          SimpleBayesianParameter.<Matrix, MultivariateGaussian, DistributionWithMean<Matrix>>create(offRoadStateCovSample,
               new MultivariateGaussian(VectorFactory.getDefault()
-                  .createVector2D(), offRoadStateCovSample));
+                  .createVector2D(), offRoadStateCovSample),
+                  offRoadCovDist));
     } else {
-      updatedState.getOffRoadModelCovarianceParam()
-          .setParameterPrior(currentModelCovDistribution);
       final Matrix stateCovSample =
           currentModelCovDistribution.sample(this.random);
-      updatedState.getOffRoadModelCovarianceParam().setValue(
-          stateCovSample);
-      updatedState.getOffRoadModelCovarianceParam()
-          .setConditionalDistribution(
+      updatedState.setOffRoadModelCovarianceParam(
+          SimpleBayesianParameter.<Matrix, MultivariateGaussian, DistributionWithMean<Matrix>>create(stateCovSample, 
               new MultivariateGaussian(VectorFactory.getDefault()
-                  .createVector1D(), stateCovSample));
+                  .createVector2D(), stateCovSample), currentModelCovDistribution));
       
-      ScaledInverseGammaCovDistribution onRoadCovDist = (ScaledInverseGammaCovDistribution) 
-          updatedState.getOnRoadModelCovarianceParam().getParameterPrior();
-      onRoadCovDist.getInverseGammaDist().setScale(
-            ((ScaledInverseGammaCovDistribution)currentModelCovDistribution).getInverseGammaDist().getScale());
-      onRoadCovDist.getInverseGammaDist().setShape(
-            ((ScaledInverseGammaCovDistribution)currentModelCovDistribution).getInverseGammaDist().getShape());
-      
+      ScaledInverseGammaCovDistribution onRoadCovDist = new ScaledInverseGammaCovDistribution(
+          1, currentModelCovDistribution.getInverseGammaDist().getShape(),
+          currentModelCovDistribution.getInverseGammaDist().getScale());
       final Matrix onRoadStateCovSample = MatrixFactory.getDiagonalDefault()
           .createIdentity(1,1).scale(stateCovSample.getElement(0, 0));
-      updatedState.getOnRoadModelCovarianceParam().setValue(
-          onRoadStateCovSample);
-      updatedState.getOnRoadModelCovarianceParam()
-          .setConditionalDistribution(
+      updatedState.setOnRoadModelCovarianceParam(
+          SimpleBayesianParameter.<Matrix, MultivariateGaussian, DistributionWithMean<Matrix>>create(onRoadStateCovSample,
               new MultivariateGaussian(VectorFactory.getDefault()
-                  .createVector1D(), onRoadStateCovSample));
+                  .createVector1D(), onRoadStateCovSample),
+                  onRoadCovDist));
     }
     newObsStateSample =
         MotionStateEstimatorPredictor.getOg().times(

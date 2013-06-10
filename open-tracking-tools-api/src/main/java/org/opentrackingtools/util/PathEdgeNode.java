@@ -1,5 +1,6 @@
 package org.opentrackingtools.util;
 
+import gov.sandia.cognition.math.LogMath;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 
 import java.util.List;
@@ -19,8 +20,8 @@ public class PathEdgeNode implements Comparable<PathEdgeNode> {
   private double obsLogLikelihood = 0d;
   final private PathEdgeNode parent;
   final private PathEdge pathEdge;
-  private double pathToEdgeTotalLogLikelihood = 0d;
   private double transitionLogLikelihood;
+  private Integer chainLength = null;
 
   public PathEdgeNode(PathEdge pathEdge, PathEdgeNode parent) {
     this.pathEdge = pathEdge;
@@ -98,10 +99,9 @@ public class PathEdgeNode implements Comparable<PathEdgeNode> {
     return this.pathEdge;
   }
 
-  public double getPathToEdgeTotalLogLikelihood() {
-    return this.pathToEdgeTotalLogLikelihood;
-  }
-
+  /**
+   * Gets the node chain's average edge transition likelihood.
+   */
   public double getTransitionLogLikelihood() {
     return this.transitionLogLikelihood;
   }
@@ -135,13 +135,34 @@ public class PathEdgeNode implements Comparable<PathEdgeNode> {
     this.obsLogLikelihood = h;
   }
 
-  public void setPathToEdgeTotalLogLikelihood(double f) {
-    this.pathToEdgeTotalLogLikelihood = f;
+  /**
+   * The length of the node chain (inclusive).
+   * @return
+   */
+  public int getChainLength() {
+    if (this.chainLength == null) {
+      if (this.parent != null) {
+        this.chainLength = this.parent.getChainLength() + 1;
+      } else {
+        this.chainLength = 1;
+      }
+    }
+    return this.chainLength;
   }
 
+  /**
+   * Sets the node chain's average edge transition likelihood.
+   * @param transitionLogLikelihood
+   */
   public void setTransitionLogLikelihood(
     double transitionLogLikelihood) {
-    this.transitionLogLikelihood = transitionLogLikelihood;
+    final int chainLength = this.getChainLength();
+    if (chainLength > 2) {
+      this.transitionLogLikelihood = LogMath.add(this.parent.transitionLogLikelihood, transitionLogLikelihood)
+          - Math.log(chainLength - 1);
+    } else {
+      this.transitionLogLikelihood = transitionLogLikelihood;
+    }
   }
 
 }

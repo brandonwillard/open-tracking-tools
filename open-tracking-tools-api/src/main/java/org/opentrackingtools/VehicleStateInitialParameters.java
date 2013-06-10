@@ -22,12 +22,30 @@ public class VehicleStateInitialParameters {
   protected Vector onTransitionProbsPrior;
   protected long seed;
 
+  protected Double obsCovarianceThreshold;
+  protected Double stateCovarianceThreshold;
+
+  protected double pathDistanceSearchUpperBound;
+  
   public VehicleStateInitialParameters(Vector initialMotionState,
     Vector obsCov, int obsCovDof, Vector onRoadStateCov,
-    int onRoadCovDof, Vector offRoadStateCov, int offRoadCovDof,
+    int onRoadCovDof, Vector offRoadStateCov, int offRoadCovDof, 
     Vector offProbs, Vector onProbs, int numParticles,
     double initialObsFreq, long seed) {
+    this(initialMotionState, obsCov, obsCovDof, null, onRoadStateCov, onRoadCovDof, 
+        offRoadStateCov, offRoadCovDof, null, offProbs, onProbs, numParticles, 
+        initialObsFreq, 54d * 30d, seed);
+  }
 
+  public VehicleStateInitialParameters(Vector initialMotionState,
+    Vector obsCov, int obsCovDof, Double obsCovarianceThreshold, Vector onRoadStateCov,
+    int onRoadCovDof, Vector offRoadStateCov, int offRoadCovDof, 
+    Double stateCovarianceThreshold, Vector offProbs, Vector onProbs, int numParticles,
+    double initialObsFreq, double pathDistanceSearchUpperBound, long seed) {
+
+    this.pathDistanceSearchUpperBound = pathDistanceSearchUpperBound;
+    this.stateCovarianceThreshold = stateCovarianceThreshold;
+    this.obsCovarianceThreshold = obsCovarianceThreshold;
     this.initialMotionState = initialMotionState;
     this.obsCovDof = obsCovDof;
     this.onRoadCovDof = onRoadCovDof;
@@ -294,5 +312,29 @@ public class VehicleStateInitialParameters {
 
   public void setSeed(long seed) {
     this.seed = seed;
+  }
+
+  public Double getObsCovarianceThreshold() {
+    return obsCovarianceThreshold;
+  }
+
+  public void setObsCovarianceThreshold(Double obsCovarianceThreshold) {
+    this.obsCovarianceThreshold = obsCovarianceThreshold;
+  }
+
+  public Double getStateCovarianceThreshold() {
+    return stateCovarianceThreshold;
+  }
+
+  public void setStateCovarianceThreshold(Double stateCovarianceThreshold) {
+    this.stateCovarianceThreshold = stateCovarianceThreshold;
+  }
+
+  public double getPathDistanceSearchUpperBound() {
+    return this.pathDistanceSearchUpperBound;
+  }
+
+  public void setPathDistanceSearchUpperBound(double pathDistanceSearchUpperBound) {
+    this.pathDistanceSearchUpperBound = pathDistanceSearchUpperBound;
   }
 }

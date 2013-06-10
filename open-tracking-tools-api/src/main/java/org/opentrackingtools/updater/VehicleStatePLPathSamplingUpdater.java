@@ -379,15 +379,16 @@ public class VehicleStatePLPathSamplingUpdater<O extends GpsObservation, G exten
         initialObsLikelihood =
             initialEdgeObsDist.getProbabilityFunction().logEvaluate(
                 state.getObservation().getProjectedPoint());
-        initialEdgeLikelihood =
-            PathStateEstimatorPredictor
-                .marginalPredictiveLogLikInternal(
-                    onRoadPriorPredictiveMotionState,
-                    onRoadStateTransCov,
-                    currentPathEdgeNode.getPathEdge(), obs
-                        .getObsProjected(), onRoadPriorMotionState
-                        .getMean().getElement(0), this.parameters
-                        .getInitialObsFreq());
+        initialEdgeLikelihood = 
+            0d;
+//            PathStateEstimatorPredictor
+//                .marginalPredictiveLogLikInternal(
+//                    onRoadPriorPredictiveMotionState,
+//                    onRoadStateTransCov,
+//                    currentPathEdgeNode.getPathEdge(), obs
+//                        .getObsProjected(), onRoadPriorMotionState
+//                        .getMean().getElement(0), this.parameters
+//                        .getInitialObsFreq());
       } else {
         initialEdgeObsDist = null;
         initialObsLikelihood = Double.NEGATIVE_INFINITY;
@@ -417,7 +418,11 @@ public class VehicleStatePLPathSamplingUpdater<O extends GpsObservation, G exten
 
       /*
        * We're going to evaluate all paths up to some bayesian credible interval of
-       * the distance component in the path state.
+       * the distance component in the path state, and within another interval
+       * of the estimated observation covariance.
+       * Note: we also apply bounds on those values here.  Otherwise, when
+       * estimation is poor, or when we have low frequency data, the searches
+       * will be very costly. 
        */
       final BayesianCredibleInterval bciDist =
           BayesianCredibleInterval.compute(new UnivariateGaussian(
@@ -425,13 +430,20 @@ public class VehicleStatePLPathSamplingUpdater<O extends GpsObservation, G exten
                   .getElement(0), onRoadPriorPredictiveMotionState
                   .getCovariance().getElement(0, 0)), 0.95d);
       final Range<Double> bciRangeDist =
-          Ranges.closed(bciDist.getLowerBound(),
-              bciDist.getUpperBound());
+          Ranges.closed(
+              Math.min(
+                  state.getPathStateParam().getValue().getElement(0) +
+                  this.parameters.getPathDistanceSearchUpperBound(),
+              bciDist.getLowerBound()),
+              Math.min(
+                  state.getPathStateParam().getValue().getElement(0) +
+                  this.parameters.getPathDistanceSearchUpperBound(), 
+                  bciDist.getUpperBound()));
 
       final double obsErrorMagnitude =
-          2.5d * Math.sqrt(predictedState
+          Math.min(this.parameters.getObsCovarianceThreshold(), 2.5d * Math.sqrt(predictedState
               .getObservationCovarianceParam().getValue()
-              .normFrobenius());
+              .normFrobenius()));
       
       while (!openPathEdgeQueue.isEmpty()) {
         currentPathEdgeNode = openPathEdgeQueue.poll();
@@ -518,6 +530,9 @@ public class VehicleStatePLPathSamplingUpdater<O extends GpsObservation, G exten
                   neighborPathEdge,
                   obs.getObsProjected(), null,
                   this.parameters.getInitialObsFreq());
+          
+          if (neighborEdgePathState == null)
+            continue;
 
           final MultivariateGaussian neighborEdgeObsDist =
               motionStateEstimatorPredictor
@@ -527,24 +542,20 @@ public class VehicleStatePLPathSamplingUpdater<O extends GpsObservation, G exten
               neighborEdgeObsDist.getProbabilityFunction()
                   .logEvaluate(
                       state.getObservation().getProjectedPoint());
-          final double neighborEdgeLikelihood =
-              PathStateEstimatorPredictor
-                  .marginalPredictiveLogLikInternal(
-                      onRoadPriorPredictiveMotionState,
-                      onRoadStateTransCov,
-                      neighborPathEdge, obs.getObsProjected(), null,
-                      this.parameters.getInitialObsFreq());
+          final double neighborEdgeLikelihood = 
+              0d;
+//              PathStateEstimatorPredictor
+//                  .marginalPredictiveLogLikInternal(
+//                      onRoadPriorPredictiveMotionState,
+//                      onRoadStateTransCov,
+//                      neighborPathEdge, obs.getObsProjected(), null,
+//                      this.parameters.getInitialObsFreq());
           
           edgeTransProbFunction.setFromEdge(currentPathEdgeNode.getPathEdge().getInferenceGraphSegment());
           
           final double neighborTransitionLogLikelihood =
              edgeTransProbFunction.logEvaluate(
                       neighborPathEdge.getInferenceGraphSegment());
-
-          //          if (neighborEdgePathState == null
-          //              || neighborEdgePathState.getMean().getElement(0) > bciDist.getUpperBound()) {
-          //            continue;
-          //          }
 
           neighborPathEdgeNode
               .setObsLogLikelihood(neighborObsLikelihood);
@@ -556,29 +567,23 @@ public class VehicleStatePLPathSamplingUpdater<O extends GpsObservation, G exten
               .setEdgeDistribution(neighborEdgePathState);
           neighborPathEdgeNode
               .setEdgeObsDistribution(neighborEdgeObsDist);
-          neighborPathEdgeNode
-              .setPathToEdgeTotalLogLikelihood(currentPathEdgeNode
-                  .getEdgeTotalLogLikelihood());
 
           if (closedPathEdgeSet.contains(neighborPathEdgeNode)) {
-
-            /*
-             * Don't revisit if we're going down in likelihood
-             * Scratch that.  No loops.
-             */
             continue;
-            //            if (neighborPathEdgeNode.getEdgeTotalLogLikelihood() < currentPathEdgeNode.getEdgeTotalLogLikelihood())
-            //              continue;
           }
 
           if (!openPathEdgeQueue.contains(neighborPathEdgeNode)) {
 
             /*
              * OK, now this is a little crazy, but there may be some room to justify
-             * monotonicity.
+             * monotonicity?
+             * TODO Really, this should be a Metropolis-Hastings-like step.
              */
-            if (neighborPathEdgeNode.getEdgeTotalLogLikelihood() >= currentPathEdgeNode
-                .getEdgeTotalLogLikelihood()) {
+            if (neighborPathEdgeNode.getEdgeTotalLogLikelihood() 
+                  >= currentPathEdgeNode.getEdgeTotalLogLikelihood()
+                || (currentPathEdgeNode.getParent() == null
+                    || neighborPathEdgeNode.getEdgeTotalLogLikelihood()
+                        >= currentPathEdgeNode.getParent().getEdgeTotalLogLikelihood())) {
               openPathEdgeQueue.add(neighborPathEdgeNode);
             }
           }
@@ -599,7 +604,7 @@ public class VehicleStatePLPathSamplingUpdater<O extends GpsObservation, G exten
           Math.min(
               StatisticsUtil.getLargeNormalCovRadius(obsDist
                   .getCovariance()),
-              VehicleStatePLPathSamplingUpdater.MAX_STATE_SNAP_RADIUS);
+              this.parameters.getObsCovarianceThreshold());
 
       /*
        * Simply stay off-road and move forward
