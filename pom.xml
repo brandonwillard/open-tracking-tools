@@ -127,9 +127,9 @@
 <!-- temporary fork of geotools to upgrade hslqdb -->
         <repository>
             <id>nyc-cache</id>
-            <url>http://build.staging.obanyc.com/archiva/repository/internal/</url>
+            <url>http://build.staging.obanyc.com/archiva/repository/snapshots/</url>
             <releases>
-                <enabled>true</enabled>
+                <enabled>false</enabled>
             </releases>
             <snapshots>
                 <enabled>true</enabled>
