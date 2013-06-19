@@ -113,11 +113,6 @@
 		</dependency>
 		<dependency>
 			<groupId>org.geotools</groupId>
-			<artifactId>gt-epsg-hsql</artifactId>
-	        <version>${geotools.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>org.geotools</groupId>
 			<artifactId>gt-graph</artifactId>
 	        <version>${geotools.version}</version>
 		</dependency>
@@ -177,5 +172,12 @@
 			<artifactId>jcommander</artifactId>
 			<version>1.27</version>
 		</dependency>
+		<!--  gt-epsg-hsql is stuck on an old version of hsqldb -->
+		<dependency>
+			<groupId>org.hsqldb</groupId>
+			<artifactId>hsqldb</artifactId>
+			<version>2.0.0</version>
+		</dependency>
+		
 	</dependencies>
 </project>

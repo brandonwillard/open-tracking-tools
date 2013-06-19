@@ -169,6 +169,9 @@
       <snapshots>
         <enabled>true</enabled>
       </snapshots>
+      <releases>
+        <enabled>true</enabled>
+      </releases>
       <url>http://repo.opengeo.org/</url>
     </repository>
 <!--     <repository> -->
@@ -184,7 +187,7 @@
   <properties>
     <jts.version>1.12</jts.version>
     <foundry.version>3.3.3</foundry.version>
-    <geotools.version>9.0-M0</geotools.version>
+    <geotools.version>10-SNAPSHOT</geotools.version>
     <jersey.version>1.11</jersey.version>
     <spring.version>3.0.5.RELEASE</spring.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
