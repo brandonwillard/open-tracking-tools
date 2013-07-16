@@ -93,7 +93,7 @@ public class OnOffEdgeTransDistributionTest {
     edgeTransDist.setMotionState(VectorFactory.getDefault()
         .createVector2D(4d, 1d));
 
-    final Set<InferenceGraphEdge> transitionSupport =
+    final Set<InferenceGraphSegment> transitionSupport =
         edgeTransDist.getDomain();
 
     final InferenceGraphEdge expectedEdge =
@@ -103,11 +103,11 @@ public class OnOffEdgeTransDistributionTest {
     /*
      * Grab the only non-null edge.
      */
-    final InferenceGraphEdge actualEdge =
+    final InferenceGraphSegment actualEdge =
         Iterables.find(transitionSupport,
-            new Predicate<InferenceGraphEdge>() {
+            new Predicate<InferenceGraphSegment>() {
               @Override
-              public boolean apply(InferenceGraphEdge input) {
+              public boolean apply(InferenceGraphSegment input) {
                 return !input.isNullEdge();
               }
             });
@@ -177,7 +177,7 @@ public class OnOffEdgeTransDistributionTest {
     edgeTransDist.setMotionState(VectorFactory.getDefault()
         .createVector2D(4d, 1d));
 
-    final Set<InferenceGraphEdge> transitionSupport =
+    final Set<InferenceGraphSegment> transitionSupport =
         edgeTransDist.getDomain();
 
     /*
@@ -185,7 +185,7 @@ public class OnOffEdgeTransDistributionTest {
      */
     final InferenceGraphEdge actualEdge =
         Iterables.getOnlyElement(transitionSupport, null);
-    AssertJUnit.assertEquals(InferenceGraphEdge.nullGraphEdge,
+    AssertJUnit.assertEquals(InferenceGraphSegment.nullGraphSegment,
         actualEdge);
   }
 
@@ -255,17 +255,17 @@ public class OnOffEdgeTransDistributionTest {
     edgeTransDist.setMotionState(VectorFactory.getDefault()
         .createVector2D(0.5d, 1d));
 
-    final Set<InferenceGraphEdge> transitionSupport =
+    final Set<InferenceGraphSegment> transitionSupport =
         edgeTransDist.getDomain();
 
     /*
      * Grab the only non-null edge.
      */
-    final InferenceGraphEdge actualEdge =
+    final InferenceGraphSegment actualEdge =
         Iterables.find(transitionSupport,
-            new Predicate<InferenceGraphEdge>() {
+            new Predicate<InferenceGraphSegment>() {
               @Override
-              public boolean apply(InferenceGraphEdge input) {
+              public boolean apply(InferenceGraphSegment input) {
                 return !input.isNullEdge();
               }
             });

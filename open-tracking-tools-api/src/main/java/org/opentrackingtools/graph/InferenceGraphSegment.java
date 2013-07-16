@@ -78,8 +78,10 @@ public class InferenceGraphSegment extends InferenceGraphEdge {
   public String toString() {
     final ToStringBuilder builder = new ToStringBuilder(this);
     builder.append("parentEdge", this.getEdgeId());
-    builder.append("startIndex", this.startIndex.getSegmentIndex());
-    builder.append("line", this.line);
+    if (!this.isNullEdge()) {
+      builder.append("startIndex", this.startIndex.getSegmentIndex());
+      builder.append("line", this.line);
+    }
     return builder.toString();
   }
 

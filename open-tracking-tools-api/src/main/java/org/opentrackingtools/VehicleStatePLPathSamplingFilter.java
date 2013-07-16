@@ -391,8 +391,9 @@ public class VehicleStatePLPathSamplingFilter<O extends GpsObservation, G extend
         toEdge);
 
     final OnOffEdgeTransDistribution updatedEdgeTransConditional =
-        new OnOffEdgeTransDistribution(this.inferredGraph, updatedState.getPathStateParam().getValue(), 
-            toEdge, updatedState.getObservationCovarianceParam().getValue(), 
+        new OnOffEdgeTransDistribution(this.inferredGraph, 
+            updatedState.getPathStateParam().getValue(), 
+            updatedState.getObservationCovarianceParam().getValue(), 
             updatedEdgeTransPrior.getEdgeMotionTransProbPrior().getMean(),
             updatedEdgeTransPrior.getFreeMotionTransProbPrior().getMean());
     

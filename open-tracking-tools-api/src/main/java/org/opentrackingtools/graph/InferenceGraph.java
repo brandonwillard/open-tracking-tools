@@ -20,8 +20,8 @@ public interface InferenceGraph {
 
   public Envelope getGPSGraphExtent();
 
-  public Collection<InferenceGraphEdge> getIncomingTransferableEdges(
-    InferenceGraphEdge infEdge);
+  public Collection<InferenceGraphSegment> getIncomingTransferableEdges(
+    InferenceGraphSegment infEdge);
 
   public InferenceGraphEdge getInferenceGraphEdge(String id);
 
@@ -34,8 +34,11 @@ public interface InferenceGraph {
   public Collection<InferenceGraphSegment> getNearbyEdges(
     Vector projLocation, double radius);
 
-  public Collection<InferenceGraphEdge> getOutgoingTransferableEdges(
-    InferenceGraphEdge infEdge);
+  public Collection<InferenceGraphSegment> getTransferEdges(
+    Vector projLocation, Vector prevLocation);
+
+  public Collection<InferenceGraphSegment> getOutgoingTransferableEdges(
+    InferenceGraphSegment infEdge);
 
   public Collection<Path> getPaths(
     VehicleStateDistribution<? extends GpsObservation> fromState,

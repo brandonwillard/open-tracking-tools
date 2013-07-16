@@ -214,7 +214,6 @@ public class VehicleStateDistribution<Observation extends GpsObservation>
       final OnOffEdgeTransDistribution initialTransDist =
           new OnOffEdgeTransDistribution(graph, 
               state.getPathStateParam().getValue(), 
-              null,
               state.getObservationCovarianceParam().getValue(),
               initialPriorTransDist.getEdgeMotionTransProbPrior().getMean(), 
               initialPriorTransDist.getFreeMotionTransProbPrior().getMean());

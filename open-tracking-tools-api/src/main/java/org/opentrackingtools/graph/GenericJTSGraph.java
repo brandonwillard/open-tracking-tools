@@ -43,6 +43,7 @@ import com.google.common.primitives.Doubles;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Envelope;
 import com.vividsolutions.jts.geom.Geometry;
+import com.vividsolutions.jts.geom.LineSegment;
 import com.vividsolutions.jts.geom.LineString;
 import com.vividsolutions.jts.geom.Point;
 import com.vividsolutions.jts.index.strtree.STRtree;
@@ -270,16 +271,16 @@ public class GenericJTSGraph implements InferenceGraph {
   }
 
   @Override
-  public Collection<InferenceGraphEdge> getIncomingTransferableEdges(
-    InferenceGraphEdge infEdge) {
+  public Collection<InferenceGraphSegment> getIncomingTransferableEdges(
+    InferenceGraphSegment infEdge) {
 
     final DirectedEdge edge = (DirectedEdge) infEdge.getBackingEdge();
     final Collection<DirectedEdge> inEdges =
         edge.getInNode().getInEdges();
 
-    final Set<InferenceGraphEdge> result = Sets.newHashSet();
+    final Set<InferenceGraphSegment> result = Sets.newHashSet();
     for (final DirectedEdge inEdge : inEdges) {
-      result.add(this.getInferenceGraphEdge(inEdge));
+      result.add(Iterables.getFirst(this.getInferenceGraphEdge(inEdge).getSegments(), null));
     }
 
     return result;
@@ -307,6 +308,37 @@ public class GenericJTSGraph implements InferenceGraph {
   }
 
   @Override
+  public Collection<InferenceGraphSegment> getTransferEdges(
+    Vector toLocation, Vector fromLocation) {
+    
+    Preconditions.checkArgument(
+        toLocation.getDimensionality() == 4 &&
+        fromLocation.getDimensionality() == 4);
+
+    final Coordinate toCoord =
+        GeoUtils.getCoordinates(
+        MotionStateEstimatorPredictor.getOg().times(
+            toLocation));
+    final Coordinate fromCoord =
+        GeoUtils.getCoordinates(
+        MotionStateEstimatorPredictor.getOg().times(
+            fromLocation));
+    LineSegment movementLine = new LineSegment(fromCoord, toCoord);
+    Envelope env = new Envelope(fromCoord, toCoord);
+    final Set<InferenceGraphSegment> streetEdges = Sets.newHashSet();
+    for (final Object obj : this.edgeIndex.query(env)) {
+      final InferenceGraphSegment subline =
+          (InferenceGraphSegment) obj;
+      if (subline.getLine().intersection(movementLine) != null) {
+        streetEdges.add(subline);
+      } else {
+        continue;
+      }
+    }
+    return streetEdges;
+  }
+
+  @Override
   public Collection<InferenceGraphSegment> getNearbyEdges(
     Coordinate toCoord, double radius) {
     final Envelope toEnv = new Envelope(toCoord);
@@ -315,9 +347,9 @@ public class GenericJTSGraph implements InferenceGraph {
     for (final Object obj : this.edgeIndex.query(toEnv)) {
       final InferenceGraphSegment subline =
           (InferenceGraphSegment) obj;
-      Preconditions.checkState(subline.getEndIndex()
-          .getSegmentIndex()
-          - subline.getStartIndex().getSegmentIndex() == 1);
+//      Preconditions.checkState(subline.getEndIndex()
+//          .getSegmentIndex()
+//          - subline.getStartIndex().getSegmentIndex() == 1);
       if (subline.getLine().distance(toCoord) < radius) {
         streetEdges.add(subline);
       } else {
@@ -353,16 +385,16 @@ public class GenericJTSGraph implements InferenceGraph {
   }
 
   @Override
-  public Collection<InferenceGraphEdge> getOutgoingTransferableEdges(
-    InferenceGraphEdge infEdge) {
+  public Collection<InferenceGraphSegment> getOutgoingTransferableEdges(
+    InferenceGraphSegment infEdge) {
 
     final DirectedEdge edge = (DirectedEdge) infEdge.getBackingEdge();
     final Collection<DirectedEdge> outEdges =
         edge.getOutNode().getOutEdges();
 
-    final Set<InferenceGraphEdge> result = Sets.newHashSet();
+    final Set<InferenceGraphSegment> result = Sets.newHashSet();
     for (final DirectedEdge outEdge : outEdges) {
-      result.add(this.getInferenceGraphEdge(outEdge));
+      result.add(Iterables.getFirst(this.getInferenceGraphEdge(outEdge).getSegments(), null));
     }
 
     return result;

@@ -49,6 +49,7 @@ import com.google.common.collect.Sets;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Envelope;
 import com.vividsolutions.jts.geom.Geometry;
+import com.vividsolutions.jts.geom.LineSegment;
 import com.vividsolutions.jts.index.strtree.STRtree;
 
 public class OtpGraph implements InferenceGraph {
@@ -536,15 +537,15 @@ public class OtpGraph implements InferenceGraph {
    * @return
    */
   @Override
-  public List<InferenceGraphEdge> getIncomingTransferableEdges(
-    InferenceGraphEdge infEdge) {
+  public List<InferenceGraphSegment> getIncomingTransferableEdges(
+    InferenceGraphSegment infEdge) {
 
-    final List<InferenceGraphEdge> result = Lists.newArrayList();
+    final List<InferenceGraphSegment> result = Lists.newArrayList();
     for (final Edge edge : OtpGraph
         .filterForStreetEdges(((Edge) (infEdge.getBackingEdge()))
             .getFromVertex().getIncoming())) {
       if (this.getBaseGraph().getIdForEdge(edge) != null) {
-        result.add(this.getInferenceGraphEdge(edge));
+        result.add(Iterables.getFirst(this.getInferenceGraphEdge(edge).getSegments(), null));
       }
     }
 
@@ -626,6 +627,38 @@ public class OtpGraph implements InferenceGraph {
 
   public Collection<InferenceGraphEdge> getInferenceGraphEdges() {
     return this.edgeToInfo.values();
+  }
+
+  @Override
+  public Collection<InferenceGraphSegment> getTransferEdges(
+    Vector toLocation, Vector fromLocation) {
+    
+    Preconditions.checkArgument(
+        toLocation.getDimensionality() == 4 &&
+        fromLocation.getDimensionality() == 4);
+
+    final Coordinate toCoord =
+        GeoUtils.getCoordinates(
+        MotionStateEstimatorPredictor.getOg().times(
+            toLocation));
+    final Coordinate fromCoord =
+        GeoUtils.getCoordinates(
+        MotionStateEstimatorPredictor.getOg().times(
+            fromLocation));
+    LineSegment movementLine = new LineSegment(fromCoord, toCoord);
+    Envelope env = new Envelope(fromCoord, toCoord);
+    final Set<InferenceGraphSegment> streetEdges = Sets.newHashSet();
+    for (final Object obj : this.baseEdgeIndex.query(env)) {
+      final StreetEdge edge = (StreetEdge) obj;
+      if (edge.canTraverse(OtpGraph.defaultOptions)) {
+        final InferenceGraphSegment subline =
+            (InferenceGraphSegment) obj;
+        if (subline.getLine().intersection(movementLine) != null) {
+          streetEdges.add(subline);
+        } 
+      }
+    }
+    return streetEdges;
   }
 
   @Override
@@ -735,14 +768,14 @@ public class OtpGraph implements InferenceGraph {
    * @return
    */
   @Override
-  public List<InferenceGraphEdge> getOutgoingTransferableEdges(
-    InferenceGraphEdge infEdge) {
+  public List<InferenceGraphSegment> getOutgoingTransferableEdges(
+    InferenceGraphSegment infEdge) {
 
-    final List<InferenceGraphEdge> result = Lists.newArrayList();
+    final List<InferenceGraphSegment> result = Lists.newArrayList();
     for (final Edge edge : OtpGraph
         .filterForStreetEdges(((Edge) (infEdge.getBackingEdge()))
             .getToVertex().getOutgoingStreetEdges())) {
-      result.add(this.getInferenceGraphEdge(edge));
+      result.add(Iterables.getFirst(this.getInferenceGraphEdge(edge).getSegments(), null));
     }
 
     return result;
