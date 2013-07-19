@@ -47,6 +47,14 @@ import au.com.bytecode.opencsv.CSVWriter;
 import com.google.common.collect.Ranges;
 import com.vividsolutions.jts.geom.Coordinate;
 
+/**
+ * This test runs the simulator only and checks that the simulated
+ * values are generally consistent.  Three conditions are evaluated:
+ * road only, off-road only and mixed.
+ * 
+ * @author bwillard
+ *
+ */
 public class SimulationTest {
 
   private static final Logger _log = LoggerFactory
@@ -55,32 +63,32 @@ public class SimulationTest {
   @DataProvider
   private static final Object[][] initialStateData() {
     return new Object[][] {
-//        {
-//            /*
-//             * Road only
-//             */
-//            new VehicleStateInitialParameters(null, VectorFactory
-//                .getDefault().createVector2D(60d, 60d), 20,
-//                VectorFactory.getDefault().createVector1D(6.25e-4),
-//                30, VectorFactory.getDefault().createVector2D(
-//                    6.25e-4, 6.25e-4), 20, VectorFactory.getDefault()
-//                    .createVector2D(1d, Double.MAX_VALUE),
-//                VectorFactory.getDefault().createVector2D(
-//                    Double.MAX_VALUE, 1d), 25, 15, 2159585l),
-//            Boolean.FALSE, 126000 },
-//        {
-//            /*
-//             * Ground only
-//             */
-//            new VehicleStateInitialParameters(null, VectorFactory
-//                .getDefault().createVector2D(60d, 60d), 20,
-//                VectorFactory.getDefault().createVector1D(6.25e-4),
-//                30, VectorFactory.getDefault().createVector2D(
-//                    6.25e-4, 6.25e-4), 20, VectorFactory.getDefault()
-//                    .createVector2D(Double.MAX_VALUE, 1d),
-//                VectorFactory.getDefault().createVector2D(1d,
-//                    Double.MAX_VALUE), 25, 10, 215955l),
-//            Boolean.FALSE, 126000 },
+        {
+            /*
+             * Road only
+             */
+            new VehicleStateInitialParameters(null, VectorFactory
+                .getDefault().createVector2D(60d, 60d), 20,
+                VectorFactory.getDefault().createVector1D(6.25e-4),
+                30, VectorFactory.getDefault().createVector2D(
+                    6.25e-4, 6.25e-4), 20, VectorFactory.getDefault()
+                    .createVector2D(1d, Double.MAX_VALUE),
+                VectorFactory.getDefault().createVector2D(
+                    Double.MAX_VALUE, 1d), 25, 15, 2159585l),
+            Boolean.FALSE, 126000 },
+        {
+            /*
+             * Ground only
+             */
+            new VehicleStateInitialParameters(null, VectorFactory
+                .getDefault().createVector2D(60d, 60d), 20,
+                VectorFactory.getDefault().createVector1D(6.25e-4),
+                30, VectorFactory.getDefault().createVector2D(
+                    6.25e-4, 6.25e-4), 20, VectorFactory.getDefault()
+                    .createVector2D(Double.MAX_VALUE, 1d),
+                VectorFactory.getDefault().createVector2D(1d,
+                    Double.MAX_VALUE), 25, 10, 215955l),
+            Boolean.FALSE, 126000 },
         {
             /*
              * Mixed 
@@ -100,31 +108,8 @@ public class SimulationTest {
   private double[] movementZeroArray;
   private double[] obsErrorZeroArray;
   private Simulation sim;
-  private CSVWriter outputFile;
 
 
-  @BeforeMethod
-  public void handleOutputFileOpen(Method method)
-  {
-      String testName = method.getName(); 
-      try {
-        outputFile = new CSVWriter(new FileWriter("/tmp/" + testName), ',');
-      } catch (IOException e) {
-        e.printStackTrace();
-      }
-  } 
-
-  @AfterMethod
-  public void handleOutputFileClose(Method method)
-  {
-    if (outputFile != null) {
-      try {
-        outputFile.close();
-      } catch (IOException e) {
-        e.printStackTrace();
-      }
-    }
-  }
 
   private Coordinate startCoord;
 
@@ -377,7 +362,7 @@ public class SimulationTest {
 
       ArrayAsserts.assertArrayEquals(this.movementZeroArray,
           movementSS.getMean().toArray(),
-          10 * Math.sqrt(stateCovariance.normFrobenius()));
+          2.5 * Math.sqrt(stateCovariance.normFrobenius()));
 
       if (vehicleState.getPathStateParam().getValue().isOnRoad()) {
         for (final VectorEntry entry : vehicleState

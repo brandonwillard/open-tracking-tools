@@ -16,6 +16,8 @@ import gov.sandia.cognition.util.ObjectUtil;
 import java.util.Collection;
 import java.util.Random;
 
+import org.apache.commons.lang3.builder.ToStringBuilder;
+import org.apache.commons.lang3.builder.ToStringStyle;
 import org.opentrackingtools.distributions.PathStateDistribution;
 import org.opentrackingtools.distributions.TruncatedRoadGaussian;
 import org.opentrackingtools.graph.InferenceGraph;
@@ -641,8 +643,14 @@ public class MotionStateEstimatorPredictor extends
 
   @Override
   public String toString() {
-    return "StandardRoadTrackingFilter [ currentTimeDiff="
-        + this.currentTimeDiff + "]";
+    final ToStringBuilder builder =
+        new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE);
+    builder.append("groundFilterModelCov", this.groundFilter.getModelCovariance());
+    builder.append("roadFilterModelCov", this.roadFilter.getModelCovariance());
+    builder.append("groundFilterMeasCov", this.groundFilter.getMeasurementCovariance());
+    builder.append("roadFilterMeasCov", this.roadFilter.getMeasurementCovariance());
+    builder.append("currentTimeDiff", this.currentTimeDiff);
+    return builder.toString();
   }
 
   @Override

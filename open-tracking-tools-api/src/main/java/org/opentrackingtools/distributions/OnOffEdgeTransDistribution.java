@@ -318,10 +318,10 @@ public class OnOffEdgeTransDistribution extends
                   .getLargeNormalCovRadius(this.obsCovariance);
           snappedSegments = this.graph.getNearbyEdges(currentLocation, radius);
         } else {
-          final Vector prevLocation =
-            MotionStateEstimatorPredictor.Og.times(this.initialMotionState);
-          snappedSegments = this.graph.getTransferEdges(currentLocation, 
-              prevLocation); 
+//          final Vector prevLocation =
+//            MotionStateEstimatorPredictor.Og.times(this.initialMotionState);
+          snappedSegments = this.graph.getTransferEdges(this.currentMotionState, 
+              this.initialMotionState); 
         }
         for (final InferenceGraphSegment line : snappedSegments) {
           this.domain.add(line);

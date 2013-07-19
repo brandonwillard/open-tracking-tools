@@ -738,8 +738,11 @@ public class VehicleStateDistribution<Observation extends GpsObservation>
   public String toString() {
     final ToStringBuilder builder =
         new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE);
-    builder.append("pathState",
-        this.pathStateParam.getParameterPrior());
+    if (this.pathStateParam != null)
+      builder.append("pathState",
+          this.pathStateParam.getParameterPrior());
+    else
+      builder.append("pathState", this.pathStateParam);
     builder.append("observation", this.observation);
     return builder.toString();
   }

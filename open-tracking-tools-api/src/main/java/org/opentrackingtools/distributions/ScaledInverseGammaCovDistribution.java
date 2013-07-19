@@ -3,6 +3,7 @@ package org.opentrackingtools.distributions;
 import com.google.common.collect.Lists;
 
 import org.apache.commons.lang3.builder.ToStringBuilder;
+import org.apache.commons.lang3.builder.ToStringStyle;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -143,7 +144,7 @@ public class ScaledInverseGammaCovDistribution
 
   @Override
   public String toString() {
-    ToStringBuilder builder = new ToStringBuilder(this);
+    ToStringBuilder builder = new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE);
     builder.append("dimensionality", dimensionality);
     builder.append("inverseGammaDist", inverseGammaDist);
     builder.append("mean", inverseGammaDist.getMean());

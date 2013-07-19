@@ -78,9 +78,12 @@ public class TruncatedRoadKalmanFilter
         ObjectUtil.cloneSmart(this.modelCovariance);
     return clone;
   }
-
-  @Override
-  public AdjMultivariateGaussian createInitialLearnedObject() {
+  
+  /**
+   * Create "stable" initial covariance prior w.r.t. the limiting
+   * distribution.
+   */
+  protected TruncatedRoadGaussian createStablePrior() {
     final Matrix subM =
         MatrixFactory.getDefault().copyArray(
             new double[][] {
@@ -108,6 +111,12 @@ public class TruncatedRoadKalmanFilter
             svdW.getU(), svdW.getS(), svdW.getU().transpose()));
     return new TruncatedRoadGaussian(this.model.getState().clone(),
         initialW);
+  }
+
+  @Override
+  public AdjMultivariateGaussian createInitialLearnedObject() {
+    return new TruncatedRoadGaussian(this.model.getState().clone(),
+        this.modelCovariance);
   }
 
   @Override

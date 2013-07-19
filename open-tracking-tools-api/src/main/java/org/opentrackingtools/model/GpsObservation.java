@@ -8,7 +8,7 @@ import java.util.Date;
 import com.google.common.collect.ComparisonChain;
 import com.vividsolutions.jts.geom.Coordinate;
 
-public class GpsObservation {
+public class GpsObservation implements Comparable<GpsObservation> {
 
   protected Double fixQuality;
   protected final Coordinate coordsLatLon;

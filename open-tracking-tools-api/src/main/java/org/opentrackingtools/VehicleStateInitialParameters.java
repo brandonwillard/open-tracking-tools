@@ -1,8 +1,11 @@
 package org.opentrackingtools;
 
+
+import org.apache.commons.lang3.builder.CompareToBuilder;
+
 import gov.sandia.cognition.math.matrix.Vector;
 
-public class VehicleStateInitialParameters {
+public class VehicleStateInitialParameters implements Comparable<VehicleStateInitialParameters> {
 
   protected Vector initialMotionState;
 
@@ -337,4 +340,27 @@ public class VehicleStateInitialParameters {
   public void setPathDistanceSearchUpperBound(double pathDistanceSearchUpperBound) {
     this.pathDistanceSearchUpperBound = pathDistanceSearchUpperBound;
   }
+
+  @Override
+  public int compareTo(VehicleStateInitialParameters o) {
+    return new CompareToBuilder()
+        .append(this.initialObsFreq, o.initialObsFreq)
+        .append(this.numParticles, o.numParticles)
+        .append(this.obsCovDof, o.obsCovDof)
+        .append(this.offRoadCovDof, o.offRoadCovDof)
+        .append(this.onRoadCovDof, o.onRoadCovDof)
+        .append(this.pathDistanceSearchUpperBound, o.pathDistanceSearchUpperBound)
+        .append(this.seed, o.seed)
+        .append(this.obsCovarianceThreshold, o.obsCovarianceThreshold)
+        .append(this.stateCovarianceThreshold, o.stateCovarianceThreshold)
+        .append(this.initialMotionState.toArray(), o.initialMotionState.toArray())
+        .append(this.obsCov.toArray(), o.obsCov.toArray())
+        .append(this.obsCovarianceThreshold, o.obsCovarianceThreshold)
+        .append(this.offRoadStateCov.toArray(), o.offRoadStateCov.toArray())
+        .append(this.onRoadStateCov.toArray(), o.onRoadStateCov.toArray())
+        .append(this.onTransitionProbsPrior.toArray(), o.onTransitionProbsPrior.toArray())
+        .append(this.offTransitionProbsPrior.toArray(), o.offTransitionProbsPrior.toArray())
+        .toComparison();
+  }
+
 }

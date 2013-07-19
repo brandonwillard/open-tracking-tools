@@ -1,5 +1,6 @@
 package org.opentrackingtools.updater;
 
+import gov.sandia.cognition.math.matrix.Matrix;
 import gov.sandia.cognition.math.matrix.MatrixFactory;
 import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.statistics.DataDistribution;
@@ -15,6 +16,7 @@ import java.util.Random;
 import org.opentrackingtools.VehicleStateInitialParameters;
 import org.opentrackingtools.distributions.CountedDataDistribution;
 import org.opentrackingtools.distributions.OnOffEdgeTransDistribution;
+import org.opentrackingtools.distributions.OnOffEdgeTransPriorDistribution;
 import org.opentrackingtools.distributions.PathStateDistribution;
 import org.opentrackingtools.distributions.PathStateMixtureDensityModel;
 import org.opentrackingtools.distributions.TruncatedRoadGaussian;
@@ -31,6 +33,7 @@ import org.opentrackingtools.paths.PathEdge;
 import org.opentrackingtools.paths.PathState;
 import org.opentrackingtools.util.PathUtils;
 import org.opentrackingtools.util.SvdMatrix;
+import org.opentrackingtools.util.model.TransitionProbMatrix;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -309,6 +312,8 @@ public class VehicleStateBootstrapUpdater<O extends GpsObservation>
      * Need this so that the sampler can tell which possible 
      * on-road edges exist at the new projected location.
      */
+    edgeTransDistribution.setCurrentEdge(
+        updatedState.getPathStateParam().getValue().getEdge().getInferenceGraphSegment());
     if (startEdge.isNullEdge()) {
       edgeTransDistribution.setMotionState(predictedMotionState
           .getMean());
@@ -398,6 +403,17 @@ public class VehicleStateBootstrapUpdater<O extends GpsObservation>
     final PathState newPathState =
         new PathState(newPath, predictedMotionState.getMean());
 
+    /*
+     * This filter needs to have it's prior covariance reset.
+     */
+    final SvdMatrix newMotionCov = newPathState.isOnRoad() ? motionStatePredictor
+                  .getRoadFilter().getModelCovariance()
+                  : motionStatePredictor.getGroundFilter()
+                      .getModelCovariance();
+    final MultivariateGaussian newEdgePathStateDist = 
+            new TruncatedRoadGaussian(newPathState.getEdgeState(),
+                 newMotionCov);
+
     final MultivariateGaussian obsDist =
         motionStatePredictor.getObservationDistribution(
             predictedMotionState, newPathState.getEdge());
@@ -409,20 +425,28 @@ public class VehicleStateBootstrapUpdater<O extends GpsObservation>
              * Important: we need the motion state prior to be relative to the edge it's
              * on, otherwise, distance along path will add up indefinitely. 
              */
-            (MultivariateGaussian)new TruncatedRoadGaussian(newPathState.getEdgeState(),
-              newPathState.isOnRoad() ? motionStatePredictor
-                  .getRoadFilter().getModelCovariance()
-                  : motionStatePredictor.getGroundFilter()
-                      .getModelCovariance())
-            ));
+              newEdgePathStateDist));
+    
 
+    final MultivariateGaussian newPathStateDist = 
+            new TruncatedRoadGaussian(newPathState.getMotionState(),
+                 newMotionCov);
     updatedState.setPathStateParam(
         SimpleBayesianParameter.<PathState, PathStateMixtureDensityModel, PathStateDistribution>
           create(newPathState, null, 
             new PathStateDistribution(newPathState.getPath(), 
-                predictedMotionState)));
+                newPathStateDist)));
 
     updatedState.setParentState(previousState);
+    
+    updatedState.setEdgeTransitionParam(
+        SimpleBayesianParameter.<TransitionProbMatrix, OnOffEdgeTransDistribution, OnOffEdgeTransPriorDistribution>
+        create(updatedState.getEdgeTransitionParam().getValue(),
+            new OnOffEdgeTransDistribution(inferenceGraph, newPathState, null, 
+                edgeTransDistribution.getEdgeMotionTransProbs().getMean(), 
+                edgeTransDistribution.getFreeMotionTransProbs().getMean()),
+            updatedState.getEdgeTransitionParam().getParameterPrior().clone()
+            ));
 
     return updatedState;
   }

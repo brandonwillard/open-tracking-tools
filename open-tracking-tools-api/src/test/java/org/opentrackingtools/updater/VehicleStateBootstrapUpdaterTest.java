@@ -242,8 +242,8 @@ public class VehicleStateBootstrapUpdaterTest {
     final VehicleStateDistribution<GpsObservation> newState =
         updater.update(currentState);
 
-    final InferenceGraphEdge expectedEdge =
-        InferenceGraphEdge.nullGraphEdge;
+    final InferenceGraphSegment expectedEdge =
+        InferenceGraphSegment.nullGraphSegment;
 
     AssertJUnit.assertEquals(expectedEdge, newState
         .getPathStateParam().getValue().getEdge()
@@ -327,8 +327,8 @@ public class VehicleStateBootstrapUpdaterTest {
     final VehicleStateDistribution<GpsObservation> newState =
         updater.update(currentState);
 
-    final InferenceGraphEdge expectedEdge =
-        InferenceGraphEdge.nullGraphEdge;
+    final InferenceGraphSegment expectedEdge =
+        InferenceGraphSegment.nullGraphSegment;
     AssertJUnit.assertEquals(expectedEdge, newState
         .getPathStateParam().getValue().getEdge()
         .getInferenceGraphSegment());

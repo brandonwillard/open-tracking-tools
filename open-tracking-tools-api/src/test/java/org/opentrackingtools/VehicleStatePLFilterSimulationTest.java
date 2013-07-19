@@ -12,7 +12,9 @@ import gov.sandia.cognition.statistics.bayesian.ParticleFilter;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian.SufficientStatistic;
 
+import java.io.FileWriter;
 import java.io.IOException;
+import java.lang.reflect.Method;
 import java.util.Date;
 import java.util.List;
 import java.util.Random;
@@ -41,10 +43,14 @@ import org.opentrackingtools.util.Simulation;
 import org.opentrackingtools.util.Simulation.SimulationParameters;
 import org.opentrackingtools.util.TrueObservation;
 import org.testng.AssertJUnit;
+import org.testng.annotations.AfterMethod;
+import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.BeforeTest;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 import org.testng.internal.junit.ArrayAsserts;
+
+import au.com.bytecode.opencsv.CSVWriter;
 
 import com.beust.jcommander.internal.Lists;
 import com.google.common.base.Preconditions;
@@ -53,6 +59,15 @@ import com.google.common.collect.Ranges;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.LineString;
 
+/**
+ * This is basically a full integration test that runs the bootstrap simulator 
+ * to produce observations, then fits those observations with the PL filter.  
+ * The test conditions are that the fitted values lie within certain credible 
+ * intervals of the true distributions.
+ * 
+ * @author bwillard
+ *
+ */
 public class VehicleStatePLFilterSimulationTest {
 
   private static final double[] fourZeros =
@@ -62,6 +77,7 @@ public class VehicleStatePLFilterSimulationTest {
   private static final double[] sixteenZeros = VectorFactory
       .getDefault().createVector(16).toArray();
   private static final double[] twoZeros = new double[] { 0, 0 };
+  private CSVWriter outputFile;
 
   static {
     BasicConfigurator.configure();
@@ -75,6 +91,29 @@ public class VehicleStatePLFilterSimulationTest {
       final double error = mean.getElement(i);
       final double stdDev = Math.sqrt(cov.getElement(i, i));
       AssertJUnit.assertEquals(0d, error, scale * stdDev);
+    }
+  }
+
+  @BeforeMethod
+  public void handleOutputFileOpen(Method method)
+  {
+      String testName = method.getName(); 
+      try {
+        outputFile = new CSVWriter(new FileWriter("/tmp/" + testName), ',');
+      } catch (IOException e) {
+        e.printStackTrace();
+      }
+  } 
+
+  @AfterMethod
+  public void handleOutputFileClose(Method method)
+  {
+    if (outputFile != null) {
+      try {
+        outputFile.close();
+      } catch (IOException e) {
+        e.printStackTrace();
+      }
     }
   }
 
