@@ -9,6 +9,7 @@ import java.util.List;
 import javax.annotation.Nonnull;
 
 import org.apache.commons.lang3.builder.ToStringBuilder;
+import org.apache.commons.lang3.builder.ToStringStyle;
 import org.opentrackingtools.util.GeoUtils;
 
 import com.google.common.base.Preconditions;
@@ -200,7 +201,7 @@ public class InferenceGraphEdge implements
 
   @Override
   public String toString() {
-    final ToStringBuilder builder = new ToStringBuilder(this);
+    final ToStringBuilder builder = new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE);
     builder.append("edgeId", this.getEdgeId());
     builder.append("length", this.getLength());
     return builder.toString();

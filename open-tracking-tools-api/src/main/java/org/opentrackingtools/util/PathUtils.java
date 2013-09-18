@@ -844,7 +844,7 @@ public class PathUtils {
   }
 
   public static Vector headToTailRevDiff(PathState thisState,
-    PathState otherState, boolean useRaw) {
+    PathState otherState) {
     /*
      * Flip the other state around so that it's
      * going the same direction as this state.
@@ -853,12 +853,8 @@ public class PathUtils {
         thisState.getPath().isBackward() ? -1d : 1d;
     final double otherDir =
         otherState.getPath().isBackward() ? -1d : 1d;
-    final Vector otherStateVec =
-        useRaw ? otherState.getMotionState() : otherState
-            .getMotionState();
-    final Vector thisStateVec =
-        useRaw ? thisState.getMotionState() : thisState
-            .getMotionState();
+    final Vector otherStateVec = otherState.getMotionState();
+    final Vector thisStateVec = thisState.getMotionState();
     final double otherDist =
         (thisState.getPath().isBackward() ? -1d : 1d)
             * (Math.abs(otherState.getPath().getTotalPathDistance()) - Math
@@ -1143,8 +1139,21 @@ public class PathUtils {
         a));
   }
 
+  /**
+   * Finds the difference in location/length-traveled and velocity.
+   * The results are adjusted to the graph implied by the from- and 
+   * to-states' respective paths.  Special considerations are
+   * included for looped paths, since there are two equally possible
+   * interpretations of the difference between the same path that
+   * loops upon itself: the two 
+   * 
+   * @param fromState
+   * @param toState
+   * @param useTraveled
+   * @return
+   */
   public static Vector stateDiff(PathState fromState,
-    PathState toState, boolean useRaw) {
+    PathState toState, boolean useTraveledDistance) {
 
     if (toState.isOnRoad() && fromState.isOnRoad()) {
 
@@ -1179,15 +1188,11 @@ public class PathUtils {
       final Vector result;
       final double distanceMax;
 
-      final Vector toStateVec =
-          useRaw ? toState.getMotionState() : toState
-              .getMotionState();
-      final Vector fromStateVec =
-          useRaw ? fromState.getMotionState() : fromState
-              .getMotionState();
+      final Vector toStateVec = toState.getMotionState();
+      final Vector fromStateVec = fromState.getMotionState();
 
       if (fromLastActualGeom.equals(toFirstActualGeom)
-          && !fromLastActualGeom.equals(toLastActualGeom)) {
+          && (useTraveledDistance || !fromLastActualGeom.equals(toLastActualGeom))) {
         /*
          * Head-to-tail
          */
@@ -1225,7 +1230,7 @@ public class PathUtils {
          * Head-to-tail, but in opposite path directions.
          */
         result =
-            PathUtils.headToTailRevDiff(toState, fromState, useRaw);
+            PathUtils.headToTailRevDiff(toState, fromState);
 
         distanceMax =
             Math.abs(fromPath.getTotalPathDistance())
@@ -1288,7 +1293,7 @@ public class PathUtils {
       /*
        * Distance upper-bound requirement
        */
-      assert Preconditions.checkNotNull((useRaw || Math.abs(result
+      assert Preconditions.checkNotNull((Math.abs(result
           .getElement(0)) - distanceMax <= 1d) ? true : null);
 
       /*

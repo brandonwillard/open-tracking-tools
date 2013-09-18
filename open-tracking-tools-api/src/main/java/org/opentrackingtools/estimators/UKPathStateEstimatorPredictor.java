@@ -39,10 +39,13 @@ import com.vividsolutions.jts.geom.LineSegment;
  * on a path and one of its edges, that's centered on the path edge with a
  * variance proportional to its length.
  * 
+ * Specifically, the implentation is form Ulmke & Koche, who use a Gaussian
+ * prior at the center of the edge with variance proportional to the length squared.
+ * 
  * @author bwillard
  * 
  */
-public class PathStateEstimatorPredictor extends
+public class UKPathStateEstimatorPredictor extends
     AbstractCloneableSerializable
     implements
     BayesianEstimatorPredictor<PathState, Vector, MultivariateGaussian>,
@@ -81,8 +84,8 @@ public class PathStateEstimatorPredictor extends
        * error can exist.
        */
       if (edgeLength < 10d) {
-        distToStartOfEdge = Math.max(startDistance - 10d, 10d);
-        edgeLength = edge.getLength() - distToStartOfEdge;
+        edgeLength = Math.max(startDistance - 10d, 10d);
+        distToStartOfEdge = startDistance;
       } else {
         distToStartOfEdge = startDistance;
       }
@@ -202,31 +205,12 @@ public class PathStateEstimatorPredictor extends
 
   protected PathStateDistribution priorPathStateDistribution;
 
-  public PathStateEstimatorPredictor(
+  public UKPathStateEstimatorPredictor(
     @Nonnull VehicleStateDistribution<? extends GpsObservation> currentState,
     @Nonnull Path path, double timeDiff) {
     this.currentTimeDiff = timeDiff;
     this.priorPathStateDistribution = null;
     this.path = path;
-    this.currentState = currentState;
-  }
-
-  /**
-   * This estimator takes as conditional parameters the current/previous vehicle
-   * state and a path state distribution.
-   * 
-   * @param currentState
-   * @param path
-   *          state dist
-   * @param prevPathState
-   */
-  public PathStateEstimatorPredictor(
-    @Nonnull VehicleStateDistribution<? extends GpsObservation> currentState,
-    @Nonnull PathStateDistribution priorPathStateDistribution,
-    double timeDiff) {
-    this.currentTimeDiff = timeDiff;
-    this.priorPathStateDistribution = priorPathStateDistribution;
-    this.path = priorPathStateDistribution.getPathState().getPath();
     this.currentState = currentState;
   }
 
@@ -307,7 +291,7 @@ public class PathStateEstimatorPredictor extends
         //        double startOffset = 0d;
         for (final PathEdge edge : this.path.getPathEdges()) {
           final TruncatedRoadGaussian edgeResult =
-              PathStateEstimatorPredictor.getPathEdgePredictive(
+              UKPathStateEstimatorPredictor.getPathEdgePredictive(
                   roadDistribution, this.currentState.getOnRoadModelCovarianceParam().getValue(), 
                   edge, this.currentState.getObservation().getObsProjected(), null,
                   this.currentTimeDiff);

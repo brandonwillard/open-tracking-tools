@@ -751,11 +751,11 @@ public class PathStateTest {
   public void testDistanceBetween9() {
 
     final Path toPath =
-        this.makeTmpPath(false, new Coordinate(586311.9494330664,
-            4512151.757246521), new Coordinate(586313.1113431666,
-            4512052.037593625), new Coordinate(586311.9494330664,
-            4512151.757246521), new Coordinate(586313.1113431666,
-            4512052.037593625));
+        this.makeTmpPath(false, 
+            new Coordinate(586311.9494330664, 4512151.757246521), 
+            new Coordinate(586313.1113431666, 4512052.037593625), 
+            new Coordinate(586311.9494330664, 4512151.757246521), 
+            new Coordinate(586313.1113431666, 4512052.037593625));
     final Path fromPath = toPath;
 
     final PathState toState =
@@ -776,6 +776,50 @@ public class PathStateTest {
     AssertJUnit.assertEquals("rev velocity", 0d, diff2.getElement(1),
         this._numericError);
   }
+  
+  /**
+   * This tests a loop around, i.e. the to-direction's starting edge
+   * is the same as it's end.  The from-direction's ending edge
+   * matches the to-direction's starting and ending edges.  We
+   * must be able to handle these kinds of loops, since they're
+   * perfectly acceptable, so don't remove this test. 
+   */
+  @Test
+  public void testDistanceBetween23() {
+    final Path fromPath =
+        this.makeTmpPath(false, 
+            new Coordinate(585315.8255668837, 4513037.813678569), 
+            new Coordinate(585314.6767196939, 4513137.533428365), 
+            new Coordinate(585390.4961192941, 4513138.407321545), 
+            new Coordinate(585314.6767196939, 4513137.533428365),
+            new Coordinate(585315.8255668837, 4513037.813678569),
+            new Coordinate(585314.6767196939, 4513137.533428365)
+        );
+
+    final Path toPath = 
+        this.makeTmpPath(false, 
+            new Coordinate(585315.8255668837, 4513037.813678569), 
+            new Coordinate(585314.6767196939, 4513137.533428365), 
+            new Coordinate(585315.8255668837, 4513037.813678569), 
+            new Coordinate(585391.6459877129, 4513038.687567626),
+            new Coordinate(585315.8255668837, 4513037.813678569),
+            new Coordinate(585314.6767196939, 4513137.533428365)
+        );
+
+    final PathState toState =
+        new PathState(toPath, VectorFactory.getDenseDefault()
+            .createVector2D(374.8721019799638, 10.191007261343174));
+    final PathState fromState =
+        new PathState(fromPath, VectorFactory.getDenseDefault()
+            .createVector2D(375.23657245654135, 11.658691266230761));
+    final Vector diff = toState.minus(fromState);
+    // 350.73713561262883, -1.4676840048875874
+    AssertJUnit.assertEquals("distance", 350.73713561262883, diff.getElement(0),
+        this._numericError);
+    AssertJUnit.assertEquals("velocity", -1.4676840048875874, diff.getElement(1),
+        this._numericError);
+  }
+
 
   @Test
   public void testNonPathCombine1() {

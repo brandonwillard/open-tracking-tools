@@ -374,7 +374,8 @@ public class PathState extends AbstractVector implements
   @Override
   public Vector minus(Vector other) {
     if (other instanceof PathState) {
-      return PathUtils.stateDiff((PathState) other, this, false);
+      return PathUtils.stateDiff((PathState) other, this, 
+          !this.equals(other));
     } else {
       return this.motionState.minus(other);
     }

@@ -234,7 +234,7 @@ public class VehicleStateBootstrapUpdater<O extends GpsObservation>
           final GraphPath newPath = new GraphPath(startGraph);
           newPath.addEdge(edge);
           newPaths.addAll(this.getPathsUpToLength(newPath,
-              lengthToTravel - edge.getLength()));
+              lengthToTravel - startEdge.getLength()));
         }
         return newPaths;
       }
@@ -294,8 +294,12 @@ public class VehicleStateBootstrapUpdater<O extends GpsObservation>
     predictedMotionState.setMean(noisyPredictedState);
     this.sampledTransitionError =
         predictedMotionState.getMean().minus(predictedMean);
-    final PathEdge startEdge =
+    final PathEdge currentEdge =
         updatedState.getPathStateParam().getValue().getEdge();
+
+    Preconditions.checkState(currentEdge.equals(
+        Iterables.getLast(updatedState.getPathStateParam().getValue()
+            .getPath().getPathEdges())));
 
     /*
      * We don't handle backward movement in this updater.
@@ -313,8 +317,8 @@ public class VehicleStateBootstrapUpdater<O extends GpsObservation>
      * on-road edges exist at the new projected location.
      */
     edgeTransDistribution.setCurrentEdge(
-        updatedState.getPathStateParam().getValue().getEdge().getInferenceGraphSegment());
-    if (startEdge.isNullEdge()) {
+        currentEdge.getInferenceGraphSegment());
+    if (currentEdge.isNullEdge()) {
       edgeTransDistribution.setMotionState(predictedMotionState
           .getMean());
     }
@@ -324,12 +328,12 @@ public class VehicleStateBootstrapUpdater<O extends GpsObservation>
      * go on or off road initially.  Once on or off is decided
      * we don't consider the change again.
      */
-    final InferenceGraphSegment initialEdge =
+    final InferenceGraphSegment sampledIndicatorEdge =
         edgeTransDistribution.sample(this.random);
 
     final Path newPath;
-    if (initialEdge.isNullEdge()) {
-      if (!startEdge.isNullEdge()) {
+    if (sampledIndicatorEdge.isNullEdge()) {
+      if (!currentEdge.isNullEdge()) {
         /*
          * Going off-road from on-road
          * We have to re-project after converting to off-road.
@@ -353,26 +357,27 @@ public class VehicleStateBootstrapUpdater<O extends GpsObservation>
       }
       newPath = Path.nullPath;
     } else {
-      if (startEdge.isNullEdge()) {
+      if (currentEdge.isNullEdge()) {
         /*
          * Going on-road from off-road
          */
         PathUtils.convertToRoadBelief(predictedMotionState,
-            initialEdge, true, previousState.getPathStateParam()
+            sampledIndicatorEdge, true, previousState.getPathStateParam()
                 .getValue().getMotionState(),
             this.parameters.getInitialObsFreq());
-        final InferenceGraphSegment segment =
-            Iterables.getLast(initialEdge
-                .getSegments(predictedMotionState.getMean()
-                    .getElement(0)));
-        newPath = new Path(new PathEdge(segment, 0d, false));
+        newPath = new Path(new PathEdge(sampledIndicatorEdge, 0d, false));
 
       } else {
 
         final double projectedDistance =
             predictedMotionState.getMean().getElement(0);
+        
+        /*
+         * TODO FIXME have sample() above return the path.
+         */
         final List<GraphPath> paths =
-            this.getPathsUpToLength(new GraphPath(initialEdge),
+            this.getPathsUpToLength(new GraphPath(
+                currentEdge.getInferenceGraphSegment()),
                 projectedDistance);
 
         if (paths.isEmpty()) {
@@ -381,7 +386,7 @@ public class VehicleStateBootstrapUpdater<O extends GpsObservation>
            * we're going off-road, I guess.
            */
           PathUtils.convertToGroundBelief(predictedMotionState,
-              startEdge, true, false, true);
+              currentEdge, true, false, true);
           newPath = Path.nullPath;
         } else {
           final GraphPath sampledGraphPath =
@@ -395,6 +400,15 @@ public class VehicleStateBootstrapUpdater<O extends GpsObservation>
             pathEdges.add(new PathEdge(segment, distance, false));
             distance += segment.getLine().getLength();
           }
+
+          Preconditions.checkState(currentEdge.getInferenceGraphSegment()
+              .equals(
+                  Iterables.getFirst(pathEdges, null).getInferenceGraphSegment()
+                  ));
+          
+          Preconditions.checkState(Iterables.getLast(
+              pathEdges).isOnEdge(projectedDistance));
+
           newPath = new Path(pathEdges, false);
         }
       }

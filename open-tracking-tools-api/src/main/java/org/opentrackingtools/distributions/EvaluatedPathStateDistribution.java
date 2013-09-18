@@ -2,6 +2,8 @@ package org.opentrackingtools.distributions;
 
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 
+import org.apache.commons.lang3.builder.ToStringBuilder;
+import org.apache.commons.lang3.builder.ToStringStyle;
 import org.opentrackingtools.paths.Path;
 
 public class EvaluatedPathStateDistribution extends PathStateDistribution {
@@ -41,6 +43,17 @@ public class EvaluatedPathStateDistribution extends PathStateDistribution {
 
   public void setEdgeTransitionLogLikelihood(double edgeTransitionLogLikelihood) {
     this.edgeTransitionLogLikelihood = edgeTransitionLogLikelihood;
+  }
+
+  @Override
+  public String toString() {
+    final ToStringBuilder builder =
+        new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE);
+    builder.appendSuper(super.toString());
+    builder.append("EdgeLogLik", this.edgeLogLikelihood);
+    builder.append("obsLogLik", this.obsLogLikelihood);
+    builder.append("EdgeTransLogLik", this.edgeTransitionLogLikelihood);
+    return builder.toString();
   }
 
 }

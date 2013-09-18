@@ -34,6 +34,7 @@ import org.opentrackingtools.paths.PathState;
 import org.opentrackingtools.util.Simulation.SimulationParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.testng.Assert;
 import org.testng.AssertJUnit;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
@@ -74,9 +75,9 @@ public class SimulationTest {
                     6.25e-4, 6.25e-4), 20, VectorFactory.getDefault()
                     .createVector2D(1d, Double.MAX_VALUE),
                 VectorFactory.getDefault().createVector2D(
-                    Double.MAX_VALUE, 1d), 25, 15, 2159585l),
-            Boolean.FALSE, 126000 },
-        {
+                    Double.MAX_VALUE, 1d), 25, 30, 2159585l),
+            Boolean.FALSE, 126000 }
+        ,{
             /*
              * Ground only
              */
@@ -100,7 +101,8 @@ public class SimulationTest {
                     6.25e-4, 6.25e-4), 20, VectorFactory.getDefault()
                     .createVector2D(1d, 1d), VectorFactory
                     .getDefault().createVector2D(1d, 1d), 25, 15,
-                21595857l), Boolean.TRUE, 46000 } };
+                21595857l), Boolean.TRUE, 46000 } 
+        };
   }
 
   private Matrix avgTransform;
@@ -157,13 +159,13 @@ public class SimulationTest {
         this.sim.getSimParameters().getDuration()
             / Math.round(this.sim.getSimParameters().getFrequency());
 
-    this.updateStats(vehicleState, obsErrorSS, movementSS,
+    this.checkConditionsAndUpdateStats(vehicleState, obsErrorSS, movementSS,
         transitionsSS, generalizeMoveDiff);
 
     do {
       try {
         vehicleState = this.sim.stepSimulation(vehicleState);
-        this.updateStats(vehicleState, obsErrorSS, movementSS,
+        this.checkConditionsAndUpdateStats(vehicleState, obsErrorSS, movementSS,
             transitionsSS, generalizeMoveDiff);
         time = vehicleState.getObservation().getTimestamp().getTime();
       } catch (final ProjectionException ex) {
@@ -210,7 +212,7 @@ public class SimulationTest {
     TruncatedRoadGaussian.velocityRange = Ranges.closed(0d, 15d);
   }
 
-  private void updateStats(
+  private void checkConditionsAndUpdateStats(
     VehicleStateDistribution<GpsObservation> vehicleState,
     SufficientStatistic obsErrorSS, SufficientStatistic movementSS,
     SufficientStatistic transitionsSS, boolean generalizeMoveDiff) {
@@ -234,6 +236,8 @@ public class SimulationTest {
       SimulationTest._log.info(sampledPathState.toString());
       final PathState parentPathState =
           parentState.getPathStateParam().getValue();
+      
+
       final MultivariateGaussian priorState;
       final MultivariateGaussian predictedMotionStateDist;
       if (sampledPathState.getPath().isNullPath()
@@ -264,7 +268,19 @@ public class SimulationTest {
         PathUtils.convertToRoadBelief(predictedMotionStateDist,
             sampledPathState.getPath(), sampledPathState.getEdge(),
             true, null, null);
+        
       } else {
+
+        if (!sampledPathState.getPath().isNullPath()
+                  && !parentPathState.getPath().isNullPath()) {
+          /*
+           * Make sure that we're moving forward only.
+           */
+          Vector stateMotionDiff = sampledPathState.minus(parentPathState);
+
+          Assert.assertTrue(stateMotionDiff.getElement(0) > 0d);
+        }
+      
         priorState =
             new TruncatedRoadGaussian(parentState.getPathStateParam()
                 .getValue().getEdgeState(), new SvdMatrix(parentState

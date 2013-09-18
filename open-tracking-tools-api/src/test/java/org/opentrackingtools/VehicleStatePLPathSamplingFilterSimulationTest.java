@@ -2,6 +2,7 @@ package org.opentrackingtools;
 
 import gov.sandia.cognition.math.MutableDouble;
 import gov.sandia.cognition.math.RingAccumulator;
+import gov.sandia.cognition.math.matrix.DiagonalMatrix;
 import gov.sandia.cognition.math.matrix.Matrix;
 import gov.sandia.cognition.math.matrix.MatrixFactory;
 import gov.sandia.cognition.math.matrix.Vector;
@@ -68,9 +69,9 @@ import com.vividsolutions.jts.geom.LineString;
  * @author bwillard
  *
  */
-public class VehicleStatePLFilterSimulationTest {
+public class VehicleStatePLPathSamplingFilterSimulationTest {
 
-  private static final double[] fourZeros =
+  static final double[] fourZeros =
       new double[] { 0, 0, 0, 0 };
 
   private static final double[] oneZero = new double[] { 0 };
@@ -185,7 +186,7 @@ public class VehicleStatePLFilterSimulationTest {
   private Matrix avgTransform;
   private GenericJTSGraph graph;
   final Logger log = Logger
-      .getLogger(VehicleStatePLFilterSimulationTest.class);
+      .getLogger(VehicleStatePLPathSamplingFilterSimulationTest.class);
 
   private Simulation sim;
 
@@ -248,7 +249,7 @@ public class VehicleStatePLFilterSimulationTest {
     }
 
     final ParticleFilter<GpsObservation, VehicleStateDistribution<GpsObservation>> filter =
-        new VehicleStatePLFilter<GpsObservation, GenericJTSGraph>(
+        new VehicleStatePLPathSamplingFilter<GpsObservation, GenericJTSGraph>(
             new TrueObservation(trueVehicleState.getObservation(),
                 trueVehicleState),
             this.graph,
@@ -293,11 +294,12 @@ public class VehicleStatePLFilterSimulationTest {
           AssertJUnit.assertTrue(entry.getValue() >= 0d);
         }
 
+        TrueObservation trueObs = new TrueObservation(
+            trueVehicleState.getObservation(), trueVehicleState);
         watch.reset();
         watch.start();
 
-        filter.update(vehicleStateDist, new TrueObservation(
-            trueVehicleState.getObservation(), trueVehicleState));
+        filter.update(vehicleStateDist, trueObs);
 
         watch.stop();
         averager.accumulate(new MutableDouble(watch.elapsedMillis()));
@@ -461,8 +463,10 @@ public class VehicleStatePLFilterSimulationTest {
                 .getMean();
         onRoadCovStat.update(onRoadCovMean.convertToVector());
 
-        offRoadCovStat.update(state.getOffRoadModelCovarianceParam()
-            .getValue().convertToVector());
+        final DiagonalMatrix offRoadCovDiag = MatrixFactory.getDiagonalDefault().copyMatrix(
+            state.getOffRoadModelCovarianceParam()
+                    .getValue());
+        offRoadCovStat.update(offRoadCovDiag.convertToVector());
 
         if (transType != null) {
           transitionStat.update(transType);
@@ -500,10 +504,12 @@ public class VehicleStatePLFilterSimulationTest {
         onRoadCovStat.getMean().minus(
             trueVehicleState.getOnRoadModelCovarianceParam()
                 .getValue().convertToVector());
+    DiagonalMatrix offRoadCovDiag = MatrixFactory.getDiagonalDefault().copyMatrix(
+        trueVehicleState.getOffRoadModelCovarianceParam()
+                .getValue());
     offRoadCovError =
         offRoadCovStat.getMean().minus(
-            trueVehicleState.getOffRoadModelCovarianceParam()
-                .getValue().convertToVector());
+            offRoadCovDiag.convertToVector());
 
     this.log
         .info("trueMotionState=" + truePathState.getMotionState());
@@ -548,7 +554,7 @@ public class VehicleStatePLFilterSimulationTest {
 
     if (obsErrorSS.getCount() > 1) {//Math.min(approxRuns / 16, 155)) {
 
-      VehicleStatePLFilterSimulationTest
+      VehicleStatePLPathSamplingFilterSimulationTest
           .assertVectorWithCovarianceError(obsErrorSS.getMean(),
               trueVehicleState.getObservationCovarianceParam()
                   .getValue(), 5d);
@@ -556,24 +562,24 @@ public class VehicleStatePLFilterSimulationTest {
       final Matrix stateModelCovariance =
           this.createModelCovariance(trueVehicleState, stateErrorSS);
 
-      VehicleStatePLFilterSimulationTest
+      VehicleStatePLPathSamplingFilterSimulationTest
           .assertVectorWithCovarianceError(stateErrorSS.getMean(),
               stateModelCovariance, 5d);
 
       ArrayAsserts.assertArrayEquals(
-          VehicleStatePLFilterSimulationTest.fourZeros, obsCovErrorSS
+          VehicleStatePLPathSamplingFilterSimulationTest.fourZeros, obsCovErrorSS
               .getMean().toArray(), 0.7d * trueVehicleState
               .getObservationCovarianceParam().getValue()
               .normFrobenius());
 
       ArrayAsserts.assertArrayEquals(
-          VehicleStatePLFilterSimulationTest.oneZero,
+          VehicleStatePLPathSamplingFilterSimulationTest.oneZero,
           onRoadCovErrorSS.getMean().toArray(),
           0.7d * trueVehicleState.getOnRoadModelCovarianceParam()
               .getValue().normFrobenius());
 
       ArrayAsserts.assertArrayEquals(
-          VehicleStatePLFilterSimulationTest.fourZeros,
+          VehicleStatePLPathSamplingFilterSimulationTest.twoZeros,
           offRoadCovErrorSS.getMean().toArray(),
           0.7d * trueVehicleState.getOffRoadModelCovarianceParam()
               .getValue().normFrobenius());

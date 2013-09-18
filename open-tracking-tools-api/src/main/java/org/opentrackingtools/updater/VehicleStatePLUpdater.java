@@ -15,7 +15,7 @@ import org.opentrackingtools.distributions.CountedDataDistribution;
 import org.opentrackingtools.distributions.PathStateDistribution;
 import org.opentrackingtools.distributions.PathStateMixtureDensityModel;
 import org.opentrackingtools.estimators.MotionStateEstimatorPredictor;
-import org.opentrackingtools.estimators.PathStateEstimatorPredictor;
+import org.opentrackingtools.estimators.UKPathStateEstimatorPredictor;
 import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.graph.InferenceGraphEdge;
 import org.opentrackingtools.graph.InferenceGraphSegment;
@@ -32,6 +32,14 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.Iterables;
 import com.google.common.primitives.Doubles;
 
+/**
+ * This updater weighs paths computed from the outside (e.g. the A* results
+ * from graph methods or another library)
+ * @author bwillard
+ *
+ * @param <O>
+ * @param <G>
+ */
 public class VehicleStatePLUpdater<O extends GpsObservation, G extends InferenceGraph>
     extends AbstractCloneableSerializable implements
     ParticleFilter.Updater<O, VehicleStateDistribution<O>> {
@@ -240,8 +248,8 @@ public class VehicleStatePLUpdater<O extends GpsObservation, G extends Inference
     double[] weights = new double[] {};
     double weightsSum = Double.NEGATIVE_INFINITY;
     for (final Path path : paths) {
-      final PathStateEstimatorPredictor pathStateEstimatorPredictor =
-          new PathStateEstimatorPredictor(state, path,
+      final UKPathStateEstimatorPredictor uKPathStateEstimatorPredictor =
+          new UKPathStateEstimatorPredictor(state, path,
               this.parameters.getInitialObsFreq());
 
       /*
@@ -300,7 +308,7 @@ public class VehicleStatePLUpdater<O extends GpsObservation, G extends Inference
       }
 
       final PathStateMixtureDensityModel pathStateDist =
-          pathStateEstimatorPredictor
+          uKPathStateEstimatorPredictor
               .createPredictiveDistribution(priorPredictiveMotionState);
 
       /*

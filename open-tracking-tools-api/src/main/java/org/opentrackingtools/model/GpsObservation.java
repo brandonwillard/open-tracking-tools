@@ -5,6 +5,9 @@ import gov.sandia.cognition.math.matrix.VectorFactory;
 
 import java.util.Date;
 
+import org.apache.commons.lang3.builder.ToStringBuilder;
+import org.apache.commons.lang3.builder.ToStringStyle;
+
 import com.google.common.collect.ComparisonChain;
 import com.vividsolutions.jts.geom.Coordinate;
 
@@ -136,13 +139,11 @@ public class GpsObservation implements Comparable<GpsObservation> {
 
   @Override
   public String toString() {
-    final StringBuilder builder = new StringBuilder();
-    builder.append("GpsObservation [sourceId=").append(this.sourceId)
-        .append(", timestamp=").append(this.timestamp)
-        .append(", coordsLatLon=").append(this.coordsLatLon)
-        .append(", recordNumber=").append(this.recordNumber)
-        .append(", coordsProjected=").append(this.coordsProjected)
-        .append("]");
+    final ToStringBuilder builder =
+        new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE);
+    builder.append("recordNum", this.recordNumber);
+    builder.append("sourceId", this.sourceId);
+    builder.append("coords", this.coordsLatLon);
     return builder.toString();
   }
 

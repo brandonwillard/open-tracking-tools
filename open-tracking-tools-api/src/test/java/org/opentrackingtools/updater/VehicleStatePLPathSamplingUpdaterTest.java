@@ -9,6 +9,7 @@ import java.util.Random;
 
 import org.geotools.geometry.jts.JTSFactoryFinder;
 import org.opentrackingtools.VehicleStateInitialParameters;
+import org.opentrackingtools.distributions.EvaluatedPathStateDistribution;
 import org.opentrackingtools.distributions.PathStateMixtureDensityModel;
 import org.opentrackingtools.graph.GenericJTSGraph;
 import org.opentrackingtools.graph.InferenceGraphSegment;
@@ -25,7 +26,7 @@ import com.google.common.collect.Lists;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.LineString;
 
-public class VehicleStatePLPathGeneratingUpdaterTest {
+public class VehicleStatePLPathSamplingUpdaterTest {
 
   /**
    * Test that the prior log likelihood values are correct over edges, paths and
@@ -98,30 +99,36 @@ public class VehicleStatePLPathGeneratingUpdaterTest {
     /*
      * Check that our results are completely normalized.
      */
-    //    final double weightSum = Math.exp(pathStateMixDist.getPriorWeightSum());
-    //    AssertJUnit.assertEquals(1d, weightSum, 1e-5);
+//    final double weightSum = Math.exp(pathStateMixDist.getPriorWeightSum());
+//    AssertJUnit.assertEquals(1d, weightSum, 1e-5);
 
     /*
-     * Check that on-road total weight is equal to off-road total weight.  
+     * Check that on-road total prior log likelihood is equal to the off-road.  
      * (i.e. excluding edge transition considerations, on and off-road should 
      * be a priori equally likely).
      */
-    double onRoadLogWeightTotal = Double.NEGATIVE_INFINITY;
-    double offRoadLogWeightTotal = Double.NEGATIVE_INFINITY;
+    double onRoadEdgeLogLikTotal = Double.NEGATIVE_INFINITY;
+    double offRoadEdgeLogLikTotal = Double.NEGATIVE_INFINITY;
     for (int i = 0; i < pathStateMixDist.getDistributionCount(); i++) {
+
+      EvaluatedPathStateDistribution evalPathStateDist = 
+          (EvaluatedPathStateDistribution) pathStateMixDist.getDistributions().get(i);
+      final double logLik = evalPathStateDist.getEdgeLogLikelihood();
+          //pathStateMixDist.getPriorWeights()[i];
+
       if (pathStateMixDist.getDistributions().get(i).getPathState()
           .isOnRoad()) {
-        onRoadLogWeightTotal =
-            LogMath.add(onRoadLogWeightTotal,
-                pathStateMixDist.getPriorWeights()[i]);
+        onRoadEdgeLogLikTotal =
+            LogMath.add(onRoadEdgeLogLikTotal, logLik);
       } else {
-        offRoadLogWeightTotal =
-            LogMath.add(offRoadLogWeightTotal,
-                pathStateMixDist.getPriorWeights()[i]);
+        offRoadEdgeLogLikTotal =
+            LogMath.add(offRoadEdgeLogLikTotal, logLik);
       }
     }
-    AssertJUnit.assertEquals(onRoadLogWeightTotal,
-        offRoadLogWeightTotal, 1e-5);
+    AssertJUnit.assertEquals(onRoadEdgeLogLikTotal,
+        offRoadEdgeLogLikTotal, 1e-5);
+    AssertJUnit.assertEquals(1e-10, LogMath.add(onRoadEdgeLogLikTotal,
+        offRoadEdgeLogLikTotal), 1e-5);
   }
 
 }

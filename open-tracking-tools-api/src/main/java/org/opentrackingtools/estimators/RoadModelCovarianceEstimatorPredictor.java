@@ -230,18 +230,20 @@ public class RoadModelCovarianceEstimatorPredictor extends
     final Matrix CSmooth =
         C.minus(Wtil.times(A).times(Wtil.transpose()));
 
-    // FIXME a temporary hack
-    final AbstractSingularValueDecomposition Csvd =
-        SingularValueDecompositionMTJ.create(CSmooth);
-
     final MultivariateGaussian sampler =
-        new TruncatedRoadGaussian(mSmooth, new SvdMatrix(
-            new SimpleSingularValueDecomposition(Csvd.getU(),
-                Csvd.getS(), Csvd.getU().transpose())));
+        new MultivariateGaussian(mSmooth, CSmooth);
 
     final Vector result = sampler.sample(rng);
 
-    sampler.setMean(result);
+    // FIXME a temporary hack
+    final AbstractSingularValueDecomposition Csvd =
+        SingularValueDecompositionMTJ.create(CSmooth);
+    final SvdMatrix svdCmat = new SvdMatrix(
+            new SimpleSingularValueDecomposition(Csvd.getU(),
+                Csvd.getS(), Csvd.getU().transpose()));
+    final MultivariateGaussian sampleResult =
+       new TruncatedRoadGaussian(result, svdCmat);
+
 
     if (posterior.getPathState().isOnRoad()) {
       final double clamped =
@@ -250,7 +252,7 @@ public class RoadModelCovarianceEstimatorPredictor extends
       sampler.getMean().setElement(0, clamped);
     }
     return new PathStateDistribution(posterior.getPathState()
-        .getPath(), sampler);
+        .getPath(), sampleResult);
   }
 
   public void setMotionStateEstimator(

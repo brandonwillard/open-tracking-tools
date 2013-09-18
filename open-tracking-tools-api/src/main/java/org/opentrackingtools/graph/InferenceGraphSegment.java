@@ -1,6 +1,7 @@
 package org.opentrackingtools.graph;
 
 import org.apache.commons.lang3.builder.ToStringBuilder;
+import org.apache.commons.lang3.builder.ToStringStyle;
 
 import javax.media.jai.IntegerSequence;
 
@@ -76,11 +77,13 @@ public class InferenceGraphSegment extends InferenceGraphEdge {
 
   @Override
   public String toString() {
-    final ToStringBuilder builder = new ToStringBuilder(this);
-    builder.append("parentEdge", this.getEdgeId());
+    final ToStringBuilder builder = new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE);
     if (!this.isNullEdge()) {
-      builder.append("startIndex", this.startIndex.getSegmentIndex());
-      builder.append("line", this.line);
+      builder.append("parentEdge", this.getEdgeId() 
+          + "-" + this.startIndex.getSegmentIndex()
+          + " (" + Math.round(this.getLength()) + ")");
+    } else {
+      builder.append("parentEdge", this.getEdgeId());
     }
     return builder.toString();
   }

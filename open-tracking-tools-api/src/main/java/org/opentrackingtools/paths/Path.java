@@ -6,9 +6,12 @@ import java.util.Collections;
 import java.util.List;
 
 import org.apache.commons.lang.builder.CompareToBuilder;
+import org.apache.commons.lang3.builder.ToStringBuilder;
+import org.apache.commons.lang3.builder.ToStringStyle;
 import org.geotools.geometry.jts.JTSFactoryFinder;
 import org.opentrackingtools.estimators.MotionStateEstimatorPredictor;
 
+import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
@@ -280,12 +283,20 @@ public class Path extends AbstractCloneableSerializable implements
 
   @Override
   public String toString() {
+    final ToStringBuilder builder =
+        new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE);
     if (this.isNullPath()) {
-      return "Path [null path]";
+      builder.append("empty");
     } else {
-      return "Path [edges=" + this.edgeIds + ", totalPathDistance="
-          + this.totalPathDistance + "]";
+      List<String> idsAndLength = Lists.newArrayList();
+      for (PathEdge edge : this.edges) {
+        idsAndLength.add(edge.getInferenceGraphSegment().getEdgeId()
+            + "(" + Math.round(edge.getLength()) + ")");
+      }
+      builder.append("edges", idsAndLength);
+      builder.append("pathDist", Math.round(this.totalPathDistance));
     }
+    return builder.toString();
   }
 
 }

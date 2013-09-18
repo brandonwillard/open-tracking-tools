@@ -4,12 +4,19 @@ import gov.sandia.cognition.learning.algorithm.AbstractBatchAndIncrementalLearne
 import gov.sandia.cognition.math.matrix.Matrix;
 import gov.sandia.cognition.math.matrix.MatrixFactory;
 import gov.sandia.cognition.math.matrix.Vector;
+import gov.sandia.cognition.math.matrix.VectorFactory;
 import gov.sandia.cognition.math.matrix.decomposition.AbstractSingularValueDecomposition;
+import gov.sandia.cognition.math.matrix.mtj.AbstractMTJMatrix;
+import gov.sandia.cognition.math.matrix.mtj.DenseMatrixFactoryMTJ;
+import gov.sandia.cognition.math.matrix.mtj.DenseVectorFactoryMTJ;
 import gov.sandia.cognition.math.matrix.mtj.decomposition.SingularValueDecompositionMTJ;
 import gov.sandia.cognition.math.signals.LinearDynamicalSystem;
 import gov.sandia.cognition.statistics.bayesian.RecursiveBayesianEstimator;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 import gov.sandia.cognition.util.ObjectUtil;
+import no.uib.cipr.matrix.DenseMatrix;
+import no.uib.cipr.matrix.DenseVector;
+import no.uib.cipr.matrix.UpperSPDDenseMatrix;
 
 import org.opentrackingtools.distributions.AdjMultivariateGaussian;
 import org.opentrackingtools.distributions.TruncatedRoadGaussian;
@@ -174,147 +181,167 @@ public class TruncatedRoadKalmanFilter
 
   public void
       measure(MultivariateGaussian belief, Vector observation) {
-
-    Preconditions.checkArgument(StatisticsUtil
-        .isPosSemiDefinite(belief.getCovariance()));
-    final Matrix F = this.model.getC();
-
-    AbstractSingularValueDecomposition svdR;
-    if (belief instanceof AdjMultivariateGaussian) {
-      svdR =
-          ((AdjMultivariateGaussian) belief).getCovariance().getSvd();
+    
+    measure_old(belief, observation);
+    
+    final SvdMatrix covar = new SvdMatrix(belief.getCovariance());
+    final AbstractSingularValueDecomposition svd =
+        covar.getSvd();
+    if (belief.getInputDimensionality() == 2) {
+      svd.getS().setElement(1, 1, 0d);
     } else {
-      svdR =
-          SingularValueDecompositionMTJ
-              .create(belief.getCovariance());
+      svd.getS().setElement(1, 1, 0d);
+      svd.getS().setElement(2, 2, 0d);
     }
+    final SvdMatrix newCovar =
+        new SvdMatrix(new SimpleSingularValueDecomposition(
+            svd.getU(), svd.getS(), svd.getU().transpose()));
 
-    final Matrix NvInv =
-        StatisticsUtil.diagonalInverse(
-            StatisticsUtil.getDiagonalSqrt(this.measurementCovariance
-                .getSvd().getS(), 1e-7), 1e-7).times(
-            this.measurementCovariance.getSvd().getU().transpose());
-    final Matrix NvFU = NvInv.times(F).times(svdR.getU());
-    final Matrix SRinv =
-        StatisticsUtil.diagonalInverse(
-            StatisticsUtil.getDiagonalSqrt(svdR.getS(), 1e-7), 1e-7);
-    final int nN2 = NvFU.getNumRows() + SRinv.getNumRows();
-    final int nM2 = SRinv.getNumColumns();
-    final Matrix M2 =
-        MatrixFactory.getDefault().createMatrix(nN2, nM2);
-    M2.setSubMatrix(0, 0, NvFU);
-    M2.setSubMatrix(NvFU.getNumRows(), 0, SRinv);
+    belief.setCovariance(newCovar);
 
-    final AbstractSingularValueDecomposition svdM2 =
-        SingularValueDecompositionMTJ.create(M2);
-    final Matrix S =
-        MatrixFactory.getDefault().createMatrix(
-            svdM2.getS().getNumColumns(),
-            svdM2.getS().getNumColumns());
-    for (int i = 0; i < Math.min(svdM2.getS().getNumColumns(), svdM2
-        .getS().getNumRows()); i++) {
-      final double sVal = svdM2.getS().getElement(i, i);
-      final double sValInvSq = 1d / (sVal * sVal);
-      if (sValInvSq > 1e-7) {
-        S.setElement(i, i, sValInvSq);
-      }
-    }
-    final Matrix UcNew =
-        svdR.getU().times(svdM2.getVtranspose().transpose());
-    final AbstractSingularValueDecomposition svdCnew =
-        new SimpleSingularValueDecomposition(UcNew, S,
-            UcNew.transpose());
-
-    Preconditions.checkArgument(StatisticsUtil
-        .isPosSemiDefinite(UcNew.times(S).times(UcNew.transpose())));
-
-    final SvdMatrix Q =
-        StatisticsUtil.symmetricSvdAdd(
-            (SvdMatrix) belief.getCovariance(),
-            this.measurementCovariance, F);
-    final Matrix Qinv =
-        Q.getSvd()
-            .getU()
-            .times(
-                StatisticsUtil.diagonalInverse(Q.getSvd().getS(),
-                    1e-7)).times(Q.getSvd().getU().transpose());
-    Preconditions.checkArgument(StatisticsUtil
-        .isPosSemiDefinite(Qinv));
-    final Vector e = observation.minus(F.times(belief.getMean()));
-
-    final Matrix A =
-        belief.getCovariance().times(F.transpose()).times(Qinv);
-//    /*
-//     * Note: for exact location/velocity correlation, the velocity
-//     * term(s) in A should be <= 1/30. 
-//     * DEBUG REMOVE
-//     */
-//    if (A.getNumColumns() == 1 && A.getElement(1, 0) > 1d / 30d) {
-//      System.out.println("amplifying velocity noise!");
+    // TODO FIXME this is broken
+//    Preconditions.checkArgument(StatisticsUtil
+//        .isPosSemiDefinite(belief.getCovariance()));
+//    final Matrix F = this.model.getC();
+//
+//    AbstractSingularValueDecomposition svdR;
+//    if (belief instanceof AdjMultivariateGaussian) {
+//      svdR =
+//          ((AdjMultivariateGaussian) belief).getCovariance().getSvd();
+//    } else {
+//      svdR =
+//          SingularValueDecompositionMTJ
+//              .create(belief.getCovariance());
 //    }
+//
+//    final Matrix NvInv =
+//        StatisticsUtil.diagonalInverse(
+//            StatisticsUtil.getDiagonalSqrt(this.measurementCovariance
+//                .getSvd().getS(), 1e-7), 1e-7).times(
+//            this.measurementCovariance.getSvd().getU().transpose());
+//    final Matrix NvFU = NvInv.times(F).times(svdR.getU());
+//    final Matrix SRinv =
+//        StatisticsUtil.diagonalInverse(
+//            StatisticsUtil.getDiagonalSqrt(svdR.getS(), 1e-7), 1e-7);
+//    final int nN2 = NvFU.getNumRows() + SRinv.getNumRows();
+//    final int nM2 = SRinv.getNumColumns();
+//    final Matrix M2 =
+//        MatrixFactory.getDefault().createMatrix(nN2, nM2);
+//    M2.setSubMatrix(0, 0, NvFU);
+//    M2.setSubMatrix(NvFU.getNumRows(), 0, SRinv);
+//
+//    final AbstractSingularValueDecomposition svdM2 =
+//        SingularValueDecompositionMTJ.create(M2);
+//    final Matrix S =
+//        MatrixFactory.getDefault().createMatrix(
+//            svdM2.getS().getNumColumns(),
+//            svdM2.getS().getNumColumns());
+//    for (int i = 0; i < Math.min(svdM2.getS().getNumColumns(), svdM2
+//        .getS().getNumRows()); i++) {
+//      final double sVal = svdM2.getS().getElement(i, i);
+//      final double sValInvSq = 1d / (sVal * sVal);
+//      if (sValInvSq > 1e-7) {
+//        S.setElement(i, i, sValInvSq);
+//      }
+//    }
+//    final Matrix UcNew =
+//        svdR.getU().times(svdM2.getVtranspose().transpose());
+//    final AbstractSingularValueDecomposition svdCnew =
+//        new SimpleSingularValueDecomposition(UcNew, S,
+//            UcNew.transpose());
+//
+//    Preconditions.checkArgument(StatisticsUtil
+//        .isPosSemiDefinite(UcNew.times(S).times(UcNew.transpose())));
+//
+//    final SvdMatrix Q =
+//        StatisticsUtil.symmetricSvdAdd(
+//            (SvdMatrix) belief.getCovariance(),
+//            this.measurementCovariance, F);
+//    final Matrix Qinv =
+//        Q.getSvd()
+//            .getU()
+//            .times(
+//                StatisticsUtil.diagonalInverse(Q.getSvd().getS(),
+//                    1e-7)).times(Q.getSvd().getU().transpose());
+//    Preconditions.checkArgument(StatisticsUtil
+//        .isPosSemiDefinite(Qinv));
+//    final Vector e = observation.minus(F.times(belief.getMean()));
+//
+//    final Matrix A =
+//        belief.getCovariance().times(F.transpose()).times(Qinv);
+////    /*
+////     * Note: for exact location/velocity correlation, the velocity
+////     * term(s) in A should be <= 1/30. 
+////     * DEBUG REMOVE
+////     */
+////    if (A.getNumColumns() == 1 && A.getElement(1, 0) > 1d / 30d) {
+////      System.out.println("amplifying velocity noise!");
+////    }
+//
+//    final Vector postMean = belief.getMean().plus(A.times(e));
+//
+//
+//    belief.setMean(postMean);
+//    if (belief instanceof AdjMultivariateGaussian) {
+//      ((AdjMultivariateGaussian) belief).getCovariance().setSvd(
+//          svdCnew);
+//    } else {
+//      belief.setCovariance(svdCnew.getU().times(svdCnew.getS())
+//          .times(svdCnew.getVtranspose()));
+//    }
+  }
+  
+  public void measure_old(MultivariateGaussian belief, Vector observation) {
+    
+    final Matrix F = this.model.getC();
+    final Vector a = belief.getMean();
+    final Matrix R = belief.getCovariance();
+    final Matrix Q2 =
+        F.times(R).times(F.transpose())
+            .plus(this.getMeasurementCovariance());
+    /*
+     * This is the source of one major improvement:
+     * uses the solve routine for a positive definite matrix
+     */
+    final UpperSPDDenseMatrix Qspd =
+        new UpperSPDDenseMatrix(
+            ((AbstractMTJMatrix) Q2).getInternalMatrix(), false);
+    final no.uib.cipr.matrix.Matrix CRt =
+        ((AbstractMTJMatrix) F.times(R.transpose()))
+            .getInternalMatrix();
 
-    final Vector postMean = belief.getMean().plus(A.times(e));
+    final DenseMatrix Amtj =
+        new DenseMatrix(Qspd.numRows(), CRt.numColumns());
+    Qspd.transSolve(CRt, Amtj);
 
-    //      final Vector a = belief.getMean();
-    //      final Matrix R = belief.getCovariance();
-    //      final Matrix Q =
-    //          F.times(R).times(F.transpose())
-    //              .plus(this.getMeasurementCovariance());
-    //      /*
-    //       * This is the source of one major improvement:
-    //       * uses the solve routine for a positive definite matrix
-    //       */
-    //      final UpperSPDDenseMatrix Qspd =
-    //          new UpperSPDDenseMatrix(
-    //              ((AbstractMTJMatrix) Q).getInternalMatrix(), false);
-    //      final no.uib.cipr.matrix.Matrix CRt =
-    //          ((AbstractMTJMatrix) F.times(R.transpose()))
-    //              .getInternalMatrix();
-    //  
-    //      final DenseMatrix Amtj =
-    //          new DenseMatrix(Qspd.numRows(), CRt.numColumns());
-    //      Qspd.transSolve(CRt, Amtj);
-    //  
-    //      final DenseMatrix AtQt =
-    //          new DenseMatrix(Amtj.numColumns(), Qspd.numRows());
-    //      Amtj.transABmult(Qspd, AtQt);
-    //  
-    //      final DenseMatrix AtQtAMtj =
-    //          new DenseMatrix(AtQt.numRows(), Amtj.numColumns());
-    //      AtQt.mult(Amtj, AtQtAMtj);
-    //  
-    //      final Matrix AtQtA =
-    //          ((DenseMatrixFactoryMTJ) MatrixFactory.getDenseDefault())
-    //              .createWrapper(AtQtAMtj);
-    //  
-    //      final DenseVector e2 =
-    //          new DenseVector(
-    //              ((gov.sandia.cognition.math.matrix.mtj.DenseVector) observation
-    //                  .minus(F.times(a))).getArray(), false);
-    //  
-    //      final DenseVector AteMtj = new DenseVector(Amtj.numColumns());
-    //      Amtj.transMult(e2, AteMtj);
-    //      final Vector Ate =
-    //          ((DenseVectorFactoryMTJ) VectorFactory.getDenseDefault())
-    //              .createWrapper(AteMtj);
-    //  
-    //      final Matrix CC = R.minus(AtQtA);
-    //      final Vector m = a.plus(Ate);
-    //  
-    //      assert StatisticsUtil
-    //          .isPosSemiDefinite((gov.sandia.cognition.math.matrix.mtj.DenseMatrix) CC);
-    //  
-    //      belief.setCovariance(CC);
-    //      belief.setMean(m);
+    final DenseMatrix AtQt =
+        new DenseMatrix(Amtj.numColumns(), Qspd.numRows());
+    Amtj.transABmult(Qspd, AtQt);
 
-    belief.setMean(postMean);
-    if (belief instanceof AdjMultivariateGaussian) {
-      ((AdjMultivariateGaussian) belief).getCovariance().setSvd(
-          svdCnew);
-    } else {
-      belief.setCovariance(svdCnew.getU().times(svdCnew.getS())
-          .times(svdCnew.getVtranspose()));
-    }
+    final DenseMatrix AtQtAMtj =
+        new DenseMatrix(AtQt.numRows(), Amtj.numColumns());
+    AtQt.mult(Amtj, AtQtAMtj);
+
+    final Matrix AtQtA =
+        ((DenseMatrixFactoryMTJ) MatrixFactory.getDenseDefault())
+            .createWrapper(AtQtAMtj);
+
+    final DenseVector e2 =
+        new DenseVector(
+            ((gov.sandia.cognition.math.matrix.mtj.DenseVector) observation
+                .minus(F.times(a))).getArray(), false);
+
+    final DenseVector AteMtj = new DenseVector(Amtj.numColumns());
+    Amtj.transMult(e2, AteMtj);
+    final Vector Ate =
+        ((DenseVectorFactoryMTJ) VectorFactory.getDenseDefault())
+            .createWrapper(AteMtj);
+
+    final Matrix CC = R.minus(AtQtA);
+    final Vector m = a.plus(Ate);
+
+    belief.setCovariance(CC);
+    belief.setMean(m);
   }
 
   public void predict(MultivariateGaussian belief) {
