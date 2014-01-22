@@ -6,7 +6,6 @@ import gov.sandia.cognition.math.matrix.VectorFactory;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 
 import org.mockito.Mockito;
-import org.opentrackingtools.distributions.AdjMultivariateGaussian;
 import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.paths.Path;
 import org.opentrackingtools.paths.PathEdge;
@@ -15,6 +14,8 @@ import org.testng.annotations.Test;
 import org.testng.internal.junit.ArrayAsserts;
 
 import com.google.common.collect.Iterables;
+import com.statslibextensions.math.matrix.SvdMatrix;
+import com.statslibextensions.statistics.distribution.SvdMultivariateGaussian;
 import com.vividsolutions.jts.geom.Coordinate;
 
 public class PathUtilsTest {
@@ -54,7 +55,7 @@ public class PathUtilsTest {
             new Coordinate(length, 0d));
 
     final MultivariateGaussian belief =
-        new AdjMultivariateGaussian(from, new SvdMatrix(MatrixFactory
+        new SvdMultivariateGaussian(from, new SvdMatrix(MatrixFactory
             .getDefault().copyArray(
                 new double[][] {
                     { 91.64766085510277, 0.0, -10.790534809853966,

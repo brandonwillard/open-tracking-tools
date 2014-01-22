@@ -36,6 +36,17 @@ import com.vividsolutions.jts.geom.MultiLineString;
 
 public class TestUtils {
 
+  /**
+   * Using the startCoord, a graph is created from an approximately 100m x 100m
+   * grid.
+   * 
+   * @param startCoord
+   * @return
+   * @throws IOException
+   * @throws NoSuchAuthorityCodeException
+   * @throws FactoryRegistryException
+   * @throws FactoryException
+   */
   public static List<LineString>
       createGridGraph(Coordinate startCoord) throws IOException,
           NoSuchAuthorityCodeException, FactoryRegistryException,

@@ -12,13 +12,13 @@ import gov.sandia.cognition.util.AbstractCloneableSerializable;
 import java.util.Collection;
 import java.util.Random;
 
-import org.opentrackingtools.distributions.ScaledInverseGammaCovDistribution;
 import org.opentrackingtools.model.VehicleStateDistribution;
 import org.opentrackingtools.util.TrueObservation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Preconditions;
+import com.statslibextensions.statistics.distribution.ScaledInverseGammaCovDistribution;
 
 public class RoadMeasurementCovarianceEstimatorPredictor extends
     AbstractCloneableSerializable

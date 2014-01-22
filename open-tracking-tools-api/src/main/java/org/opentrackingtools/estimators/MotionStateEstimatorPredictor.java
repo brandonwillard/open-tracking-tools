@@ -23,12 +23,12 @@ import org.opentrackingtools.model.GpsObservation;
 import org.opentrackingtools.model.VehicleStateDistribution;
 import org.opentrackingtools.paths.PathEdge;
 import org.opentrackingtools.util.PathUtils;
-import org.opentrackingtools.util.SimpleSingularValueDecomposition;
 import org.opentrackingtools.util.StatisticsUtil;
-import org.opentrackingtools.util.SvdMatrix;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Ranges;
+import com.statslibextensions.math.matrix.SvdMatrix;
+import com.statslibextensions.math.matrix.decomposition.SimpleSingularValueDecomposition;
 
 /**
  * This class encapsulates the motion model, i.e. on/off-road position and

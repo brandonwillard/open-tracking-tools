@@ -24,13 +24,13 @@ import org.opentrackingtools.paths.Path;
 import org.opentrackingtools.paths.PathEdge;
 import org.opentrackingtools.paths.PathState;
 import org.opentrackingtools.util.PathUtils;
-import org.opentrackingtools.util.SimpleSingularValueDecomposition;
 import org.opentrackingtools.util.StatisticsUtil;
-import org.opentrackingtools.util.SvdMatrix;
 
 import com.beust.jcommander.internal.Lists;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Iterables;
+import com.statslibextensions.math.matrix.SvdMatrix;
+import com.statslibextensions.math.matrix.decomposition.SimpleSingularValueDecomposition;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.LineSegment;
 

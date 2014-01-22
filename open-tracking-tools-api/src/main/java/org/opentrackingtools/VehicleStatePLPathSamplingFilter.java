@@ -20,15 +20,12 @@ import java.util.List;
 import java.util.Map.Entry;
 import java.util.Random;
 
-import org.opentrackingtools.distributions.AdjMultivariateGaussian;
-import org.opentrackingtools.distributions.CountedDataDistribution;
 import org.opentrackingtools.distributions.EvaluatedPathStateDistribution;
 import org.opentrackingtools.distributions.OnOffEdgeTransDistribution;
 import org.opentrackingtools.distributions.OnOffEdgeTransPriorDistribution;
 import org.opentrackingtools.distributions.OnOffEdgeTransProbabilityFunction;
 import org.opentrackingtools.distributions.PathStateDistribution;
 import org.opentrackingtools.distributions.PathStateMixtureDensityModel;
-import org.opentrackingtools.distributions.ScaledInverseGammaCovDistribution;
 import org.opentrackingtools.estimators.MotionStateEstimatorPredictor;
 import org.opentrackingtools.estimators.OnOffEdgeTransitionEstimatorPredictor;
 import org.opentrackingtools.estimators.RoadMeasurementCovarianceEstimatorPredictor;
@@ -50,6 +47,9 @@ import org.slf4j.LoggerFactory;
 import com.beust.jcommander.internal.Lists;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Iterables;
+import com.statslibextensions.statistics.distribution.SvdMultivariateGaussian;
+import com.statslibextensions.statistics.distribution.CountedDataDistribution;
+import com.statslibextensions.statistics.distribution.ScaledInverseGammaCovDistribution;
 
 public class VehicleStatePLPathSamplingFilter<O extends GpsObservation, G extends InferenceGraph>
     extends AbstractParticleFilter<O, VehicleStateDistribution<O>> {
@@ -225,7 +225,7 @@ public class VehicleStatePLPathSamplingFilter<O extends GpsObservation, G extend
           updatedState.getMotionStateEstimatorPredictor()
               .getRoadFilter().clone();
 
-      final AdjMultivariateGaussian obsProj =
+      final SvdMultivariateGaussian obsProj =
           PathUtils
               .getRoadObservation(obs.getProjectedPoint(),
                   updatedState.getObservationCovarianceParam()

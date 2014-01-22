@@ -1,7 +1,7 @@
 {
-  "traceFileName":"/home/bwillard/openplans/open-tracking-tools/3905-detour-labeled_ott.csv",
-  "outputFileName":"/home/bwillard/openplans/open-tracking-tools/3905-detour-labeled_ott-filtered.json",
-  "otpGraphLocation":"/home/bwillard/openplans/OpenTripPlanner/test-graph",
+  "traceFileName":"trace-data.csv",
+  "outputFileName":"tracking-result.json",
+  "otpGraphLocation":"/tmp/graphs/chicago",
   "initialParameters": {
     "obsCov":[100.0,100.0],
     "onRoadStateCov":[6.25E-4],
@@ -10,8 +10,6 @@
     "onTransitionProbs":[+INF,1.0],
     "seed":0,
     "numParticles":25,
-    "particleFilterTypeName":"org.opentrackingtools.statistics.filters.vehicles.particle_learning.impl.VehicleTrackingPLFilter",
-    "roadFilterTypeName":"org.opentrackingtools.statistics.filters.vehicles.road.impl.StandardRoadTrackingFilter",
     "initialObsFreq":30,
     "obsCovDof":20,
     "onRoadCovDof":20,

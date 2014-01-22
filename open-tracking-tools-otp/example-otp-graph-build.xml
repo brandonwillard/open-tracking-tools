@@ -29,36 +29,18 @@
 
     <bean id="checkGeometry" class="org.opentripplanner.graph_builder.impl.CheckGeometryGraphBuilderImpl" />
 
+    <!-- The following beans are necessary for open-tracking-tools -->
     <bean id="reconstruct" class="org.opentrackingtools.graph.otp.ReconstructOriginalGraph" />
-
     <bean id="reproject" class="org.opentrackingtools.graph.otp.ReprojectCoords" />
 
     <bean id="graphBuilderTask" class="org.opentripplanner.graph_builder.GraphBuilderTask">
-
-	<!--property name="modes">
-          <list>
-          <bean class="org.opentripplanner.routing.contraction.ModeAndOptimize">
-            <constructor-arg><value>WALK</value></constructor-arg>
-            <constructor-arg><value>QUICK</value></constructor-arg>
-          </bean>
-          <bean class="org.opentripplanner.routing.contraction.ModeAndOptimize">
-            <constructor-arg><value>BICYCLE</value></constructor-arg>
-            <constructor-arg><value>QUICK</value></constructor-arg>
-          </bean>
-          <bean class="org.opentripplanner.routing.contraction.ModeAndOptimize">
-            <constructor-arg><value>BICYCLE</value></constructor-arg>
-            <constructor-arg><value>SAFE</value></constructor-arg>
-          </bean>
-          </list>
-        </property>
-        <property name="contractionFactor" value="0.995" /-->
-
-    <property name="path" value="/tmp" />
+      <property name="path" value="/tmp" />
         <property name="graphBuilders">
             <list>
                 <!-- GTFS comes before OSM, because we use the loaded set of stops to determine our OSM coverage -->
                 <ref bean="osmBuilder" />
                 <ref bean="checkGeometry" />
+                <!-- Again, following beans are necessary for open-tracking-tools -->
                 <ref bean="reconstruct" />
                 <ref bean="reproject" />
             </list>

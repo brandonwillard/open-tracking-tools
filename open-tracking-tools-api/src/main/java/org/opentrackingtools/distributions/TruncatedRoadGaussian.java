@@ -12,7 +12,6 @@ import gov.sandia.cognition.util.Pair;
 import java.util.Random;
 
 import org.opentrackingtools.util.StatisticsUtil;
-import org.opentrackingtools.util.SvdMatrix;
 
 import umontreal.iro.lecuyer.probdist.ContinuousDistribution;
 import umontreal.iro.lecuyer.probdist.FoldedNormalDist;
@@ -24,6 +23,8 @@ import umontreal.iro.lecuyer.probdistmulti.BiNormalDist;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Range;
 import com.google.common.collect.Ranges;
+import com.statslibextensions.math.matrix.SvdMatrix;
+import com.statslibextensions.statistics.distribution.SvdMultivariateGaussian;
 
 /**
  * 
@@ -34,7 +35,7 @@ import com.google.common.collect.Ranges;
  * @author bwillard
  * 
  */
-public class TruncatedRoadGaussian extends AdjMultivariateGaussian {
+public class TruncatedRoadGaussian extends SvdMultivariateGaussian {
 
   public static class PDF extends MultivariateGaussian.PDF {
 
@@ -134,8 +135,8 @@ public class TruncatedRoadGaussian extends AdjMultivariateGaussian {
 
   protected ContinuousDistribution distanceTruncDist;
 
-  protected AdjMultivariateGaussian unTruncatedDist =
-      new AdjMultivariateGaussian();
+  protected SvdMultivariateGaussian unTruncatedDist =
+      new SvdMultivariateGaussian();
 
   public TruncatedRoadGaussian() {
   }
@@ -146,7 +147,7 @@ public class TruncatedRoadGaussian extends AdjMultivariateGaussian {
       this.unTruncatedDist =
           ((TruncatedRoadGaussian) other).unTruncatedDist;
     } else {
-      this.unTruncatedDist = new AdjMultivariateGaussian(other);
+      this.unTruncatedDist = new SvdMultivariateGaussian(other);
     }
   }
 
@@ -157,11 +158,11 @@ public class TruncatedRoadGaussian extends AdjMultivariateGaussian {
       this.unTruncatedDist =
           ((TruncatedRoadGaussian) other).unTruncatedDist;
     } else {
-      this.unTruncatedDist = new AdjMultivariateGaussian(other);
+      this.unTruncatedDist = new SvdMultivariateGaussian(other);
     }
     this.distanceRange = distanceRange;
     this.setMean(other.getMean());
-    this.unTruncatedDist = new AdjMultivariateGaussian(other);
+    this.unTruncatedDist = new SvdMultivariateGaussian(other);
   }
 
   public TruncatedRoadGaussian(Vector mean, SvdMatrix svdMatrix) {
@@ -194,7 +195,7 @@ public class TruncatedRoadGaussian extends AdjMultivariateGaussian {
     final TruncatedRoadGaussian clone =
         (TruncatedRoadGaussian) super.clone();
     clone.unTruncatedDist =
-        (AdjMultivariateGaussian) this.unTruncatedDist.clone();
+        (SvdMultivariateGaussian) this.unTruncatedDist.clone();
     return clone;
   }
 
@@ -424,7 +425,7 @@ public class TruncatedRoadGaussian extends AdjMultivariateGaussian {
     return truncDist;
   }
 
-  public AdjMultivariateGaussian getUnTruncatedDist() {
+  public SvdMultivariateGaussian getUnTruncatedDist() {
     return this.unTruncatedDist;
   }
 

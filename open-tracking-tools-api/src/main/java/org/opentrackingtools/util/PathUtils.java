@@ -15,7 +15,6 @@ import javax.annotation.Nullable;
 
 import org.apache.commons.lang3.ArrayUtils;
 import org.geotools.geometry.jts.JTSFactoryFinder;
-import org.opentrackingtools.distributions.AdjMultivariateGaussian;
 import org.opentrackingtools.estimators.MotionStateEstimatorPredictor;
 import org.opentrackingtools.graph.InferenceGraphEdge;
 import org.opentrackingtools.model.GpsObservation;
@@ -27,6 +26,9 @@ import org.opentrackingtools.paths.PathState;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Maps;
+import com.statslibextensions.math.matrix.SvdMatrix;
+import com.statslibextensions.math.matrix.decomposition.SimpleSingularValueDecomposition;
+import com.statslibextensions.statistics.distribution.SvdMultivariateGaussian;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.CoordinateArrays;
 import com.vividsolutions.jts.geom.Geometry;
@@ -546,7 +548,7 @@ public class PathUtils {
    * @param edge
    * @return
    */
-  public static AdjMultivariateGaussian getRoadObservation(
+  public static SvdMultivariateGaussian getRoadObservation(
     Vector obs, Matrix obsCov, Path path, PathEdge edge) {
 
     Preconditions.checkState(obs.getDimensionality() == 2
@@ -569,7 +571,7 @@ public class PathUtils {
         new SvdMatrix(MotionStateEstimatorPredictor.getOr()
             .times(obsProjBelief.getCovariance())
             .times(MotionStateEstimatorPredictor.getOr().transpose()));
-    return new AdjMultivariateGaussian(y, Sigma);
+    return new SvdMultivariateGaussian(y, Sigma);
   }
 
   /**

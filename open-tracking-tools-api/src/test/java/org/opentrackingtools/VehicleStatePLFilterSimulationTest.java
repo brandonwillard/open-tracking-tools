@@ -29,7 +29,6 @@ import org.opengis.referencing.FactoryException;
 import org.opengis.referencing.NoSuchAuthorityCodeException;
 import org.opengis.referencing.operation.NoninvertibleTransformException;
 import org.opengis.referencing.operation.TransformException;
-import org.opentrackingtools.distributions.CountedDataDistribution;
 import org.opentrackingtools.distributions.OnOffEdgeTransDistribution;
 import org.opentrackingtools.distributions.TruncatedRoadGaussian;
 import org.opentrackingtools.estimators.MotionStateEstimatorPredictor;
@@ -50,6 +49,7 @@ import com.beust.jcommander.internal.Lists;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
 import com.google.common.collect.Ranges;
+import com.statslibextensions.statistics.distribution.CountedDataDistribution;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.LineString;
 
@@ -521,19 +521,19 @@ public class VehicleStatePLFilterSimulationTest {
           .assertVectorWithCovarianceError(stateErrorSS.getMean(),
               stateModelCovariance, 5d);
 
-      ArrayAsserts.assertArrayEquals(
+      ArrayAsserts.assertArrayEquals("mean obs. cov. avg.",
           VehicleStatePLFilterSimulationTest.fourZeros, obsCovErrorSS
               .getMean().toArray(), 0.7d * trueVehicleState
               .getObservationCovarianceParam().getValue()
               .normFrobenius());
 
-      ArrayAsserts.assertArrayEquals(
+      ArrayAsserts.assertArrayEquals("mean on-road cov. avg.",
           VehicleStatePLFilterSimulationTest.oneZero,
           onRoadCovErrorSS.getMean().toArray(),
           0.7d * trueVehicleState.getOnRoadModelCovarianceParam()
               .getValue().normFrobenius());
 
-      ArrayAsserts.assertArrayEquals(
+      ArrayAsserts.assertArrayEquals("mean on-road cov. avg",
           VehicleStatePLFilterSimulationTest.fourZeros,
           offRoadCovErrorSS.getMean().toArray(),
           0.7d * trueVehicleState.getOffRoadModelCovarianceParam()

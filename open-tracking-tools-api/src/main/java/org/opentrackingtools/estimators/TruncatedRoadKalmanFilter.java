@@ -11,13 +11,13 @@ import gov.sandia.cognition.statistics.bayesian.RecursiveBayesianEstimator;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 import gov.sandia.cognition.util.ObjectUtil;
 
-import org.opentrackingtools.distributions.AdjMultivariateGaussian;
 import org.opentrackingtools.distributions.TruncatedRoadGaussian;
-import org.opentrackingtools.util.SimpleSingularValueDecomposition;
 import org.opentrackingtools.util.StatisticsUtil;
-import org.opentrackingtools.util.SvdMatrix;
 
 import com.google.common.base.Preconditions;
+import com.statslibextensions.math.matrix.SvdMatrix;
+import com.statslibextensions.math.matrix.decomposition.SimpleSingularValueDecomposition;
+import com.statslibextensions.statistics.distribution.SvdMultivariateGaussian;
 
 /**
  * This is an improved (computationally) filter based on the Sandia KalmanFilter
@@ -28,9 +28,9 @@ import com.google.common.base.Preconditions;
  */
 public class TruncatedRoadKalmanFilter
     extends
-    AbstractBatchAndIncrementalLearner<Vector, AdjMultivariateGaussian>
+    AbstractBatchAndIncrementalLearner<Vector, SvdMultivariateGaussian>
     implements
-    RecursiveBayesianEstimator<Vector, Vector, AdjMultivariateGaussian> {
+    RecursiveBayesianEstimator<Vector, Vector, SvdMultivariateGaussian> {
 
   /**
    * Default autonomous dimension, {@value} .
@@ -80,7 +80,7 @@ public class TruncatedRoadKalmanFilter
   }
 
   @Override
-  public AdjMultivariateGaussian createInitialLearnedObject() {
+  public SvdMultivariateGaussian createInitialLearnedObject() {
     final Matrix subM =
         MatrixFactory.getDefault().copyArray(
             new double[][] {
@@ -171,9 +171,9 @@ public class TruncatedRoadKalmanFilter
     final Matrix F = this.model.getC();
 
     AbstractSingularValueDecomposition svdR;
-    if (belief instanceof AdjMultivariateGaussian) {
+    if (belief instanceof SvdMultivariateGaussian) {
       svdR =
-          ((AdjMultivariateGaussian) belief).getCovariance().getSvd();
+          ((SvdMultivariateGaussian) belief).getCovariance().getSvd();
     } else {
       svdR =
           SingularValueDecompositionMTJ
@@ -299,8 +299,8 @@ public class TruncatedRoadKalmanFilter
     //      belief.setMean(m);
 
     belief.setMean(postMean);
-    if (belief instanceof AdjMultivariateGaussian) {
-      ((AdjMultivariateGaussian) belief).getCovariance().setSvd(
+    if (belief instanceof SvdMultivariateGaussian) {
+      ((SvdMultivariateGaussian) belief).getCovariance().setSvd(
           svdCnew);
     } else {
       belief.setCovariance(svdCnew.getU().times(svdCnew.getS())
@@ -312,9 +312,9 @@ public class TruncatedRoadKalmanFilter
 
     final Matrix G = this.model.getA();
     AbstractSingularValueDecomposition svdC;
-    if (belief instanceof AdjMultivariateGaussian) {
+    if (belief instanceof SvdMultivariateGaussian) {
       svdC =
-          ((AdjMultivariateGaussian) belief).getCovariance().getSvd();
+          ((SvdMultivariateGaussian) belief).getCovariance().getSvd();
     } else {
       svdC =
           SingularValueDecompositionMTJ
@@ -342,7 +342,7 @@ public class TruncatedRoadKalmanFilter
             .transpose(), S, svdM.getVtranspose());
 
     final Matrix R;
-    if (belief instanceof AdjMultivariateGaussian) {
+    if (belief instanceof SvdMultivariateGaussian) {
       R = new SvdMatrix(svdR);
     } else {
       R = svdR.getU().times(svdR.getS()).times(svdR.getVtranspose());
@@ -383,7 +383,7 @@ public class TruncatedRoadKalmanFilter
   }
 
   @Override
-  public void update(AdjMultivariateGaussian target, Vector data) {
+  public void update(SvdMultivariateGaussian target, Vector data) {
     this.measure(target, data);
   }
 

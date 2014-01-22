@@ -8,17 +8,17 @@ import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 
 import org.mockito.Mockito;
 import org.opentrackingtools.VehicleStateInitialParameters;
-import org.opentrackingtools.distributions.AdjMultivariateGaussian;
 import org.opentrackingtools.distributions.PathStateDistribution;
 import org.opentrackingtools.estimators.MotionStateEstimatorPredictor;
 import org.opentrackingtools.graph.InferenceGraph;
-import org.opentrackingtools.util.SvdMatrix;
 import org.opentrackingtools.util.TestUtils;
 import org.testng.AssertJUnit;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 import com.google.common.collect.Iterables;
+import com.statslibextensions.math.matrix.SvdMatrix;
+import com.statslibextensions.statistics.distribution.SvdMultivariateGaussian;
 import com.vividsolutions.jts.geom.Coordinate;
 
 public class PathTest {
@@ -53,7 +53,7 @@ public class PathTest {
             new double[][] { new double[] { 126.56, 8.44 },
                 new double[] { 8.44, 0.56 } });
     final MultivariateGaussian startBelief =
-        new AdjMultivariateGaussian(VectorFactory.getDefault()
+        new SvdMultivariateGaussian(VectorFactory.getDefault()
             .createVector2D(-0d, -5d / 30d), new SvdMatrix(covar));
     final PathStateDistribution currentBelief =
         new PathStateDistribution(startPath, startBelief);
@@ -173,7 +173,7 @@ public class PathTest {
             new double[][] { new double[] { 126.56, 8.44 },
                 new double[] { 8.44, 0.56 } });
     final MultivariateGaussian startBelief =
-        new AdjMultivariateGaussian(VectorFactory.getDefault()
+        new SvdMultivariateGaussian(VectorFactory.getDefault()
             .createVector2D(-0d, -5d / 30d), new SvdMatrix(covar));
     final PathStateDistribution currentBelief =
         new PathStateDistribution(startPath, startBelief);
@@ -212,7 +212,7 @@ public class PathTest {
             new double[][] { new double[] { 126.56, 8.44 },
                 new double[] { 8.44, 0.56 } });
     final MultivariateGaussian startBelief =
-        new AdjMultivariateGaussian(VectorFactory.getDenseDefault()
+        new SvdMultivariateGaussian(VectorFactory.getDenseDefault()
             .createVector2D(0d, 1d), new SvdMatrix(covar));
     final PathStateDistribution currentBelief =
         new PathStateDistribution(startPath, startBelief);
@@ -251,7 +251,7 @@ public class PathTest {
             new double[][] { new double[] { 126.56, 8.44 },
                 new double[] { 8.44, 0.56 } });
     final MultivariateGaussian startBelief =
-        new AdjMultivariateGaussian(VectorFactory.getDefault()
+        new SvdMultivariateGaussian(VectorFactory.getDefault()
             .createVector2D(2.5d, 1d), new SvdMatrix(covar));
     final PathStateDistribution currentBelief =
         new PathStateDistribution(startPath, startBelief);
@@ -290,7 +290,7 @@ public class PathTest {
             new double[][] { new double[] { 126.56, 8.44 },
                 new double[] { 8.44, 0.56 } });
     final MultivariateGaussian startBelief =
-        new AdjMultivariateGaussian(VectorFactory.getDefault()
+        new SvdMultivariateGaussian(VectorFactory.getDefault()
             .createVector2D(-2.5d, 1d), new SvdMatrix(covar));
     final PathStateDistribution currentBelief =
         new PathStateDistribution(startPath, startBelief);
@@ -325,7 +325,7 @@ public class PathTest {
             new double[][] { new double[] { 126.56, 8.44 },
                 new double[] { 8.44, 0.56 } });
     final MultivariateGaussian startBelief =
-        new AdjMultivariateGaussian(VectorFactory.getDefault()
+        new SvdMultivariateGaussian(VectorFactory.getDefault()
             .createVector2D(2.5d, 1d), new SvdMatrix(covar));
     final PathStateDistribution currentBelief =
         new PathStateDistribution(startPath, startBelief);
@@ -359,7 +359,7 @@ public class PathTest {
             new double[][] { new double[] { 126.56, 8.44 },
                 new double[] { 8.44, 0.56 } });
     final MultivariateGaussian startBelief =
-        new AdjMultivariateGaussian(VectorFactory.getDefault()
+        new SvdMultivariateGaussian(VectorFactory.getDefault()
             .createVector2D(2.5d, 1d), new SvdMatrix(covar));
     final PathStateDistribution currentBelief =
         new PathStateDistribution(startPath, startBelief);
@@ -393,7 +393,7 @@ public class PathTest {
             new double[][] { new double[] { 126.56, 8.44 },
                 new double[] { 8.44, 0.56 } });
     final MultivariateGaussian startBelief =
-        new AdjMultivariateGaussian(VectorFactory.getDefault()
+        new SvdMultivariateGaussian(VectorFactory.getDefault()
             .createVector2D(-2.5d, 1d), new SvdMatrix(covar));
     final PathStateDistribution currentBelief =
         new PathStateDistribution(startPath, startBelief);
