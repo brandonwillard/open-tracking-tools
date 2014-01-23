@@ -5,6 +5,7 @@ import org.apache.commons.lang3.builder.ToStringStyle;
 
 import javax.media.jai.IntegerSequence;
 
+import com.google.common.base.Preconditions;
 import com.google.common.collect.ComparisonChain;
 import com.google.common.primitives.Doubles;
 import com.google.common.primitives.Ints;
@@ -77,13 +78,11 @@ public class InferenceGraphSegment extends InferenceGraphEdge {
 
   @Override
   public String toString() {
-    final ToStringBuilder builder = new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE);
+    final ToStringBuilder builder = new ToStringBuilder(this);
+    builder.append("parentEdge", this.getEdgeId());
     if (!this.isNullEdge()) {
-      builder.append("parentEdge", this.getEdgeId() 
-          + "-" + this.startIndex.getSegmentIndex()
-          + " (" + Math.round(this.getLength()) + ")");
-    } else {
-      builder.append("parentEdge", this.getEdgeId());
+      builder.append("startIndex", this.startIndex.getSegmentIndex());
+      builder.append("line", this.line);
     }
     return builder.toString();
   }
@@ -110,9 +109,10 @@ public class InferenceGraphSegment extends InferenceGraphEdge {
     if (!super.equals(obj)) {
       return false;
     }
-    if (!(obj instanceof InferenceGraphSegment)) {
-      return false;
-    }
+    Preconditions.checkArgument(obj instanceof InferenceGraphSegment);
+//    if (!(obj instanceof InferenceGraphSegment)) {
+//      return false;
+//    }
     InferenceGraphSegment other = (InferenceGraphSegment) obj;
     if (startIndex == null) {
       if (other.startIndex != null) {

@@ -35,8 +35,8 @@ public class VehicleStateInitialParameters implements Comparable<VehicleStateIni
     int onRoadCovDof, Vector offRoadStateCov, int offRoadCovDof, 
     Vector offProbs, Vector onProbs, int numParticles,
     double initialObsFreq, long seed) {
-    this(initialMotionState, obsCov, obsCovDof, null, onRoadStateCov, onRoadCovDof, 
-        offRoadStateCov, offRoadCovDof, null, offProbs, onProbs, numParticles, 
+    this(initialMotionState, obsCov, obsCovDof, Double.MAX_VALUE, onRoadStateCov, onRoadCovDof, 
+        offRoadStateCov, offRoadCovDof, Double.MAX_VALUE, offProbs, onProbs, numParticles, 
         initialObsFreq, 54d * 30d, seed);
   }
 

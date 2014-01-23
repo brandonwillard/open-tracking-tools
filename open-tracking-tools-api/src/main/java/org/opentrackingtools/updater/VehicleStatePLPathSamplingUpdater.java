@@ -18,7 +18,6 @@ import java.util.Random;
 import java.util.Set;
 
 import org.opentrackingtools.VehicleStateInitialParameters;
-import org.opentrackingtools.distributions.CountedDataDistribution;
 import org.opentrackingtools.distributions.EvaluatedPathStateDistribution;
 import org.opentrackingtools.distributions.OnOffEdgeTransProbabilityFunction;
 import org.opentrackingtools.distributions.PathStateDistribution;
@@ -47,6 +46,7 @@ import com.google.common.collect.Range;
 import com.google.common.collect.Ranges;
 import com.google.common.collect.Sets;
 import com.google.common.primitives.Doubles;
+import com.statslibextensions.statistics.distribution.CountedDataDistribution;
 
 /**
  * This updater will itself traverse the graph and perform a heuristic 
@@ -176,6 +176,10 @@ public class VehicleStatePLPathSamplingUpdater<O extends GpsObservation, G exten
       final double nullTotalLogLikelihood = nullState.getEdgeTransitionLogLikelihood()
           + nullState.getPathStateDistLogLikelihood()
           + nullState.getObsLogLikelihood();
+
+      Preconditions.checkState(Doubles.isFinite(nullTotalLogLikelihood)
+          || !edges.isEmpty(), 
+          "off-road is impossible and there are no edges to be on!");
 
       statesOnEdgeDistribution
           .increment(nullState, nullTotalLogLikelihood);

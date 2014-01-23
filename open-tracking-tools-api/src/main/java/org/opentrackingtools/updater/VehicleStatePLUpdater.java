@@ -11,7 +11,6 @@ import java.util.List;
 import java.util.Random;
 
 import org.opentrackingtools.VehicleStateInitialParameters;
-import org.opentrackingtools.distributions.CountedDataDistribution;
 import org.opentrackingtools.distributions.PathStateDistribution;
 import org.opentrackingtools.distributions.PathStateMixtureDensityModel;
 import org.opentrackingtools.estimators.MotionStateEstimatorPredictor;
@@ -31,6 +30,7 @@ import com.beust.jcommander.internal.Lists;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Iterables;
 import com.google.common.primitives.Doubles;
+import com.statslibextensions.statistics.distribution.CountedDataDistribution;
 
 /**
  * This updater weighs paths computed from the outside (e.g. the A* results
@@ -102,7 +102,7 @@ public class VehicleStatePLUpdater<O extends GpsObservation, G extends Inference
   @Override
   public DataDistribution<VehicleStateDistribution<O>>
       createInitialParticles(int numParticles) {
-    final DataDistribution<VehicleStateDistribution<O>> retDist =
+    final CountedDataDistribution<VehicleStateDistribution<O>> retDist =
         new CountedDataDistribution<VehicleStateDistribution<O>>(true);
 
     /*
@@ -134,6 +134,10 @@ public class VehicleStatePLUpdater<O extends GpsObservation, G extends Inference
               .logEvaluate(InferenceGraphEdge.nullGraphEdge)
               + this.computeLogLikelihood(nullState,
                   this.initialObservation);
+      
+      Preconditions.checkState(Doubles.isFinite(nullLogLikelihood)
+          || !edges.isEmpty(), 
+          "off-road is impossible and there are no edges to be on!");
 
       statesOnEdgeDistribution
           .increment(nullState, nullLogLikelihood);
@@ -162,7 +166,8 @@ public class VehicleStatePLUpdater<O extends GpsObservation, G extends Inference
       retDist.increment(statesOnEdgeDistribution.sample(this.random));
     }
 
-    Preconditions.checkState(retDist.getDomainSize() > 0);
+    Preconditions.checkState(retDist.getTotalCount() == numParticles);
+
     return retDist;
   }
 

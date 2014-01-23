@@ -189,6 +189,7 @@ public class TraceRunner {
             ip, true, rng);
     //        (ParticleFilter) ctor.newInstance(initialObs, graph, ip, true, 
     //            rng);
+    filter.setNumParticles(config.getInitialParameters().getNumParticles());
 
     filter.getRandom().setSeed(ip.getSeed());
     final DataDistribution<VehicleStateDistribution<GpsObservation>> priorBelief =

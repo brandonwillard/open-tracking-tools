@@ -111,7 +111,7 @@ public class OnOffEdgeTransDistributionTest {
                 return !input.isNullEdge();
               }
             });
-    AssertJUnit.assertEquals(expectedEdge, actualEdge);
+    AssertJUnit.assertEquals(expectedEdge.getEdgeId(), actualEdge.getEdgeId());
   }
 
   /**

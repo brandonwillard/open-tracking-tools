@@ -15,21 +15,21 @@ import gov.sandia.cognition.util.AbstractCloneableSerializable;
 import java.util.Collection;
 import java.util.Random;
 
-import org.opentrackingtools.distributions.AdjMultivariateGaussian;
 import org.opentrackingtools.distributions.PathStateDistribution;
-import org.opentrackingtools.distributions.ScaledInverseGammaCovDistribution;
 import org.opentrackingtools.distributions.TruncatedRoadGaussian;
 import org.opentrackingtools.model.VehicleStateDistribution;
 import org.opentrackingtools.paths.Path;
 import org.opentrackingtools.util.PathUtils;
-import org.opentrackingtools.util.SimpleSingularValueDecomposition;
 import org.opentrackingtools.util.StatisticsUtil;
-import org.opentrackingtools.util.SvdMatrix;
 import org.opentrackingtools.util.TrueObservation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Preconditions;
+import com.statslibextensions.math.matrix.SvdMatrix;
+import com.statslibextensions.math.matrix.decomposition.SimpleSingularValueDecomposition;
+import com.statslibextensions.statistics.distribution.SvdMultivariateGaussian;
+import com.statslibextensions.statistics.distribution.ScaledInverseGammaCovDistribution;
 
 public class RoadModelCovarianceEstimatorPredictor extends
     AbstractCloneableSerializable
@@ -141,7 +141,7 @@ public class RoadModelCovarianceEstimatorPredictor extends
           this.vehicleState.getMotionStateEstimatorPredictor()
               .getRoadFilter().clone();
 
-      final AdjMultivariateGaussian obsProj =
+      final SvdMultivariateGaussian obsProj =
           PathUtils.getRoadObservation(obs, this.vehicleState
               .getObservationCovarianceParam().getValue(), path,
               predictState.getPathState().getEdge());//Iterables.getLast(path.getPathEdges()));

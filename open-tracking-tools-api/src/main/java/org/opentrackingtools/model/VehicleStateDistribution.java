@@ -16,12 +16,10 @@ import org.apache.commons.lang.builder.CompareToBuilder;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
 import org.opentrackingtools.VehicleStateInitialParameters;
-import org.opentrackingtools.distributions.CountedDataDistribution;
 import org.opentrackingtools.distributions.OnOffEdgeTransDistribution;
 import org.opentrackingtools.distributions.OnOffEdgeTransPriorDistribution;
 import org.opentrackingtools.distributions.PathStateDistribution;
 import org.opentrackingtools.distributions.PathStateMixtureDensityModel;
-import org.opentrackingtools.distributions.ScaledInverseGammaCovDistribution;
 import org.opentrackingtools.estimators.MotionStateEstimatorPredictor;
 import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.paths.Path;
@@ -31,6 +29,8 @@ import org.opentrackingtools.util.PathUtils;
 import org.opentrackingtools.util.model.TransitionProbMatrix;
 
 import com.google.common.base.Preconditions;
+import com.statslibextensions.statistics.distribution.CountedDataDistribution;
+import com.statslibextensions.statistics.distribution.ScaledInverseGammaCovDistribution;
 
 /**
  * This object represents a joint distribution over the basic components of a
@@ -214,6 +214,7 @@ public class VehicleStateDistribution<Observation extends GpsObservation>
       final OnOffEdgeTransDistribution initialTransDist =
           new OnOffEdgeTransDistribution(graph, 
               state.getPathStateParam().getValue(), 
+              pathEdge.getInferenceGraphSegment(),
               state.getObservationCovarianceParam().getValue(),
               initialPriorTransDist.getEdgeMotionTransProbPrior().getMean(), 
               initialPriorTransDist.getFreeMotionTransProbPrior().getMean());

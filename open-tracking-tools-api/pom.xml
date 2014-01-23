@@ -21,6 +21,11 @@
 	</build>
 
 	<dependencies>
+    	<dependency>
+    		<groupId>org.bitbucket.brandonwillard</groupId>
+    		<artifactId>StatsLibExtensions</artifactId>
+    		<version>0.0.1-SNAPSHOT</version>
+    	</dependency>
 		<dependency>
 			<groupId>org.testng</groupId>
 			<artifactId>testng</artifactId>
@@ -114,6 +119,11 @@
 		<dependency>
 			<groupId>org.geotools</groupId>
 			<artifactId>gt-graph</artifactId>
+	        <version>${geotools.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.geotools</groupId>
+			<artifactId>gt-opengis</artifactId>
 	        <version>${geotools.version}</version>
 		</dependency>
 		<dependency>

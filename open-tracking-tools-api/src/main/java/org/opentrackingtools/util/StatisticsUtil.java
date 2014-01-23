@@ -28,7 +28,6 @@ import no.uib.cipr.matrix.SymmDenseEVD;
 import no.uib.cipr.matrix.UpperSPDDenseMatrix;
 import no.uib.cipr.matrix.UpperSymmDenseMatrix;
 
-import org.opentrackingtools.distributions.CountedDataDistribution;
 import org.opentrackingtools.util.model.WrappedWeightedValue;
 
 import com.google.common.base.Objects;
@@ -37,6 +36,9 @@ import com.google.common.collect.HashMultiset;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Multiset;
 import com.google.common.primitives.Doubles;
+import com.statslibextensions.math.matrix.SvdMatrix;
+import com.statslibextensions.math.matrix.decomposition.SimpleSingularValueDecomposition;
+import com.statslibextensions.statistics.distribution.CountedDataDistribution;
 
 public class StatisticsUtil {
 

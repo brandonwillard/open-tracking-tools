@@ -26,6 +26,12 @@ import com.google.common.collect.Lists;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.LineString;
 
+/**
+ * Sanity checks for the Bootstrap filter's updater.
+ * 
+ * @author bwillar0
+ *
+ */
 public class VehicleStateBootstrapUpdaterTest {
 
   /**
@@ -245,9 +251,9 @@ public class VehicleStateBootstrapUpdaterTest {
     final InferenceGraphSegment expectedEdge =
         InferenceGraphSegment.nullGraphSegment;
 
-    AssertJUnit.assertEquals(expectedEdge, newState
+    AssertJUnit.assertEquals(expectedEdge.getEdgeId(), newState
         .getPathStateParam().getValue().getEdge()
-        .getInferenceGraphSegment());
+        .getInferenceGraphSegment().getEdgeId());
 
     final Vector expectedMotionState =
         VectorFactory.getDefault().copyArray(
@@ -327,11 +333,11 @@ public class VehicleStateBootstrapUpdaterTest {
     final VehicleStateDistribution<GpsObservation> newState =
         updater.update(currentState);
 
-    final InferenceGraphSegment expectedEdge =
-        InferenceGraphSegment.nullGraphSegment;
-    AssertJUnit.assertEquals(expectedEdge, newState
+    final InferenceGraphEdge expectedEdge =
+        InferenceGraphEdge.nullGraphEdge;
+    AssertJUnit.assertEquals(expectedEdge.getEdgeId(), newState
         .getPathStateParam().getValue().getEdge()
-        .getInferenceGraphSegment());
+        .getInferenceGraphSegment().getEdgeId());
 
     final Vector expectedMotionState =
         VectorFactory.getDefault().copyArray(

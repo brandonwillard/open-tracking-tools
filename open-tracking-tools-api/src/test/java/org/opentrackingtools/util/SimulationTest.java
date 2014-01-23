@@ -46,14 +46,21 @@ import org.testng.internal.junit.ArrayAsserts;
 import au.com.bytecode.opencsv.CSVWriter;
 
 import com.google.common.collect.Ranges;
+import com.statslibextensions.math.matrix.SvdMatrix;
 import com.vividsolutions.jts.geom.Coordinate;
 
 /**
- * This test runs the simulator only and checks that the simulated
- * values are generally consistent.  Three conditions are evaluated:
- * road only, off-road only and mixed.
+ * Tests for simulated movement on a square grid graph for three
+ * travel scenarios: road only, off-road only, and both.
+ * Since simulations are the primary automatic means of 
+ * testing for our filters, we need to be sure the simulations
+ * are consistent.
  * 
- * @author bwillard
+ * Specifically, these tests check that the state and observation errors are
+ * within bounds given by their covariances.
+ * 
+ * @author bwillar0
+>>>>>>> origin/master
  *
  */
 public class SimulationTest {
@@ -214,7 +221,7 @@ public class SimulationTest {
 
   private void checkConditionsAndUpdateStats(
     VehicleStateDistribution<GpsObservation> vehicleState,
-    SufficientStatistic obsErrorSS, SufficientStatistic movementSS,
+    SufficientStatistic obsErrorSS, SufficientStatistic stateSS,
     SufficientStatistic transitionsSS, boolean generalizeMoveDiff) {
 
     final Vector obsError =
@@ -299,22 +306,23 @@ public class SimulationTest {
           new PathState(sampledPathState.getPath(),
               predictedMotionStateDist.getMean());
 
-      final Vector movementDiff =
+      final Vector stateDiff =
           sampledPathState.minus(predictedPathState);
-//      ArrayAsserts.assertArrayEquals(VectorFactory.getDefault()
-//          .createVector(movementDiff.getDimensionality()).toArray(),
-//          movementDiff.toArray(), 1e-5);
+      ArrayAsserts.assertArrayEquals("state error", 
+          VectorFactory.getDefault().createVector(
+              stateDiff.getDimensionality()).toArray(),
+          stateDiff.toArray(), 1e-5);
 
-      if (movementDiff.getDimensionality() == 4) {
-        final Vector movementDiffAvg =
-            this.avgTransform.times(movementDiff);
-        movementSS.update(movementDiffAvg);
+      if (generalizeMoveDiff && stateDiff.getDimensionality() == 4) {
+        final Vector stateDiffAvg =
+            this.avgTransform.times(stateDiff);
+        stateSS.update(stateDiffAvg);
       } else {
-        movementSS.update(movementDiff);
+        stateSS.update(stateDiff);
       }
-      SimulationTest._log.info("movementError=" + movementDiff);
+      SimulationTest._log.info("movementError=" + stateDiff);
       SimulationTest._log
-          .info("movementMean=" + movementSS.getMean());
+          .info("movementMean=" + stateSS.getMean());
 
       Vector transType =
           OnOffEdgeTransDistribution.getTransitionType(
@@ -334,7 +342,7 @@ public class SimulationTest {
           + transitionsSS.getMean());
     }
 
-    if (movementSS.getCount() > 0) {//Math.min(approxRuns/16, 25)) {
+    if (stateSS.getCount() > 0) {//Math.min(approxRuns/16, 25)) {
       if (this.obsErrorZeroArray == null) {
         this.obsErrorZeroArray =
             VectorFactory
@@ -344,7 +352,7 @@ public class SimulationTest {
                 .toArray();
       }
 
-      ArrayAsserts.assertArrayEquals(
+      ArrayAsserts.assertArrayEquals("obs. error avg.",
           this.obsErrorZeroArray,
           obsErrorSS.getMean().toArray(),
           2 * Math.sqrt(vehicleState.getObservationCovarianceParam()
@@ -355,7 +363,7 @@ public class SimulationTest {
             VectorFactory
                 .getDefault()
                 .createVector(
-                    movementSS.getMean().getDimensionality())
+                    stateSS.getMean().getDimensionality())
                 .toArray();
       }
 
@@ -376,9 +384,9 @@ public class SimulationTest {
                     .getValue()).times(covFactor.transpose());
       }
 
-      ArrayAsserts.assertArrayEquals(this.movementZeroArray,
-          movementSS.getMean().toArray(),
-          2.5 * Math.sqrt(stateCovariance.normFrobenius()));
+      ArrayAsserts.assertArrayEquals("state error avg.", this.movementZeroArray,
+          stateSS.getMean().toArray(),
+          10 * Math.sqrt(stateCovariance.normFrobenius()));
 
       if (vehicleState.getPathStateParam().getValue().isOnRoad()) {
         for (final VectorEntry entry : vehicleState

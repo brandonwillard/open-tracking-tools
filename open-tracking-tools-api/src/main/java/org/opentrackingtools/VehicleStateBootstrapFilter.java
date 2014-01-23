@@ -8,7 +8,6 @@ import java.util.Map.Entry;
 import java.util.Random;
 import java.util.Set;
 
-import org.opentrackingtools.distributions.CountedDataDistribution;
 import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.model.GpsObservation;
 import org.opentrackingtools.model.VehicleStateDistribution;
@@ -17,6 +16,7 @@ import org.opentrackingtools.updater.VehicleStateBootstrapUpdater;
 import org.opentrackingtools.util.model.MutableDoubleCount;
 
 import com.google.common.collect.Sets;
+import com.statslibextensions.statistics.distribution.CountedDataDistribution;
 
 public class VehicleStateBootstrapFilter<O extends GpsObservation>
     extends AbstractParticleFilter<O, VehicleStateDistribution<O>> {

@@ -18,13 +18,13 @@ import no.uib.cipr.matrix.DenseMatrix;
 import no.uib.cipr.matrix.DenseVector;
 import no.uib.cipr.matrix.UpperSPDDenseMatrix;
 
-import org.opentrackingtools.distributions.AdjMultivariateGaussian;
 import org.opentrackingtools.distributions.TruncatedRoadGaussian;
-import org.opentrackingtools.util.SimpleSingularValueDecomposition;
 import org.opentrackingtools.util.StatisticsUtil;
-import org.opentrackingtools.util.SvdMatrix;
 
 import com.google.common.base.Preconditions;
+import com.statslibextensions.math.matrix.SvdMatrix;
+import com.statslibextensions.math.matrix.decomposition.SimpleSingularValueDecomposition;
+import com.statslibextensions.statistics.distribution.SvdMultivariateGaussian;
 
 /**
  * This is an improved (computationally) filter based on the Sandia KalmanFilter
@@ -35,9 +35,9 @@ import com.google.common.base.Preconditions;
  */
 public class TruncatedRoadKalmanFilter
     extends
-    AbstractBatchAndIncrementalLearner<Vector, AdjMultivariateGaussian>
+    AbstractBatchAndIncrementalLearner<Vector, SvdMultivariateGaussian>
     implements
-    RecursiveBayesianEstimator<Vector, Vector, AdjMultivariateGaussian> {
+    RecursiveBayesianEstimator<Vector, Vector, SvdMultivariateGaussian> {
 
   /**
    * Default autonomous dimension, {@value} .
@@ -85,12 +85,9 @@ public class TruncatedRoadKalmanFilter
         ObjectUtil.cloneSmart(this.modelCovariance);
     return clone;
   }
-  
-  /**
-   * Create "stable" initial covariance prior w.r.t. the limiting
-   * distribution.
-   */
-  protected TruncatedRoadGaussian createStablePrior() {
+
+  @Override
+  public SvdMultivariateGaussian createInitialLearnedObject() {
     final Matrix subM =
         MatrixFactory.getDefault().copyArray(
             new double[][] {
@@ -199,96 +196,6 @@ public class TruncatedRoadKalmanFilter
 
     belief.setCovariance(newCovar);
 
-    // TODO FIXME this is broken
-//    Preconditions.checkArgument(StatisticsUtil
-//        .isPosSemiDefinite(belief.getCovariance()));
-//    final Matrix F = this.model.getC();
-//
-//    AbstractSingularValueDecomposition svdR;
-//    if (belief instanceof AdjMultivariateGaussian) {
-//      svdR =
-//          ((AdjMultivariateGaussian) belief).getCovariance().getSvd();
-//    } else {
-//      svdR =
-//          SingularValueDecompositionMTJ
-//              .create(belief.getCovariance());
-//    }
-//
-//    final Matrix NvInv =
-//        StatisticsUtil.diagonalInverse(
-//            StatisticsUtil.getDiagonalSqrt(this.measurementCovariance
-//                .getSvd().getS(), 1e-7), 1e-7).times(
-//            this.measurementCovariance.getSvd().getU().transpose());
-//    final Matrix NvFU = NvInv.times(F).times(svdR.getU());
-//    final Matrix SRinv =
-//        StatisticsUtil.diagonalInverse(
-//            StatisticsUtil.getDiagonalSqrt(svdR.getS(), 1e-7), 1e-7);
-//    final int nN2 = NvFU.getNumRows() + SRinv.getNumRows();
-//    final int nM2 = SRinv.getNumColumns();
-//    final Matrix M2 =
-//        MatrixFactory.getDefault().createMatrix(nN2, nM2);
-//    M2.setSubMatrix(0, 0, NvFU);
-//    M2.setSubMatrix(NvFU.getNumRows(), 0, SRinv);
-//
-//    final AbstractSingularValueDecomposition svdM2 =
-//        SingularValueDecompositionMTJ.create(M2);
-//    final Matrix S =
-//        MatrixFactory.getDefault().createMatrix(
-//            svdM2.getS().getNumColumns(),
-//            svdM2.getS().getNumColumns());
-//    for (int i = 0; i < Math.min(svdM2.getS().getNumColumns(), svdM2
-//        .getS().getNumRows()); i++) {
-//      final double sVal = svdM2.getS().getElement(i, i);
-//      final double sValInvSq = 1d / (sVal * sVal);
-//      if (sValInvSq > 1e-7) {
-//        S.setElement(i, i, sValInvSq);
-//      }
-//    }
-//    final Matrix UcNew =
-//        svdR.getU().times(svdM2.getVtranspose().transpose());
-//    final AbstractSingularValueDecomposition svdCnew =
-//        new SimpleSingularValueDecomposition(UcNew, S,
-//            UcNew.transpose());
-//
-//    Preconditions.checkArgument(StatisticsUtil
-//        .isPosSemiDefinite(UcNew.times(S).times(UcNew.transpose())));
-//
-//    final SvdMatrix Q =
-//        StatisticsUtil.symmetricSvdAdd(
-//            (SvdMatrix) belief.getCovariance(),
-//            this.measurementCovariance, F);
-//    final Matrix Qinv =
-//        Q.getSvd()
-//            .getU()
-//            .times(
-//                StatisticsUtil.diagonalInverse(Q.getSvd().getS(),
-//                    1e-7)).times(Q.getSvd().getU().transpose());
-//    Preconditions.checkArgument(StatisticsUtil
-//        .isPosSemiDefinite(Qinv));
-//    final Vector e = observation.minus(F.times(belief.getMean()));
-//
-//    final Matrix A =
-//        belief.getCovariance().times(F.transpose()).times(Qinv);
-////    /*
-////     * Note: for exact location/velocity correlation, the velocity
-////     * term(s) in A should be <= 1/30. 
-////     * DEBUG REMOVE
-////     */
-////    if (A.getNumColumns() == 1 && A.getElement(1, 0) > 1d / 30d) {
-////      System.out.println("amplifying velocity noise!");
-////    }
-//
-//    final Vector postMean = belief.getMean().plus(A.times(e));
-//
-//
-//    belief.setMean(postMean);
-//    if (belief instanceof AdjMultivariateGaussian) {
-//      ((AdjMultivariateGaussian) belief).getCovariance().setSvd(
-//          svdCnew);
-//    } else {
-//      belief.setCovariance(svdCnew.getU().times(svdCnew.getS())
-//          .times(svdCnew.getVtranspose()));
-//    }
   }
   
   public void measure_old(MultivariateGaussian belief, Vector observation) {
@@ -348,9 +255,9 @@ public class TruncatedRoadKalmanFilter
 
     final Matrix G = this.model.getA();
     AbstractSingularValueDecomposition svdC;
-    if (belief instanceof AdjMultivariateGaussian) {
+    if (belief instanceof SvdMultivariateGaussian) {
       svdC =
-          ((AdjMultivariateGaussian) belief).getCovariance().getSvd();
+          ((SvdMultivariateGaussian) belief).getCovariance().getSvd();
     } else {
       svdC =
           SingularValueDecompositionMTJ
@@ -378,7 +285,7 @@ public class TruncatedRoadKalmanFilter
             .transpose(), S, svdM.getVtranspose());
 
     final Matrix R;
-    if (belief instanceof AdjMultivariateGaussian) {
+    if (belief instanceof SvdMultivariateGaussian) {
       R = new SvdMatrix(svdR);
     } else {
       R = svdR.getU().times(svdR.getS()).times(svdR.getVtranspose());
@@ -419,7 +326,7 @@ public class TruncatedRoadKalmanFilter
   }
 
   @Override
-  public void update(AdjMultivariateGaussian target, Vector data) {
+  public void update(SvdMultivariateGaussian target, Vector data) {
     this.measure(target, data);
   }
 

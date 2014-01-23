@@ -8,7 +8,6 @@ import java.util.List;
 import java.util.Random;
 
 import org.geotools.geometry.jts.JTSFactoryFinder;
-import org.opentrackingtools.distributions.CountedDataDistribution;
 import org.opentrackingtools.distributions.PathStateDistribution;
 import org.opentrackingtools.graph.GenericJTSGraph;
 import org.opentrackingtools.graph.InferenceGraphSegment;
@@ -23,6 +22,7 @@ import org.testng.internal.junit.ArrayAsserts;
 
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
+import com.statslibextensions.statistics.distribution.CountedDataDistribution;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.LineSegment;
 import com.vividsolutions.jts.geom.LineString;

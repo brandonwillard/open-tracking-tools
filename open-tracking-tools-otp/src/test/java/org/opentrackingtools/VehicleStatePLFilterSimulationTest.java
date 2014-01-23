@@ -2,7 +2,6 @@ package org.opentrackingtools;
 
 import gov.sandia.cognition.math.MutableDouble;
 import gov.sandia.cognition.math.RingAccumulator;
-import gov.sandia.cognition.math.matrix.DiagonalMatrix;
 import gov.sandia.cognition.math.matrix.Matrix;
 import gov.sandia.cognition.math.matrix.MatrixFactory;
 import gov.sandia.cognition.math.matrix.Vector;
@@ -13,11 +12,8 @@ import gov.sandia.cognition.statistics.bayesian.ParticleFilter;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian.SufficientStatistic;
 
-import java.io.FileWriter;
 import java.io.IOException;
-import java.lang.reflect.Method;
 import java.util.Date;
-import java.util.List;
 import java.util.Random;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
@@ -26,7 +22,6 @@ import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.geotools.factory.FactoryRegistryException;
-import org.geotools.geometry.jts.JTSFactoryFinder;
 import org.geotools.referencing.operation.projection.ProjectionException;
 import org.opengis.referencing.FactoryException;
 import org.opengis.referencing.NoSuchAuthorityCodeException;
@@ -35,7 +30,7 @@ import org.opengis.referencing.operation.TransformException;
 import org.opentrackingtools.distributions.OnOffEdgeTransDistribution;
 import org.opentrackingtools.distributions.TruncatedRoadGaussian;
 import org.opentrackingtools.estimators.MotionStateEstimatorPredictor;
-import org.opentrackingtools.graph.GenericJTSGraph;
+import org.opentrackingtools.graph.otp.OtpGraph;
 import org.opentrackingtools.model.GpsObservation;
 import org.opentrackingtools.model.VehicleStateDistribution;
 import org.opentrackingtools.paths.PathState;
@@ -43,42 +38,27 @@ import org.opentrackingtools.util.Simulation;
 import org.opentrackingtools.util.Simulation.SimulationParameters;
 import org.opentrackingtools.util.TrueObservation;
 import org.testng.AssertJUnit;
-import org.testng.annotations.AfterMethod;
-import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.BeforeTest;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 import org.testng.internal.junit.ArrayAsserts;
 
-import au.com.bytecode.opencsv.CSVWriter;
-
-import com.beust.jcommander.internal.Lists;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
 import com.google.common.collect.Ranges;
 import com.statslibextensions.statistics.distribution.CountedDataDistribution;
+import com.statslibextensions.util.ExtMatrixUtils;
 import com.vividsolutions.jts.geom.Coordinate;
-import com.vividsolutions.jts.geom.LineString;
 
-/**
- * This is basically a full integration test that runs the bootstrap simulator 
- * to produce observations, then fits those observations with the PL filter.  
- * The test conditions are that the fitted values lie within certain credible 
- * intervals of the true distributions.
- * 
- * @author bwillard
- *
- */
-public class VehicleStatePLPathSamplingFilterSimulationTest {
+public class VehicleStatePLFilterSimulationTest {
 
-  static final double[] fourZeros =
+  private static final double[] fourZeros =
       new double[] { 0, 0, 0, 0 };
 
   private static final double[] oneZero = new double[] { 0 };
   private static final double[] sixteenZeros = VectorFactory
       .getDefault().createVector(16).toArray();
   private static final double[] twoZeros = new double[] { 0, 0 };
-  private CSVWriter outputFile;
 
   static {
     BasicConfigurator.configure();
@@ -95,29 +75,6 @@ public class VehicleStatePLPathSamplingFilterSimulationTest {
     }
   }
 
-  @BeforeMethod
-  public void handleOutputFileOpen(Method method)
-  {
-      String testName = method.getName(); 
-      try {
-        outputFile = new CSVWriter(new FileWriter("/tmp/" + testName), ',');
-      } catch (IOException e) {
-        e.printStackTrace();
-      }
-  } 
-
-  @AfterMethod
-  public void handleOutputFileClose(Method method)
-  {
-    if (outputFile != null) {
-      try {
-        outputFile.close();
-      } catch (IOException e) {
-        e.printStackTrace();
-      }
-    }
-  }
-
   @DataProvider
   private static final Object[][] initialStateData() {
     return new Object[][] { {
@@ -125,21 +82,26 @@ public class VehicleStatePLPathSamplingFilterSimulationTest {
          * Road only
          */
         new VehicleStateInitialParameters(null, VectorFactory
-            .getDefault().createVector2D(70d, 70d), 20, VectorFactory
-            .getDefault().createVector1D(6.25e-4), 20, VectorFactory
-            .getDefault().createVector2D(6.25e-4, 6.25e-4), 20,
-            VectorFactory.getDefault().createVector2D(1d,
-                Double.MAX_VALUE), VectorFactory.getDefault()
-                .createVector2D(Double.MAX_VALUE, 1d), 25, 30,
-            2159585l),
-        new VehicleStateInitialParameters(null, VectorFactory
-            .getDefault().createVector2D(70d, 70d), 20, VectorFactory
-            .getDefault().createVector1D(6.25e-4), 20, VectorFactory
-            .getDefault().createVector2D(6.25e-4, 6.25e-4), 20,
-            VectorFactory.getDefault().createVector2D(1d,
-                Double.MAX_VALUE), VectorFactory.getDefault()
-                .createVector2D(Double.MAX_VALUE, 1d), 25, 30,
-            2159585l), Boolean.FALSE, 36000 },
+            .getDefault().createVector2D(70d, 70d),
+            Integer.MAX_VALUE, VectorFactory.getDefault()
+                .createVector1D(6.25e-4), Integer.MAX_VALUE,
+            VectorFactory.getDefault().createVector2D(6.25e-4,
+                6.25e-4), Integer.MAX_VALUE, VectorFactory
+                .getDefault().createVector2D(1d, Double.MAX_VALUE),
+            VectorFactory.getDefault().createVector2D(
+                Double.MAX_VALUE, 1d), 25, 30, 2159585l),
+        new VehicleStateInitialParameters(
+            null,
+            //                VectorFactory.getDefault().createVector2D(70d, 70d), Integer.MAX_VALUE,
+            //                VectorFactory.getDefault().createVector1D(6.25e-4), Integer.MAX_VALUE, 
+            //                VectorFactory.getDefault().createVector2D(6.25e-4, 6.25e-4), Integer.MAX_VALUE, 
+            VectorFactory.getDefault().createVector2D(70d, 70d), 20,
+            VectorFactory.getDefault().createVector1D(6.25e-4), 20,
+            VectorFactory.getDefault().createVector2D(6.25e-4,
+                6.25e-4), 20, VectorFactory.getDefault()
+                .createVector2D(1d, Double.MAX_VALUE), VectorFactory
+                .getDefault().createVector2D(Double.MAX_VALUE, 1d),
+            25, 30, 2159585l), Boolean.FALSE, 36000 },
     //        {
     //            /*
     //             * Ground only
@@ -184,9 +146,9 @@ public class VehicleStatePLPathSamplingFilterSimulationTest {
   }
 
   private Matrix avgTransform;
-  private GenericJTSGraph graph;
+  private OtpGraph graph;
   final Logger log = Logger
-      .getLogger(VehicleStatePLPathSamplingFilterSimulationTest.class);
+      .getLogger(VehicleStatePLFilterSimulationTest.class);
 
   private Simulation sim;
 
@@ -230,7 +192,7 @@ public class VehicleStatePLPathSamplingFilterSimulationTest {
     final SimulationParameters simParams =
         new SimulationParameters(this.startCoord, new Date(0l),
             duration, simInitialParams.getInitialObsFreq(), false,
-            false, simInitialParams);
+            true, simInitialParams);
 
     this.sim =
         new Simulation("test-sim", this.graph, simParams,
@@ -249,11 +211,11 @@ public class VehicleStatePLPathSamplingFilterSimulationTest {
     }
 
     final ParticleFilter<GpsObservation, VehicleStateDistribution<GpsObservation>> filter =
-        new VehicleStatePLPathSamplingFilter<GpsObservation, GenericJTSGraph>(
+        new VehicleStatePLPathSamplingFilter<GpsObservation, OtpGraph>(
             new TrueObservation(trueVehicleState.getObservation(),
                 trueVehicleState),
             this.graph,
-            new VehicleStateDistribution.VehicleStateDistributionFactory<GpsObservation, GenericJTSGraph>(),
+            new VehicleStateDistribution.VehicleStateDistributionFactory<GpsObservation, OtpGraph>(),
             filterInitialParams, true, rng);
 
     final DataDistribution<VehicleStateDistribution<GpsObservation>> vehicleStateDist =
@@ -289,17 +251,19 @@ public class VehicleStatePLPathSamplingFilterSimulationTest {
       try {
         trueVehicleState = this.sim.stepSimulation(trueVehicleState);
 
-        for (final VectorEntry entry : trueVehicleState
-            .getMotionStateParam().getValue()) {
-          AssertJUnit.assertTrue(entry.getValue() >= 0d);
+        if (trueVehicleState.getPathStateParam().getValue()
+            .isOnRoad()) {
+          for (final VectorEntry entry : trueVehicleState
+              .getMotionStateParam().getValue()) {
+            AssertJUnit.assertTrue(entry.getValue() >= 0d);
+          }
         }
 
-        TrueObservation trueObs = new TrueObservation(
-            trueVehicleState.getObservation(), trueVehicleState);
         watch.reset();
         watch.start();
 
-        filter.update(vehicleStateDist, trueObs);
+        filter.update(vehicleStateDist, new TrueObservation(
+            trueVehicleState.getObservation(), trueVehicleState));
 
         watch.stop();
         averager.accumulate(new MutableDouble(watch.elapsedMillis()));
@@ -338,25 +302,9 @@ public class VehicleStatePLPathSamplingFilterSimulationTest {
 
     this.log.setLevel(Level.DEBUG);
 
-    this.startCoord = new Coordinate(0d, 0d);//new Coordinate(40.7549, -73.97749);
+    this.graph = new OtpGraph("graphs/nyc");
 
-    final List<LineString> edges = Lists.newArrayList();
-    //        TestUtils.createGridGraph(this.startCoord);
-    edges.add(JTSFactoryFinder.getGeometryFactory().createLineString(
-        new Coordinate[] { new Coordinate(0d, 0d),
-            new Coordinate(100d, 0d) }));
-    edges.add(JTSFactoryFinder.getGeometryFactory().createLineString(
-        new Coordinate[] { new Coordinate(100d, 0d),
-            new Coordinate(100d, 100d) }));
-    edges.add(JTSFactoryFinder.getGeometryFactory().createLineString(
-        new Coordinate[] { new Coordinate(100d, 100d),
-            new Coordinate(0d, 100d) }));
-    edges.add(JTSFactoryFinder.getGeometryFactory().createLineString(
-        new Coordinate[] { new Coordinate(0d, 100d),
-            new Coordinate(0d, 0d) }));
-
-    this.graph = new GenericJTSGraph(edges, false);
-    GenericJTSGraph.MIN_OBS_SNAP_RADIUS = 25;
+    this.startCoord = new Coordinate(40.714192, -74.006291);//new Coordinate(40.7549, -73.97749);
 
     this.avgTransform =
         MatrixFactory
@@ -463,10 +411,9 @@ public class VehicleStatePLPathSamplingFilterSimulationTest {
                 .getMean();
         onRoadCovStat.update(onRoadCovMean.convertToVector());
 
-        final DiagonalMatrix offRoadCovDiag = MatrixFactory.getDiagonalDefault().copyMatrix(
-            state.getOffRoadModelCovarianceParam()
-                    .getValue());
-        offRoadCovStat.update(offRoadCovDiag.convertToVector());
+        offRoadCovStat.update(
+          ExtMatrixUtils.getDiagonal(
+            state.getOffRoadModelCovarianceParam().getValue()));
 
         if (transType != null) {
           transitionStat.update(transType);
@@ -503,13 +450,13 @@ public class VehicleStatePLPathSamplingFilterSimulationTest {
     onRoadCovError =
         onRoadCovStat.getMean().minus(
             trueVehicleState.getOnRoadModelCovarianceParam()
-                .getValue().convertToVector());
-    DiagonalMatrix offRoadCovDiag = MatrixFactory.getDiagonalDefault().copyMatrix(
-        trueVehicleState.getOffRoadModelCovarianceParam()
-                .getValue());
+                .getParameterPrior().getMean().convertToVector());
     offRoadCovError =
-        offRoadCovStat.getMean().minus(
-            offRoadCovDiag.convertToVector());
+      offRoadCovStat.getMean()
+        .minus(
+          ExtMatrixUtils.getDiagonal(
+            trueVehicleState.getOffRoadModelCovarianceParam()
+                .getParameterPrior().getMean()));
 
     this.log
         .info("trueMotionState=" + truePathState.getMotionState());
@@ -554,7 +501,7 @@ public class VehicleStatePLPathSamplingFilterSimulationTest {
 
     if (obsErrorSS.getCount() > 1) {//Math.min(approxRuns / 16, 155)) {
 
-      VehicleStatePLPathSamplingFilterSimulationTest
+      VehicleStatePLFilterSimulationTest
           .assertVectorWithCovarianceError(obsErrorSS.getMean(),
               trueVehicleState.getObservationCovarianceParam()
                   .getValue(), 5d);
@@ -562,27 +509,27 @@ public class VehicleStatePLPathSamplingFilterSimulationTest {
       final Matrix stateModelCovariance =
           this.createModelCovariance(trueVehicleState, stateErrorSS);
 
-      VehicleStatePLPathSamplingFilterSimulationTest
+      VehicleStatePLFilterSimulationTest
           .assertVectorWithCovarianceError(stateErrorSS.getMean(),
               stateModelCovariance, 5d);
 
-      ArrayAsserts.assertArrayEquals("mean obs. cov. avg.",
-          VehicleStatePLFilterSimulationTest.fourZeros, obsCovErrorSS
-              .getMean().toArray(), 0.7d * trueVehicleState
-              .getObservationCovarianceParam().getValue()
-              .normFrobenius());
+//      ArrayAsserts.assertArrayEquals(
+//          VehicleStatePLFilterSimulationTest.fourZeros, obsCovErrorSS
+//              .getMean().toArray(), 0.7d * trueVehicleState
+//              .getObservationCovarianceParam().getValue()
+//              .normFrobenius());
 
-      ArrayAsserts.assertArrayEquals("mean on-road cov. avg.",
-          VehicleStatePLFilterSimulationTest.oneZero,
-          onRoadCovErrorSS.getMean().toArray(),
-          0.7d * trueVehicleState.getOnRoadModelCovarianceParam()
-              .getValue().normFrobenius());
-
-      ArrayAsserts.assertArrayEquals("mean on-road cov. avg",
-          VehicleStatePLFilterSimulationTest.fourZeros,
-          offRoadCovErrorSS.getMean().toArray(),
-          0.7d * trueVehicleState.getOffRoadModelCovarianceParam()
-              .getValue().normFrobenius());
+//      ArrayAsserts.assertArrayEquals(
+//          VehicleStatePLFilterSimulationTest.oneZero,
+//          onRoadCovErrorSS.getMean().toArray(),
+//          0.7d * trueVehicleState.getOnRoadModelCovarianceParam()
+//              .getValue().normFrobenius());
+//
+//      ArrayAsserts.assertArrayEquals(
+//          VehicleStatePLFilterSimulationTest.twoZeros,
+//          offRoadCovErrorSS.getMean().toArray(),
+//          0.7d * trueVehicleState.getOffRoadModelCovarianceParam()
+//              .getValue().normFrobenius());
     }
   }
 

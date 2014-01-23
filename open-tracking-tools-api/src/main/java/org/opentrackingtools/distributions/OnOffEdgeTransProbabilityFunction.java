@@ -18,6 +18,15 @@ import org.opentrackingtools.graph.InferenceGraphSegment;
 import org.opentrackingtools.model.GpsObservation;
 import org.opentrackingtools.model.VehicleStateDistribution;
 
+/**
+ * Evaluates the probabilities of edge transitions.
+ * Uses a special logic for u-turns, generally, assuming
+ * they're less probable in certain situations (mostly reasonable
+ * ones).
+ * 
+ * @author bwillar0
+ *
+ */
 public class OnOffEdgeTransProbabilityFunction extends
     AbstractCloneableSerializable implements
     ProbabilityMassFunction<InferenceGraphEdge> {

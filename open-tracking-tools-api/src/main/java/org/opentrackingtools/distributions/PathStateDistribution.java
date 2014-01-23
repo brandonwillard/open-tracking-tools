@@ -20,10 +20,10 @@ import org.opentrackingtools.paths.Path;
 import org.opentrackingtools.paths.PathState;
 import org.opentrackingtools.util.PathUtils;
 import org.opentrackingtools.util.PathUtils.PathEdgeProjection;
-import org.opentrackingtools.util.SvdMatrix;
 
 import com.beust.jcommander.internal.Lists;
 import com.google.common.base.Preconditions;
+import com.statslibextensions.math.matrix.SvdMatrix;
 
 /**
  * A distribution over the vector "state" of a PathState, i.e. the distribution
