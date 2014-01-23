@@ -125,8 +125,7 @@
   <repositories>
     <repository>
       <id>brandonwillard-mvn-repo</id>
-      <name>brandonwillard maven repository</name>
-      <url>git:releases://git@bitbucket.org:brandonwillard/mvn-repo.git</url>
+      <url>https://api.bitbucket.org/1.0/repositories/brandonwillard/mvn-repo/raw/master</url>
     </repository>
 <!-- todo remove this -->
 <!-- temporary fork of geotools to upgrade hslqdb -->
