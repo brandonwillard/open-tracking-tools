@@ -29,6 +29,7 @@ import com.google.common.collect.Maps;
 import com.statslibextensions.math.matrix.SvdMatrix;
 import com.statslibextensions.math.matrix.decomposition.SimpleSingularValueDecomposition;
 import com.statslibextensions.statistics.distribution.SvdMultivariateGaussian;
+import com.statslibextensions.util.ExtMatrixUtils;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.CoordinateArrays;
 import com.vividsolutions.jts.geom.Geometry;
@@ -183,12 +184,12 @@ public class PathUtils {
                 svdC.getU().getNumColumns() * 2);
         U.setSubMatrix(0, 0, svdC.getU());
         U.setSubMatrix(2, 2, svdC.getU());
-        final Matrix Vt =
-            MatrixFactory.getDefault().createMatrix(
-                svdC.getVtranspose().getNumRows() * 2,
-                svdC.getVtranspose().getNumColumns() * 2);
-        Vt.setSubMatrix(0, 0, svdC.getVtranspose());
-        Vt.setSubMatrix(2, 2, svdC.getVtranspose());
+        final Matrix Vt = U.transpose();
+//            MatrixFactory.getDefault().createMatrix(
+//                svdC.getVtranspose().getNumRows() * 2,
+//                svdC.getVtranspose().getNumColumns() * 2);
+//        Vt.setSubMatrix(0, 0, svdC.getVtranspose());
+//        Vt.setSubMatrix(2, 2, svdC.getVtranspose());
         final Matrix S =
             MatrixFactory.getDefault().createMatrix(
                 svdC.getS().getNumRows() * 2,
@@ -209,7 +210,7 @@ public class PathUtils {
       projCov = PathUtils.getProjectedCovariance(projPair, C, false);
     }
 
-    assert StatisticsUtil.isPosSemiDefinite(projCov);
+    assert ExtMatrixUtils.isPosSemiDefinite(projCov);
 
     final Vector posState =
         edge.isBackward() ? belief.getMean().scale(-1d) : belief
@@ -463,14 +464,14 @@ public class PathUtils {
       final AbstractSingularValueDecomposition svdC =
           ((SvdMatrix) C).getSvd();
       final Matrix M =
-          StatisticsUtil.getDiagonalSqrt(svdC.getS(), 1e-7)
+          ExtMatrixUtils.getDiagonalSqrt(svdC.getS(), 1e-7)
               .times(svdC.getVtranspose()).times(projM);
       final AbstractSingularValueDecomposition svdM =
           SingularValueDecompositionMTJ.create(M);
       result =
           new SvdMatrix(new SimpleSingularValueDecomposition(svdM
               .getVtranspose().transpose(),
-              StatisticsUtil.diagonalSquare(svdM.getS(), 1e-7),
+              ExtMatrixUtils.getDiagonalSquare(svdM.getS(), 1e-7),
               svdM.getVtranspose()));
     } else {
       result = proj.getProjMatrix().transpose().times(C).times(projM);
@@ -531,7 +532,7 @@ public class PathUtils {
     final Matrix projCov =
         PathUtils.getProjectedCovariance(projPair, C, true);
 
-    assert StatisticsUtil.isPosSemiDefinite(projCov);
+    assert ExtMatrixUtils.isPosSemiDefinite(projCov);
 
     final Vector projMean =
         projPair.getProjMatrix().transpose()

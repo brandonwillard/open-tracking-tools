@@ -5,14 +5,10 @@ import gov.sandia.cognition.math.matrix.Matrix;
 import gov.sandia.cognition.math.matrix.MatrixFactory;
 import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.math.matrix.VectorFactory;
-import gov.sandia.cognition.statistics.ClosedFormComputableDistribution;
 import gov.sandia.cognition.statistics.DataDistribution;
-import gov.sandia.cognition.statistics.Distribution;
 import gov.sandia.cognition.statistics.DistributionWithMean;
 import gov.sandia.cognition.statistics.bayesian.AbstractParticleFilter;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
-import gov.sandia.cognition.util.CloneableSerializable;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;

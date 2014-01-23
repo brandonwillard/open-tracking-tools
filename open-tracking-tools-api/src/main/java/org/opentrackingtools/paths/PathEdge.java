@@ -3,7 +3,6 @@ package org.opentrackingtools.paths;
 import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.util.AbstractCloneableSerializable;
 
-import org.opentrackingtools.graph.InferenceGraphEdge;
 import org.opentrackingtools.graph.InferenceGraphSegment;
 
 import com.google.common.base.Preconditions;

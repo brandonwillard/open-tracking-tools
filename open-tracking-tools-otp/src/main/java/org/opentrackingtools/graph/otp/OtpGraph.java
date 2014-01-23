@@ -18,7 +18,6 @@ import org.opentrackingtools.model.GpsObservation;
 import org.opentrackingtools.model.VehicleStateDistribution;
 import org.opentrackingtools.paths.Path;
 import org.opentrackingtools.util.GeoUtils;
-import org.opentrackingtools.util.StatisticsUtil;
 import org.opentripplanner.routing.algorithm.GenericAStar;
 import org.opentripplanner.routing.core.RoutingRequest;
 import org.opentripplanner.routing.core.TraverseMode;
@@ -46,6 +45,7 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Sets;
+import com.statslibextensions.util.ExtStatisticsUtils;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Envelope;
 import com.vividsolutions.jts.geom.Geometry;
@@ -703,7 +703,7 @@ public class OtpGraph implements InferenceGraph {
         MotionStateEstimatorPredictor.getOg().times(
             initialBelief.getMean());
     final double varDistance =
-        StatisticsUtil.getLargeNormalCovRadius(covar);
+        ExtStatisticsUtils.getLargeNormalCovRadius(covar);
 
     return this.getNearbyEdges(toLoc, varDistance);
   }

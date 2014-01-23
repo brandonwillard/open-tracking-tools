@@ -7,7 +7,6 @@ import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.math.matrix.decomposition.AbstractSingularValueDecomposition;
 import gov.sandia.cognition.statistics.bayesian.BayesianEstimatorPredictor;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
-import gov.sandia.cognition.statistics.distribution.UnivariateGaussian;
 import gov.sandia.cognition.util.AbstractCloneableSerializable;
 
 import java.util.Collection;
@@ -24,15 +23,14 @@ import org.opentrackingtools.paths.Path;
 import org.opentrackingtools.paths.PathEdge;
 import org.opentrackingtools.paths.PathState;
 import org.opentrackingtools.util.PathUtils;
-import org.opentrackingtools.util.StatisticsUtil;
 
 import com.beust.jcommander.internal.Lists;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Iterables;
 import com.statslibextensions.math.matrix.SvdMatrix;
 import com.statslibextensions.math.matrix.decomposition.SimpleSingularValueDecomposition;
+import com.statslibextensions.util.ExtStatisticsUtils;
 import com.vividsolutions.jts.geom.Coordinate;
-import com.vividsolutions.jts.geom.LineSegment;
 
 /**
  * This estimator provides a predictive motion state distribution, conditional
@@ -193,8 +191,8 @@ public class UKPathStateEstimatorPredictor extends
 
     final double t1 =
       LogMath.subtract(
-          StatisticsUtil.normalCdf(thisEndDistance, mean, Math.sqrt(var), true),
-          StatisticsUtil.normalCdf(thisStartDistance, mean, Math.sqrt(var), true));
+          ExtStatisticsUtils.normalCdf(thisEndDistance, mean, Math.sqrt(var), true),
+          ExtStatisticsUtils.normalCdf(thisStartDistance, mean, Math.sqrt(var), true));
     return t1;
   }
 

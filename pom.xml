@@ -124,6 +124,11 @@
   </build>
 
   <repositories>
+    <repository>
+      <id>brandonwillard-mvn-repo</id>
+      <name>brandonwillard maven repository</name>
+      <url>git:releases://git@bitbucket.org:brandonwillard/mvn-repo.git</url>
+    </repository>
 <!-- todo remove this -->
 <!-- temporary fork of geotools to upgrade hslqdb -->
         <repository>

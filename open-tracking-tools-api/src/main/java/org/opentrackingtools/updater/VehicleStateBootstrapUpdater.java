@@ -435,26 +435,21 @@ public class VehicleStateBootstrapUpdater<O extends GpsObservation>
     final MultivariateGaussian obsDist =
         motionStatePredictor.getObservationDistribution(
             predictedMotionState, newPathState.getEdge());
+    updatedState.getMotionStateParam().setValue(obsDist.getMean());
+    updatedState.getMotionStateParam().setConditionalDistribution(
+        obsDist);
+    /*
+     * Important: we need the motion state prior to be relative to the edge it's
+     * on, otherwise, distance along path will add up indefinitely. 
+     */
+    updatedState.getMotionStateParam().setParameterPrior(
+        new TruncatedRoadGaussian(newPathState.getEdgeState(),
+            (SvdMatrix)(newPathState.isOnRoad() ? motionStatePredictor
+                .getRoadFilter().getModelCovariance()
+                : motionStatePredictor.getGroundFilter()
+                    .getModelCovariance())));
 
-    updatedState.setMotionStateParam(
-        SimpleBayesianParameter.create(obsDist.getMean(),
-            obsDist, 
-            /*
-             * Important: we need the motion state prior to be relative to the edge it's
-             * on, otherwise, distance along path will add up indefinitely. 
-             */
-              newEdgePathStateDist));
-    
-
-    final MultivariateGaussian newPathStateDist = 
-            new TruncatedRoadGaussian(newPathState.getMotionState(),
-                 newMotionCov);
-    updatedState.setPathStateParam(
-        SimpleBayesianParameter.<PathState, PathStateMixtureDensityModel, PathStateDistribution>
-          create(newPathState, null, 
-            new PathStateDistribution(newPathState.getPath(), 
-                newPathStateDist)));
-
+    updatedState.getPathStateParam().setValue(newPathState);
     updatedState.setParentState(previousState);
     
     updatedState.setEdgeTransitionParam(

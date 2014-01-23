@@ -8,7 +8,6 @@ import gov.sandia.cognition.math.matrix.mtj.decomposition.SingularValueDecomposi
 import gov.sandia.cognition.statistics.ComputableDistribution;
 import gov.sandia.cognition.statistics.bayesian.BayesianEstimatorPredictor;
 import gov.sandia.cognition.statistics.distribution.InverseGammaDistribution;
-import gov.sandia.cognition.statistics.distribution.InverseWishartDistribution;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 import gov.sandia.cognition.util.AbstractCloneableSerializable;
 
@@ -20,7 +19,6 @@ import org.opentrackingtools.distributions.TruncatedRoadGaussian;
 import org.opentrackingtools.model.VehicleStateDistribution;
 import org.opentrackingtools.paths.Path;
 import org.opentrackingtools.util.PathUtils;
-import org.opentrackingtools.util.StatisticsUtil;
 import org.opentrackingtools.util.TrueObservation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,6 +28,7 @@ import com.statslibextensions.math.matrix.SvdMatrix;
 import com.statslibextensions.math.matrix.decomposition.SimpleSingularValueDecomposition;
 import com.statslibextensions.statistics.distribution.SvdMultivariateGaussian;
 import com.statslibextensions.statistics.distribution.ScaledInverseGammaCovDistribution;
+import com.statslibextensions.util.ExtMatrixUtils;
 
 public class RoadModelCovarianceEstimatorPredictor extends
     AbstractCloneableSerializable
@@ -326,7 +325,7 @@ public class RoadModelCovarianceEstimatorPredictor extends
                 G.times(newPrevStateSample.getMotionDistribution()
                     .getMean()));
     final Matrix covFactorInv =
-        StatisticsUtil.rootOfSemiDefinite(
+        ExtMatrixUtils.rootOfSemiDefinite(
             covFactor.times(covFactor.transpose())
                 .pseudoInverse(1e-7), true, -1).transpose();
     final Vector stateError = covFactorInv.times(sampleDiff);

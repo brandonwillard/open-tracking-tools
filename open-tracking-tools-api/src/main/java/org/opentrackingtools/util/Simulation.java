@@ -20,6 +20,7 @@ import org.opentrackingtools.updater.VehicleStateBootstrapUpdater;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.statslibextensions.util.ExtMatrixUtils;
 import com.vividsolutions.jts.geom.Coordinate;
 
 public class Simulation {
@@ -301,7 +302,7 @@ public class Simulation {
     final Vector gMean =
         MotionStateEstimatorPredictor.getOg().times(groundState);
 
-    final Matrix covSqrt = StatisticsUtil.rootOfSemiDefinite(cov);
+    final Matrix covSqrt = ExtMatrixUtils.rootOfSemiDefinite(cov);
 
     final Vector thisStateSample =
         MultivariateGaussian.sample(gMean, covSqrt, this.rng);

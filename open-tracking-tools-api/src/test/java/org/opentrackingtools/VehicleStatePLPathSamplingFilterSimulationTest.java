@@ -60,18 +60,15 @@ import com.statslibextensions.statistics.distribution.CountedDataDistribution;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.LineString;
 
-/**
- * This is basically a full integration test that runs the bootstrap simulator 
- * to produce observations, then fits those observations with the PL filter.  
- * The test conditions are that the fitted values lie within certain credible 
- * intervals of the true distributions.
+ * Tests the PL filter on a graph consisting of a 100m x 100m
+ * square.
  * 
- * @author bwillard
+ * @author bwillar0
  *
  */
-public class VehicleStatePLPathSamplingFilterSimulationTest {
+public class VehicleStatePLFilterSimulationTest {
 
-  static final double[] fourZeros =
+  private static final double[] fourZeros =
       new double[] { 0, 0, 0, 0 };
 
   private static final double[] oneZero = new double[] { 0 };

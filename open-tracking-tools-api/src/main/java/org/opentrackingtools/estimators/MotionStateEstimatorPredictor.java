@@ -25,12 +25,12 @@ import org.opentrackingtools.model.GpsObservation;
 import org.opentrackingtools.model.VehicleStateDistribution;
 import org.opentrackingtools.paths.PathEdge;
 import org.opentrackingtools.util.PathUtils;
-import org.opentrackingtools.util.StatisticsUtil;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Ranges;
 import com.statslibextensions.math.matrix.SvdMatrix;
 import com.statslibextensions.math.matrix.decomposition.SimpleSingularValueDecomposition;
+import com.statslibextensions.util.ExtMatrixUtils;
 
 /**
  * This class encapsulates the motion model, i.e. on/off-road position and
@@ -128,7 +128,7 @@ public class MotionStateEstimatorPredictor extends
     final Matrix A_half =
         MotionStateEstimatorPredictor.getCovarianceFactor(timeDiff,
             isRoad);
-    final Matrix Sq = StatisticsUtil.getDiagonalSqrt(Q, 1e-7);
+    final Matrix Sq = ExtMatrixUtils.getDiagonalSqrt(Q, 1e-7);
     final Matrix A_halfSqT = A_half.times(Sq).transpose();
     final AbstractSingularValueDecomposition svdHalf =
         SingularValueDecompositionMTJ.create(A_halfSqT);
@@ -392,7 +392,7 @@ public class MotionStateEstimatorPredictor extends
 
     final Vector stateSmpl;
     if (dim == 4) {
-      final Matrix covSqrt = StatisticsUtil.getCholR(cov);
+      final Matrix covSqrt = ExtMatrixUtils.getCholR(cov);
       final Vector qSmpl =
           MultivariateGaussian.sample(VectorFactory.getDefault()
               .createVector(cov.getNumColumns()), covSqrt, rng);
@@ -402,7 +402,7 @@ public class MotionStateEstimatorPredictor extends
     } else {
       final TruncatedRoadGaussian tNorm =
           new TruncatedRoadGaussian(state,
-              this.roadFilter.getModelCovariance(), Ranges.closed(
+              (SvdMatrix)this.roadFilter.getModelCovariance(), Ranges.closed(
                   state.getElement(0), Double.POSITIVE_INFINITY));
       stateSmpl = tNorm.sample(rng);
     }
@@ -431,7 +431,7 @@ public class MotionStateEstimatorPredictor extends
         this.groundFilter.createInitialLearnedObject();
     final Vector obsErrorSample =
         MultivariateGaussian.sample(
-            MotionStateEstimatorPredictor.zeros2D, StatisticsUtil
+            MotionStateEstimatorPredictor.zeros2D, ExtMatrixUtils
                 .rootOfSemiDefinite(this.currentState
                     .getObservationCovarianceParam().getValue()),
             this.rng);

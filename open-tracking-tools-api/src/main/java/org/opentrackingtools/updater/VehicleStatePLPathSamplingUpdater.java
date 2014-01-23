@@ -2,7 +2,6 @@ package org.opentrackingtools.updater;
 
 import gov.sandia.cognition.math.LogMath;
 import gov.sandia.cognition.math.matrix.Matrix;
-import gov.sandia.cognition.math.matrix.VectorFactory;
 import gov.sandia.cognition.statistics.DataDistribution;
 import gov.sandia.cognition.statistics.bayesian.BayesianCredibleInterval;
 import gov.sandia.cognition.statistics.bayesian.ParticleFilter;
@@ -33,10 +32,8 @@ import org.opentrackingtools.model.VehicleStateDistribution;
 import org.opentrackingtools.model.VehicleStateDistribution.VehicleStateDistributionFactory;
 import org.opentrackingtools.paths.Path;
 import org.opentrackingtools.paths.PathEdge;
-import org.opentrackingtools.util.GeoUtils;
 import org.opentrackingtools.util.PathEdgeNode;
 import org.opentrackingtools.util.PathUtils;
-import org.opentrackingtools.util.StatisticsUtil;
 
 import com.beust.jcommander.internal.Lists;
 import com.google.common.base.Preconditions;
@@ -47,6 +44,7 @@ import com.google.common.collect.Ranges;
 import com.google.common.collect.Sets;
 import com.google.common.primitives.Doubles;
 import com.statslibextensions.statistics.distribution.CountedDataDistribution;
+import com.statslibextensions.util.ExtStatisticsUtils;
 
 /**
  * This updater will itself traverse the graph and perform a heuristic 

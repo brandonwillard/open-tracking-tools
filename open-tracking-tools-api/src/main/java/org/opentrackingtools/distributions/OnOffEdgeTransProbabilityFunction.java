@@ -1,22 +1,15 @@
 package org.opentrackingtools.distributions;
 
 import com.vividsolutions.jts.algorithm.Angle;
-import com.vividsolutions.jts.geom.Coordinate;
-import com.vividsolutions.jts.geom.LineSegment;
-
 import gov.sandia.cognition.math.LogMath;
 import gov.sandia.cognition.statistics.ProbabilityMassFunction;
 import gov.sandia.cognition.util.AbstractCloneableSerializable;
-import gov.sandia.cognition.util.CloneableSerializable;
-
 import java.util.ArrayList;
 import java.util.Random;
 import java.util.Set;
 
 import org.opentrackingtools.graph.InferenceGraphEdge;
 import org.opentrackingtools.graph.InferenceGraphSegment;
-import org.opentrackingtools.model.GpsObservation;
-import org.opentrackingtools.model.VehicleStateDistribution;
 
 /**
  * Evaluates the probabilities of edge transitions.

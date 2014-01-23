@@ -4,7 +4,6 @@ import gov.sandia.cognition.math.MutableDouble;
 import gov.sandia.cognition.math.matrix.Matrix;
 import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.math.matrix.VectorFactory;
-import gov.sandia.cognition.statistics.ClosedFormComputableDistribution;
 import gov.sandia.cognition.statistics.DataDistribution;
 import gov.sandia.cognition.statistics.bayesian.AbstractParticleFilter;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
