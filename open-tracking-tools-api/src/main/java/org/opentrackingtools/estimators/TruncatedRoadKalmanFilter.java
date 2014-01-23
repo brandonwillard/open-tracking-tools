@@ -3,16 +3,24 @@ package org.opentrackingtools.estimators;
 import gov.sandia.cognition.math.matrix.Matrix;
 import gov.sandia.cognition.math.matrix.MatrixFactory;
 import gov.sandia.cognition.math.matrix.Vector;
+import gov.sandia.cognition.math.matrix.VectorFactory;
 import gov.sandia.cognition.math.matrix.decomposition.AbstractSingularValueDecomposition;
+import gov.sandia.cognition.math.matrix.mtj.AbstractMTJMatrix;
+import gov.sandia.cognition.math.matrix.mtj.DenseMatrixFactoryMTJ;
+import gov.sandia.cognition.math.matrix.mtj.DenseVectorFactoryMTJ;
 import gov.sandia.cognition.math.matrix.mtj.decomposition.SingularValueDecompositionMTJ;
 import gov.sandia.cognition.math.signals.LinearDynamicalSystem;
 import gov.sandia.cognition.statistics.bayesian.KalmanFilter;
 import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
+import no.uib.cipr.matrix.DenseMatrix;
+import no.uib.cipr.matrix.UpperSymmBandMatrix;
+
 import org.opentrackingtools.distributions.TruncatedRoadGaussian;
 
 import com.google.common.base.Preconditions;
 import com.statslibextensions.math.matrix.SvdMatrix;
 import com.statslibextensions.math.matrix.decomposition.SimpleSingularValueDecomposition;
+import com.statslibextensions.statistics.bayesian.DlmUtils;
 import com.statslibextensions.statistics.distribution.SvdMultivariateGaussian;
 
 /**
@@ -92,7 +100,16 @@ public class TruncatedRoadKalmanFilter extends KalmanFilter {
   public void
       measure(MultivariateGaussian belief, Vector observation) {
 //    DlmUtils.svdForwardFilter(observation, belief, this);
-    super.measure(belief, observation);
+    DlmUtils.schurForwardFilter(observation, belief, this);
+    // TODO FIXME: hack for a numerical issue
+    if (!belief.getCovariance().isSymmetric()) {
+      UpperSymmBandMatrix symmat = new UpperSymmBandMatrix(
+          ((AbstractMTJMatrix) belief.getCovariance()).getInternalMatrix(), 
+          belief.getInputDimensionality());
+      belief.setCovariance(((DenseMatrixFactoryMTJ) MatrixFactory.getDenseDefault())
+          .createWrapper(new DenseMatrix(symmat)));
+    }
+//    super.measure(belief, observation);
   }
 
   @Override

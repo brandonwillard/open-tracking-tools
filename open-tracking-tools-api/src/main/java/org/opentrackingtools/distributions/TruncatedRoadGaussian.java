@@ -142,6 +142,8 @@ public class TruncatedRoadGaussian extends SvdMultivariateGaussian {
 
   public TruncatedRoadGaussian(MultivariateGaussian other) {
     super(other);
+    // TODO: testing remove
+    Preconditions.checkArgument(other.getCovariance().isSymmetric());
     if (other instanceof TruncatedRoadGaussian) {
       this.unTruncatedDist =
           ((TruncatedRoadGaussian) other).unTruncatedDist;
@@ -153,6 +155,8 @@ public class TruncatedRoadGaussian extends SvdMultivariateGaussian {
   public TruncatedRoadGaussian(MultivariateGaussian other,
     Range<Double> distanceRange) {
     super(other);
+    // TODO: testing remove
+    Preconditions.checkArgument(other.getCovariance().isSymmetric());
     if (other instanceof TruncatedRoadGaussian) {
       this.unTruncatedDist =
           ((TruncatedRoadGaussian) other).unTruncatedDist;
