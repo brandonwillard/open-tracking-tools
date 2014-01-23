@@ -125,7 +125,10 @@
   <repositories>
     <repository>
       <id>brandonwillard-mvn-repo</id>
-      <url>https://api.bitbucket.org/1.0/repositories/brandonwillard/mvn-repo/raw/master</url>
+      <snapshots>
+          <enabled>true</enabled>
+      </snapshots>
+      <url>https://bitbucket.org/brandonwillard/mvn-repo/raw/snapshots</url>
     </repository>
 <!-- todo remove this -->
 <!-- temporary fork of geotools to upgrade hslqdb -->
