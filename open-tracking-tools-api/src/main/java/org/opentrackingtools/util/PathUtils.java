@@ -136,6 +136,28 @@ public class PathUtils {
     return newState;
   }
 
+  /**
+   * In-place conversion of a road-state to a ground-state (off-road).
+   * <br>
+   * The covariance matrix has the option of being "expanded".  That is,
+   * instead of directly using the linear projection on the covariance
+   * matrix, generally resulting in a thin ellipse, the covariance
+   * from the road can be expanded symmetrically, resulting in a
+   * circle.  Since there's no variation perpendicular to the road,
+   * besides GPS error, the ellipse can be infinitely thin.  One
+   * can work with that, add some variance in that direction, or
+   * use this option, and expand evenly in both directions.
+   * <br>
+   * There's an option to allow the projection to occur off of the
+   * actual length of the edge (i.e. on a ray with the same slope
+   * and intercept as the edge).
+   * 
+   * @param belief
+   * @param edge
+   * @param expandCovariance
+   * @param allowExtensions
+   * @param useAbsVelocity
+   */
   public static void convertToGroundBelief(
     MultivariateGaussian belief, PathEdge edge,
     boolean expandCovariance, boolean allowExtensions,
@@ -217,6 +239,16 @@ public class PathUtils {
     belief.setCovariance(projCov);
   }
 
+  /**
+   * In place conversion to road-state belief.
+   * 
+   * @see #getRoadBeliefFromGround(MultivariateGaussian, Geometry, boolean, LineSegment, double, boolean, Vector, Double)
+   * @param belief
+   * @param graphEdge
+   * @param useAbsVelocity
+   * @param sourceLocation
+   * @param timeDiff
+   */
   public static void convertToRoadBelief(MultivariateGaussian belief,
     InferenceGraphEdge graphEdge, boolean useAbsVelocity,
     @Nullable Vector sourceLocation, @Nullable Double timeDiff) {
@@ -229,6 +261,16 @@ public class PathUtils {
     belief.setCovariance(projBelief.getCovariance());
   }
 
+  /**
+   * In place conversion to road-state belief.
+   * 
+   * @see #convertToRoadBelief(MultivariateGaussian, Path, PathEdge, boolean, Vector, Double)
+   * @param belief
+   * @param path
+   * @param useAbsVelocity
+   * @param sourceLocation
+   * @param timeDiff
+   */
   public static void convertToRoadBelief(MultivariateGaussian belief,
     Path path, boolean useAbsVelocity,
     @Nullable Vector sourceLocation, @Nullable Double timeDiff) {
@@ -237,13 +279,9 @@ public class PathUtils {
   }
 
   /**
-   * Returns the projection onto the given path, or, if a non-null edge is
-   * given, onto that edge.
+   * In place conversion to road-state belief.
    * 
-   * <b>Important</b>: See
-   * {@link PathUtils#getRoadProjection(Vector, Path, PathEdge)} about
-   * projection details.
-   * 
+   * @see #getRoadBeliefFromGround(MultivariateGaussian, Geometry, boolean, LineSegment, double, boolean, Vector, Double)
    * @param belief
    * @param path
    * @param pathEdge
@@ -290,6 +328,29 @@ public class PathUtils {
     return adjIndex;
   }
 
+  /**
+   * Converts a 2d (distance, velocity) road/path-state 
+   * to it's equivalent 4d (x,y position & velocity) ground-state.  
+   * <br>
+   * The covariance matrix has the option of being "expanded".  That is,
+   * instead of directly using the linear projection on the covariance
+   * matrix, generally resulting in a thin ellipse, the covariance
+   * from the road can be expanded symmetrically, resulting in a
+   * circle.  Since there's no variation perpendicular to the road,
+   * besides GPS error, the ellipse can be infinitely thin.  One
+   * can work with that, add some variance in that direction, or
+   * use this option, and expand evenly in both directions.
+   * <br>
+   * There's an option to allow the projection to occur off of the
+   * actual length of the edge (i.e. on a ray with the same slope
+   * and intercept as the edge).
+   * 
+   * @param belief
+   * @param edge
+   * @param expandCovariance
+   * @param useAbsVelocity
+   * @return off-road ground-state distribution
+   */
   public static MultivariateGaussian getGroundBeliefFromRoad(
     MultivariateGaussian belief, PathEdge edge,
     boolean expandCovariance, boolean useAbsVelocity) {
@@ -302,6 +363,10 @@ public class PathUtils {
   /**
    * Returns a projection in the path direction (so use this with positive,
    * path-directed vectors).
+   * <br>
+   * There's an option to allow the projection to occur off of the
+   * actual length of the edge (i.e. on a ray with the same slope
+   * and intercept as the edge).
    * 
    * @param locVelocity
    * @param edge
@@ -315,6 +380,15 @@ public class PathUtils {
         Math.abs(edge.getDistToStartOfEdge()));
   }
 
+  /**
+   * Converts a 2d (distance, velocity) road/path-state 
+   * to it's equivalent 4d (x,y position & velocity) ground-state.  
+   * 
+   * @param locVelocity
+   * @param edge
+   * @param useAbsVelocity
+   * @return ground-state vector
+   */
   public static Vector getGroundStateFromRoad(Vector locVelocity,
     PathEdge edge, boolean useAbsVelocity) {
 
@@ -405,6 +479,36 @@ public class PathUtils {
     return result;
   }
 
+  /**
+   * Projects a 4-d (x, y location and velocity) ground-state onto a given road,
+   * producing a road-state.
+   * <br>
+   * The magnitude of the resulting velocity can be computed via projection (i.e.
+   * the speed we were going in 4-d that coincides with the road), 
+   * absolute value (i.e. the result has the same magnitude of velocity as the 
+   * ground-state velocity, in the direction implied by the projection).
+   * <br>
+   * Additionally, the resulting velocity can be adjusted to match the 
+   * additional movement induced by snapping, via the passed 
+   * source location and time elapsed.  This can provide some consistency, 
+   * since a ground-state rarely coincides perfectly with a valid road-state 
+   * (unless the ground-state was produced from one).  However, it implies we
+   * weren't taking the ground-state velocity as truth, since we're willing
+   * to change it to match the projection. 
+   * <br>
+   * XXX: the absolute velocity method has precedence over the
+   * location/time adjustment method.
+   * 
+   * @param state
+   * @param pathGeometry
+   * @param pathIsBackwards
+   * @param edgeSegment
+   * @param edgeDistanceToStartOnPath
+   * @param useAbsVelocity
+   * @param sourceLocation
+   * @param timeDiff
+   * @return motion-state distribution on the road
+   */
   public static MultivariateGaussian getRoadBeliefFromGround(
     MultivariateGaussian belief, Geometry pathGeometry,
     boolean pathIsBackwards, @Nullable LineSegment edgeSegment,
@@ -456,13 +560,11 @@ public class PathUtils {
       final double projVelocity =
           Math.signum(projMean.getElement(1)) * absVelocity;
       projMean.setElement(1, projVelocity);
-    }
-
-    /*
-     * When we're given a source location, we will adjust
-     * the velocity to correspond to the snapped position.
-     */
-    if (sourceLocation != null && timeDiff != null) {
+    } else if (sourceLocation != null && timeDiff != null) {
+      /*
+       * When we're given a source location, we will adjust
+       * the velocity to correspond to the snapped position.
+       */
       final double newVelocity =
           MotionStateEstimatorPredictor.Og
               .times(projPair.stateOnSegment)
@@ -484,6 +586,15 @@ public class PathUtils {
     return result;
   }
 
+  /**
+   * @see #getRoadBeliefFromGround(MultivariateGaussian, Geometry, boolean, LineSegment, double, boolean, Vector, Double)
+   * @param belief
+   * @param edge
+   * @param useAbsVelocity
+   * @param sourceLocation
+   * @param timeDiff
+   * @return
+   */
   public static MultivariateGaussian getRoadBeliefFromGround(
     MultivariateGaussian belief, InferenceGraphEdge edge,
     boolean useAbsVelocity, @Nullable Vector sourceLocation,
@@ -517,6 +628,7 @@ public class PathUtils {
   /**
    * This version simply adds the offset from the passed PathEdge.
    * 
+   * @see #getRoadBeliefFromGround(MultivariateGaussian, Geometry, boolean, LineSegment, double, boolean, Vector, Double)
    * @param belief
    * @param edge
    * @param useAbsVelocity
@@ -649,6 +761,36 @@ public class PathUtils {
     return result;
   }
 
+  /**
+   * Projects a 4-d (x, y location and velocity) ground-state onto a given road,
+   * producing a road-state.
+   * <br>
+   * The magnitude of the resulting velocity can be computed via projection (i.e.
+   * the speed we were going in 4-d that coincides with the road), 
+   * absolute value (i.e. the result has the same magnitude of velocity as the 
+   * ground-state velocity, in the direction implied by the projection).
+   * <br>
+   * Additionally, the resulting velocity can be adjusted to match the 
+   * additional movement induced by snapping, via the passed 
+   * source location and time elapsed.  This can provide some consistency, 
+   * since a ground-state rarely coincides perfectly with a valid road-state 
+   * (unless the ground-state was produced from one).  However, it implies we
+   * weren't taking the ground-state velocity as truth, since we're willing
+   * to change it to match the projection. 
+   * <br>
+   * XXX: the absolute velocity method has precedence over the
+   * location/time adjustment method.
+   * 
+   * @param state
+   * @param pathGeometry
+   * @param pathIsBackwards
+   * @param edgeSegment
+   * @param edgeDistanceToStartOnPath
+   * @param useAbsVelocity
+   * @param sourceLocation
+   * @param timeDiff
+   * @return
+   */
   public static Vector getRoadStateFromGround(Vector state,
     Geometry pathGeometry, boolean pathIsBackwards,
     @Nullable LineSegment edgeSegment,
@@ -681,13 +823,11 @@ public class PathUtils {
       final double projVelocity =
           Math.signum(projMean.getElement(1)) * absVelocity;
       projMean.setElement(1, projVelocity);
-    }
-
-    /*
-     * When we're given a source location, we will adjust
-     * the velocity to correspond to the snapped position.
-     */
-    if (sourceLocation != null && timeDiff != null) {
+    } else if (sourceLocation != null && timeDiff != null) {
+      /*
+       * When we're given a source location, we will adjust
+       * the velocity to correspond to the snapped position.
+       */
       final double newVelocity =
           MotionStateEstimatorPredictor.Og
               .times(projPair.stateOnSegment)
@@ -705,6 +845,17 @@ public class PathUtils {
     return projMean;
   }
 
+  /**
+   * 
+   * @see #getRoadStateFromGround(Vector, Geometry, boolean, LineSegment, double, boolean, Vector, Double)
+   * 
+   * @param state
+   * @param path
+   * @param useAbsVelocity
+   * @param prevState
+   * @param timeDiff
+   * @return
+   */
   public static Vector getRoadStateFromGround(Vector state,
     Path path, boolean useAbsVelocity, Vector prevState,
     Double timeDiff) {
@@ -713,6 +864,36 @@ public class PathUtils {
         useAbsVelocity, prevState, timeDiff);
   }
 
+  /**
+   * Projects a 4-d (x, y location and velocity) ground-state onto a given road,
+   * producing a road-state.
+   * <br>
+   * The magnitude of the resulting velocity can be computed via projection (i.e.
+   * the speed we were going in 4-d that coincides with the road), 
+   * absolute value (i.e. the result has the same magnitude of velocity as the 
+   * ground-state velocity, in the direction implied by the projection).
+   * <br>
+   * Additionally, the resulting velocity can be adjusted to match the 
+   * additional movement induced by snapping, via the passed 
+   * source location and time elapsed.  This can provide some consistency, 
+   * since a ground-state rarely coincides perfectly with a valid road-state 
+   * (unless the ground-state was produced from one).  However, it implies we
+   * weren't taking the ground-state velocity as truth, since we're willing
+   * to change it to match the projection. 
+   * <br>
+   * XXX: the absolute velocity method has precedence over the
+   * location/time adjustment method.
+   * 
+   * @param state
+   * @param pathGeometry
+   * @param pathIsBackwards
+   * @param edgeSegment
+   * @param edgeDistanceToStartOnPath
+   * @param useAbsVelocity
+   * @param sourceLocation
+   * @param timeDiff
+   * @return road state vector
+   */
   public static Vector getRoadStateFromGround(Vector localState,
     PathEdge edge, boolean useAbsVelocity,
     @Nullable Vector sourceLocation, @Nullable Double timeDiff) {
@@ -756,13 +937,11 @@ public class PathUtils {
       final double projVelocity =
           Math.signum(projMean.getElement(1)) * absVelocity;
       projMean.setElement(1, projVelocity);
-    }
-
-    /*
-     * When we're given a source location, we will adjust
-     * the velocity to correspond to the snapped position.
-     */
-    if (sourceLocation != null && timeDiff != null) {
+    } else if (sourceLocation != null && timeDiff != null) {
+      /*
+       * When we're given a source location, we will adjust
+       * the velocity to correspond to the snapped position.
+       */
       final double newVelocity =
           MotionStateEstimatorPredictor.Og
               .times(projPair.stateOnSegment)

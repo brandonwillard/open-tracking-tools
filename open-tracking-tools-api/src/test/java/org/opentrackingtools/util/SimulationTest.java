@@ -42,9 +42,13 @@ import com.statslibextensions.math.matrix.SvdMatrix;
 import com.vividsolutions.jts.geom.Coordinate;
 
 /**
- * Simulate movement on a square grid graph for three
+ * Tests for simulated movement on a square grid graph for three
  * travel scenarios: road only, off-road only, and both.
- * The tests check that the state and observation errors are
+ * Since simulations are the primary automatic means of 
+ * testing for our filters, we need to be sure the simulations
+ * are consistent.
+ * 
+ * Specifically, these tests check that the state and observation errors are
  * within bounds given by their covariances.
  * 
  * @author bwillar0
