@@ -1,8 +1,5 @@
 package org.opentrackingtools.graph;
 
-import gov.sandia.cognition.math.matrix.Vector;
-import gov.sandia.cognition.math.matrix.VectorFactory;
-
 import java.util.Collections;
 import java.util.List;
 

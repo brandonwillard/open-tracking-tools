@@ -11,8 +11,6 @@ import gov.sandia.cognition.util.Pair;
 
 import java.util.Random;
 
-import org.opentrackingtools.util.StatisticsUtil;
-
 import umontreal.iro.lecuyer.probdist.ContinuousDistribution;
 import umontreal.iro.lecuyer.probdist.FoldedNormalDist;
 import umontreal.iro.lecuyer.probdist.HalfNormalDist;
@@ -25,6 +23,7 @@ import com.google.common.collect.Range;
 import com.google.common.collect.Ranges;
 import com.statslibextensions.math.matrix.SvdMatrix;
 import com.statslibextensions.statistics.distribution.SvdMultivariateGaussian;
+import com.statslibextensions.util.ExtStatisticsUtils;
 
 /**
  * 
@@ -114,9 +113,9 @@ public class TruncatedRoadGaussian extends SvdMultivariateGaussian {
     }
 
     final double Zp1 =
-        StatisticsUtil.normalCdf(endDistance, mean, stdDev, true);
+        ExtStatisticsUtils.normalCdf(endDistance, mean, stdDev, true);
     final double Zp2 =
-        StatisticsUtil.normalCdf(startDistance, mean, stdDev, true);
+        ExtStatisticsUtils.normalCdf(startDistance, mean, stdDev, true);
     double logZ = LogMath.subtract(Zp1, Zp2);
     double s2 = 1d;
     if (Double.isNaN(logZ)) {
@@ -364,9 +363,9 @@ public class TruncatedRoadGaussian extends SvdMultivariateGaussian {
       negSum =
           // sign should be negative
           UnivariateGaussian.PDF.logEvaluate(a2, 0d, 1d)
-              + LogMath.subtract(StatisticsUtil.normalCdf((a1 - rho
+              + LogMath.subtract(ExtStatisticsUtils.normalCdf((a1 - rho
                   * a2)
-                  * c, 0d, 1d, true), StatisticsUtil.normalCdf(
+                  * c, 0d, 1d, true), ExtStatisticsUtils.normalCdf(
                   (b1 - rho * a2) * c, 0d, 1d, true));
     }
     //      Ev += -NormalDist.density01(a2)
@@ -375,9 +374,9 @@ public class TruncatedRoadGaussian extends SvdMultivariateGaussian {
     if (!Double.isInfinite(b2)) {
       posSum =
           UnivariateGaussian.PDF.logEvaluate(b2, 0d, 1d)
-              + LogMath.subtract(StatisticsUtil.normalCdf((a1 - rho
+              + LogMath.subtract(ExtStatisticsUtils.normalCdf((a1 - rho
                   * b2)
-                  * c, 0d, 1d, true), StatisticsUtil.normalCdf(
+                  * c, 0d, 1d, true), ExtStatisticsUtils.normalCdf(
                   (b2 - rho * b2) * c, 0d, 1d, true));
     }
     //      Ev += NormalDist.density01(b2)
@@ -390,9 +389,9 @@ public class TruncatedRoadGaussian extends SvdMultivariateGaussian {
               // sign should be negative
               Math.log(rho)
                   + UnivariateGaussian.PDF.logEvaluate(a1, 0d, 1d)
-                  + LogMath.subtract(StatisticsUtil.normalCdf(
+                  + LogMath.subtract(ExtStatisticsUtils.normalCdf(
                       (a2 - rho * b1) * c, 0d, 1d, true),
-                      StatisticsUtil.normalCdf((b2 - rho * b1) * c,
+                      ExtStatisticsUtils.normalCdf((b2 - rho * b1) * c,
                           0d, 1d, true)));
     }
     //      Ev += - rho * NormalDist.density01(a1)
@@ -404,9 +403,9 @@ public class TruncatedRoadGaussian extends SvdMultivariateGaussian {
               posSum,
               Math.log(rho)
                   + UnivariateGaussian.PDF.logEvaluate(b1, 0d, 1d)
-                  + LogMath.subtract(StatisticsUtil.normalCdf(
+                  + LogMath.subtract(ExtStatisticsUtils.normalCdf(
                       (a2 - rho * b1) * c, 0d, 1d, true),
-                      StatisticsUtil.normalCdf((b2 - rho * b1) * c,
+                      ExtStatisticsUtils.normalCdf((b2 - rho * b1) * c,
                           0d, 1d, true)));
     }
     //      Ev += rho * NormalDist.density01(b1)

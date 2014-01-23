@@ -53,6 +53,13 @@ import com.statslibextensions.statistics.distribution.CountedDataDistribution;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.LineString;
 
+/**
+ * Tests the PL filter on a graph consisting of a 100m x 100m
+ * square.
+ * 
+ * @author bwillar0
+ *
+ */
 public class VehicleStatePLFilterSimulationTest {
 
   private static final double[] fourZeros =

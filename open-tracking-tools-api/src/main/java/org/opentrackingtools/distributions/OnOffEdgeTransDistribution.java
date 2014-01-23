@@ -23,13 +23,13 @@ import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.graph.InferenceGraphEdge;
 import org.opentrackingtools.graph.InferenceGraphSegment;
 import org.opentrackingtools.paths.PathState;
-import org.opentrackingtools.util.StatisticsUtil;
 
 import com.beust.jcommander.internal.Sets;
 import com.google.common.base.Predicate;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Iterators;
 import com.google.common.collect.Lists;
+import com.statslibextensions.util.ExtStatisticsUtils;
 
 /**
  * Class representing the transition from one edge to another. For now we use
@@ -301,7 +301,7 @@ public class OnOffEdgeTransDistribution extends
         final Vector currentLocation =
             MotionStateEstimatorPredictor.Og.times(this.motionState);
         final double radius =
-            StatisticsUtil
+            ExtStatisticsUtils
                 .getLargeNormalCovRadius(this.obsCovariance);
         for (final InferenceGraphSegment line : this.graph
             .getNearbyEdges(currentLocation, radius)) {

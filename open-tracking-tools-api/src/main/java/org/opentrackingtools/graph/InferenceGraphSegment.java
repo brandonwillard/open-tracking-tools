@@ -2,8 +2,6 @@ package org.opentrackingtools.graph;
 
 import org.apache.commons.lang3.builder.ToStringBuilder;
 
-import javax.media.jai.IntegerSequence;
-
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ComparisonChain;
 import com.google.common.primitives.Doubles;

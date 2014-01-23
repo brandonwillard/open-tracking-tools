@@ -30,7 +30,6 @@ import org.opentrackingtools.model.VehicleStateDistribution;
 import org.opentrackingtools.paths.Path;
 import org.opentrackingtools.paths.PathEdge;
 import org.opentrackingtools.util.GeoUtils;
-import org.opentrackingtools.util.StatisticsUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,6 +39,7 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.google.common.primitives.Doubles;
+import com.statslibextensions.util.ExtStatisticsUtils;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Envelope;
 import com.vividsolutions.jts.geom.Geometry;
@@ -338,7 +338,7 @@ public class GenericJTSGraph implements InferenceGraph {
         MotionStateEstimatorPredictor.getOg().times(
             initialBelief.getMean());
     final double varDistance =
-        StatisticsUtil.getLargeNormalCovRadius(covar);
+        ExtStatisticsUtils.getLargeNormalCovRadius(covar);
 
     return this.getNearbyEdges(toLoc, varDistance);
   }
@@ -457,7 +457,7 @@ public class GenericJTSGraph implements InferenceGraph {
           motionEstimator.getObservationDistribution(projectedDist,
               PathEdge.nullPathEdge);
       final double beliefDistance =
-          Math.min(StatisticsUtil.getLargeNormalCovRadius(obsDist
+          Math.min(ExtStatisticsUtils.getLargeNormalCovRadius(obsDist
               .getCovariance()),
               GenericJTSGraph.MAX_STATE_SNAP_RADIUS);
 
@@ -476,7 +476,7 @@ public class GenericJTSGraph implements InferenceGraph {
     }
 
     final double obsCovStdDev =
-        StatisticsUtil.getLargeNormalCovRadius(fromState
+        ExtStatisticsUtils.getLargeNormalCovRadius(fromState
             .getObservationCovarianceParam().getValue());
     final double obsStdDevDistance =
         Math.max(GenericJTSGraph.MIN_OBS_SNAP_RADIUS, Math.min(

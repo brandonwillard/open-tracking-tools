@@ -419,10 +419,10 @@ public class VehicleStateBootstrapUpdater<O extends GpsObservation>
      */
     updatedState.getMotionStateParam().setParameterPrior(
         new TruncatedRoadGaussian(newPathState.getEdgeState(),
-            newPathState.isOnRoad() ? motionStatePredictor
+            (SvdMatrix)(newPathState.isOnRoad() ? motionStatePredictor
                 .getRoadFilter().getModelCovariance()
                 : motionStatePredictor.getGroundFilter()
-                    .getModelCovariance()));
+                    .getModelCovariance())));
 
     updatedState.getPathStateParam().setValue(newPathState);
     updatedState.setParentState(previousState);
