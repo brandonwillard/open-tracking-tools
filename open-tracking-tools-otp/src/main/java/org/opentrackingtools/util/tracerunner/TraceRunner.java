@@ -30,6 +30,8 @@ import org.opentrackingtools.util.tracerunner.JsonUtils.VectorDeserializer;
 import org.opentrackingtools.util.tracerunner.JsonUtils.VectorSerializer;
 import org.opentrackingtools.util.tracerunner.JsonUtils.VehicleStateInitialParametersDeserializer;
 import org.opentrackingtools.util.tracerunner.JsonUtils.VehicleStateSerializer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import au.com.bytecode.opencsv.CSVReader;
 
@@ -70,6 +72,10 @@ public class TraceRunner {
   private static final SimpleDateFormat sdf = new SimpleDateFormat(
       "yyyy-MM-dd hh:mm:ss");
 
+  private static final Logger log = LoggerFactory
+      .getLogger(TraceRunner.class);
+
+
   public static void main(String[] args) throws Exception {
 
     /*
@@ -109,8 +115,7 @@ public class TraceRunner {
 
     final VehicleStateInitialParameters ip;
 
-    ip =
-        objectMapper.readValue(configFile,
+    ip = objectMapper.readValue(configFile,
             VehicleStateInitialParameters.class);
 
     System.out.println("Loaded config:" + ip);
@@ -123,6 +128,9 @@ public class TraceRunner {
     //      observations = objectMapper.readValue(
     //          configFile, new TypeReference<List<GpsObservation>>() {});
     //      
+
+    final InferenceGraph graph =
+        new OtpGraph(config.getOtpGraphLocation());
 
     // skip header
     gpsReader.readNext();
@@ -139,6 +147,12 @@ public class TraceRunner {
       final Coordinate latLng =
           new Coordinate(Double.parseDouble(line[4]),
               Double.parseDouble(line[5]));
+
+      if (!graph.getGPSGraphExtent().contains(latLng)) {
+        log.warn("Coordinate doesn't exist within extent of OTP graph:" + latLng 
+            + " in " + graph.getGPSGraphExtent());
+      }
+      
       final org.opentrackingtools.model.ProjectedCoordinate obsPoint =
           GeoUtils.convertToEuclidean(latLng);
 
@@ -161,8 +175,6 @@ public class TraceRunner {
     /*
      * Create the filter
      */
-    final InferenceGraph graph =
-        new OtpGraph(config.getOtpGraphLocation());
     final GpsObservation initialObs =
         Iterables.getFirst(observations, null);
 

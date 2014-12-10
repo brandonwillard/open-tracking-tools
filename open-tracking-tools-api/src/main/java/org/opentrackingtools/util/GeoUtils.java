@@ -8,6 +8,7 @@ import java.util.List;
 import org.geotools.geometry.jts.JTS;
 import org.geotools.referencing.CRS;
 import org.opengis.referencing.FactoryException;
+import org.opengis.referencing.NoSuchAuthorityCodeException;
 import org.opengis.referencing.NoSuchIdentifierException;
 import org.opengis.referencing.crs.CRSAuthorityFactory;
 import org.opengis.referencing.crs.CoordinateReferenceSystem;
@@ -119,15 +120,41 @@ public class GeoUtils {
     }
     return results;
   }
+  
+  private static final CRSAuthorityFactory crsAuthorityFactory = CRS.getAuthorityFactory(false);
+  private static GeographicCRS geoCRS;
+  
+  static {
+    try {
+      geoCRS = crsAuthorityFactory.createGeographicCRS("EPSG:4326");
+    } catch (NoSuchAuthorityCodeException e) {
+      e.printStackTrace();
+    } catch (FactoryException e) {
+      e.printStackTrace();
+    }
+  }
+  
 
+  /**
+   * Get the geographic CRS that this code assumes.
+   * You'll need this to match-up geo CRS between systems, so that 
+   * you can afterward properly convert to euclidean, if desired.
+   * @return
+   */
+  public static GeographicCRS getGeographicCRS(){
+    return geoCRS;
+  }
+
+  /**
+   * Get the transform to a local euclidean projection for the
+   * area that contains the given reference (lat, lon) coordinate. 
+   * 
+   * @param refLatLon
+   * @return
+   */
   public static MathTransform getTransform(Coordinate refLatLon) {
 
     try {
-      final CRSAuthorityFactory crsAuthorityFactory =
-          CRS.getAuthorityFactory(false);
-
-      final GeographicCRS geoCRS =
-          crsAuthorityFactory.createGeographicCRS("EPSG:4326");
 
       final CoordinateReferenceSystem dataCRS =
           crsAuthorityFactory.createCoordinateReferenceSystem("EPSG:"
@@ -206,11 +233,11 @@ public class GeoUtils {
   /**
    * Finds a UTM projection and applies it to all coordinates of the given geom.
    * 
+   * TODO FIXME XXX: what about when the geoms cross zones?
+   * 
    * @param orig
    * @return
    */
-
-  // TODO FIXME XXX: what about when the geoms cross zones?
   public static Geometry projectLonLatGeom(Geometry orig) {
     final Geometry geom = (Geometry) orig.clone();
     geom.apply(new CoordinateFilter() {

@@ -56,8 +56,28 @@ public class ReprojectCoords implements GraphBuilder {
 
     // operate on the original graph only
     graph = graph.getService(BaseGraph.class).getBaseGraph();
-    graph
-        .setVertexComparatorFactory(new SimpleVertexComparatorFactory());
+    graph.setVertexComparatorFactory(new SimpleVertexComparatorFactory());
+
+    // OTP's CRS might be different even in terms of lat/lon ordering, so
+    // convert that first, to be safe.
+    MathTransform ottTransform = null;
+    Coordinate refCoord = new Coordinate();
+    try {
+      final CRSAuthorityFactory otpCrsAuthorityFactory =
+          CRS.getAuthorityFactory(true);
+      final GeographicCRS otpGeoCRS =
+          otpCrsAuthorityFactory.createGeographicCRS("EPSG:4326");
+      final GeographicCRS ottGeoCRS = GeoUtils.getGeographicCRS();
+      ottTransform =
+          CRS.findMathTransform(otpGeoCRS, ottGeoCRS);
+      Coordinate centre = graph.getExtent().centre();
+      JTS.transform(centre, refCoord, ottTransform);
+    } catch (final Exception e) {
+      e.printStackTrace();
+      throw new RuntimeException("Couldn't build necessary coordinate transform!");
+    }
+
+    final MathTransform toEuclidTrans = GeoUtils.getTransform(refCoord);
 
     try {
       for (final Vertex v : graph.getVertices()) {
@@ -76,13 +96,14 @@ public class ReprojectCoords implements GraphBuilder {
             toRemove.add(e);
             continue;
           }
-          final Geometry geom =
-              JTS.transform(orig, this.getTransform(vertexCoord));
+          final Geometry ottGeom = JTS.transform(orig, ottTransform);
+          final Geometry geom = JTS.transform(ottGeom, toEuclidTrans);
 
           /*
-           * FYI: the user data of the projected geom has the original geom.
+           * FYI: the user data of the projected geom object has the original 
+           * (although possible coordinate changed) geom.
            */
-          geom.setUserData(orig);
+          geom.setUserData(ottGeom);
 
           geomfield.set(e, geom);
         }
@@ -110,38 +131,38 @@ public class ReprojectCoords implements GraphBuilder {
     return Collections.emptyList();
   }
 
-  private MathTransform getTransform(Coordinate refLonLat) {
-
-    try {
-      final CRSAuthorityFactory crsAuthorityFactory =
-          CRS.getAuthorityFactory(true);
-
-      final GeographicCRS geoCRS =
-          crsAuthorityFactory.createGeographicCRS("EPSG:4326");
-
-      int epsg_code = 32600;
-      // add 100 for all zones in southern hemisphere
-      if (refLonLat.y < 0) {
-        epsg_code += 100;
-      }
-      // finally, add zone number to code
-      epsg_code += GeoUtils.getUTMZoneForLongitude(refLonLat.x);
-
-      final CoordinateReferenceSystem dataCRS =
-          crsAuthorityFactory.createCoordinateReferenceSystem("EPSG:"
-              + epsg_code);
-
-      final MathTransform transform =
-          CRS.findMathTransform(geoCRS, dataCRS);
-      return transform;
-    } catch (final NoSuchIdentifierException e) {
-      e.printStackTrace();
-    } catch (final FactoryException e) {
-      e.printStackTrace();
-    }
-
-    return null;
-  }
+//  private MathTransform getTransform(Coordinate refLonLat) {
+//
+//    try {
+//      final CRSAuthorityFactory crsAuthorityFactory =
+//          CRS.getAuthorityFactory(true);
+//
+//      final GeographicCRS geoCRS =
+//          crsAuthorityFactory.createGeographicCRS("EPSG:4326");
+//
+//      int epsg_code = 32600;
+//      // add 100 for all zones in southern hemisphere
+//      if (refLonLat.y < 0) {
+//        epsg_code += 100;
+//      }
+//      // finally, add zone number to code
+//      epsg_code += GeoUtils.getUTMZoneForLongitude(refLonLat.x);
+//
+//      final CoordinateReferenceSystem dataCRS =
+//          crsAuthorityFactory.createCoordinateReferenceSystem("EPSG:"
+//              + epsg_code);
+//
+//      final MathTransform transform =
+//          CRS.findMathTransform(geoCRS, dataCRS);
+//      return transform;
+//    } catch (final NoSuchIdentifierException e) {
+//      e.printStackTrace();
+//    } catch (final FactoryException e) {
+//      e.printStackTrace();
+//    }
+//
+//    return null;
+//  }
 
   @Override
   public List<String> provides() {

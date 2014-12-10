@@ -67,12 +67,12 @@ public class OnOffEdgeTransPriorDistribution extends
    * Distribution corresponding to edge-movement -> free-movement and
    * edge-movement -> edge-movement
    */
-  protected DirichletDistribution edgeMotionTransProbPrior;
+  protected TwoDDirichletDistribution edgeMotionTransProbPrior;
   /*
    * Distribution corresponding to free-movement -> free-movement and
    * free-movement -> edge-movement
    */
-  protected DirichletDistribution freeMotionTransProbPrior;
+  protected TwoDDirichletDistribution freeMotionTransProbPrior;
 
   public OnOffEdgeTransPriorDistribution(
     OnOffEdgeTransPriorDistribution onOffEdgeTransPriorDistribution) {
@@ -93,9 +93,9 @@ public class OnOffEdgeTransPriorDistribution extends
    */
   public OnOffEdgeTransPriorDistribution(
     Vector edgeMotionPriorParams, Vector freeMotionPriorParams) {
-    this.setFreeMotionTransProbPrior(new DirichletDistribution(
+    this.setFreeMotionTransProbPrior(new TwoDDirichletDistribution(
         freeMotionPriorParams));
-    this.setEdgeMotionTransProbPrior(new DirichletDistribution(
+    this.setEdgeMotionTransProbPrior(new TwoDDirichletDistribution(
         edgeMotionPriorParams));
   }
 
@@ -167,11 +167,11 @@ public class OnOffEdgeTransPriorDistribution extends
     return true;
   }
 
-  public DirichletDistribution getEdgeMotionTransProbPrior() {
+  public TwoDDirichletDistribution getEdgeMotionTransProbPrior() {
     return this.edgeMotionTransProbPrior;
   }
 
-  public DirichletDistribution getFreeMotionTransProbPrior() {
+  public TwoDDirichletDistribution getFreeMotionTransProbPrior() {
     return this.freeMotionTransProbPrior;
   }
 
@@ -230,12 +230,12 @@ public class OnOffEdgeTransPriorDistribution extends
   }
 
   public void setEdgeMotionTransProbPrior(
-    DirichletDistribution edgeMotionTransProbPrior) {
+    TwoDDirichletDistribution edgeMotionTransProbPrior) {
     this.edgeMotionTransProbPrior = edgeMotionTransProbPrior;
   }
 
   public void setFreeMotionTransProbPrior(
-    DirichletDistribution freeMotionTransProbPrior) {
+    TwoDDirichletDistribution freeMotionTransProbPrior) {
     this.freeMotionTransProbPrior = freeMotionTransProbPrior;
   }
 

@@ -122,6 +122,7 @@ public class VehicleStateDistribution<Observation extends GpsObservation>
           new OnOffEdgeTransPriorDistribution(
               parameters.getOnTransitionProbsPrior(),
               parameters.getOffTransitionProbsPrior());
+      
       final TransitionProbMatrix transitionProbMatrix =
           new TransitionProbMatrix(initialPriorTransDist
               .getEdgeMotionTransProbPrior().getMean(),

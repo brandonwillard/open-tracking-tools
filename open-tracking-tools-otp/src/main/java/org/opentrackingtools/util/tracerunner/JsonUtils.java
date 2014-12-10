@@ -259,7 +259,10 @@ public class JsonUtils {
             new Function<JsonNode, Double>() {
               @Override
               public Double apply(JsonNode input) {
-                return input.getDoubleValue();
+                Double res = input.getDoubleValue();
+                if (res.isNaN())
+                  throw new RuntimeException();
+                return res;
               }
             });
     Iterators.addAll(resList, iterator);
