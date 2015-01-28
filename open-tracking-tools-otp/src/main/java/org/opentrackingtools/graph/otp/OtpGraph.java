@@ -3,20 +3,32 @@ package org.opentrackingtools.graph.otp;
 import gov.sandia.cognition.math.matrix.Matrix;
 import gov.sandia.cognition.math.matrix.Vector;
 import gov.sandia.cognition.statistics.DistributionWithMean;
+import gov.sandia.cognition.statistics.distribution.MultivariateGaussian;
 
 import java.util.Collection;
+import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import com.vividsolutions.jts.geom.LineString;
+
+import org.geotools.graph.structure.DirectedEdge;
+import org.geotools.graph.structure.DirectedNode;
+import org.geotools.graph.structure.Node;
+import org.geotools.graph.traverse.standard.AStarIterator.AStarFunctions;
 import org.netlib.blas.BLAS;
 import org.opentrackingtools.estimators.MotionStateEstimatorPredictor;
+import org.opentrackingtools.graph.CustomAStarShortestPathFinder;
 import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.graph.InferenceGraphEdge;
 import org.opentrackingtools.graph.InferenceGraphSegment;
 import org.opentrackingtools.model.GpsObservation;
 import org.opentrackingtools.model.VehicleStateDistribution;
 import org.opentrackingtools.paths.Path;
+import org.opentrackingtools.paths.PathEdge;
+import org.opentrackingtools.paths.otp.MultiDestinationAStar;
 import org.opentrackingtools.util.GeoUtils;
 import org.opentripplanner.routing.algorithm.GenericAStar;
 import org.opentripplanner.routing.core.RoutingRequest;
@@ -52,6 +64,8 @@ import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.index.strtree.STRtree;
 
 public class OtpGraph implements InferenceGraph {
+
+
 
   public static class VertexPair {
 
@@ -124,6 +138,8 @@ public class OtpGraph implements InferenceGraph {
 
   private static final Logger log = LoggerFactory
       .getLogger(OtpGraph.class);
+
+  public static double MIN_OBS_SNAP_RADIUS = 10d;
 
   private static final double MAX_DISTANCE_SPEED = 53.6448; // ~120 mph
 
@@ -374,29 +390,34 @@ public class OtpGraph implements InferenceGraph {
   //    return paths;
   //  }
   //
-  //  private Path copyAStarResults(GraphPath gpath,
-  //    Edge startEdge, boolean isReverse) {
-  //    final double direction = isReverse ? -1d : 1d;
-  //    double pathDist = 0d;
-  //    final List<PathEdge> path = Lists.newArrayList();
-  //    if (gpath.edges.isEmpty()) {
-  //      path.add(SimplePathEdge.getEdge(
-  //          this.getInferenceGraphEdge(startEdge), 0d, isReverse));
-  //    } else {
-  //      for (final Edge edge : isReverse ? Lists
-  //          .reverse(gpath.edges) : gpath.edges) {
-  //        final PathEdge pathEdge =
-  //            getValidPathEdge(edge, pathDist, direction,
-  //                path);
-  //        pathDist += direction * pathEdge.getLength();
-  //        path.add(pathEdge);
-  //      }
-  //    }
-  //    if (!path.isEmpty())
-  //      return OtpPath.getPath(path, isReverse);
-  //    else
-  //      return null;
-  //  }
+  private Path copyAStarResults(GraphPath gpath,
+    InferenceGraphEdge startEdge, boolean isReverse) {
+    final double direction = isReverse ? -1d : 1d;
+    double pathDist = 0d;
+    final List<PathEdge> path = Lists.newArrayList();
+    if (gpath.edges.isEmpty()) {
+      for (final InferenceGraphSegment segment : 
+        startEdge.getSegments()
+        // TODO: use starting length!!!
+        //startEdge.getSegments(startEdge, lengthEnd)()
+        ) {
+        path.add(new PathEdge(segment, 0d, isReverse));
+      }
+    } else {
+      for (final Edge edge : isReverse ? Lists
+          .reverse(gpath.edges) : gpath.edges) {
+        final List<PathEdge> pathEdges =
+            getValidPathEdge(edge, pathDist, direction,
+                path);
+        pathDist += direction * Iterables.getLast(pathEdges).getLength();
+        path.addAll(pathEdges);
+      }
+    }
+    if (!path.isEmpty())
+      return new Path(path, isReverse);
+    else
+      return null;
+  }
 
   private final STRtree turnEdgeIndex = new STRtree();
 
@@ -412,6 +433,8 @@ public class OtpGraph implements InferenceGraph {
   private final StreetVertexIndexServiceImpl turnIndexService;
 
   private final STRtree turnVertexIndex = new STRtree();
+
+  private StrictLineStringGraphGenerator geotoolsGraphGenerator;
 
   public OtpGraph(String path) {
     OtpGraph.log.info("Loading OTP graph...");
@@ -447,8 +470,37 @@ public class OtpGraph implements InferenceGraph {
         this.geomBaseEdgeMap);
     this.createIndices(this.turnGraph, this.turnEdgeIndex,
         this.turnVertexIndex, this.geomTurnEdgeMap);
+    this.createGeoToolsGraph(this.baseGraph);
 
     OtpGraph.log.info("Graph loaded..");
+  }
+  
+  
+  /**
+   * TODO: create the geotools graph as an object during the OTP graph build?
+   * 
+   * @param graph
+   */
+  private void createGeoToolsGraph(Graph graph) {
+    this.geotoolsGraphGenerator = new StrictLineStringGraphGenerator();
+    for (final Vertex v : graph.getVertices()) {
+      for (final Edge e : v.getOutgoing()) {
+        final Geometry geometry = e.getGeometry();
+        if (geometry != null) {
+          final ConstLineString constLine =
+              new ConstLineString((LineString) geometry);
+          constLine.setUserData(e);
+          this.geotoolsGraphGenerator.add(constLine);
+          // TODO reverse shouldn't make a difference
+          // if topological equality is used.  Is that
+          // what's happening here?
+          final ConstLineString constLineRev =
+              new ConstLineString((LineString) geometry.reverse());
+          constLineRev.setUserData(e);
+          this.geotoolsGraphGenerator.add(constLineRev);
+        }
+      }
+    }
   }
 
   private void createIndices(Graph graph, STRtree edgeIndex,
@@ -551,6 +603,9 @@ public class OtpGraph implements InferenceGraph {
     return result;
   }
 
+  Map<org.geotools.graph.structure.Edge, InferenceGraphEdge> edgeToInfEdge = Maps.newHashMap();
+  Map<String, InferenceGraphEdge> idToInfEdge = Maps.newHashMap();
+
   public InferenceGraphEdge getInferenceGraphEdge(Edge edge) {
     edge = this.getBaseEdge(edge);
 
@@ -569,42 +624,56 @@ public class OtpGraph implements InferenceGraph {
     return edgeInfo;
   }
 
-  //  private PathEdge getValidPathEdge(Edge originalEdge,
-  //    double pathDist, double direction, List<PathEdge> path) {
-  //    final Edge edge = getBaseEdge(originalEdge);
-  //    if (OtpGraph.isStreetEdge(edge)
-  //        && edge.getGeometry() != null
-  //        && edge.getDistance() > 0d
-  //        && baseGraph.getIdForEdge(edge) != null
-  //        && !edge.equals(Iterables.getLast(path, null))) {
-  //
-  //      return new PathEdge(this.getInferenceGraphEdge(edge),
-  //          pathDist, direction < 0d);
-  //
-  //    } else if (edge.getFromVertex() != null
-  //        && !edge.getFromVertex().getOutgoingStreetEdges()
-  //            .isEmpty()) {
-  //
-  //      for (final Edge streetEdge : edge.getFromVertex()
-  //          .getOutgoingStreetEdges()) {
-  //
-  //        if (streetEdge.getGeometry() != null
-  //            && !streetEdge.equals(Iterables.getLast(path,
-  //                null)) && streetEdge.getDistance() > 0d
-  //            && baseGraph.getIdForEdge(streetEdge) != null) {
-  //
-  //          /*
-  //           * Find a valid street edge to work with
-  //           */
-  //          return new PathEdge(
-  //              this.getInferenceGraphEdge(streetEdge), pathDist,
-  //              direction < 0d);
-  //        }
-  //      }
-  //    }
-  //
-  //    return null;
-  //  }
+    private List<PathEdge> getValidPathEdge(Edge originalEdge,
+      double pathDist, double direction, List<PathEdge> path) {
+      final Edge edge = getBaseEdge(originalEdge);
+      if (OtpGraph.isStreetEdge(edge)
+          && edge.getGeometry() != null
+          && edge.getDistance() > 0d
+          && baseGraph.getIdForEdge(edge) != null
+          && !edge.equals(Iterables.getLast(path, null))) {
+  
+        List<PathEdge> pathEdges = Lists.newArrayList();
+        double curDist = pathDist;
+        for (final InferenceGraphSegment segment : 
+          // FIXME starting at 0 isn't right for the
+          // first edge, no?
+          this.getInferenceGraphEdge(edge).getSegments(
+              0d, Double.POSITIVE_INFINITY)) {
+          pathEdges.add(new PathEdge(segment, curDist, direction < 0d));
+          curDist += direction * segment.getLength();
+        }
+        return pathEdges;
+      } else if (edge.getFromVertex() != null
+          && !edge.getFromVertex().getOutgoingStreetEdges()
+              .isEmpty()) {
+  
+        for (final Edge streetEdge : edge.getFromVertex()
+            .getOutgoingStreetEdges()) {
+  
+          if (streetEdge.getGeometry() != null
+              && !streetEdge.equals(Iterables.getLast(path,
+                  null)) && streetEdge.getDistance() > 0d
+              && baseGraph.getIdForEdge(streetEdge) != null) {
+  
+            /*
+             * Find a valid street edge(s) to work with
+             */
+            List<PathEdge> pathEdges = Lists.newArrayList();
+            double curDist = pathDist;
+            for (final InferenceGraphSegment segment : 
+              this.getInferenceGraphEdge(streetEdge).getSegments(
+                  pathDist, Double.POSITIVE_INFINITY)) {
+              new PathEdge(segment, curDist, direction < 0d);
+              curDist += direction * segment.getLength();
+            }
+            return pathEdges;
+          }
+        }
+      }
+  
+      return Collections.EMPTY_LIST;
+    }
 
   @Override
   public InferenceGraphEdge getInferenceGraphEdge(String strId) {
@@ -788,9 +857,206 @@ public class OtpGraph implements InferenceGraph {
   }
 
   @Override
-  public Set<Path> getPaths(VehicleStateDistribution fromState,
-    GpsObservation obs) {
-    return null;
+  public Set<Path> getPaths(
+      final VehicleStateDistribution<? extends GpsObservation> fromState, 
+      GpsObservation obs) {
+    final Set<Path> paths = Sets.newHashSet();
+
+    final Coordinate toCoord = obs.getObsProjected();
+    final MotionStateEstimatorPredictor motionEstimator =
+        Preconditions.checkNotNull(fromState
+            .getMotionStateEstimatorPredictor());
+    final MultivariateGaussian projectedDist =
+        motionEstimator.createPredictiveDistribution(fromState
+            .getMotionStateParam().getParameterPrior());
+    final double obsCovStdDev =
+        ExtStatisticsUtils.getLargeNormalCovRadius(fromState
+            .getObservationCovarianceParam().getValue());
+    final double obsStdDevDistance =
+        Math.max(MIN_OBS_SNAP_RADIUS, Math.min(
+            obsCovStdDev, MAX_OBS_SNAP_RADIUS));
+    final double projectedDistance = projectedDist.getMean().minus(
+        fromState.getMotionStateParam().getParameterPrior().getMean()).norm2Squared();
+    final double movedDistance = projectedDistance + obsStdDevDistance;
+
+    final PathEdge currentPathEdge =
+        fromState.getPathStateParam().getValue().getEdge();
+    final InferenceGraphEdge currentEdge =
+        currentPathEdge.getInferenceGraphSegment();
+
+    final Set<Edge> startEdges = Sets.newHashSet();
+
+    if (!currentEdge.isNullEdge()) {
+      /*
+       * Always consider not moving
+       */
+      final Path path =
+          new Path(Collections.singletonList(new PathEdge(
+              currentPathEdge.getInferenceGraphSegment(),
+              0d, false)), false);
+      paths.add(path);
+
+      final PlainStreetEdgeWithOSMData edge =
+          (PlainStreetEdgeWithOSMData) currentEdge
+              .getBackingEdge();
+      /*
+        * Make sure we get the non-base edges corresponding to our
+        * current edge and the reverse.
+        */
+      final Collection<Edge> turnEdges =
+          geomTurnEdgeMap .get(edge.getTurnVertex().geometry);
+      // XXX This violates all directionality and graph structure.
+      startEdges.addAll(turnEdges);
+    } else {
+
+      /*
+       * Always consider staying off-road
+       */
+      paths.add(Path.nullPath);
+
+      final MultivariateGaussian obsDist =
+          motionEstimator.getObservationDistribution(projectedDist,
+              PathEdge.nullPathEdge);
+      final double beliefDistance =
+          Math.min(ExtStatisticsUtils.getLargeNormalCovRadius(obsDist
+              .getCovariance()),
+              MAX_STATE_SNAP_RADIUS);
+
+      /*
+       * We're short-circuiting the "off->on then move along"
+       * path finding.  It causes problems. 
+       */
+      for (final InferenceGraphSegment segment : this.getNearbyEdges(
+          obsDist.getMean(), beliefDistance)) {
+        final Path path =
+            new Path(Collections.singletonList(new PathEdge(segment,
+                0d, false)), false);
+        paths.add(path);
+      }
+
+      return paths;
+    }
+    
+    /*
+     * If no distance is moved (considering error, too)
+     * then quit.
+     * XXX: impossible?
+     */
+    if (Math.abs(movedDistance) < 1e-5d) {
+      return paths;
+    }
+
+    paths.add(Path.nullPath);
+
+    final Collection<InferenceGraphSegment> endLines =
+        this.getNearbyEdges(toCoord, obsStdDevDistance);
+    final Set<Edge> endEdges = Sets.newHashSet();
+    for (final InferenceGraphSegment endSeg : endLines) {
+      final PlainStreetEdgeWithOSMData endEdge =
+          ((PlainStreetEdgeWithOSMData) endSeg.getBackingEdge());
+      final Collection<Edge> turnEdges =
+          geomTurnEdgeMap
+              .get(endEdge.getTurnVertex().geometry);
+      endEdges.addAll(turnEdges);
+    }
+
+    if (endLines.isEmpty()) {
+      return paths;
+    }
+
+    for (final Edge startEdge : startEdges) {
+      final MultiDestinationAStar forwardAStar =
+          new MultiDestinationAStar(turnGraph, endEdges,
+              toCoord, obsStdDevDistance, startEdge,
+              movedDistance);
+              //projectedDist.getMean().norm2Squared());
+
+      final ShortestPathTree spt1 =
+          forwardAStar.getSPT(false);
+
+      for (final Edge endEdge : endEdges) {
+        final GraphPath forwardPath =
+            spt1.getPath(endEdge.getToVertex(), false);
+        if (forwardPath != null) {
+          /*
+            * Just to be safe we check the end location's
+            * distance to the obsevation.
+            */
+          final Path forwardResult =
+              copyAStarResults(forwardPath,
+                  currentEdge,
+                  //getBaseEdge(startEdge), 
+                  false);
+          
+          if (forwardResult != null) {
+            paths.add(forwardResult);
+          }
+        }
+      }
+    }
+
+    return paths;
+  }
+
+  private InferenceGraphEdge getInferenceGraphEdge(org.geotools.graph.structure.Edge edge) {
+    InferenceGraphEdge infEdge = this.edgeToInfEdge.get(edge);
+
+    if (infEdge == null) {
+      final Geometry edgeGeom =
+          Preconditions.checkNotNull((Geometry) edge.getObject());
+      final int id = edge.getID();
+      infEdge = new InferenceGraphEdge(edgeGeom, edge, id, this);
+
+      this.edgeToInfEdge.put(edge, infEdge);
+      this.idToInfEdge.put(infEdge.getEdgeId(), infEdge);
+    }
+
+    return infEdge;
+  }
+
+  @SuppressWarnings("unchecked")
+  protected Path getPathFromGraph(org.geotools.graph.path.Path path,
+    final DirectedEdge bStartEdge,
+    InferenceGraphSegment startSegment,
+    InferenceGraphSegment endSegment, Set<Node> reachedEndNodes) {
+    final List<PathEdge> pathEdges = Lists.newArrayList();
+
+    /*
+     * Get only the segments forward from the current segment on the current edge
+     */
+    double distance = 0d;
+    for (final InferenceGraphSegment segment : startSegment.getSegments(startSegment.getStartDistance(),
+            Double.POSITIVE_INFINITY)) {
+      pathEdges.add(new PathEdge(segment, distance, false));
+      distance += segment.getLine().getLength();
+    }
+
+    final Iterator<DirectedNode> rNodes = path.riterator();
+    DirectedNode prevNode = rNodes.next();
+    while (rNodes.hasNext()) {
+      final DirectedNode node = rNodes.next();
+      final org.geotools.graph.structure.Edge outEdge =
+          Preconditions.checkNotNull(prevNode.getOutEdge(node));
+      final InferenceGraphEdge infEdge =
+          this.getInferenceGraphEdge(outEdge);
+      for (final InferenceGraphSegment segment : infEdge
+          .getSegments()) {
+
+        Preconditions.checkState(segment.getLine().p0.equals(Iterables
+            .getLast(pathEdges).getLine().p1));
+
+        pathEdges.add(new PathEdge(segment, distance, false));
+        distance += segment.getLine().getLength();
+      }
+      reachedEndNodes.add(node);
+      prevNode = node;
+    }
+    if (!pathEdges.isEmpty()) {
+      final Path newPath = new Path(pathEdges, false);
+      return newPath;
+    } else {
+      return null;
+    }
   }
 
   @Override

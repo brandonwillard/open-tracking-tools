@@ -236,7 +236,7 @@ public class VehicleStatePLUpdater<O extends GpsObservation, G extends Inference
         this.inferenceGraph.getPaths(predictedState,
             predictedState.getObservation());
 
-    Preconditions.checkState(paths.contains(Path.nullPath));
+    //Preconditions.checkState(paths.contains(Path.nullPath));
 
     final List<PathStateDistribution> distributions =
         Lists.newArrayList();

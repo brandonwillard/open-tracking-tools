@@ -21,6 +21,7 @@ import org.opentrackingtools.model.VehicleStateDistribution.VehicleStateDistribu
 import org.opentrackingtools.paths.Path;
 import org.opentrackingtools.paths.PathEdge;
 import org.testng.annotations.Test;
+import org.testng.collections.Sets;
 
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
@@ -54,7 +55,7 @@ public class GenericJTSGraphTest {
             new Coordinate[] { new Coordinate(1, 0),
                 new Coordinate(1, 1) }));
 
-    final GenericJTSGraph graph =
+    final InferenceGraph graph =
         new GenericJTSGraph(graphEdges, false);
 
     final Set<LineString> lineStringsToFind =
@@ -98,13 +99,13 @@ public class GenericJTSGraphTest {
 
     final PathEdge startPathEdge = new PathEdge(startLine, 0d, false);
 
-    final VehicleStateDistributionFactory<GpsObservation, GenericJTSGraph> factory =
-        new VehicleStateDistribution.VehicleStateDistributionFactory<GpsObservation, GenericJTSGraph>();
+    final VehicleStateDistributionFactory<GpsObservation, InferenceGraph> factory =
+        new VehicleStateDistribution.VehicleStateDistributionFactory<GpsObservation, InferenceGraph>();
     final VehicleStateDistribution<GpsObservation> currentState =
         factory.createInitialVehicleState(parameters, graph, obs,
             rng, startPathEdge);
 
-    final Set<Path> paths = graph.getPaths(currentState, obs);
+    final Set<Path> paths = Sets.newHashSet(graph.getPaths(currentState, obs));
 
     assert (this.pathsContainLineStrings(paths, lineStringsToFind));
   }
@@ -138,7 +139,7 @@ public class GenericJTSGraphTest {
             new Coordinate[] { new Coordinate(1, 1),
                 new Coordinate(1, 0) }));
 
-    final GenericJTSGraph graph =
+    final InferenceGraph graph =
         new GenericJTSGraph(graphEdges, false);
 
     final Set<LineString> lineStringsToFind =
@@ -198,13 +199,13 @@ public class GenericJTSGraphTest {
 
     final PathEdge startPathEdge = new PathEdge(startLine, 0d, false);
 
-    final VehicleStateDistributionFactory<GpsObservation, GenericJTSGraph> factory =
-        new VehicleStateDistribution.VehicleStateDistributionFactory<GpsObservation, GenericJTSGraph>();
+    final VehicleStateDistributionFactory<GpsObservation, InferenceGraph> factory =
+        new VehicleStateDistribution.VehicleStateDistributionFactory<GpsObservation, InferenceGraph>();
     final VehicleStateDistribution<GpsObservation> currentState =
         factory.createInitialVehicleState(parameters, graph, obs,
             rng, startPathEdge);
 
-    final Set<Path> paths = graph.getPaths(currentState, obs);
+    final Set<Path> paths = Sets.newHashSet(graph.getPaths(currentState, obs));
 
     assert (this.pathsContainLineStrings(paths, lineStringsToFind));
   }

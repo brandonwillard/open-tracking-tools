@@ -158,12 +158,19 @@ public class Path extends AbstractCloneableSerializable implements
 
   public PathEdge getEdgeForDistance(double distance, boolean clamp) {
     final double direction = Math.signum(this.totalPathDistance);
-    if (direction * distance - Math.abs(this.totalPathDistance) > MotionStateEstimatorPredictor
-        .getEdgeLengthErrorTolerance()) {
-      return clamp ? Iterables.getLast(this.edges) : null;
-    } else if (direction * distance < 0d) {
-      return clamp ? Iterables.getFirst(this.edges, null) : null;
-    }
+    final double distDiff = direction * distance - Math.abs(this.totalPathDistance);
+    if (clamp) {
+      if (distDiff > MotionStateEstimatorPredictor.getEdgeLengthErrorTolerance()
+          || Math.abs(distDiff) <= 1e-5) {
+        return Iterables.getLast(this.edges);
+      } else if (direction * distance < 0d) {
+        return Iterables.getFirst(this.edges, null);
+      }
+    } 
+
+//    if (Math.abs(distDiff) <= 1e-5) {
+//      return Iterables.getLast(this.edges);
+//    }
 
     for (final PathEdge edge : Lists.reverse(this.edges)) {
       if (edge.isOnEdge(distance)) {

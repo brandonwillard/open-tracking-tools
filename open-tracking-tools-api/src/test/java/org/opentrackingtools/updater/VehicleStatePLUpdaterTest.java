@@ -11,6 +11,7 @@ import org.geotools.geometry.jts.JTSFactoryFinder;
 import org.opentrackingtools.VehicleStateInitialParameters;
 import org.opentrackingtools.distributions.PathStateMixtureDensityModel;
 import org.opentrackingtools.graph.GenericJTSGraph;
+import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.graph.InferenceGraphSegment;
 import org.opentrackingtools.model.GpsObservation;
 import org.opentrackingtools.model.ProjectedCoordinate;
@@ -49,7 +50,7 @@ public class VehicleStatePLUpdaterTest {
     edges.add(JTSFactoryFinder.getGeometryFactory().createLineString(
         new Coordinate[] { new Coordinate(1, 2),
             new Coordinate(1, 3), }));
-    final GenericJTSGraph graph = new GenericJTSGraph(edges, false);
+    final InferenceGraph graph = new GenericJTSGraph(edges, false);
     final InferenceGraphSegment startLine =
         Iterables.getOnlyElement(graph.getNearbyEdges(edges.get(0)
             .getCoordinate(), 0.5d));
@@ -76,14 +77,14 @@ public class VehicleStatePLUpdaterTest {
 
     final PathEdge startPathEdge = new PathEdge(startLine, 0d, false);
 
-    final VehicleStateDistributionFactory<GpsObservation, GenericJTSGraph> factory =
-        new VehicleStateDistribution.VehicleStateDistributionFactory<GpsObservation, GenericJTSGraph>();
+    final VehicleStateDistributionFactory<GpsObservation, InferenceGraph> factory =
+        new VehicleStateDistribution.VehicleStateDistributionFactory<GpsObservation, InferenceGraph>();
     final VehicleStateDistribution<GpsObservation> currentState =
         factory.createInitialVehicleState(parameters, graph, obs,
             rng, startPathEdge);
 
-    final VehicleStatePLUpdater<GpsObservation, GenericJTSGraph> updater =
-        new VehicleStatePLUpdater<GpsObservation, GenericJTSGraph>(
+    final VehicleStatePLUpdater<GpsObservation, InferenceGraph> updater =
+        new VehicleStatePLUpdater<GpsObservation, InferenceGraph>(
             obs, graph, factory, parameters, rng);
 
     final VehicleStateDistribution<GpsObservation> newState =

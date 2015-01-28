@@ -33,6 +33,7 @@ import org.opentrackingtools.distributions.OnOffEdgeTransDistribution;
 import org.opentrackingtools.distributions.TruncatedRoadGaussian;
 import org.opentrackingtools.estimators.MotionStateEstimatorPredictor;
 import org.opentrackingtools.graph.GenericJTSGraph;
+import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.model.GpsObservation;
 import org.opentrackingtools.model.VehicleStateDistribution;
 import org.opentrackingtools.paths.PathState;
@@ -151,7 +152,7 @@ public class VehicleStatePLFilterSimulationTest {
   }
 
   private Matrix avgTransform;
-  private GenericJTSGraph graph;
+  private InferenceGraph graph;
   final Logger log = Logger
       .getLogger(VehicleStatePLFilterSimulationTest.class);
 
@@ -216,11 +217,11 @@ public class VehicleStatePLFilterSimulationTest {
     }
 
     final ParticleFilter<GpsObservation, VehicleStateDistribution<GpsObservation>> filter =
-        new VehicleStatePLFilter<GpsObservation, GenericJTSGraph>(
+        new VehicleStatePLFilter<GpsObservation, InferenceGraph>(
             new TrueObservation(trueVehicleState.getObservation(),
                 trueVehicleState),
             this.graph,
-            new VehicleStateDistribution.VehicleStateDistributionFactory<GpsObservation, GenericJTSGraph>(),
+            new VehicleStateDistribution.VehicleStateDistributionFactory<GpsObservation, InferenceGraph>(),
             filterInitialParams, true, rng);
 
     final DataDistribution<VehicleStateDistribution<GpsObservation>> vehicleStateDist =

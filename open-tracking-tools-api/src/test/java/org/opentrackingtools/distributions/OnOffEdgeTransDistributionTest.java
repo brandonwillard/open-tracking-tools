@@ -10,6 +10,7 @@ import java.util.Set;
 import org.geotools.geometry.jts.JTSFactoryFinder;
 import org.opentrackingtools.VehicleStateInitialParameters;
 import org.opentrackingtools.graph.GenericJTSGraph;
+import org.opentrackingtools.graph.InferenceGraph;
 import org.opentrackingtools.graph.InferenceGraphEdge;
 import org.opentrackingtools.graph.InferenceGraphSegment;
 import org.opentrackingtools.model.GpsObservation;
@@ -52,7 +53,7 @@ public class OnOffEdgeTransDistributionTest {
     edges.add(JTSFactoryFinder.getGeometryFactory().createLineString(
         new Coordinate[] { new Coordinate(1, 2),
             new Coordinate(1, 3), }));
-    final GenericJTSGraph graph = new GenericJTSGraph(edges, false);
+    final InferenceGraph graph = new GenericJTSGraph(edges, false);
     final InferenceGraphSegment startLine =
         Iterables.getOnlyElement(graph.getNearbyEdges(edges.get(0)
             .getCoordinate(), 1d));
@@ -77,8 +78,8 @@ public class OnOffEdgeTransDistributionTest {
 
     final PathEdge startPathEdge = new PathEdge(startLine, 0d, false);
 
-    final VehicleStateDistributionFactory<GpsObservation, GenericJTSGraph> factory =
-        new VehicleStateDistribution.VehicleStateDistributionFactory<GpsObservation, GenericJTSGraph>();
+    final VehicleStateDistributionFactory<GpsObservation, InferenceGraph> factory =
+        new VehicleStateDistribution.VehicleStateDistributionFactory<GpsObservation, InferenceGraph>();
     final VehicleStateDistribution<GpsObservation> currentState =
         factory.createInitialVehicleState(parameters, graph, obs,
             rng, startPathEdge);
@@ -136,7 +137,7 @@ public class OnOffEdgeTransDistributionTest {
     edges.add(JTSFactoryFinder.getGeometryFactory().createLineString(
         new Coordinate[] { new Coordinate(1, 1),
             new Coordinate(1, 2), }));
-    final GenericJTSGraph graph = new GenericJTSGraph(edges, false);
+    final InferenceGraph graph = new GenericJTSGraph(edges, false);
     final InferenceGraphSegment startLine =
         Iterables.getOnlyElement(graph.getNearbyEdges(edges.get(0)
             .getCoordinate(), 1d));
@@ -161,8 +162,8 @@ public class OnOffEdgeTransDistributionTest {
 
     final PathEdge startPathEdge = new PathEdge(startLine, 0d, false);
 
-    final VehicleStateDistributionFactory<GpsObservation, GenericJTSGraph> factory =
-        new VehicleStateDistribution.VehicleStateDistributionFactory<GpsObservation, GenericJTSGraph>();
+    final VehicleStateDistributionFactory<GpsObservation, InferenceGraph> factory =
+        new VehicleStateDistribution.VehicleStateDistributionFactory<GpsObservation, InferenceGraph>();
     final VehicleStateDistribution<GpsObservation> currentState =
         factory.createInitialVehicleState(parameters, graph, obs,
             rng, startPathEdge);
@@ -213,7 +214,7 @@ public class OnOffEdgeTransDistributionTest {
     edges.add(JTSFactoryFinder.getGeometryFactory().createLineString(
         new Coordinate[] { new Coordinate(1, 2),
             new Coordinate(1, 3), }));
-    final GenericJTSGraph graph = new GenericJTSGraph(edges, false);
+    final InferenceGraph graph = new GenericJTSGraph(edges, false);
     final InferenceGraphSegment startLine =
         Iterables.getOnlyElement(graph.getNearbyEdges(edges.get(0)
             .getCoordinate(), 1d));
@@ -239,8 +240,8 @@ public class OnOffEdgeTransDistributionTest {
     final InferenceGraphEdge startEdge = startLine;
     final PathEdge startPathEdge = new PathEdge(startLine, 0d, false);
 
-    final VehicleStateDistributionFactory<GpsObservation, GenericJTSGraph> factory =
-        new VehicleStateDistribution.VehicleStateDistributionFactory<GpsObservation, GenericJTSGraph>();
+    final VehicleStateDistributionFactory<GpsObservation, InferenceGraph> factory =
+        new VehicleStateDistribution.VehicleStateDistributionFactory<GpsObservation, InferenceGraph>();
     final VehicleStateDistribution<GpsObservation> currentState =
         factory.createInitialVehicleState(parameters, graph, obs,
             rng, startPathEdge);
